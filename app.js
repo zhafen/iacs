@@ -1,5 +1,22 @@
 // Infrastructure as Code Sketch - Main Application Logic
 
+// Polyfill for roundRect (for older browsers)
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radii) {
+        const radius = typeof radii === 'number' ? radii : radii[0];
+        this.moveTo(x + radius, y);
+        this.lineTo(x + width - radius, y);
+        this.arcTo(x + width, y, x + width, y + radius, radius);
+        this.lineTo(x + width, y + height - radius);
+        this.arcTo(x + width, y + height, x + width - radius, y + height, radius);
+        this.lineTo(x + radius, y + height);
+        this.arcTo(x, y + height, x, y + height - radius, radius);
+        this.lineTo(x, y + radius);
+        this.arcTo(x, y, x + radius, y, radius);
+        return this;
+    };
+}
+
 class InfrastructureDesigner {
     constructor() {
         this.canvas = document.getElementById('infraCanvas');

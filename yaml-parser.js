@@ -97,8 +97,8 @@ const jsyaml = {
             return value.substring(1, value.length - 1);
         }
         
-        // Parse numbers - strict validation
-        if (/^-?\d+\.?\d*$/.test(value) && value !== '') {
+        // Parse numbers - strict validation (allows integers and proper decimals)
+        if (/^-?\d+(\.\d+)?$/.test(value)) {
             return parseFloat(value);
         }
         
