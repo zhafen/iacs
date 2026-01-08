@@ -31,6 +31,11 @@ class InfrastructureDesigner {
         this.offsetX = 0;
         this.offsetY = 0;
         
+        // Visual constants
+        this.TITLE_Y_POSITION = 30;
+        this.LINE_HEIGHT = 16;
+        this.ARROW_LENGTH = 10;
+        
         this.initializeCanvas();
         this.setupEventListeners();
         this.showWelcomeMessage();
@@ -231,7 +236,7 @@ components:
         ctx.font = 'bold 20px sans-serif';
         ctx.fillStyle = '#667eea';
         ctx.textAlign = 'center';
-        ctx.fillText(title, this.canvas.getBoundingClientRect().width / 2, 30);
+        ctx.fillText(title, this.canvas.getBoundingClientRect().width / 2, this.TITLE_Y_POSITION);
     }
     
     drawConnections() {
@@ -256,19 +261,18 @@ components:
                         
                         // Draw arrow head
                         const angle = Math.atan2(target.y - comp.y, target.x - comp.x);
-                        const arrowLength = 10;
                         
                         ctx.setLineDash([]);
                         ctx.beginPath();
                         ctx.moveTo(target.x, target.y);
                         ctx.lineTo(
-                            target.x - arrowLength * Math.cos(angle - Math.PI / 6),
-                            target.y - arrowLength * Math.sin(angle - Math.PI / 6)
+                            target.x - this.ARROW_LENGTH * Math.cos(angle - Math.PI / 6),
+                            target.y - this.ARROW_LENGTH * Math.sin(angle - Math.PI / 6)
                         );
                         ctx.moveTo(target.x, target.y);
                         ctx.lineTo(
-                            target.x - arrowLength * Math.cos(angle + Math.PI / 6),
-                            target.y - arrowLength * Math.sin(angle + Math.PI / 6)
+                            target.x - this.ARROW_LENGTH * Math.cos(angle + Math.PI / 6),
+                            target.y - this.ARROW_LENGTH * Math.sin(angle + Math.PI / 6)
                         );
                         ctx.stroke();
                     }
@@ -347,10 +351,9 @@ components:
         lines.push(currentLine);
         
         // Draw lines
-        const lineHeight = 16;
-        const startY = comp.y - (lines.length - 1) * lineHeight / 2;
+        const startY = comp.y - (lines.length - 1) * this.LINE_HEIGHT / 2;
         lines.forEach((line, idx) => {
-            ctx.fillText(line, comp.x, startY + idx * lineHeight - 5);
+            ctx.fillText(line, comp.x, startY + idx * this.LINE_HEIGHT - 5);
         });
         
         // Draw type

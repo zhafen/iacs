@@ -5,9 +5,6 @@ const jsyaml = {
     load: function(yamlString) {
         const lines = yamlString.split('\n');
         const result = {};
-        let currentObject = result;
-        let currentArray = null;
-        let currentArrayItem = null;
         let indentStack = [{ level: -1, obj: result }];
         
         for (let i = 0; i < lines.length; i++) {
