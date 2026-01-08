@@ -3,6 +3,12 @@
 // Polyfill for roundRect (for older browsers)
 if (!CanvasRenderingContext2D.prototype.roundRect) {
     CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radii) {
+        // Validate inputs
+        if (typeof x !== 'number' || typeof y !== 'number' || 
+            typeof width !== 'number' || typeof height !== 'number') {
+            throw new TypeError('roundRect: x, y, width, and height must be numbers');
+        }
+        
         const radius = (typeof radii === 'number') ? radii : (Array.isArray(radii) ? radii[0] : 0);
         this.moveTo(x + radius, y);
         this.lineTo(x + width - radius, y);
@@ -32,6 +38,19 @@ class InfrastructureDesigner {
         this.TITLE_Y_POSITION = 30;
         this.LINE_HEIGHT = 16;
         this.ARROW_LENGTH = 10;
+        
+        // Component type colors
+        this.TYPE_COLORS = {
+            service: '#4CAF50',
+            database: '#2196F3',
+            storage: '#FF9800',
+            network: '#9C27B0',
+            compute: '#F44336',
+            gateway: '#00BCD4',
+            cache: '#FFC107',
+            queue: '#E91E63',
+            default: '#607D8B'
+        };
         
         this.initializeCanvas();
         this.setupEventListeners();
@@ -282,19 +301,7 @@ components:
     
     drawComponent(comp) {
         const ctx = this.ctx;
-        const typeColors = {
-            service: '#4CAF50',
-            database: '#2196F3',
-            storage: '#FF9800',
-            network: '#9C27B0',
-            compute: '#F44336',
-            gateway: '#00BCD4',
-            cache: '#FFC107',
-            queue: '#E91E63',
-            default: '#607D8B'
-        };
-        
-        const color = typeColors[comp.type] || typeColors.default;
+        const color = this.TYPE_COLORS[comp.type] || this.TYPE_COLORS.default;
         
         // Draw component box with shadow
         ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
@@ -360,8 +367,10 @@ components:
     }
     
     darkenColor(hex, percent) {
+        // Ensure hex starts with #
+        const hexColor = hex.startsWith('#') ? hex : `#${hex}`;
         // Convert hex to RGB
-        const num = parseInt(hex.replace('#', ''), 16);
+        const num = parseInt(hexColor.substring(1), 16);
         const r = (num >> 16) - percent;
         const g = ((num >> 8) & 0x00FF) - percent;
         const b = (num & 0x0000FF) - percent;
