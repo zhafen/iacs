@@ -97,8 +97,8 @@ const jsyaml = {
             return value.substring(1, value.length - 1);
         }
         
-        // Parse numbers
-        if (!isNaN(value) && value !== '') {
+        // Parse numbers - strict validation
+        if (/^-?\d+\.?\d*$/.test(value) && value !== '') {
             return parseFloat(value);
         }
         

@@ -191,7 +191,7 @@ header h1 {
     color: #333;
 }
 
-@media (max-width: 968px) {
+@media (max-width: 768px) {
     .main-content {
         grid-template-columns: 1fr;
     }

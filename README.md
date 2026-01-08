@@ -97,9 +97,9 @@ components:
 ## Technical Details
 
 - Pure client-side application (HTML, CSS, JavaScript)
-- Uses [js-yaml](https://github.com/nodeca/js-yaml) for YAML parsing
+- Custom YAML parser for infrastructure definitions
 - Canvas API for rendering
-- No dependencies beyond js-yaml CDN
+- No dependencies or external libraries required
 
 ## License
 
