@@ -3,7 +3,7 @@
 // Polyfill for roundRect (for older browsers)
 if (!CanvasRenderingContext2D.prototype.roundRect) {
     CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radii) {
-        const radius = typeof radii === 'number' ? radii : radii[0];
+        const radius = (typeof radii === 'number') ? radii : (Array.isArray(radii) ? radii[0] : 0);
         this.moveTo(x + radius, y);
         this.lineTo(x + width - radius, y);
         this.arcTo(x + width, y, x + width, y + radius, radius);
@@ -27,9 +27,6 @@ class InfrastructureDesigner {
         
         this.infrastructure = null;
         this.components = [];
-        this.scale = 1;
-        this.offsetX = 0;
-        this.offsetY = 0;
         
         // Visual constants
         this.TITLE_Y_POSITION = 30;

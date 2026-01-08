@@ -38,15 +38,22 @@ const jsyaml = {
                     
                     // Find the array to add to
                     const lastKey = indentStack[indentStack.length - 1].lastKey;
-                    if (lastKey && Array.isArray(parent[lastKey])) {
+                    if (lastKey && parent[lastKey] && Array.isArray(parent[lastKey])) {
                         parent[lastKey].push(newItem);
+                        indentStack.push({ level: indent, obj: newItem, lastKey: key });
+                    } else if (Array.isArray(parent)) {
+                        // Parent itself is an array
+                        parent.push(newItem);
                         indentStack.push({ level: indent, obj: newItem, lastKey: key });
                     }
                 } else {
                     // Simple array item
                     const lastKey = indentStack[indentStack.length - 1].lastKey;
-                    if (lastKey && Array.isArray(parent[lastKey])) {
+                    if (lastKey && parent[lastKey] && Array.isArray(parent[lastKey])) {
                         parent[lastKey].push(this.parseValue(content));
+                    } else if (Array.isArray(parent)) {
+                        // Parent itself is an array
+                        parent.push(this.parseValue(content));
                     }
                 }
             } else if (trimmedLine.includes(':')) {
