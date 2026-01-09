@@ -1,0 +1,64 @@
+sysops_infrastructure:
+    - description: Our system for handling sysops tickets.
+    - system
+
+solve_customer_sysops_problems:
+    - description: >
+          Our core requirement is that we address problems our customers bring us.
+    - requirement: sysops_infrastructure
+    - subsets:
+          we_resolve_customer_tickets:
+              - requirement: sysops_infrastructure
+              - subsets:
+                    customers_can_submit_tickets:
+                        - requirement: sysops_infrastructure
+                    experts_can_address_tickets:
+                        - requirement: sysops_infrastructure
+          our_system_persists:
+              - requirement: sysops_infrastructure
+              - subsets:
+                    customers_want_to_use_our_service_again:
+                        - requirement: sysops_infrastructure
+                        - subsets:
+                              customers_can_track_progress:
+                                  - requirement: sysops_infrastructure
+                                  - subsets:
+                                        customers_are_notified_on_acceptance:
+                                            - requirement: sysops_infrastructure
+                                        customers_are_notified_on_completion:
+                                            - requirement: sysops_infrastructure
+                              customers_feel_heard:
+                                  - requirement: sysops_infrastructure
+                                  - subsets:
+                                        customers_can_submit_surveys:
+                                            - requirement: sysops_infrastructure
+
+accept_submitted_ticket:
+    - task
+    - satisfies: customers_can_submit_tickets
+    - input:
+        submitter [customer]: The submitting customer.
+    - output:
+        submitted_ticket [ticket]: The resulting ticket.
+
+customer:
+    - description: Component type representing a customer.
+    - component_type:
+          fields:
+              first_name [str]: The first name provided by the customer.
+              last_name [str]: The last name provided by the customer.
+              email [str]: The email provided by the customer.
+
+expert:
+    - description: >
+          Component type representing Sysops experts responsible for addressing customer
+          concerns.
+
+ticket:
+    - description: Component type representing a ticket submitted by a customer.
+    - component_type:
+          fields:
+              submitter [customer]: The entity ID for the submitting customer.
+              title [str]: Short description/title for the ticket.
+              description [str]: The details of the ticket.
+              assigned_to [expert]: The entity ID for the assigned expert.
