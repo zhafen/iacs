@@ -5,33 +5,33 @@ sysops_infrastructure:
 solve_customer_sysops_problems:
     - description: >
           Our core requirement is that we address problems our customers bring us.
-    - requirement: sysops_infrastructure
+    - task
     - subsets:
           we_resolve_customer_tickets:
-              - requirement: sysops_infrastructure
+              - task
               - subsets:
                     customers_can_submit_tickets:
-                        - requirement: sysops_infrastructure
+                        - task
                     experts_can_address_tickets:
-                        - requirement: sysops_infrastructure
+                        - task
           our_system_persists:
-              - requirement: sysops_infrastructure
+              - task
               - subsets:
                     customers_want_to_use_our_service_again:
-                        - requirement: sysops_infrastructure
+                        - task
                         - subsets:
                               customers_can_track_progress:
-                                  - requirement: sysops_infrastructure
+                                  - task
                                   - subsets:
                                         customers_are_notified_on_acceptance:
-                                            - requirement: sysops_infrastructure
+                                            - task
                                         customers_are_notified_on_completion:
-                                            - requirement: sysops_infrastructure
+                                            - task
                               customers_feel_heard:
-                                  - requirement: sysops_infrastructure
+                                  - task
                                   - subsets:
                                         customers_can_submit_surveys:
-                                            - requirement: sysops_infrastructure
+                                            - task
 
 accept_submitted_ticket:
     - task
