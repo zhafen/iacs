@@ -1,0 +1,12 @@
+[project]
+name = "iacs"
+version = "0.1.0"
+description = "Infrastructure as Code Sketch"
+requires-python = ">=3.8"
+dependencies = [
+    "flask>=3.0.0",
+    "pyyaml>=6.0",
+]
+
+[tool.setuptools]
+py-modules = ["app"]

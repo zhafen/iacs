@@ -4,15 +4,12 @@ This repo now serves a small Flask app that reads `examples/minimal.yaml` and di
 
 ## Setup
 
-1. Create a virtual environment (optional but recommended):
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate
-   ```
-2. Install dependencies:
-   ```bash
-   pip install flask pyyaml
-   ```
+Using uv (recommended):
+```bash
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+uv pip install -e .
+```
 
 ## Run
 
