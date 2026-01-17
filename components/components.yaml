@@ -3,6 +3,9 @@ meta:
         This page contains key elements for working with components. The definitions
         in this page are accurate, but may use syntax defined after the component is.
 
+        Components are intended to be consistent with set theory, but the focus has
+        been on defining components for use, rather than ensuring maximum consistency.
+
 value:
     - description: >
         The simplest possible component: A single value of arbitrary type. Every
@@ -21,7 +24,7 @@ set:
     - extension of: value
     - fields:
         value: The contents of the [set].
-        definition: Necessary info to define the set, e.g. constraints.
+        definition [schema]: The constraints on the set.
     - subset:
         ordered_set:
             - description: A set where order matters.
@@ -32,23 +35,38 @@ set:
                         [value] component.
                     - fields:
                         key: The key.
-                        value: Value.
+                        value: The value.
             - subset:
                 dictionary:
                     - description: An [ordered_set] of [key_value_pair] components.
                     - fields:
                         definition: All items must be [key_value_pair] components.
 
+schema:
+    - description: A component defining the constraints on a set.
+    - subset of: dictionary
+    - fields:
+        value [str]: The constraints in words.
+    - extension:
+        field_schema:
+            - description: >
+                A schema used to define a field--a set with specific constraints
+                useful for data definition and manipulation.
+            - fields:
+                dtype [str]: Data type for all values in the set.
+                nullable [bool]: Whether null values are allowed in the field.
+                unique [bool]: Whether the field can contain null values.
+
 field:
     - description: |
-        A set with specific constraints useful for data manipulation.
+        A set with specific constraints useful for data definition and manipulation.
     - fields:
-        definition: |
-            A [dictionary] with the following items:
-                - dtype: Data type for all values in the set.
-                - nullable: Whether null values are allowed in the field.
-                - unique: Whether the field can contain null values.
-    - subset of: ordered_set
+        definition [field_schema]: The constraints.
+    - subset of: dictionary
+
+component:
+    - description: A set of fields used to represent a particular aspect of an entity.
+    - subset of: dictionary
 
 subset:
     - relation
@@ -121,3 +139,6 @@ syntax_challenges:
         Notation for functions and classes.
     - syntax_todo: >
         Notation for a component that is at the intersection of two subsets.
+
+definition_tests:
+    - requirement: Every component can be traced back to value.
