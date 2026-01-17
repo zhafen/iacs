@@ -1,0 +1,7 @@
+my_task:
+- description: A task I need to complete.
+- task
+
+my_infrastructure:
+- description: Infrastructure to complete the task.
+- implements: my_task
