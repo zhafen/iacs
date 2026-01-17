@@ -1,10 +1,11 @@
-meta:
+file_info:
     - description: >
         This page contains key elements for working with components. The definitions
         in this page are accurate, but may use syntax defined after the component is.
 
         Components are intended to be consistent with set theory, but the focus has
         been on defining components for use, rather than ensuring maximum consistency.
+    - file_info
 
 value:
     - description: >
@@ -13,38 +14,34 @@ value:
         accordingly every component has the "value" field.
     - fields:
         value: The value itself.
-    - subset:
-        key:
-            - description: >
-                A [value] typically used as an index/reference for other
-                values.
+    - key:
+        - description: >
+            A [value] typically used as an index/reference for other
+            values.
 
 set:
     - description: A collection of [value]s.
     - extension of: value
     - fields:
-        value: The contents of the [set].
-        definition [schema]: The constraints on the set.
-    - subset:
-        ordered_set:
-            - description: A set where order matters.
-            - subset:
-                key_value_pair:
-                    - description: >
-                        An [ordered_set] consisting of a [key] component followed by a
-                        [value] component.
-                    - fields:
-                        key: The key.
-                        value: The value.
-            - subset:
-                dictionary:
-                    - description: An [ordered_set] of [key_value_pair] components.
-                    - fields:
-                        definition: All items must be [key_value_pair] components.
+        value: The contents of the [set], i.e. the values.
+        schema [schema]: The constraints on the set.
+    - list:
+        - description: A set where order matters.
+        - key_value_pair:
+            - description: >
+                An [list] consisting of a [key] component followed by a
+                [value] component.
+            - fields:
+                key: The key.
+                value: The value.
+        - dictionary:
+            - description: An [list] of [key_value_pair] components.
+            - fields:
+                schema: All items must be [key_value_pair] components.
 
 schema:
     - description: A component defining the constraints on a set.
-    - subset of: dictionary
+    - subset of: value
     - fields:
         value [str]: The constraints in words.
     - extension:
@@ -56,17 +53,44 @@ schema:
                 dtype [str]: Data type for all values in the set.
                 nullable [bool]: Whether null values are allowed in the field.
                 unique [bool]: Whether the field can contain null values.
+        component_schema:
+            - description: >
+                A schema used to define a component.
+            - fields:
+                schema [dict[field_schema]]: >
+                    The schema for components is always a [dictionary] of
+                    [field_schema]. The value for components themselves is a
+                    [dictionary] of [field]s, with each [key] in the component_schema
+                    having a corresponding key for the component.
 
 field:
-    - description: |
+    - description: >
         A set with specific constraints useful for data definition and manipulation.
     - fields:
-        definition [field_schema]: The constraints.
+        value [list]: The values associated with the field.
+        schema [field_schema]: Constraints on the field.
     - subset of: dictionary
 
 component:
-    - description: A set of fields used to represent a particular aspect of an entity.
+    - description: A [dictionary] of [field]s used to represent a particular aspect of an entity.
+    - fields:
+        value [dict[field]]: T
+        schema [dict[field_schema]]: Constraints on the component.
     - subset of: dictionary
+
+example_component_schema:
+    - description: This is an example component schema for a new component.
+    - subset of: component_schema
+    - fields:
+        schema [field_a]
+
+fields:
+    - description: Having a [fields] component is shorthand for 
+
+example_component:
+    - description: A minimal working example of a component.
+    - value: 
+        field_a: 
 
 subset:
     - relation
