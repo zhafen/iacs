@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Infrastructure as Code Sketch</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Infrastructure as Code Sketch</p>
+        <h1 class="title">Minimal infrastructure view</h1>
+        <p class="lede">Rendering the contents of examples/minimal.yaml so you can see resources and how they relate.</p>
+      </div>
+    </header>
+
+    <section class="section">
+      <div class="section-header">
+        <h2>Resources</h2>
+        <p>The top-level keys from the YAML become resources.</p>
+      </div>
+      <div class="card-grid">
+        {% for resource in resources %}
+          <article class="card">
+            <h3 class="card-title">{{ resource.name }}</h3>
+            {% if resource.description %}
+              <p class="card-body">{{ resource.description }}</p>
+            {% else %}
+              <p class="card-body muted">No description provided.</p>
+            {% endif %}
+          </article>
+        {% else %}
+          <p class="muted">No resources found in the YAML.</p>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <h2>Relationships</h2>
+        <p>Edges are built from any <code>implements</code> fields.</p>
+      </div>
+      {% if edges %}
+        <ul class="edge-list">
+          {% for edge in edges %}
+            <li>
+              <span class="pill">{{ edge.source }}</span>
+              <span class="arrow">→</span>
+              <span class="pill">{{ edge.target }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">No relationships found.</p>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>
