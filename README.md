@@ -16,7 +16,7 @@ uv pip install -e .
 ```bash
 python app.py
 ```
-Then open http://localhost:5000/ to see the visualization.
+Then open http://localhost:8000/ to see the visualization.
 
 ## How it works
 
