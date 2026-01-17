@@ -7,6 +7,29 @@ file_info:
         been on defining components for use, rather than ensuring maximum consistency.
     - file_info
 
+component:
+    - description: |
+        A component is defined in terms of classes from set theory.
+        A class is a collection of mathematical objects (often sets) that can be
+        unambiguously defined by a property that all its members share.
+        A component is a collection of mathematical objects that are a subset of
+        a class. All objects in the set share the same property, but not all
+        objects in the class are in a component.
+
+        The collection of objects in the component are the component values, where
+        each value is an instance of a component. The property is referred to as the
+        component schema.
+
+entity:
+    - description: |
+        An entity is a collection of component instances labeled with a unique
+        identifier, the entity id.
+
+schema:
+    - description: |
+        When an entity includes this component the entity is itself defining a new
+        type of component.
+
 value:
     - description: >
         The simplest possible component: A single value of arbitrary type. Every
