@@ -7,8 +7,33 @@ file_info:
         been on defining components for use, rather than ensuring maximum consistency.
     - file_info
 
+yaml_syntax:
+    - description: The syntax used to describe components.
+    - root_syntax:
+        - description: |
+            1. Each yaml file is a dictionary, with one key per entity.
+            2. The top level key is the [entity_id].
+            3. Each entity consists of a list of components and other entities.
+    - entity_item_syntax:
+        - description: |
+            Each item in the list that defines an entity is a dictionary with length 1,
+            composed of the item key and the item value. The item value is a scalar, a
+            dictionary, or a list.
+            1. If scalar or dictionary, the item value is an instance of a component, with the item key specifying the component type.
+            2. If list, the item value is itself an entity with an [entity_id] of "{top_level_entity}.{item_key}".
+    - component_instance_syntax:
+        - description: |
+            Component instances can either be scalars or dictionaries.
+            1. If a component instance is a scalar and the component type is a child type of the [value] component, then the scalar specifies the [value.value] field.
+            2. If a component instance is a scalar and the component type is a child type of the [relation] component, then the scalar specifies the [entity_id] in [relation.target] or [relation.source] and the [entity_id] of the containing entity is specifies the other.
+                - If the component key is equal to the [entity_id] for a component definition, the scalar is [relation.target] and the [entity_id] of the containing entity is [relation.source].
+                - If instead the component key has the format "{component_entity_id} of", then the [entity_id] of the containing entity is [relation.target] and the scalar is [relation.source].
+    - bonus_syntax:
+        - description: |
+            1. If the entity ID is found in multiple files, the union of those entities is the final entity.
+
 component:
-    - description: |
+    - description: 
         A component is defined in terms of classes from set theory.
         A class is a collection of mathematical objects (often sets) that can be
         unambiguously defined by a property that all its members share.
@@ -20,27 +45,45 @@ component:
         each value is an instance of a component. The property is referred to as the
         component schema.
 
-entity:
-    - description: |
-        An entity is a collection of component instances labeled with a unique
-        identifier, the entity id.
-
 schema:
     - description: |
         When an entity includes this component the entity is itself defining a new
         type of component.
 
+entity:
+    - description: |
+        An entity is a collection of component instances labeled with a unique
+        identifier, the entity id.
+
 value:
-    - description: >
-        The simplest possible component: A single value of arbitrary type. Every
-        single component is a subset or extension of the [value] component, and
-        accordingly every component has the "value" field.
+    - description: |
+        The simplest possible component: A single value of arbitrary type.
+        
+        Every single component is a subset or extension of a [value] component or a
+        [relation] component.
     - fields:
         value: The value itself.
     - key:
         - description: >
             A [value] typically used as an index/reference for other
             values.
+
+relation:
+    - description: |
+        A component that describes a relation between two entities. Which is
+        [relation.source] and which is [relation.value] is arbitrary.
+        
+        Every single component is a subset or extension of a [value] component or a
+        [relation] component.
+    - fields:
+        source: One entity.
+        target: The second entity.
+    - subset:
+        - directed_relation:
+            - description: A relation where direction matters.
+            - fields:
+                source: The originating entity.
+                target: The target entity.
 
 set:
     - description: A collection of [value]s.
