@@ -6,7 +6,7 @@ file_info:
 
 iacs:
     - description: |
-        iacs ((short for Infrastructure-as-Code Sketch)) is software designed to help
+        iacs (short for Infrastructure-as-Code Sketch) is software designed to help
         technical architects design arbitrary infrastructure in a code-first format
         without worrying about the precise details of the implementation or the
         system-specific syntax.
@@ -18,40 +18,116 @@ iacs:
             a strong relationship between ECS frameworks and relational database design,
             the resultant infrastructure is already prepped to be compatible with common
             databases.
-        - entity:
+        - ecs_framework_core_concepts:
             - description: |
-                One of the core parts of an ECS framework. An entity is a representation
-                of an object or concept. Entities are collections of components labeled
-                with a unique identifier, the entity id.
-                All data for an entity is stored as components.
-        - component:
-            - description: |
-                One of the core parts of an ECS framework. A component is a 
-                table that records common data about different entities. Each row in a
-                component is a component instance belonging to an entity. When looking
-                at a single entity, the different component instances that make up that
-                entity can be viewed as dictionaries. Not all entities have all
-                components.  For example, the vast majority of entities will have a
-                ((description)) component that contains data describing what the entity
-                is, while only a subset might have a ((todo)) component that contains
-                data describing something about the entity that
-                needs to be addressed.
-
-                Components are intended to be consistent with set theory, specifically
-                in relation to classes. A class is a collection of mathematical objects
-                ((often sets)) that can be unambiguously defined by a property that all
-                its members share. A component is a collection of mathematical objects
-                that are a subset of a class. All objects in the set share the same
-                property, but not all objects in the class are in a component.  The
-                collection of objects in the component are the component instances,
-                where each value is an instance of a component. The property is referred
-                to as the component schema.
-
-                In documentation, components will be indecated by double parenthesis,
-                e.g. ((schema)).
-        - system:
-            - description: |
-                One of the core parts of an ECS framework. Whereas entities and components record data, systems record logic to work with entities and components. Each system has one or more ((task)) it is responsible for completing,
+                There are three core concepts for the ECS system: entities, components,
+                and systems.
+            - entity:
+                - description: |
+                    An entity is a representation of an object or concept. Entities are
+                    collections of components labeled with a unique identifier, the
+                    entity id.  All data for an entity is stored as components.
+            - component:
+                - description: |
+                    A component is a dictionary of data belonging to one or more
+                    entities. Components of the same type share a component schema, and
+                    can be aggregated into the same table or dataframe. Not all
+                    entities have components of all component types. For example, the
+                    vast majority of entities will have a ((description)) component that
+                    contains data describing what the entity is, while only a subset
+                    might have a ((todo)) component that contains data describing
+                    something about the entity that needs to be addressed.
+                    
+                    Components are intended to be consistent with set theory,
+                    specifically in relation to classes. A class is a collection of
+                    mathematical objects (often sets) that can be unambiguously defined
+                    by a property that all its members share. A component dataframe is a
+                    collection of mathematical objects that are a subset of a class. All
+                    objects in the set share the same property, but not all objects in
+                    the class are part of the component dataframe. The shared property
+                    is referred to as the component schema.
+                    
+                    In documentation, components will be indicated by double
+                    parenthesis, e.g. ((schema)).
+                - component_table:
+                    - description: |
+                        Components belonging to different entities are often aggregated
+                        into component tables.
+                    - component_table_columns:
+                        - index:
+                            - description: |
+                                The index for the component table is a multi-index
+                                consisting of the entity_id and the component_key.
+                        - component_type:
+                            - description: |
+                                Components of different subtypes (i.e. components that
+                                are subsets of the same component and share the same
+                                schema) can reside in the same table. The component_type
+                                column distinguishes them.
+                        - component_schema_columns:
+                            - description: |
+                                The remaining columns in a component table are the
+                                columns defined by the component schema.
+                - component_instance:
+                    - description: |
+                        A component instance is a single dictionary or row belonging
+                        to an entity. These are often just referred to as "components",
+                        and accordingly component tables and component schema should
+                        never be referred to just as "components".
+            - system:
+                - description: |
+                    One of the core parts of an ECS framework. Whereas entities and
+                    components record data, systems record logic to work with entities
+                    and components. Each system has one or more ((task)) components it
+                    is responsible for completing.
+        - ecs_data_formats:
+            - description: iacs stores ECS data in a few formats.
+            - yaml_ecs_data:
+                - description: |
+                    YAML is the main input format for manually entered data.
+                - file_syntax:
+                    - description: |
+                        Each yaml file is a dictionary, with one key per entity.
+                    - description: |
+                        The top level key is the ((entity_id).
+                    - description: |
+                        Each entity consists of a list of components and other entities.
+                    - description: |
+                        If the entity ID is found in multiple files, the union of those
+                        entities is the final entity.
+                - entity_syntax:
+                    - description: |
+                        Each item in the list that defines an entity is a dictionary
+                        with length 1, composed of the item key and the item value. The
+                        item value is a scalar, a dictionary, or a list.
+                    - description: |
+                        If scalar or dictionary, the item value is an instance of a
+                        component, with the item key specifying the component type.
+                    - description: |
+                        If list, the item value is itself an entity with an
+                        ((entity_id)) of "{top_level_entity}.{item_key}".
+                - component_syntax:
+                    - description: |
+                        Component instances can either be scalars or dictionaries.
+                    - description: |
+                        If a component instance is a scalar and the component type is a
+                        child type of the ((value)) component, then the scalar specifies
+                        the ((value.value)) field.
+                    - description: |
+                        If a component instance is a scalar and the component type is a
+                        child type of the ((relation)) component, then the scalar
+                        specifies the ((entity_id)) in ((relation.target)) or
+                        ((relation.source)) and the ((entity_id)) of the containing
+                        entity is specifies the other.
+                    - description: |
+                        If the component key is equal to the ((entity_id)) for a
+                        component definition, the scalar is ((relation.target)) and the
+                        ((entity_id)) of the containing entity is ((relation.source).
+                    - description: |
+                        If instead the component key has the format
+                        "{component_entity_id} of", then the ((entity_id)) of the
+                        containing entity is ((relation.target)) and the scalar is
+                        ((relation.source).
 
 schema:
     - description: |
@@ -78,40 +154,18 @@ relation:
         
         Every single component is a subset or extension of a ((value)) component or a
         ((relation)) component.
-    - fields:
-        source: One entity.
-        target: The second entity.
+    - schema:
+        source: An entity.
+        target: An entity related to the first entity.
+    - todo:
+        value: Extend this to an n-dimensional relationship.
+        priority: 0.1
     - subset:
         - directed_relation:
             - description: A relation where direction matters.
             - fields:
                 source: The originating entity.
                 target: The target entity.
-
-yaml_syntax:
-    - description: The syntax used to describe components.
-    - root_syntax:
-        - description: |
-            1. Each yaml file is a dictionary, with one key per entity.
-            2. The top level key is the ((entity_id).
-            3. Each entity consists of a list of components and other entities.
-    - entity_item_syntax:
-        - description: |
-            Each item in the list that defines an entity is a dictionary with length 1,
-            composed of the item key and the item value. The item value is a scalar, a
-            dictionary, or a list.
-            1. If scalar or dictionary, the item value is an instance of a component, with the item key specifying the component type.
-            2. If list, the item value is itself an entity with an ((entity_id)) of "{top_level_entity}.{item_key}".
-    - component_instance_syntax:
-        - description: |
-            Component instances can either be scalars or dictionaries.
-            1. If a component instance is a scalar and the component type is a child type of the ((value)) component, then the scalar specifies the ((value.value)) field.
-            2. If a component instance is a scalar and the component type is a child type of the ((relation)) component, then the scalar specifies the ((entity_id)) in ((relation.target)) or ((relation.source)) and the ((entity_id)) of the containing entity is specifies the other.
-                - If the component key is equal to the ((entity_id)) for a component definition, the scalar is ((relation.target)) and the ((entity_id)) of the containing entity is ((relation.source).
-                - If instead the component key has the format "{component_entity_id} of", then the ((entity_id)) of the containing entity is ((relation.target)) and the scalar is ((relation.source).
-    - bonus_syntax:
-        - description: |
-            1. If the entity ID is found in multiple files, the union of those entities is the final entity.
 
 set:
     - description: A collection of ((value)s.
