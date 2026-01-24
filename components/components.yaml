@@ -15,16 +15,16 @@ iacs:
         data:
             - description: |
                 iacs stores and manipulates infrastructure data follwing an
-                entity-component-system ((ECS)) framework. This framework makes it easy to
-                describe complicated infrastructure in a simple manner, and because there is
-                a strong relationship between ECS frameworks and relational database design,
-                the resultant infrastructure is already prepped to be compatible with common
-                databases.
+                entity-component-system (ECS) framework. This framework makes it easy
+                to describe complicated infrastructure in a simple manner, and because
+                there is a strong relationship between ECS frameworks and relational
+                database design, the resultant infrastructure is already prepped to be
+                compatible with common databases.
         ecs_framework_core_concepts:
             data:
                 - description: |
-                    There are three core concepts for the ECS system: entities, components,
-                    and systems.
+                    There are three core concepts for the ECS system: entities,
+                    components, and systems.
             entity:
                 - description: |
                     An entity is a representation of an object or concept. Entities are
@@ -97,15 +97,32 @@ iacs:
                 component_syntax:
                     data:
                         - description: |
-                            In yaml, components take the form of dictionaries with length 1.
-                            The item key for the dictionary specifies the component type.
-                            The value specifies the data for the component instance.
+                            In yaml, components take the form either of strings or of
+                            dictionaries with length 1.
+                        - description: |
+                            When the component is a string it specifies that the
+                            entity owns a component of that type, but provides no
+                            additional data. This is most commonly found for
+                            components that are children of the ((tag)) component type.
+                        - description: |
+                            When a component is a dictionary, the item key for the
+                            dictionary specifies the component type. The value specifies
+                            the data for the component instance.
                         - description: |
                             Component data can either be a scalar or a dictionary. 
                         - description: |
-                            If the component data is a scalar and the component type is a
-                            child type of the ((value)) component, then the scalar specifies
-                            the ((value.value)) field.
+                            If the component data is a scalar and the component type is
+                            a child type of the ((value)) component, then the scalar
+                            specifies the ((value.value)) field.
+                        - description: |
+                            If the component data is a dictionary, then each key
+                            in the dictionary corresponds to a column in the component
+                            schema.
+                        - description: |
+                            The exception to the above rule about handling components
+                            when component data is a dictionary is if the component type
+                            is ((schema)) or a child of ((schema)). In this case each
+                            key defines a column for the schema for that component type.
                     relation_component_syntax:
                         - description: |
                             If the component data is a scalar, the item key is either
@@ -144,159 +161,64 @@ iacs:
                     - description: |
                         The remaining columns in a component table are the
                         columns defined by the component schema.
-schema:
+
+tag:
     - description: |
-        When an entity includes this component the entity is itself defining a new
-        type of component.
+        A tag has no data. It simply indicates that the entity owns a component of
+        a given type.
 
 value:
     - description: |
-        The simplest possible component: A single value of arbitrary type.
-        
-        Every single component is a subset or extension of a ((value)) component or a
-        ((relation)) component.
-    - fields:
+        A component that is a single value of arbitrary type.
+    - schema:
         value: The value itself.
-    - key:
-        - description: >
-            A ((value)) typically used as an index/reference for other
-            values.
 
 relation:
     - description: |
         A component that describes a relation between two entities. Which is
         ((relation.source)) and which is ((relation.value)) is arbitrary.
-        
-        Every single component is a subset or extension of a ((value)) component or a
-        ((relation)) component.
     - schema:
         source: An entity.
         target: An entity related to the first entity.
-    - todo:
-        value: Extend this to an n-dimensional relationship.
-        priority: 0.1
-    - subset:
-        - directed_relation:
-            - description: A relation where direction matters.
-            - fields:
-                source: The originating entity.
-                target: The target entity.
-
-set:
-    - description: A collection of ((value)s.
-    - extension of: value
-    - fields:
-        value: The contents of the ((set), i.e. the values.
-        schema ((schema): The constraints on the set.
-    - list:
-        - description: A set where order matters.
-        - key_value_pair:
-            - description: >
-                An ((list)) consisting of a ((key)) component followed by a
-                ((value)) component.
-            - fields:
-                key: The key.
-                value: The value.
-        - dictionary:
-            - description: An ((list)) of ((key_value_pair)) components.
-            - fields:
-                schema: All items must be ((key_value_pair)) components.
 
 schema:
-    - description: A component defining the constraints on a set.
-    - subset of: value
-    - fields:
-        value ((str): The constraints in words.
-    - extension:
-        field_schema:
-            - description: >
-                A schema used to define a field--a set with specific constraints
-                useful for data definition and manipulation.
-            - fields:
-                dtype ((str): Data type for all values in the set.
-                nullable ((bool): Whether null values are allowed in the field.
-                unique ((bool): Whether the field can contain null values.
-        component_schema:
-            - description: >
-                A schema used to define a component.
-            - fields:
-                schema ((dict(field_schema)): >
-                    The schema for components is always a ((dictionary)) of
-                    ((field_schema). The value for components themselves is a
-                    ((dictionary)) of ((field)s, with each ((key)) in the component_schema
-                    having a corresponding key for the component.
+    - parent: value
+    - description: |
+        When an entity includes this component the entity is itself defining a new
+        type of component.
+    - schema:
+        value [dict]: The fields defining the schema.
 
-field:
-    - description: >
-        A set with specific constraints useful for data definition and manipulation.
-    - fields:
-        value ((list): The values associated with the field.
-        schema ((field_schema): Constraints on the field.
-    - subset of: dictionary
+directed_relation:
+    - parent: relation
+    - description: A relation where direction matters.
+    - schema:
+        source: The originating entity.
+        target: The target entity.
+parent:
+    - parent: directed_relation
+    - description: The target entity is the parent of the source entity.
 
-component:
-    - description: A ((dictionary)) of ((field)s used to represent a particular aspect of an entity.
-    - fields:
-        value ((dict(field)): T
-        schema ((dict(field_schema)): Constraints on the component.
-    - subset of: dictionary
+input:
+    - parent: schema
+    - description: Input arguments.
 
-example_component_schema:
-    - description: This is an example component schema for a new component.
-    - subset of: component_schema
-    - fields:
-        schema ((field_a)
+output:
+    - parent: schema
+    - description: Output arguments.
 
-fields:
-    - description: Having a ((fields)) component is shorthand for 
+entity_id:
+    - parent: tag
+    - description: |
+        A list of all entities, taking advantage of the tag base component.
 
-example_component:
-    - description: A minimal working example of a component.
-    - value: 
-        field_a: 
-
-subset:
-    - relation
-    - subset:
-        extension:
-            - description: >
-                A subset where the constraints include requiring additional related
-                components. Because all extensions are technically just a subset of
-                an existing component with additional requirements, extensions do
-                not require new tables to be defined.
-
-component:
-    - description: >
-        A ((dictionary)) of ((field)) components of equal length. This is the raw data of
-        a table.
-    - subset of: dictionary
-
-element:
-    - subset of: link
-    - description: The source is an element of the target, which must have a set component.
-
-entity:
-    - description: >
-        A ((key_value_pair)) where the key is the entity ID and the value is a set of
-        ((component)s and/or entities.
-
-example_set:
-    - set
-    - element: "(first_element)"
-    - element: b
-
-first_element:
-    - description: Part of the example set.
-    - value: 1
-
-another_element:
-    - description: Another part of the example set.
-    - value: 2
-    - element of: example_set
-
-syntax_todo:
-    - description: Something
-    - subset of: todo
+component_type:
+    - parent: value
+    - description: |
+        Specifies the component_type for a given component. Used as a master list
+        of all components and entities.
+    - schema:
+        value [str]: The component type.
 
 syntax_challenges:
     - syntax_todo: >
