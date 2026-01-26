@@ -1,8 +1,8 @@
 file_info:
     - description: >
         This file contains the key entities that define and describe how
-        iacs works.
-    - file_info
+        iacs works. It includes the iacs mission, the ECS framework concepts,
+        component type definitions, and planned infrastructure implementations.
 
 iacs:
     data:
@@ -132,7 +132,7 @@ iacs:
     entity_component_system_framework:
         data:
             - description: |
-                iacs stores and manipulates infrastructure data follwing an
+                iacs stores and manipulates infrastructure data following an
                 entity-component-system (ECS) framework. This framework makes it easy
                 to describe complicated infrastructure in a simple manner, and because
                 there is a strong relationship between ECS frameworks and relational
@@ -280,6 +280,12 @@ iacs:
                         The remaining columns in a component table are the
                         columns defined by the component schema.
 
+# ========================================
+# CORE COMPONENT TYPE DEFINITIONS
+# ========================================
+# The following section defines the fundamental component types that are used
+# throughout the iacs system. These form the basis for all infrastructure modeling.
+
 tag:
     - description: |
         A tag has no data. It simply indicates that the entity owns a component of
@@ -338,6 +344,55 @@ component_type:
     - schema:
         value [str]: The component type.
 
+description:
+    - parent: value
+    - description: |
+        A human-readable description of what an entity is or does. This is one of the
+        most common components as nearly every entity should have a description.
+    - schema:
+        value [str]: The descriptive text.
+
+requirement:
+    - parent: tag
+    - description: |
+        Indicates that an entity represents a requirement that must be satisfied
+        by the system design. Requirements should be traced to implementations.
+
+task:
+    - parent: tag
+    - description: |
+        Indicates that an entity represents a task that needs to be completed,
+        either by a human or by automated infrastructure.
+
+todo:
+    - parent: value
+    - description: |
+        Indicates something about the entity that needs to be addressed or completed.
+        Used to track pending work items.
+    - schema:
+        value [str]: Description of what needs to be done.
+
+implements:
+    - parent: directed_relation
+    - description: |
+        Indicates that the source entity implements or satisfies the target entity.
+        Commonly used to show that infrastructure implements a requirement or task.
+    - schema:
+        source: The entity that does the implementing (e.g., infrastructure).
+        target: The entity being implemented (e.g., requirement or task).
+
+infrastructure:
+    - parent: tag
+    - description: |
+        Indicates that an entity represents a piece of infrastructure, which can be
+        technical (servers, databases) or human (manual processes).
+
+# ========================================
+# SYSTEM META-DISCUSSION
+# ========================================
+# The following section contains ongoing design discussions and open questions
+# about the syntax and capabilities of the iacs system itself.
+
 syntax_challenges:
     - todo: >
         Notation for multiple components of the same type. Maybe "component_type s"?
@@ -366,3 +421,53 @@ syntax_challenges:
         Notation for functions and classes.
     - todo: >
         Notation for a component that is at the intersection of two subsets.
+
+# ========================================
+# PLANNED INFRASTRUCTURE IMPLEMENTATIONS
+# ========================================
+# The following section defines the concrete infrastructure that will be built
+# to implement the iacs system. These are ordered by implementation priority.
+
+yaml_parser:
+    data:
+        - description: |
+            A system for parsing YAML files containing ECS data and converting them
+            into the internal registry format. This is the foundational infrastructure
+            piece that enables iacs to read and interpret infrastructure definitions.
+        - infrastructure
+    parse_yaml_files_task:
+        data:
+            - description: |
+                Read YAML files from the filesystem and parse them into Python data
+                structures.
+            - task
+            - implements: iacs.entity_component_system_framework.ecs_data_formats.yaml_ecs_data
+    convert_to_registry_task:
+        data:
+            - description: |
+                Convert parsed YAML data into component tables stored in a registry
+                object, following the ECS framework rules.
+            - task
+            - implements: iacs.entity_component_system_framework.ecs_data_formats.table_ecs_data
+    handle_entity_syntax_task:
+        data:
+            - description: |
+                Process entity definitions according to the YAML entity syntax rules,
+                including handling the "data" key and nested sub-entities.
+            - task
+            - implements: iacs.entity_component_system_framework.ecs_data_formats.yaml_ecs_data.entity_syntax
+    handle_component_syntax_task:
+        data:
+            - description: |
+                Process component definitions according to the YAML component syntax
+                rules, including string components, dictionary components, value
+                components, and relation components.
+            - task
+            - implements: iacs.entity_component_system_framework.ecs_data_formats.yaml_ecs_data.component_syntax
+    python_implementation:
+        data:
+            - description: |
+                Implementation using Python with PyYAML for parsing and pandas
+                DataFrames for storing component tables in the registry.
+            - infrastructure
+            - implements: yaml_parser
