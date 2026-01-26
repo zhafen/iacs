@@ -1,8 +1,8 @@
 file_info:
     - description: >
         This file contains the key entities that define and describe how
-        iacs works. It includes the iacs mission, the ECS framework concepts,
-        component type definitions, and planned infrastructure implementations.
+        iacs works.
+    - file_info
 
 iacs:
     data:
@@ -345,47 +345,49 @@ component_type:
         value [str]: The component type.
 
 description:
-    - parent: value
     - description: |
         A human-readable description of what an entity is or does. This is one of the
         most common components as nearly every entity should have a description.
+    - parent: value
     - schema:
         value [str]: The descriptive text.
 
 requirement:
-    - parent: tag
     - description: |
         Indicates that an entity represents a requirement that must be satisfied
         by the system design. Requirements should be traced to implementations.
+    - parent: value
+    - schema:
+        value [float]: The priority for the requirement. Default is 0.5.
 
 task:
-    - parent: tag
     - description: |
         Indicates that an entity represents a task that needs to be completed,
         either by a human or by automated infrastructure.
+    - parent: tag
 
 todo:
-    - parent: value
     - description: |
         Indicates something about the entity that needs to be addressed or completed.
         Used to track pending work items.
+    - parent: value
     - schema:
         value [str]: Description of what needs to be done.
 
 implements:
-    - parent: directed_relation
     - description: |
         Indicates that the source entity implements or satisfies the target entity.
         Commonly used to show that infrastructure implements a requirement or task.
+    - parent: directed_relation
     - schema:
         source: The entity that does the implementing (e.g., infrastructure).
         target: The entity being implemented (e.g., requirement or task).
 
 infrastructure:
-    - parent: tag
     - description: |
         Indicates that an entity represents a piece of infrastructure, which can be
         technical (servers, databases) or human (manual processes).
+    - parent: tag
 
 # ========================================
 # SYSTEM META-DISCUSSION
