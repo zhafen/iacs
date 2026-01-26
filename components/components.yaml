@@ -19,21 +19,27 @@ iacs:
                     architecture.
                 - requirement
             provide_quality_end_to_end_documentation_of_infrastructure:
+                data:
+                    - requirement
                 provide_a_source_of_truth:
-                    can_minimize_duplication:
-                        can_parse_infrastructure_in_a_wide_variety_of_formats:
+                    data:
+                        - requirement
+                    minimize_duplication:
+                        data:
+                            - requirement
+                        parse_infrastructure_in_a_wide_variety_of_formats:
                             data:
                                 - description: |
                                     If infrastructure is defined elsewhere in an
                                     existing format, we don't want to duplicate it and
                                     therefore introduce a source of uncertainty.
                                 - requirement
-                            can_parse_variety_of_IaC_formats:
+                            parse_a_variety_of_IaC_formats:
                                 - description: |
                                     We don't want to duplicate other IaC code if
                                     possible.
                                 - requirement
-                            can_parse_code_languages:
+                            parse_code_languages:
                                 - description: |
                                     Code such as Python also provides clear definitions.
                                 - requirement
@@ -41,7 +47,7 @@ iacs:
                         - description: |
                             Version control is essential for reliability.
                         - requirement
-                    can_aggregate_all_definitions_in_one_location:
+                    aggregate_all_definitions_in_one_location:
                         - description: |
                             A source of truth is not *a* source of truth if it is
                             distributed.
@@ -54,6 +60,8 @@ iacs:
                             every type of infrastructure conceivable.
                         - requirement
                     enable_users_to_define_any_infrastructure:
+                        data:
+                            - requirement
                         compatible_with_human_components:
                             - description: |
                                 Human components of infrastructure are tasks that are
@@ -71,21 +79,56 @@ iacs:
                                 parts of solutions architecture, e.g. users.
                             - requirement
                 provide_documentation_in_formats_meeting_all_common_needs:
+                    data:
+                        - requirement
                     define_infrastructure_using_clear_and_simple_syntax:
+                        - requirement
                     export_infrastructure_to_wiki:
+                        - description: |
+                            Wikis are a very common and readable way of documenting
+                            knowledge. This would be a good and easy default.
+                        - requirement
             help_improve_the_quality_of_system_designs:
-                allow_system_designs_to_be_tested:
+                data:
+                    - requirement
+                allow_solution_designs_to_be_tested:
+                    data:
+                        - description: |
+                            Requiring solutions to pass well-defined tests sets a
+                            baseline minimum quality.
+                        - requirement
                     provide_tools_to_build_tests_for_system_designs:
+                        - requirement
                     provide_default_tests_for_systems:
+                        data:
+                            - requirement
                         test_for_identifying_requirements_missing_solutions:
+                            - description: |
+                                Tests for both requirements without solutions and
+                                requirements without adequate/implemented solutions.
+                            - requirement
                         trace_every_component_to_a_requirement:
+                            - description: |
+                                There should be a motivation for every piece of
+                                infrastructure.
+                            - requirement
                         test_for_invalid_definitions:
+                            - requirement
                         test_for_siloed_infrastructure:
+                            - description: |
+                                Everything should be part of one big solution.
+                            - requirement
                         test_for_completed_todos:
+                            - requirement
             provide_a_launching_point_for_infrastructure_implementation:
+                data:
+                    - requirement
                 facilitate_compatibility_with_copilot:
+                    - requirement
                 facilitate_compatibility_with_terraform:
+                    - requirement
                 facilitate_compatibility_with_relational_databases:
+                    - requirement
     entity_component_system_framework:
         data:
             - description: |
@@ -296,33 +339,30 @@ component_type:
         value [str]: The component type.
 
 syntax_challenges:
-    - syntax_todo: >
+    - todo: >
         Notation for multiple components of the same type. Maybe "component_type s"?
-    - syntax_todo: >
+    - todo: >
         Binary relationship notation going both ways.
         Maybe "component_type of:" and "component_type:"?
-    - syntax_todo: >
+    - todo: >
         Notation for indicating that a component is a row-wise subset of another
         component, i.e. that it has the same fields but additional constraints.
         Maybe "subset of:" and "subset s", i.e. we use a "subset" relation?
-    - syntax_todo: >
+    - todo: >
         Notation for defining an entity in-line vs linking to an existing entity.
         Maybe "(entity_name)"?
-    - syntax_todo: >
+    - todo: >
         Notation for indicating that a component must be joined with another component
         to be interpreted correctly. Maybe: "required:"?
-    - syntax_todo: >
+    - todo: >
         Notation for working with a component that would be a subset of another
         component, except it has additional required associated components or is
         an extension of that component. Maybe we allow "inheritance" where the child
         component is a subset of the parent component that also has required components
         defined for the purpose of extending the component.
-    - syntax_todo: >
+    - todo: >
         Notation for subsets with constant values for one or more fields.
-    - syntax_todo: >
+    - todo: >
         Notation for functions and classes.
-    - syntax_todo: >
+    - todo: >
         Notation for a component that is at the intersection of two subsets.
-
-definition_tests:
-    - requirement: Every component can be traced back to value.
