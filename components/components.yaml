@@ -11,6 +11,81 @@ iacs:
             technical architects design arbitrary infrastructure in a code-first format
             without worrying about the precise details of the implementation or the
             system-specific syntax.
+    iacs_mission:
+        be_a_powerful_tool_for_solutions_architecture:
+            data:
+                - description: |
+                    The overall goal of iacs is to be a powerful tool for solutions
+                    architecture.
+                - requirement
+            provide_quality_end_to_end_documentation_of_infrastructure:
+                provide_a_source_of_truth:
+                    can_minimize_duplication:
+                        can_parse_infrastructure_in_a_wide_variety_of_formats:
+                            data:
+                                - description: |
+                                    If infrastructure is defined elsewhere in an
+                                    existing format, we don't want to duplicate it and
+                                    therefore introduce a source of uncertainty.
+                                - requirement
+                            can_parse_variety_of_IaC_formats:
+                                - description: |
+                                    We don't want to duplicate other IaC code if
+                                    possible.
+                                - requirement
+                            can_parse_code_languages:
+                                - description: |
+                                    Code such as Python also provides clear definitions.
+                                - requirement
+                    compatible_with_version_control:
+                        - description: |
+                            Version control is essential for reliability.
+                        - requirement
+                    can_aggregate_all_definitions_in_one_location:
+                        - description: |
+                            A source of truth is not *a* source of truth if it is
+                            distributed.
+                        - requirement
+                document_every_aspect_of_infrastructure:
+                    data:
+                        - description: |
+                            This is one of the key features iacs provides that other
+                            modeling tools do not--the ability to define and model
+                            every type of infrastructure conceivable.
+                        - requirement
+                    enable_users_to_define_any_infrastructure:
+                        compatible_with_human_components:
+                            - description: |
+                                Human components of infrastructure are tasks that are
+                                not yet (or cannot be) automated.
+                            - requirement
+                        compatible_with_abstract_components:
+                            - description: |
+                                Abstract components of infrastructure include
+                                poorly-defined components and abstract concepts,
+                                e.g. requirements.
+                            - requirement
+                        compatible_with_standard_components:
+                            - description: |
+                                Of course, we also need to be able to define standard
+                                parts of solutions architecture, e.g. users.
+                            - requirement
+                provide_documentation_in_formats_meeting_all_common_needs:
+                    define_infrastructure_using_clear_and_simple_syntax:
+                    export_infrastructure_to_wiki:
+            help_improve_the_quality_of_system_designs:
+                allow_system_designs_to_be_tested:
+                    provide_tools_to_build_tests_for_system_designs:
+                    provide_default_tests_for_systems:
+                        test_for_identifying_requirements_missing_solutions:
+                        trace_every_component_to_a_requirement:
+                        test_for_invalid_definitions:
+                        test_for_siloed_infrastructure:
+                        test_for_completed_todos:
+            provide_a_launching_point_for_infrastructure_implementation:
+                facilitate_compatibility_with_copilot:
+                facilitate_compatibility_with_terraform:
+                facilitate_compatibility_with_relational_databases:
     entity_component_system_framework:
         data:
             - description: |
