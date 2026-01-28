@@ -132,7 +132,7 @@ iacs:
     entity_component_system_framework:
         data:
             - description: |
-                iacs stores and manipulates infrastructure data follwing an
+                iacs stores and manipulates infrastructure data following an
                 entity-component-system (ECS) framework. This framework makes it easy
                 to describe complicated infrastructure in a simple manner, and because
                 there is a strong relationship between ECS frameworks and relational
@@ -280,89 +280,144 @@ iacs:
                         The remaining columns in a component table are the
                         columns defined by the component schema.
 
-tag:
-    - description: |
-        A tag has no data. It simply indicates that the entity owns a component of
-        a given type.
+component_types:
+    data:
+        - description: |
+            Fundamental component types used throughout the iacs system.
+            These form the basis for all infrastructure modeling.
+    tag:
+        - description: |
+            A tag has no data. It simply indicates that the entity owns a component of
+            a given type.
 
-value:
-    - description: |
-        A component that is a single value of arbitrary type.
-    - schema:
-        value: The value itself.
+    value:
+        - description: |
+            A component that is a single value of arbitrary type.
+        - schema:
+            value: The value itself.
 
-relation:
-    - description: |
-        A component that describes a relation between two entities. Which is
-        ((relation.source)) and which is ((relation.value)) is arbitrary.
-    - schema:
-        source: An entity.
-        target: An entity related to the first entity.
+    relation:
+        - description: |
+            A component that describes a relation between two entities. Which is
+            ((relation.source)) and which is ((relation.value)) is arbitrary.
+        - schema:
+            source: An entity.
+            target: An entity related to the first entity.
 
-schema:
-    - parent: value
-    - description: |
-        When an entity includes this component the entity is itself defining a new
-        type of component.
-    - schema:
-        value [dict]: The fields defining the schema.
+    schema:
+        - parent: value
+        - description: |
+            When an entity includes this component the entity is itself defining a new
+            type of component.
+        - schema:
+            value [dict]: The fields defining the schema.
 
-directed_relation:
-    - parent: relation
-    - description: A relation where direction matters.
-    - schema:
-        source: The originating entity.
-        target: The target entity.
-parent:
-    - parent: directed_relation
-    - description: The target entity is the parent of the source entity.
+    directed_relation:
+        - parent: relation
+        - description: A relation where direction matters.
+        - schema:
+            source: The originating entity.
+            target: The target entity.
+    parent:
+        - parent: directed_relation
+        - description: The target entity is the parent of the source entity.
 
-input:
-    - parent: schema
-    - description: Input arguments.
+    input:
+        - parent: schema
+        - description: Input arguments.
 
-output:
-    - parent: schema
-    - description: Output arguments.
+    output:
+        - parent: schema
+        - description: Output arguments.
 
-entity_id:
-    - parent: tag
-    - description: |
-        A list of all entities, taking advantage of the tag base component.
+    entity_id:
+        - parent: tag
+        - description: |
+            A list of all entities, taking advantage of the tag base component.
 
-component_type:
-    - parent: value
-    - description: |
-        Specifies the component_type for a given component. Used as a master list
-        of all components and entities.
-    - schema:
-        value [str]: The component type.
+    component_type:
+        - parent: value
+        - description: |
+            Specifies the component_type for a given component. Used as a master list
+            of all components and entities.
+        - schema:
+            value [str]: The component type.
 
-syntax_challenges:
-    - todo: >
-        Notation for multiple components of the same type. Maybe "component_type s"?
-    - todo: >
-        Binary relationship notation going both ways.
-        Maybe "component_type of:" and "component_type:"?
-    - todo: >
-        Notation for indicating that a component is a row-wise subset of another
-        component, i.e. that it has the same fields but additional constraints.
-        Maybe "subset of:" and "subset s", i.e. we use a "subset" relation?
-    - todo: >
-        Notation for defining an entity in-line vs linking to an existing entity.
-        Maybe "(entity_name)"?
-    - todo: >
-        Notation for indicating that a component must be joined with another component
-        to be interpreted correctly. Maybe: "required:"?
-    - todo: >
-        Notation for working with a component that would be a subset of another
-        component, except it has additional required associated components or is
-        an extension of that component. Maybe we allow "inheritance" where the child
-        component is a subset of the parent component that also has required components
-        defined for the purpose of extending the component.
-    - todo: >
-        Notation for subsets with constant values for one or more fields.
-    - todo: >
-        Notation for functions and classes.
-    - todo: >
-        Notation for a component that is at the intersection of two subsets.
+    description:
+        - description: |
+            A human-readable description of what an entity is or does. This is one of the
+            most common components as nearly every entity should have a description.
+        - parent: value
+        - schema:
+            value [str]: The descriptive text.
+
+    requirement:
+        - description: |
+            Indicates that an entity represents a requirement that must be satisfied
+            by the system design. Requirements should be traced to implementations.
+        - parent: value
+        - schema:
+            value [float]: The priority for the requirement. Default is 0.5.
+
+    task:
+        - description: |
+            Indicates that an entity represents a task that needs to be completed,
+            either by a human or by automated infrastructure.
+        - parent: tag
+
+    todo:
+        - description: |
+            Indicates something about the entity that needs to be addressed or completed.
+            Used to track pending work items.
+        - parent: value
+        - schema:
+            value [str]: Description of what needs to be done.
+
+    implements:
+        - description: |
+            Indicates that the source entity implements or satisfies the target entity.
+            Commonly used to show that infrastructure implements a requirement or task.
+        - parent: directed_relation
+        - schema:
+            source: The entity that does the implementing (e.g., infrastructure).
+            target: The entity being implemented (e.g., requirement or task).
+
+    infrastructure:
+        - description: |
+            Indicates that an entity represents a piece of infrastructure, which can be
+            technical (servers, databases) or human (manual processes).
+        - parent: tag
+
+iacs_meta_discussion:
+    data:
+        - description: |
+            Ongoing design discussions and open questions about the syntax and
+            capabilities of the iacs system itself.
+    syntax_challenges:
+        - todo: >
+            Notation for multiple components of the same type. Maybe "component_type s"?
+        - todo: >
+            Binary relationship notation going both ways.
+            Maybe "component_type of:" and "component_type:"?
+        - todo: >
+            Notation for indicating that a component is a row-wise subset of another
+            component, i.e. that it has the same fields but additional constraints.
+            Maybe "subset of:" and "subset s", i.e. we use a "subset" relation?
+        - todo: >
+            Notation for defining an entity in-line vs linking to an existing entity.
+            Maybe "(entity_name)"?
+        - todo: >
+            Notation for indicating that a component must be joined with another component
+            to be interpreted correctly. Maybe: "required:"?
+        - todo: >
+            Notation for working with a component that would be a subset of another
+            component, except it has additional required associated components or is
+            an extension of that component. Maybe we allow "inheritance" where the child
+            component is a subset of the parent component that also has required components
+            defined for the purpose of extending the component.
+        - todo: >
+            Notation for subsets with constant values for one or more fields.
+        - todo: >
+            Notation for functions and classes.
+        - todo: >
+            Notation for a component that is at the intersection of two subsets.
