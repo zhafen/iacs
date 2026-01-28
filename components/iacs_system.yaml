@@ -1,0 +1,319 @@
+file_info:
+    - description: >
+        This file sketches out the design for an ECS (Entity-Component-System)
+        registry, following the syntax used in components.yaml. The registry
+        is the core data structure that manages and stores all component data
+        in the iacs system.
+
+ecs_registry:
+    data:
+        - description: |
+            The ECS registry is the central data structure that stores and manages
+            all component data for entities in the iacs system. It provides a
+            structured way to organize, query, and manipulate component tables.
+        - infrastructure
+    registry_core:
+        data:
+            - description: |
+                Core functionality and data structures of the registry.
+            - requirement
+        component_storage:
+            data:
+                - description: |
+                    The registry stores component data in tables, with one table per
+                    component type. Each table contains all instances of that component
+                    type across all entities.
+                - requirement
+            component_table_structure:
+                data:
+                    - description: |
+                        Each component table uses a multi-index consisting of
+                        (entity_id, component_index) to uniquely identify component
+                        instances.
+                    - requirement
+                multi_index_implementation:
+                    - description: |
+                        Use pandas MultiIndex or equivalent to support efficient
+                        querying by entity_id and component_index.
+                    - requirement
+                component_type_column:
+                    - description: |
+                        Include a component_type column to distinguish between
+                        subtypes that share the same schema.
+                    - requirement
+                schema_columns:
+                    - description: |
+                        Additional columns defined by the component schema for
+                        each component type.
+                    - requirement
+        registry_initialization:
+            data:
+                - description: |
+                    Initialize an empty registry with no component tables.
+                - task
+            create_registry_object:
+                - description: |
+                    Create the registry data structure (e.g., dictionary of
+                    DataFrames).
+                - implements: ecs_registry.registry_core.registry_initialization
+        component_registration:
+            data:
+                - description: |
+                    Register new component types with the registry.
+                - task
+            validate_component_schema:
+                - description: |
+                    Ensure component schema is valid before creating table.
+                - requirement
+            create_component_table:
+                - description: |
+                    Create a new table for the component type with appropriate
+                    columns and index.
+                - implements: ecs_registry.registry_core.component_registration
+    registry_operations:
+        data:
+            - description: |
+                Operations for interacting with the registry to add, query,
+                update, and delete component data.
+            - requirement
+        add_components:
+            data:
+                - description: |
+                    Add new component instances to the registry.
+                - task
+            validate_component_data:
+                - description: |
+                    Validate that component data matches the schema before adding.
+                - requirement
+            append_to_component_table:
+                - description: |
+                    Add new rows to the appropriate component table.
+                - implements: ecs_registry.registry_operations.add_components
+            handle_duplicate_indices:
+                - description: |
+                    Handle cases where (entity_id, component_index) already exists.
+                - requirement
+        query_components:
+            data:
+                - description: |
+                    Query and retrieve component data from the registry.
+                - task
+            query_by_entity:
+                data:
+                    - description: |
+                        Retrieve all components for a specific entity.
+                    - requirement
+                filter_by_entity_id:
+                    - description: |
+                        Use MultiIndex to efficiently filter by entity_id.
+                    - implements: ecs_registry.registry_operations.query_components.query_by_entity
+            query_by_component_type:
+                data:
+                    - description: |
+                        Retrieve all instances of a specific component type.
+                    - requirement
+                access_component_table:
+                    - description: |
+                        Direct access to the component table for the given type.
+                    - implements: ecs_registry.registry_operations.query_components.query_by_component_type
+            query_by_schema_values:
+                data:
+                    - description: |
+                        Query components by filtering on schema column values.
+                    - requirement
+                filter_dataframe:
+                    - description: |
+                        Use pandas filtering operations on component tables.
+                    - implements: ecs_registry.registry_operations.query_components.query_by_schema_values
+            join_components:
+                - description: |
+                    Join multiple component tables to query entities with
+                    specific combinations of components.
+                - requirement
+        update_components:
+            data:
+                - description: |
+                    Update existing component data in the registry.
+                - task
+            locate_component:
+                - description: |
+                    Find the component to update using entity_id and component_index.
+                - requirement
+            modify_component_data:
+                - description: |
+                    Update the component's schema column values.
+                - implements: ecs_registry.registry_operations.update_components
+            validate_updated_data:
+                - description: |
+                    Ensure updated data still matches the component schema.
+                - requirement
+        delete_components:
+            data:
+                - description: |
+                    Remove component instances from the registry.
+                - task
+            remove_component_rows:
+                - description: |
+                    Delete rows from component tables by index.
+                - implements: ecs_registry.registry_operations.delete_components
+            handle_cascading_deletes:
+                - description: |
+                    Consider whether deleting components should trigger deletion
+                    of related components.
+                - todo: Decide on cascade delete strategy for related components.
+    registry_data_formats:
+        data:
+            - description: |
+                The registry supports multiple data formats for import and export.
+            - requirement
+        pandas_dataframe_format:
+            data:
+                - description: |
+                    Store component tables as pandas DataFrames for efficient
+                    querying and manipulation.
+                - requirement
+            dataframe_operations:
+                - description: |
+                    Support standard pandas operations (filter, groupby, merge, etc.).
+                - requirement
+        yaml_import:
+            data:
+                - description: |
+                    Import component data from YAML files into the registry.
+                - task
+            parse_yaml_entities:
+                - description: |
+                    Parse YAML file structure following the entity syntax rules.
+                - requirement
+            convert_to_component_rows:
+                - description: |
+                    Convert parsed YAML components into rows for component tables.
+                - implements: ecs_registry.registry_data_formats.yaml_import
+        yaml_export:
+            data:
+                - description: |
+                    Export registry data back to YAML format.
+                - task
+            group_by_entity:
+                - description: |
+                    Group component rows by entity_id for YAML export.
+                - requirement
+            reconstruct_entity_hierarchy:
+                - description: |
+                    Rebuild the nested entity structure from flat component tables.
+                - implements: ecs_registry.registry_data_formats.yaml_export
+        relational_database_format:
+            data:
+                - description: |
+                    Support import/export to relational databases.
+                - requirement
+            sql_table_mapping:
+                - description: |
+                    Map component tables to SQL tables with appropriate schema.
+                - requirement
+    registry_performance:
+        data:
+            - description: |
+                Performance considerations for registry operations.
+            - requirement
+        indexing_strategy:
+            data:
+                - description: |
+                    Use appropriate indexing to speed up common queries.
+                - requirement
+            multi_index_optimization:
+                - description: |
+                    Leverage pandas MultiIndex for fast entity lookups.
+                - requirement
+            component_type_index:
+                - description: |
+                    Index on component_type column for subtype queries.
+                - requirement
+        lazy_loading:
+            data:
+                - description: |
+                    Load component tables on-demand rather than all at once.
+                - requirement
+            load_on_first_access:
+                - description: |
+                    Load component table when first queried.
+                - requirement
+        caching_strategy:
+            - description: |
+                Cache frequently accessed component data to improve performance.
+            - todo: Design caching strategy for registry queries.
+    registry_validation:
+        data:
+            - description: |
+                Validation rules to ensure registry data integrity.
+            - requirement
+        schema_compliance:
+            data:
+                - description: |
+                    Validate that all component data matches declared schemas.
+                - requirement
+            check_column_types:
+                - description: |
+                    Verify data types match schema definitions.
+                - requirement
+            check_required_columns:
+                - description: |
+                    Ensure all required schema columns are present.
+                - requirement
+        referential_integrity:
+            data:
+                - description: |
+                    Validate references between components are valid.
+                - requirement
+            validate_entity_references:
+                - description: |
+                    Ensure entity_ids in relation components refer to valid entities.
+                - requirement
+            validate_parent_child:
+                - description: |
+                    Verify parent-child relationships are consistent.
+                - requirement
+        index_uniqueness:
+            data:
+                - description: |
+                    Ensure (entity_id, component_index) pairs are unique within
+                    each component table.
+                - requirement
+            check_for_duplicates:
+                - description: |
+                    Detect and report duplicate index values.
+                - requirement
+    registry_api:
+        data:
+            - description: |
+                Public API for interacting with the registry.
+            - requirement
+        registry_class:
+            data:
+                - description: |
+                    Main registry class with methods for all operations.
+                - infrastructure
+            init_method:
+                - description: "__init__() initializes empty registry."
+                - implements: ecs_registry.registry_core.registry_initialization
+            register_component_type_method:
+                - description: "register_component_type(name, schema) creates new component table."
+                - implements: ecs_registry.registry_core.component_registration
+            add_component_method:
+                - description: "add_component(entity_id, component_type, data) adds component instance."
+                - implements: ecs_registry.registry_operations.add_components
+            get_components_method:
+                - description: "get_components(entity_id, component_type) retrieves components."
+                - implements: ecs_registry.registry_operations.query_components
+            update_component_method:
+                - description: "update_component(entity_id, component_index, component_type, data) updates component."
+                - implements: ecs_registry.registry_operations.update_components
+            delete_component_method:
+                - description: "delete_component(entity_id, component_index, component_type) removes component."
+                - implements: ecs_registry.registry_operations.delete_components
+            load_from_yaml_method:
+                - description: "load_from_yaml(filepath) imports YAML data."
+                - implements: ecs_registry.registry_data_formats.yaml_import
+            export_to_yaml_method:
+                - description: "export_to_yaml(filepath) exports registry to YAML."
+                - implements: ecs_registry.registry_data_formats.yaml_export
