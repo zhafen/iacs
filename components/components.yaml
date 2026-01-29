@@ -280,7 +280,7 @@ iacs:
                         The remaining columns in a component table are the
                         columns defined by the component schema.
 
-component_types:
+base_component_types:
     data:
         - description: |
             Fundamental component types used throughout the iacs system.
@@ -330,19 +330,6 @@ component_types:
         - parent: schema
         - description: Output arguments.
 
-    entity_id:
-        - parent: tag
-        - description: |
-            A list of all entities, taking advantage of the tag base component.
-
-    component_type:
-        - parent: value
-        - description: |
-            Specifies the component_type for a given component. Used as a master list
-            of all components and entities.
-        - schema:
-            value [str]: The component type.
-
     description:
         - description: |
             A human-readable description of what an entity is or does. This is one of the
@@ -373,20 +360,24 @@ component_types:
         - schema:
             value [str]: Description of what needs to be done.
 
-    implements:
+derived_component_types:
+    data:
         - description: |
-            Indicates that the source entity implements or satisfies the target entity.
-            Commonly used to show that infrastructure implements a requirement or task.
-        - parent: directed_relation
-        - schema:
-            source: The entity that does the implementing (e.g., infrastructure).
-            target: The entity being implemented (e.g., requirement or task).
+            These components are derived from input data.
 
-    infrastructure:
-        - description: |
-            Indicates that an entity represents a piece of infrastructure, which can be
-            technical (servers, databases) or human (manual processes).
+    entity_id:
         - parent: tag
+        - description: |
+            The entity ID. Has tag as a parent because there is no value, since the ID
+            is the index itself.
+
+    component_type:
+        - parent: value
+        - description: |
+            Specifies the component_type for a given component. Used as a master list
+            of all components and entities.
+        - schema:
+            value [str]: The component type.
 
 iacs_meta_discussion:
     data:
