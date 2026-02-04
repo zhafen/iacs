@@ -318,55 +318,89 @@ use_a_flexible_data_model:
                     The remaining columns in a component table are the
                     columns defined by the component schema.
 
-base_component_types:
+component:
     data:
         - description: |
-            Fundamental component types used throughout the iacs system.
-            These form the basis for all infrastructure modeling.
+            Fundamental component type used throughout the iacs system.
+            Children of [component] provide further specifications.
     tag:
         - description: |
             A tag has no data. It simply indicates that the entity owns a component of
             a given type.
 
     value:
-        - description: |
-            A component that is a single value of arbitrary type.
-        - schema:
-            value: The value itself.
+        data:
+            - description: |
+                A component that is a single value of arbitrary type.
+            - schema:
+                value: The value itself.
+        base_data_type:
+            data:
+                - description: Parent for the fundamental data types.
+            int:
+                - description: Integer data type.
+            float:
+                - description: Float data type.
+            str:
+                data:
+                    - description: String data type.
+                categorical:
+                    - description: Data type for a limited set of categories.
+                    - todo: Is this redundant with [field.range]?
+            timestamp:
+                - description: Timestamp data type.
+                - schema:
+                    value: The value of the timestamp as a string, float, or int.
+                    timezone [str]:
+                        value: The timezone of the the format.
+                        default: UTC
+                    format [categorical]:
+                        value: How to interpret the timezone.
+                        default: str
+                        range: [str, epoch_time]
+            list:
+                - description: List data type.
+            dict:
+                - description: Dictionary data type.
+
+        field:
+            - description: |
+                A component that specifies the constraints on a data field. Used with [schema].
+            - schema:
+                value: A description of the field.
+                type: Data or component type for the field.
+                default: The default value for the field.
+                range: |
+                    A data structure specifying the allowed values for the field. If a
+                    list, then the type should be categorical or a child of that type.
+            - todo: |
+                Should we use "domain" instead of "range"? Is there a better other term?
+        schema:
+            data:
+                - description: |
+                    When an entity includes this component the entity is itself defining a new
+                    type of component.
+                - schema:
+                    value [dict[str, field]]: |
+                        The fields defining the schema. Entries can optionally follow
+                        the format "field_name [type] = default: value".
 
     relation:
-        - description: |
-            A component that describes a relation between two entities. Which is
-            ((relation.source)) and which is ((relation.value)) is arbitrary.
-        - schema:
-            source: An entity.
-            target: An entity related to the first entity.
-
-    schema:
-        - parent: value
-        - description: |
-            When an entity includes this component the entity is itself defining a new
-            type of component.
-        - schema:
-            value [dict]: The fields defining the schema.
-
-    directed_relation:
-        - parent: relation
-        - description: A relation where direction matters.
-        - schema:
-            source: The originating entity.
-            target: The target entity.
-    parent:
-        - parent: directed_relation
-        - description: The target entity is the parent of the source entity.
-
-    input:
-        - parent: schema
-        - description: Input arguments.
-
-    output:
-        - parent: schema
-        - description: Output arguments.
+        data:
+            - description: |
+                A component that describes a relation between two entities. Which is
+                ((relation.source)) and which is ((relation.value)) is arbitrary.
+            - schema:
+                source: An entity.
+                target: An entity related to the first entity.
+        directed_relation:
+            data:
+                - description: A relation where direction matters.
+                - schema:
+                    source: The originating entity.
+                    target: The target entity.
+            parent:
+                - description: The target entity is the parent of the source entity.
 
     description:
         - description: |
@@ -382,10 +416,18 @@ base_component_types:
             by the system design. Requirements should be traced to implementations.
         - parent: value
         - schema:
-            value [str]: |
-                The type of requirement: functional, quality, or constraint.
-                Default is functional.
-            priority [float]: The priority for the requirement. Default is 0.5.
+            value:
+                value: The type of requirement.
+                type: categorical
+                range:
+                    - functional
+                    - quality
+                    - constraint
+            priority [float]:
+                value: |
+                    The priority, with higher values corresponding to higher priority.
+                default: 0.5
+                range: [0, 1]
 
     task:
         - description: |
@@ -400,6 +442,11 @@ base_component_types:
         - parent: value
         - schema:
             value [str]: Description of what needs to be done.
+            priority [float]:
+                value: |
+                    The priority, with higher values corresponding to higher priority.
+                default: 0.5
+                range: [0, 1]
 
 derived_component_types:
     data:
