@@ -160,6 +160,13 @@ be_a_powerful_tool_for_solutions_architecture:
     provide_a_launching_point_for_infrastructure_implementation:
         data:
             - requirement
+        provide_a_guided_process_for_developing_solutions:
+            - description: |
+                Steps considered so far:
+                    - Hierarchical requirements
+                    - categorize requirements
+                    - convert functional requirements into systems
+            - requirement: constraint
         facilitate_compatibility_with_copilot:
             - requirement: constraint
         facilitate_compatibility_with_terraform:
