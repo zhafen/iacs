@@ -25,7 +25,7 @@ be_a_powerful_tool_for_solutions_architecture:
                 - requirement
             minimize_duplication:
                 data:
-                    - requirement
+                    - requirement: quality
                 parse_infrastructure_in_a_wide_variety_of_formats:
                     data:
                         - description: |
@@ -45,7 +45,7 @@ be_a_powerful_tool_for_solutions_architecture:
             compatible_with_version_control:
                 - description: |
                     Version control is essential for reliability.
-                - requirement
+                - requirement: constraint
             aggregate_all_definitions_in_one_location:
                 - description: |
                     A source of truth is not *a* source of truth if it is
@@ -66,24 +66,24 @@ be_a_powerful_tool_for_solutions_architecture:
                     - requirement
             compatible_with_any_type_of_infrastructure:
                 data:
-                    - requirement
+                    - requirement: constraint
                 compatible_with_standard_components:
                     - description: |
                         We need to be able to define standard parts of solutions
                         architecture, e.g. users.
-                    - requirement
+                    - requirement: constraint
                 compatible_with_human_executed_infrastructure:
                     - description: |
                         Human-executed infrastructure is infrastructure that is
                         not yet (or cannot be) automated. Bureaucracies have a lot
                         of this.
-                    - requirement
+                    - requirement: constraint
                 compatible_with_abstract_components:
                     - description: |
                         Abstract components of infrastructure include
                         poorly-defined components and abstract concepts,
                         e.g. requirements.
-                    - requirement
+                    - requirement: constraint
             scales_well:
                 - description: |
                     We of course want the data format to be compatible with
@@ -91,12 +91,13 @@ be_a_powerful_tool_for_solutions_architecture:
                     priority since we don't expect large volumes of data
                     in the course of planning.
                 - requirement:
+                    value: quality
                     priority: 0.1
         provide_documentation_in_formats_meeting_all_common_needs:
             data:
                 - requirement
             define_infrastructure_using_clear_and_simple_syntax:
-                - requirement
+                - requirement: quality
             export_infrastructure_to_wiki:
                 - description: |
                     Wikis are a very common and readable way of documenting
@@ -160,11 +161,11 @@ be_a_powerful_tool_for_solutions_architecture:
         data:
             - requirement
         facilitate_compatibility_with_copilot:
-            - requirement
+            - requirement: constraint
         facilitate_compatibility_with_terraform:
-            - requirement
+            - requirement: constraint
         facilitate_compatibility_with_relational_databases:
-            - requirement
+            - requirement: constraint
 
 use_a_flexible_data_model:
     data:
