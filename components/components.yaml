@@ -4,327 +4,360 @@ file_info:
         iacs works.
     - file_info
 
-be_a_powerful_tool_for_solutions_architecture:
-    data:
-        - name: iacs
-        - description: |
-            iacs (short for Infrastructure-as-Code Sketch) is software designed to help
-            technical architects design arbitrary infrastructure in a code-first format
-            without worrying about the precise details of the implementation or the
-            system-specific syntax.
-        - requirement
-    provide_quality_end_to_end_documentation_of_infrastructure:
+iacs:
+    be_a_powerful_tool_for_solutions_architecture:
         data:
             - description: |
-                Provide a means to comprehensively and accurately document
-                infrastructure.
-            - requirement:
-                priority: 1.0
-        provide_a_source_of_truth:
-            data:
-                - requirement
-            minimize_duplication:
-                data:
-                    - requirement: quality
-                parse_infrastructure_in_a_wide_variety_of_formats:
-                    data:
-                        - description: |
-                            If infrastructure is defined elsewhere in an
-                            existing format, we don't want to duplicate it and
-                            therefore introduce a source of uncertainty.
-                        - requirement
-                    parse_a_variety_of_IaC_formats:
-                        - description: |
-                            We don't want to duplicate other IaC code if
-                            possible.
-                        - requirement
-                    parse_code_languages:
-                        - description: |
-                            Code such as Python also provides clear definitions.
-                        - requirement
-            compatible_with_version_control:
-                - description: |
-                    Version control is essential for reliability.
-                - requirement: constraint
-            aggregate_all_definitions_in_one_location:
-                - description: |
-                    A source of truth is not *a* source of truth if it is
-                    distributed.
-                - requirement
-        document_every_aspect_of_infrastructure:
+                iacs (short for Infrastructure-as-Code Sketch) is software designed to help
+                technical architects design arbitrary infrastructure in a code-first format
+                without worrying about the precise details of the implementation or the
+                system-specific syntax.
+            - requirement
+        provide_quality_end_to_end_documentation_of_infrastructure:
             data:
                 - description: |
-                    This is one of the key features iacs provides that other
-                    modeling tools do not--the ability to define and model
-                    every type of infrastructure conceivable.
+                    Provide a means to comprehensively and accurately document
+                    infrastructure.
                 - requirement:
                     priority: 1.0
-            capture_infrastructure_data:
-                data:
-                    - description: |
-                        We need a method to
-                    - requirement
-            compatible_with_any_type_of_infrastructure:
-                data:
-                    - requirement: constraint
-                compatible_with_standard_components:
-                    - description: |
-                        We need to be able to define standard parts of solutions
-                        architecture, e.g. users.
-                    - requirement: constraint
-                compatible_with_human_executed_infrastructure:
-                    - description: |
-                        Human-executed infrastructure is infrastructure that is
-                        not yet (or cannot be) automated. Bureaucracies have a lot
-                        of this.
-                    - requirement: constraint
-                compatible_with_abstract_components:
-                    - description: |
-                        Abstract components of infrastructure include
-                        poorly-defined components and abstract concepts,
-                        e.g. requirements.
-                    - requirement: constraint
-            scales_well:
-                - description: |
-                    We of course want the data format to be compatible with
-                    expensive calculations, but this is definitely a lower
-                    priority since we don't expect large volumes of data
-                    in the course of planning.
-                - requirement:
-                    value: quality
-                    priority: 0.1
-        provide_documentation_in_formats_meeting_all_common_needs:
-            data:
-                - requirement
-            define_infrastructure_using_clear_and_simple_syntax:
-                - requirement: quality
-            export_infrastructure_to_wiki:
-                - description: |
-                    Wikis are a very common and readable way of documenting
-                    knowledge. This would be a good and easy default.
-                - requirement
-    help_improve_the_quality_of_system_designs:
-        data:
-            - requirement
-        allow_solution_designs_to_be_tested:
-            data:
-                - description: |
-                    Requiring solutions to pass well-defined tests sets a
-                    baseline minimum quality.
-                - requirement
-            provide_tools_to_build_tests_for_system_designs:
-                - requirement
-            provide_default_tests_for_systems:
+            provide_a_source_of_truth:
                 data:
                     - requirement
-                test_for_identifying_requirements_missing_solutions:
+                minimize_duplication:
+                    data:
+                        - requirement: quality
+                    parse_infrastructure_in_a_wide_variety_of_formats:
+                        data:
+                            - description: |
+                                If infrastructure is defined elsewhere in an
+                                existing format, we don't want to duplicate it and
+                                therefore introduce a source of uncertainty.
+                            - requirement
+                        parse_a_variety_of_IaC_formats:
+                            - description: |
+                                We don't want to duplicate other IaC code if
+                                possible.
+                            - requirement
+                        parse_code_languages:
+                            - description: |
+                                Code such as Python also provides clear definitions.
+                            - requirement
+                compatible_with_version_control:
                     - description: |
-                        Tests for both requirements without solutions and
-                        requirements without adequate/implemented solutions.
-                    - requirement
-                trace_every_component_to_a_requirement:
+                        Version control is essential for reliability.
+                    - requirement: constraint
+                aggregate_all_definitions_in_one_location:
                     - description: |
-                        There should be a motivation for every piece of
-                        infrastructure.
+                        A source of truth is not *a* source of truth if it is
+                        distributed.
                     - requirement
-                test_for_invalid_definitions:
-                    - requirement
-                test_for_siloed_infrastructure:
+            document_every_aspect_of_infrastructure:
+                data:
                     - description: |
-                        Everything should be part of one big solution.
+                        This is one of the key features iacs provides that other
+                        modeling tools do not--the ability to define and model
+                        every type of infrastructure conceivable.
+                    - requirement:
+                        priority: 1.0
+                capture_infrastructure_data:
+                    data:
+                        - description: |
+                            We need a method to
+                        - requirement
+                compatible_with_any_type_of_infrastructure:
+                    data:
+                        - requirement: constraint
+                    compatible_with_standard_components:
+                        - description: |
+                            We need to be able to define standard parts of solutions
+                            architecture, e.g. users.
+                        - requirement: constraint
+                    compatible_with_human_executed_infrastructure:
+                        - description: |
+                            Human-executed infrastructure is infrastructure that is
+                            not yet (or cannot be) automated. Bureaucracies have a lot
+                            of this.
+                        - requirement: constraint
+                    compatible_with_abstract_components:
+                        - description: |
+                            Abstract components of infrastructure include
+                            poorly-defined components and abstract concepts,
+                            e.g. requirements.
+                        - requirement: constraint
+                scales_well:
+                    - description: |
+                        We of course want the data format to be compatible with
+                        expensive calculations, but this is definitely a lower
+                        priority since we don't expect large volumes of data
+                        in the course of planning.
+                    - requirement:
+                        value: quality
+                        priority: 0.1
+            provide_documentation_in_formats_meeting_all_common_needs:
+                data:
                     - requirement
-                test_for_completed_todos:
+                define_infrastructure_using_clear_and_simple_syntax:
+                    - requirement: quality
+                export_infrastructure_to_wiki:
+                    - description: |
+                        Wikis are a very common and readable way of documenting
+                        knowledge. This would be a good and easy default.
                     - requirement
-        create_a_procedure_for_designing_systems:
+        help_improve_the_quality_of_system_designs:
             data:
-                - description: |
-                    Coming up with a series of steps to design infrastructure
-                    that one then follows with the help of the code (or even
-                    has an agent perform end to end) could be powerful.
                 - requirement
-            requirement_design_process:
-                - description: |
-                    First step of the process is to identify the big picture
-                    requirements of the system. Then the user splits each big
-                    picture requirement down into smaller ones recursively,
-                    until reaching atomic requirements, i.e. ones that cannot be
-                    further divided.
+            allow_solution_designs_to_be_tested:
+                data:
+                    - description: |
+                        Requiring solutions to pass well-defined tests sets a
+                        baseline minimum quality.
+                    - requirement
+                provide_tools_to_build_tests_for_system_designs:
+                    - requirement
+                provide_default_tests_for_systems:
+                    data:
+                        - requirement
+                    test_for_identifying_requirements_missing_solutions:
+                        - description: |
+                            Tests for both requirements without solutions and
+                            requirements without adequate/implemented solutions.
+                        - requirement
+                    trace_every_component_to_a_requirement:
+                        - description: |
+                            There should be a motivation for every piece of
+                            infrastructure.
+                        - requirement
+                    test_for_invalid_definitions:
+                        - requirement
+                    test_for_siloed_infrastructure:
+                        - description: |
+                            Everything should be part of one big solution.
+                        - requirement
+                    test_for_completed_todos:
+                        - requirement
+            create_a_procedure_for_designing_systems:
+                data:
+                    - description: |
+                        Coming up with a series of steps to design infrastructure
+                        that one then follows with the help of the code (or even
+                        has an agent perform end to end) could be powerful.
+                    - requirement
+                requirement_design_process:
+                    - description: |
+                        First step of the process is to identify the big picture
+                        requirements of the system. Then the user splits each big
+                        picture requirement down into smaller ones recursively,
+                        until reaching atomic requirements, i.e. ones that cannot be
+                        further divided.
+                    - requirement
+                solution_design_process:
+                    - description: |
+                        For each entity with a requirement component it must also
+                        have a solution component. The requirements are prioritized
+                        by priority at each level and addressed, even if only the
+                        skeleton at first.
+                    - requirement
+        provide_a_launching_point_for_infrastructure_implementation:
+            data:
                 - requirement
-            solution_design_process:
+            provide_a_guided_process_for_developing_solutions:
                 - description: |
-                    For each entity with a requirement component it must also
-                    have a solution component. The requirements are prioritized
-                    by priority at each level and addressed, even if only the
-                    skeleton at first.
-                - requirement
-    provide_a_launching_point_for_infrastructure_implementation:
-        data:
-            - requirement
-        provide_a_guided_process_for_developing_solutions:
-            - description: |
-                Steps considered so far:
-                    - Hierarchical requirements
-                    - categorize requirements
-                    - convert functional requirements into systems
-            - requirement: constraint
-        facilitate_compatibility_with_copilot:
-            - requirement: constraint
-        facilitate_compatibility_with_terraform:
-            - requirement: constraint
-        facilitate_compatibility_with_relational_databases:
-            - requirement: constraint
+                    Steps considered so far:
+                        - Hierarchical requirements
+                        - categorize requirements
+                        - convert functional requirements into systems
+                - requirement: constraint
+            facilitate_compatibility_with_copilot:
+                - requirement: constraint
+            facilitate_compatibility_with_terraform:
+                - requirement: constraint
+            facilitate_compatibility_with_relational_databases:
+                - requirement: constraint
 
-use_a_flexible_data_model:
-    data:
-        - name: iacs_ecs_framework
-        - description: |
-            iacs stores and manipulates infrastructure data following an
-            entity-component-system (ECS) framework. This framework makes it easy
-            to describe complicated infrastructure in a simple manner, and because
-            there is a strong relationship between ECS frameworks and relational
-            database design, the resultant infrastructure is already prepped to be
-            compatible with common databases.
-    ecs_framework_core_concepts:
+    iacs_ecs_framework:
         data:
             - description: |
-                There are three core concepts for the ECS system: entities,
-                components, and systems.
-        entity:
-            - description: |
-                An entity is a representation of an object or concept. Entities are
-                collections of components labeled with a unique identifier, the
-                entity id.  All data for an entity is stored as components.
-        component:
-            - description: |
-                A component is a dictionary of data belonging to one or more
-                entities. Components of the same type share a component schema, and
-                can be aggregated into the same table or dataframe. Not all
-                entities have components of all component types. For example, the
-                vast majority of entities will have a ((description)) component that
-                contains data describing what the entity is, while only a subset
-                might have a ((todo)) component that contains data describing
-                something about the entity that needs to be addressed.
-                
-                Components are intended to be consistent with set theory,
-                specifically in relation to classes. A class is a collection of
-                mathematical objects (often sets) that can be unambiguously defined
-                by a property that all its members share. A component dataframe is a
-                collection of mathematical objects that are a subset of a class. All
-                objects in the set share the same property, but not all objects in
-                the class are part of the component dataframe. The shared property
-                is referred to as the component schema.
-                
-                In documentation, components will be indicated by double
-                parenthesis, e.g. ((schema)).
-        system:
-            - description: |
-                One of the core parts of an ECS framework. Whereas entities and
-                components record data, systems record logic to work with entities
-                and components. Each system has one or more ((task)) components it
-                is responsible for completing.
-    ecs_data_formats:
-        data:
-            - description: iacs stores ECS data in a few formats.
-        yaml_ecs_data:
+                iacs stores and manipulates infrastructure data following an
+                entity-component-system (ECS) framework. This framework makes it easy
+                to describe complicated infrastructure in a simple manner, and because
+                there is a strong relationship between ECS frameworks and relational
+                database design, the resultant infrastructure is already prepped to be
+                compatible with common databases.
+        ecs_framework_core_concepts:
             data:
                 - description: |
-                    YAML is the main input format for manually entered data.
-            file_syntax:
+                    There are three core concepts for the ECS system: entities,
+                    components, and systems.
+            entity:
                 - description: |
-                    Each yaml file is a dictionary, with one key per entity.
+                    An entity is a representation of an object or concept. Entities are
+                    collections of components labeled with a unique identifier, the
+                    entity id.  All data for an entity is stored as components.
+            component:
                 - description: |
-                    The top level key is the ((entity_id)).
+                    A component is a dictionary of data belonging to one or more
+                    entities. Components of the same type share a component schema, and
+                    can be aggregated into the same table or dataframe. Not all
+                    entities have components of all component types. For example, the
+                    vast majority of entities will have a ((description)) component that
+                    contains data describing what the entity is, while only a subset
+                    might have a ((todo)) component that contains data describing
+                    something about the entity that needs to be addressed.
+                    
+                    Components are intended to be consistent with set theory,
+                    specifically in relation to classes. A class is a collection of
+                    mathematical objects (often sets) that can be unambiguously defined
+                    by a property that all its members share. A component dataframe is a
+                    collection of mathematical objects that are a subset of a class. All
+                    objects in the set share the same property, but not all objects in
+                    the class are part of the component dataframe. The shared property
+                    is referred to as the component schema.
+                    
+                    In documentation, components will be indicated by double
+                    parenthesis, e.g. ((schema)).
+            system:
                 - description: |
-                    If the entity ID is found in multiple files, the union of the
-                    entities defined in multiple files is the final entity.
-            entity_syntax:
-                - description: |
-                    Each entity is either a dictionary or a list.
-                - description: |
-                    If an entity is a list then the entity has no sub-entities, and
-                    each item in the list is a component.
-                - description: |
-                    If an entity is a dictionary then each key is a sub-entity,
-                    except for the key "data", which instead is a list of
-                    components belonging to the entity and but not belonging to
-                    sub-entities.
-                - description: |
-                    Components for an entity are uniquely identified by the
-                    entity_id in combination with the component_index--the index
-                    of the component in the list of components associated with
-                    an entity. This allows for an entity to contain multiple
-                    components of the same type.
-                - description: |
-                    For sub entities, the ((entity_id)) is the entity_id of the
-                    parent joined by a period with the item key for the sub-entity,
-                    "{parent_entity_id}.{item_key}".
-            component_syntax:
+                    One of the core parts of an ECS framework. Whereas entities and
+                    components record data, systems record logic to work with entities
+                    and components. Each system has one or more ((task)) components it
+                    is responsible for completing.
+        ecs_data_formats:
+            data:
+                - description: iacs stores ECS data in a few formats.
+            yaml_ecs_data:
                 data:
                     - description: |
-                        In yaml, components take the form either of strings or of
-                        dictionaries with length 1.
+                        YAML is the main input format for manually entered data.
+                file_syntax:
                     - description: |
-                        When the component is a string it specifies that the
-                        entity owns a component of that type, but provides no
-                        additional data. This is most commonly found for
-                        components that are children of the ((tag)) component type.
+                        Each yaml file is a dictionary, with one key per entity.
                     - description: |
-                        When a component is a dictionary, the item key for the
-                        dictionary specifies the component type. The value specifies
-                        the data for the component instance.
+                        The top level key is the ((entity_id)).
                     - description: |
-                        Component data can either be a scalar or a dictionary. 
+                        If the entity ID is found in multiple files, the union of the
+                        entities defined in multiple files is the final entity.
+                entity_syntax:
                     - description: |
-                        If the component data is a scalar and the component type is
-                        a child type of the ((value)) component, then the scalar
-                        specifies the ((value.value)) field.
+                        Each entity is either a dictionary or a list.
                     - description: |
-                        If the component data is a dictionary, then each key
-                        in the dictionary corresponds to a column in the component
-                        schema.
+                        If an entity is a list then the entity has no sub-entities, and
+                        each item in the list is a component.
                     - description: |
-                        The exception to the above rule about handling components
-                        when component data is a dictionary is if the component type
-                        is ((schema)) or a child of ((schema)). In this case each
-                        key defines a column for the schema for that component type.
-                relation_component_syntax:
+                        If an entity is a dictionary then each key is a sub-entity,
+                        except for the key "data", which instead is a list of
+                        components belonging to the entity and but not belonging to
+                        sub-entities.
                     - description: |
-                        If the component data is a scalar, the item key is either
-                        "{component_type}" or "{component_type} of", and the
-                        component_type is child type of the ((relation)) component
-                        then the scalar data specifies an ((entity_id)) for a
-                        relation.
+                        Components for an entity are uniquely identified by the
+                        entity_id in combination with the component_index--the index
+                        of the component in the list of components associated with
+                        an entity. This allows for an entity to contain multiple
+                        components of the same type.
                     - description: |
-                        If the item key is equal to a component type, then the
-                        scalar specifies the ((entity_id)) in ((relation.target)).
-                        The parent entity is then ((relation.source)).
+                        For sub entities, the ((entity_id)) is the entity_id of the
+                        parent joined by a period with the item key for the sub-entity,
+                        "{parent_entity_id}.{item_key}".
+                component_syntax:
+                    data:
+                        - description: |
+                            In yaml, components take the form either of strings or of
+                            dictionaries with length 1.
+                        - description: |
+                            When the component is a string it specifies that the
+                            entity owns a component of that type, but provides no
+                            additional data. This is most commonly found for
+                            components that are children of the ((tag)) component type.
+                        - description: |
+                            When a component is a dictionary, the item key for the
+                            dictionary specifies the component type. The value specifies
+                            the data for the component instance.
+                        - description: |
+                            Component data can either be a scalar or a dictionary. 
+                        - description: |
+                            If the component data is a scalar and the component type is
+                            a child type of the ((value)) component, then the scalar
+                            specifies the ((value.value)) field.
+                        - description: |
+                            If the component data is a dictionary, then each key
+                            in the dictionary corresponds to a column in the component
+                            schema.
+                        - description: |
+                            The exception to the above rule about handling components
+                            when component data is a dictionary is if the component type
+                            is ((schema)) or a child of ((schema)). In this case each
+                            key defines a column for the schema for that component type.
+                    relation_component_syntax:
+                        - description: |
+                            If the component data is a scalar, the item key is either
+                            "{component_type}" or "{component_type} of", and the
+                            component_type is child type of the ((relation)) component
+                            then the scalar data specifies an ((entity_id)) for a
+                            relation.
+                        - description: |
+                            If the item key is equal to a component type, then the
+                            scalar specifies the ((entity_id)) in ((relation.target)).
+                            The parent entity is then ((relation.source)).
+                        - description: |
+                            If the item key is equal to "{component_type} of", then the
+                            scalar specifies the ((entity_id)) in ((relation.source)).
+                            The parent entity is then ((relation.target)).
+            table_ecs_data:
+                data:
                     - description: |
-                        If the item key is equal to "{component_type} of", then the
-                        scalar specifies the ((entity_id)) in ((relation.source)).
-                        The parent entity is then ((relation.target)).
-        table_ecs_data:
-            data:
-                - description: |
-                    When analyzed, ecs data is stored as a table in a registry.
-            registry:
-                - description: |
-                    The registry is the object that contains the component data.
-                    Each component_type has a component table in the registry.
-            component_tables:
-                - description: |
-                    Each component table stores all component data for a given
-                    component type, with one row per component instance.
-                - description: |
-                    The index for a component table is a multi-index
-                    consisting of the entity_id and the component_index.
-                - description: |
-                    Components of different subtypes (i.e. components that
-                    are subsets of the same component and share the same
-                    schema) can reside in the same table. There is a
-                    "component_type" column that distinguishes them.
-                - description: |
-                    The remaining columns in a component table are the
-                    columns defined by the component schema.
+                        When analyzed, ecs data is stored as a table in a registry.
+                registry:
+                    - description: |
+                        The registry is the object that contains the component data.
+                        Each component_type has a component table in the registry.
+                component_tables:
+                    - description: |
+                        Each component table stores all component data for a given
+                        component type, with one row per component instance.
+                    - description: |
+                        The index for a component table is a multi-index
+                        consisting of the entity_id and the component_index.
+                    - description: |
+                        Components of different subtypes (i.e. components that
+                        are subsets of the same component and share the same
+                        schema) can reside in the same table. There is a
+                        "component_type" column that distinguishes them.
+                    - description: |
+                        The remaining columns in a component table are the
+                        columns defined by the component schema.
+
+    iacs_meta_discussion:
+        data:
+            - description: |
+                Ongoing design discussions and open questions about the syntax and
+                capabilities of the iacs system itself.
+        syntax_challenges:
+            - todo: >
+                Notation for multiple components of the same type. Maybe "component_type s"?
+            - todo: >
+                Binary relationship notation going both ways.
+                Maybe "component_type of:" and "component_type:"?
+            - todo: >
+                Notation for indicating that a component is a row-wise subset of another
+                component, i.e. that it has the same fields but additional constraints.
+                Maybe "subset of:" and "subset s", i.e. we use a "subset" relation?
+            - todo: >
+                Notation for defining an entity in-line vs linking to an existing entity.
+                Maybe "(entity_name)"?
+            - todo: >
+                Notation for indicating that a component must be joined with another component
+                to be interpreted correctly. Maybe: "required:"?
+            - todo: >
+                Notation for working with a component that would be a subset of another
+                component, except it has additional required associated components or is
+                an extension of that component. Maybe we allow "inheritance" where the child
+                component is a subset of the parent component that also has required components
+                defined for the purpose of extending the component.
+            - todo: >
+                Notation for subsets with constant values for one or more fields.
+            - todo: >
+                Notation for functions and classes.
+            - todo: >
+                Notation for a component that is at the intersection of two subsets.
 
 component:
     data:
@@ -474,37 +507,3 @@ derived_component_types:
             of all components and entities.
         - schema:
             value [str]: The component type.
-
-iacs_meta_discussion:
-    data:
-        - description: |
-            Ongoing design discussions and open questions about the syntax and
-            capabilities of the iacs system itself.
-    syntax_challenges:
-        - todo: >
-            Notation for multiple components of the same type. Maybe "component_type s"?
-        - todo: >
-            Binary relationship notation going both ways.
-            Maybe "component_type of:" and "component_type:"?
-        - todo: >
-            Notation for indicating that a component is a row-wise subset of another
-            component, i.e. that it has the same fields but additional constraints.
-            Maybe "subset of:" and "subset s", i.e. we use a "subset" relation?
-        - todo: >
-            Notation for defining an entity in-line vs linking to an existing entity.
-            Maybe "(entity_name)"?
-        - todo: >
-            Notation for indicating that a component must be joined with another component
-            to be interpreted correctly. Maybe: "required:"?
-        - todo: >
-            Notation for working with a component that would be a subset of another
-            component, except it has additional required associated components or is
-            an extension of that component. Maybe we allow "inheritance" where the child
-            component is a subset of the parent component that also has required components
-            defined for the purpose of extending the component.
-        - todo: >
-            Notation for subsets with constant values for one or more fields.
-        - todo: >
-            Notation for functions and classes.
-        - todo: >
-            Notation for a component that is at the intersection of two subsets.
