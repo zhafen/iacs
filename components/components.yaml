@@ -402,146 +402,159 @@ component:
     data:
         - description: |
             Fundamental component type used throughout the iacs system.
-            Children of [component] provide further specifications.
-    base_component:
+            Children of ((component)) are themselves component definitions.
+    tag:
+        - id: tag
+        - description: |
+            A tag has no data. It simply indicates that the entity owns a component
+            of a given type.
+    value:
+        - id: value
+        - description: |
+            A component that is a single value of arbitrary type.
+        - schema:
+            value: The value itself.
+    relation:
         data:
-            - description: Components all other components are based on.
-        tag:
+            - id: relation
             - description: |
-                A tag has no data. It simply indicates that the entity owns a component of
-                a given type.
-        value:
+                A component that describes a relation between two entities. Which is
+                ((relation.source)) and which is ((relation.value)) is arbitrary.
+            - schema:
+                source: An entity.
+                target: An entity related to the first entity.
+        directed_relation:
             data:
-                - description: |
-                    A component that is a single value of arbitrary type.
+                - id: directed_relation
+                - description: A relation where direction matters.
                 - schema:
-                    value: The value itself.
-        relation:
-            data:
-                - description: |
-                    A component that describes a relation between two entities. Which is
-                    ((relation.source)) and which is ((relation.value)) is arbitrary.
-                - schema:
-                    source: An entity.
-                    target: An entity related to the first entity.
-            directed_relation:
-                data:
-                    - description: A relation where direction matters.
-                    - schema:
-                        source: The originating entity.
-                        target: The target entity.
-                parent:
-                    - description: The target entity is the parent of the source entity.
-    data_type:
-        base_data_type:
-            data:
-                - description: Parent for the fundamental data types.
-            int:
-                - description: Integer data type.
-            float:
-                - description: Float data type.
-            str:
-                data:
-                    - description: String data type.
-                component_type:
-                    - description: >
-                        The component_type data type means the value must point to
-                        an entity with a [component_definition] component.
-                categorical:
-                    - description: Data type for a limited set of categories.
-                    - todo: Is this redundant with [field.range]?
-            timestamp:
-                - description: Timestamp data type.
-                - schema:
-                    value: The value of the timestamp as a string, float, or int.
-                    timezone [str]:
-                        value: The timezone of the the format.
-                        default: UTC
-                    format [categorical]:
-                        value: How to interpret the timezone.
-                        default: str
-                        range: [str, epoch_time]
-        container_data_types:
-            list:
-                - description: List data type.
-            dict:
-                data:
-                    - description: Dictionary data type.
-    data_structure_component:
-        field:
-            - description: |
-                A component that specifies the constraints on a data field. Used with [schema].
-            - parent: dict
-            - schema:
-                value: A description of the field.
-                type: Data or component type for the field.
-                default: The default value for the field.
-                range: |
-                    A data structure specifying the allowed values for the field. If a
-                    list, then the type should be categorical or a child of that type.
-            - todo: |
-                Should we use "domain" instead of "range"? Is there a better other term?
-        schema:
-            - description: |
-                When an entity includes this component the entity is itself defining a
-                new type of component.
-            - parent: dict
-            - schema:
-                value [dict[str, field]]: |
-                    The fields defining the schema. Entries can optionally follow
-                    the format "field_name [type] = default: value".
-        dataframe:
-            - description: |
-                Dataframe data type. Dataframes are dictionaries of component instances.
-            - parent: dict
-            - schema:
-                value [dict[component_type, component_type]]: Data itself.
-                index_type [component_type]: Component type for the dictionary keys.
-                value_type [component_type]: Component type for the values.
+                    source: The originating entity.
+                    target: The target entity.
+            parent:
+                - description: The target entity is the parent of the source entity.
 
-    common_component:
-        description:
-            - description: |
-                A human-readable description of what an entity is or does. This is one of the
-                most common components as nearly every entity should have a description.
-            - parent: value
-            - schema:
-                value [str]: The descriptive text.
+data_type:
+    data:
+        - description: >
+            A ((data_type)) component is a ((value)) component with additional
+            specifications.
+        - parent: value
+    int:
+        - id: int
+        - description: Integer data type.
+    float:
+        - id: float
+        - description: Float data type.
+    str:
+        data:
+            - id: str
+            - description: String data type.
+        component_type:
+            - id: component_type
+            - description: >
+                The component_type data type means the value must point to
+                an entity with a [component_definition] component.
+        categorical:
+            - id: categorical
+            - description: Data type for a limited set of categories.
+            - todo: Is this redundant with [field.range]?
+    timestamp:
+        - id: categorical
+        - description: Timestamp data type.
+        - schema:
+            value: The value of the timestamp as a string, float, or int.
+            timezone [str]:
+                value: The timezone of the the format.
+                default: UTC
+            format [categorical]:
+                value: How to interpret the timezone.
+                default: str
+                range: [str, epoch_time]
 
-        requirement:
-            - description: |
-                Indicates that an entity represents a requirement that must be satisfied
-                by the system design. Requirements should be traced to implementations.
-            - parent: value
-            - schema:
-                value:
-                    value: The type of requirement.
-                    type: categorical
-                    range:
-                        - functional
-                        - quality
-                        - constraint
-                priority [float]:
-                    value: |
-                        The priority, with higher values corresponding to higher priority.
-                    default: 0.5
-                    range: [0, 1]
+data_structure:
+    data:
+        - parent: value
+    list:
+        - description: List data type.
+    dict:
+        - description: Dictionary data type.
+    field:
+        - description: |
+            A component that specifies the constraints on a data field. Used with [schema].
+        - parent: dict
+        - schema:
+            value: A description of the field.
+            type: Data or component type for the field.
+            default: The default value for the field.
+            range: |
+                A data structure specifying the allowed values for the field. If a
+                list, then the type should be categorical or a child of that type.
+        - todo: |
+            Should we use "domain" instead of "range"? Is there a better other term?
+    schema:
+        - description: |
+            When an entity includes this component the entity is itself defining a
+            new type of component.
+        - parent: dict
+        - schema:
+            value [dict[str, field]]: |
+                The fields defining the schema. Entries can optionally follow
+                the format "field_name [type] = default: value".
+    dataframe:
+        - description: |
+            Dataframe data type. Dataframes are dictionaries of component instances.
+        - parent: dict
+        - schema:
+            value [dict[component_type, component_type]]: Data itself.
+            index_type [component_type]: Component type for the dictionary keys.
+            value_type [component_type]: Component type for the values.
 
-        task:
-            - description: |
-                Indicates that an entity represents a task that needs to be completed,
-                either by a human or by automated infrastructure.
-            - parent: tag
+descriptive_component:
+    data:
+        - parent: value
 
-        todo:
-            - description: |
-                Indicates something about the entity that needs to be addressed or completed.
-                Used to track pending work items.
-            - parent: value
-            - schema:
-                value [str]: Description of what needs to be done.
-                priority [float]:
-                    value: |
-                        The priority, with higher values corresponding to higher priority.
-                    default: 0.5
-                    range: [0, 1]
+    description:
+        - description: |
+            A human-readable description of what an entity is or does. This is one of the
+            most common components as nearly every entity should have a description.
+        - parent: value
+        - schema:
+            value [str]: The descriptive text.
+
+    requirement:
+        - description: |
+            Indicates that an entity represents a requirement that must be satisfied
+            by the system design. Requirements should be traced to implementations.
+        - parent: value
+        - schema:
+            value:
+                value: The type of requirement.
+                type: categorical
+                range:
+                    - functional
+                    - quality
+                    - constraint
+            priority [float]:
+                value: |
+                    The priority, with higher values corresponding to higher priority.
+                default: 0.5
+                range: [0, 1]
+
+    task:
+        - description: |
+            Indicates that an entity represents a task that needs to be completed,
+            either by a human or by automated infrastructure.
+        - parent: tag
+
+    todo:
+        - description: |
+            Indicates something about the entity that needs to be addressed or completed.
+            Used to track pending work items.
+        - parent: value
+        - schema:
+            value [str]: Description of what needs to be done.
+            priority [float]:
+                value: |
+                    The priority, with higher values corresponding to higher priority.
+                default: 0.5
+                range: [0, 1]
