@@ -224,8 +224,42 @@ iacs:
         ecs_system:
             data:
                 - description: The infrastructure that supports the ECS framework.
+                - system
             registry:
-                - description:
+                - description: Data storage/access.
+                - system
+            elt_system:
+                data:
+                    - description: Responsible for ELT of ECS data.
+                    - system
+                extract_system:
+                    data:
+                        - description: >
+                            Responsible for extracting ECS data from provided inputs.
+                        - system
+                    yaml_extract_system:
+                        data:
+                            - description: |
+                                Responsible for parsing ECS data from yaml files
+                                following the syntax specified in
+                                [iacs.iacs_ecs_framework.ecs_data_formats.yaml_ecs_data]
+                            - system
+                        extract:
+                            - description: Load all yaml data in a specified location.
+                            - input:
+                                filepath [str]: Location of yaml files.
+                            - output:
+                                entities [dataframe[entity]]: |
+                                    All ECS data in the form of a dataframe with
+                                    the [entity] schema.
+                load_system:
+                    - description: >
+                        Responsible for loading ECS data into a registry.
+                    - system
+                transform_system:
+                    - description: >
+                        Responsible for transforming ECS data stored in a registry.
+                    - system
         ecs_data_formats:
             data:
                 - description: iacs stores ECS data in a few formats.
@@ -369,17 +403,36 @@ component:
         - description: |
             Fundamental component type used throughout the iacs system.
             Children of [component] provide further specifications.
-    tag:
-        - description: |
-            A tag has no data. It simply indicates that the entity owns a component of
-            a given type.
-
-    value:
+    base_components:
         data:
+            - description: Components all other components are based on.
+        tag:
             - description: |
-                A component that is a single value of arbitrary type.
-            - schema:
-                value: The value itself.
+                A tag has no data. It simply indicates that the entity owns a component of
+                a given type.
+        value:
+            data:
+                - description: |
+                    A component that is a single value of arbitrary type.
+                - schema:
+                    value: The value itself.
+        relation:
+            data:
+                - description: |
+                    A component that describes a relation between two entities. Which is
+                    ((relation.source)) and which is ((relation.value)) is arbitrary.
+                - schema:
+                    source: An entity.
+                    target: An entity related to the first entity.
+            directed_relation:
+                data:
+                    - description: A relation where direction matters.
+                    - schema:
+                        source: The originating entity.
+                        target: The target entity.
+                parent:
+                    - description: The target entity is the parent of the source entity.
+    data_types:
         base_data_type:
             data:
                 - description: Parent for the fundamental data types.
@@ -404,11 +457,13 @@ component:
                         value: How to interpret the timezone.
                         default: str
                         range: [str, epoch_time]
+        container_data_types:
             list:
                 - description: List data type.
             dict:
-                - description: Dictionary data type.
-
+                data:
+                    - description: Dictionary data type.
+    data_structure_components:
         field:
             - description: |
                 A component that specifies the constraints on a data field. Used with [schema].
@@ -422,32 +477,21 @@ component:
             - todo: |
                 Should we use "domain" instead of "range"? Is there a better other term?
         schema:
-            data:
-                - description: |
-                    When an entity includes this component the entity is itself defining a new
-                    type of component.
-                - schema:
-                    value [dict[str, field]]: |
-                        The fields defining the schema. Entries can optionally follow
-                        the format "field_name [type] = default: value".
-
-    relation:
-        data:
             - description: |
-                A component that describes a relation between two entities. Which is
-                ((relation.source)) and which is ((relation.value)) is arbitrary.
+                When an entity includes this component the entity is itself defining a
+                new type of component.
             - schema:
-                source: An entity.
-                target: An entity related to the first entity.
-        directed_relation:
-            data:
-                - description: A relation where direction matters.
-                - schema:
-                    source: The originating entity.
-                    target: The target entity.
-            parent:
-                - description: The target entity is the parent of the source entity.
-
+                value [dict[str, field]]: |
+                    The fields defining the schema. Entries can optionally follow
+                    the format "field_name [type] = default: value".
+        dataframe:
+            - parent: dict
+            - description: |
+                Dataframe data type. Dataframes are dictionaries of component instances.
+            - schema:
+                value [dict[component_type, component_type]]: Data itself.
+                index_type [component_type]: Component type for the dictionary keys.
+                value_type [component_type]: Component type for the values.
     description:
         - description: |
             A human-readable description of what an entity is or does. This is one of the
