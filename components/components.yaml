@@ -403,7 +403,7 @@ component:
         - description: |
             Fundamental component type used throughout the iacs system.
             Children of [component] provide further specifications.
-    base_components:
+    base_component:
         data:
             - description: Components all other components are based on.
         tag:
@@ -432,7 +432,7 @@ component:
                         target: The target entity.
                 parent:
                     - description: The target entity is the parent of the source entity.
-    data_types:
+    data_type:
         base_data_type:
             data:
                 - description: Parent for the fundamental data types.
@@ -443,6 +443,10 @@ component:
             str:
                 data:
                     - description: String data type.
+                component_type:
+                    - description: >
+                        The component_type data type means the value must point to
+                        an entity with a [component_definition] component.
                 categorical:
                     - description: Data type for a limited set of categories.
                     - todo: Is this redundant with [field.range]?
@@ -463,10 +467,11 @@ component:
             dict:
                 data:
                     - description: Dictionary data type.
-    data_structure_components:
+    data_structure_component:
         field:
             - description: |
                 A component that specifies the constraints on a data field. Used with [schema].
+            - parent: dict
             - schema:
                 value: A description of the field.
                 type: Data or component type for the field.
@@ -480,60 +485,63 @@ component:
             - description: |
                 When an entity includes this component the entity is itself defining a
                 new type of component.
+            - parent: dict
             - schema:
                 value [dict[str, field]]: |
                     The fields defining the schema. Entries can optionally follow
                     the format "field_name [type] = default: value".
         dataframe:
-            - parent: dict
             - description: |
                 Dataframe data type. Dataframes are dictionaries of component instances.
+            - parent: dict
             - schema:
                 value [dict[component_type, component_type]]: Data itself.
                 index_type [component_type]: Component type for the dictionary keys.
                 value_type [component_type]: Component type for the values.
-    description:
-        - description: |
-            A human-readable description of what an entity is or does. This is one of the
-            most common components as nearly every entity should have a description.
-        - parent: value
-        - schema:
-            value [str]: The descriptive text.
 
-    requirement:
-        - description: |
-            Indicates that an entity represents a requirement that must be satisfied
-            by the system design. Requirements should be traced to implementations.
-        - parent: value
-        - schema:
-            value:
-                value: The type of requirement.
-                type: categorical
-                range:
-                    - functional
-                    - quality
-                    - constraint
-            priority [float]:
-                value: |
-                    The priority, with higher values corresponding to higher priority.
-                default: 0.5
-                range: [0, 1]
+    common_component:
+        description:
+            - description: |
+                A human-readable description of what an entity is or does. This is one of the
+                most common components as nearly every entity should have a description.
+            - parent: value
+            - schema:
+                value [str]: The descriptive text.
 
-    task:
-        - description: |
-            Indicates that an entity represents a task that needs to be completed,
-            either by a human or by automated infrastructure.
-        - parent: tag
+        requirement:
+            - description: |
+                Indicates that an entity represents a requirement that must be satisfied
+                by the system design. Requirements should be traced to implementations.
+            - parent: value
+            - schema:
+                value:
+                    value: The type of requirement.
+                    type: categorical
+                    range:
+                        - functional
+                        - quality
+                        - constraint
+                priority [float]:
+                    value: |
+                        The priority, with higher values corresponding to higher priority.
+                    default: 0.5
+                    range: [0, 1]
 
-    todo:
-        - description: |
-            Indicates something about the entity that needs to be addressed or completed.
-            Used to track pending work items.
-        - parent: value
-        - schema:
-            value [str]: Description of what needs to be done.
-            priority [float]:
-                value: |
-                    The priority, with higher values corresponding to higher priority.
-                default: 0.5
-                range: [0, 1]
+        task:
+            - description: |
+                Indicates that an entity represents a task that needs to be completed,
+                either by a human or by automated infrastructure.
+            - parent: tag
+
+        todo:
+            - description: |
+                Indicates something about the entity that needs to be addressed or completed.
+                Used to track pending work items.
+            - parent: value
+            - schema:
+                value [str]: Description of what needs to be done.
+                priority [float]:
+                    value: |
+                        The priority, with higher values corresponding to higher priority.
+                    default: 0.5
+                    range: [0, 1]
