@@ -509,9 +509,15 @@ data_structure:
             index_type [component_type]: Component type for the dictionary keys.
             value_type [component_type]: Component type for the values.
 
-descriptive_component:
+iacs_component:
     data:
+        - description: Additional useful components defined by iacs.
         - parent: value
+
+    id:
+        - description: Overrides the entity_id derived by the path.
+        - schema:
+            value [str]: The overriding entity_id.
 
     description:
         - description: |
