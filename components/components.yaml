@@ -275,6 +275,10 @@ ecs_framework:
                     We need to be able to describe systems built to fulfill
                     requirements.
                 - requirement
+            describe_entities:
+                - description: |
+                    We need to be able to describe entities as sets of components.
+                - requirement
             describe_hierarchical_systems:
                 - id: describe_hierarchical_systems
                 - description: |
@@ -422,8 +426,7 @@ ecs_framework:
             file_syntax:
                 - description: |
                     Each yaml file is a dictionary, with one key per entity.
-                - description: |
-                    The top level key is the ((entity_id)).
+                    That key is the ((entity_id)).
                 - description: |
                     If the entity ID is found in multiple files, the union of the
                     entities defined in multiple files is the final entity.
