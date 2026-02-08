@@ -113,7 +113,7 @@ iacs:
         help_improve_the_quality_of_system_designs:
             data:
                 - requirement
-            validate_complex_solution_architectures:
+            improve_complex_solution_architectures:
                 data:
                     - description: |
                         Many solutions are too complex for a simple view, but they still
@@ -374,8 +374,11 @@ ecs_framework:
             - description: The infrastructure that supports the ECS framework.
             - system
         registry:
-            - description: Data storage/access.
-            - system
+            data:
+                - description: Data storage/access.
+                - system
+            components:
+                - description: Dictionary of ((dataframe))s holding components.
         elt_system:
             data:
                 - description: Responsible for ELT of ECS data.
