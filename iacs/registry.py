@@ -16,12 +16,12 @@ class Registry:
         Args:
             components: A dict mapping component type names to DataFrames.
         """
-        raise NotImplementedError
+        self._components = dict(components)
 
     @property
     def component_types(self) -> list[str]:
         """Return the list of component types in the registry."""
-        raise NotImplementedError
+        return list(self._components.keys())
 
     def view(self, component_type: str) -> pd.DataFrame:
         """Return a copy of the dataframe for the given component type.
@@ -35,4 +35,4 @@ class Registry:
         Raises:
             KeyError: If the component type doesn't exist in the registry.
         """
-        raise NotImplementedError
+        return self._components[component_type].copy()
