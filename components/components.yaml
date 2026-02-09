@@ -419,40 +419,122 @@ ecs_framework:
     ecs_data_formats:
         data:
             - description: iacs stores ECS data in a few formats.
-        yaml_ecs_data:
+        entity_centered:
             data:
                 - description: |
-                    YAML is the main input format for manually entered data.
-            file_syntax:
-                - description: |
-                    Each yaml file is a dictionary, with one key per entity.
-                    That key is the ((entity_id)).
-                - description: |
-                    If the entity ID is found in multiple files, the union of the
-                    entities defined in multiple files is the final entity.
-            entity_syntax:
-                - description: |
-                    Each entity is either a dictionary or a list.
-                - description: |
-                    If an entity is a list then the entity has no sub-entities, and
-                    each item in the list is a component.
-                - description: |
-                    If an entity is a dictionary then each key is a sub-entity,
-                    except for the key "data", which instead is a list of
-                    components belonging to the entity and but not belonging to
-                    sub-entities.
-                - description: |
-                    Components for an entity are uniquely identified by the
-                    entity_id in combination with the component_index--the index
-                    of the component in the list of components associated with
-                    an entity. This allows for an entity to contain multiple
-                    components of the same type.
-                - description: |
-                    For sub entities, the ((entity_id)) is the entity_id of the
-                    parent joined by a period with the item key for the sub-entity,
-                    "{parent_entity_id}.{item_key}".
-            component_syntax:
+                    The entity-centered ECS format organizes the data around entities,
+                    grouping together components associated with an entity.
+                    This format is best for inspecting a single entity, and is
+                    typically best for manual data input, often via yaml.
+            entity_item:
                 data:
+                    - description: |
+                        Entity-centered data is a dictionary where each ((entity_item))
+                        is an ((entity_key)), ((entity_value)) pair.
+                    - requirement: constraint
+                entity_key:
+                    top_level_entity_key:
+                        - description: |
+                            If an ((entity_item)) is not nested, then the ((entity_key))
+                            is equivalent to the ((entity_id)).
+                        - requirement: constraint
+                    nested_entity_key:
+                        - description: |
+                            If an ((entity_item)) is nested, then the ((entity_id))
+                            is "{parent_entity_id}.{entity_key}".
+                        - requirement: constraint
+                entity_value:
+                    data:
+                        - description: |
+                            Each ((entity_value)) is either a list of components or
+                            a dictionary of entities.
+                        - requirement: constraint
+                    components_list:
+                        data:
+                            - description: |
+                                An ((entity_value)) can be a list of
+                                ((component_item))s.
+                            - requirement: constraint
+                        component_index:
+                            - description: |
+                                Each ((component_item))
+                                can be uniquely identified by the ((entity_id))
+                                in addition to the ((component_index)) in the
+                                components list. This allows an entity to have
+                                multiple components of the same type.
+                            - requirement: constraint
+                    child_entities_dictionary:
+                        data:
+                            - description: |
+                                An ((entity_value)) can be dictionary where each item
+                                is itself an ((entity_item)).
+                            - requirement: constraint
+                        parent_entity_components_list:
+                            - description: |
+                                If an ((entity_value)) is a ((child_entities_dictionary))
+                                then the item with the key "data" is a special item
+                                reserved to hold the ((components_list)) for the 
+                                entity.
+                            - requirement: constraint
+            component_item:
+                data: 
+                    - description: |
+                        The data for component instances is stored in
+                        ((component_item))s. The format of the ((component_item))
+                        contains information about what it is.
+                    - requirement: constraint
+                string_component_item:
+                    - description: |
+                        When the ((component_item)) is a string then the value of the
+                        string is the ((component_type)).
+                    - requirement: constraint
+                dictionary_component_item:
+                    data:
+                        - description: |
+                            A ((component_item)) can be a dictionary of length 1.
+                        - requirement: constraint
+                    component_key:
+                        data:
+                            - description: |
+                                The key for a ((dictionary_component_item)) relates to
+                                the ((component_type)).
+                            - requirement: constraint
+                        value_ancestor:
+                            - description: |
+                                When the ((component_type)) has ((value)) as an
+                                ancestor then key is equal to the ((component_type)).
+                            - requirement: constraint
+                        relation_ancestor:
+                            - description: |
+                                When the ((component_type)) has ((relation)) as an
+                                ancestor then if the key ends with " of" the
+                                the "value" field.
+                                - requirement: constraint
+                    component_value:
+                        data:
+                            - description: |
+                                The ((component_value)) contains the data for the
+                                component.
+                            - requirement: constraint
+                        scalar_component_value:
+                            data:
+                                - description: |
+                                    How the ((scalar_component_value)) is interpreted
+                                    depends on the ((component_type)).
+                                - requirement: constraint
+                            value_ancestor:
+                                - description: |
+                                    When the ((component_type)) has ((value)) as an
+                                    ancestor then the scalar gives the value for
+                                    the "value" field.
+                                - requirement: constraint
+                            relation_ancestor:
+                                - description: |
+                                    When the ((component_type)) has ((value)) as an
+                                    ancestor then the scalar gives the value for
+                                    the "value" field.
+                                - requirement: constraint
+                value_component_item:
                     - description: |
                         In yaml, components take the form either of strings or of
                         dictionaries with length 1.
@@ -495,7 +577,7 @@ ecs_framework:
                         If the item key is equal to "{component_type} of", then the
                         scalar specifies the ((entity_id)) in ((relation.source)).
                         The parent entity is then ((relation.target)).
-        relational_ecs_data:
+        component_centered:
             data:
                 - description: |
                     When analyzed, ecs data is stored as a table in a registry.
