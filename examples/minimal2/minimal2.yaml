@@ -1,21 +1,23 @@
 core_task:
-- description: The main task the infrastructure must complete.
-- task
-- first_subtask:
-    - description: >
-        This task is a subtask of the core task, necessary to complete the core task.
-    - task
-- second_subtask:
-    - description: >
-        This task is also a subtask of the core task,
-        necessary to complete the core task.
-    - task
+    data:
+        - description: The main task the infrastructure must complete.
+        - task
+    first_subtask:
+        - description: >
+              This task is a subtask of the core task, necessary to complete the core task.
+        - task
+    second_subtask:
+        - description: >
+              This task is also a subtask of the core task,
+              necessary to complete the core task.
+        - task
 
 my_infrastructure:
-- description: The overall infrastructure used to complete the core task.
-- infrastructure_for_first_task:
-    - description: This implements the first task.
-    - implements: first_subtask
-- infrastructure_for_second_task:
-    - description: This implements the second task.
-    - implements: second_subtask
+    data:
+        - description: The overall infrastructure used to complete the core task.
+    infrastructure_for_first_task:
+        - description: This implements the first task.
+        - implements: first_subtask
+    infrastructure_for_second_task:
+        - description: This implements the second task.
+        - implements: second_subtask
