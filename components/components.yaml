@@ -560,26 +560,38 @@ ecs_framework:
         component_centered:
             data:
                 - description: >
-                    When analyzed, ecs data is stored as a table in a registry.
+                    The component-centered ECS format organizes the data around
+                    component types, grouping together component instances of the
+                    same type. This format is best for querying and analysis.
+                - requirement: constraint
             registry:
                 - description: >
-                    The registry is the object that contains the component data.
-                    Each component_type has a component table in the registry.
-            component_tables:
-                - description: >
-                    Each component table stores all component data for a given
-                    component type, with one row per component instance.
-                - description: >
-                    The index for a component table is a multi-index
-                    consisting of the entity_id and the component_index.
-                - description: >
-                    Components of different subtypes (i.e. components that
-                    are subsets of the same component and share the same
-                    schema) can reside in the same table. There is a
-                    "component_type" column that distinguishes them.
-                - description: >
-                    The remaining columns in a component table are the
-                    columns defined by the component schema.
+                    Component-centered data is stored in a registry, which contains
+                    one component table per component type.
+                - requirement: constraint
+            component_table:
+                data:
+                    - description: >
+                        Each component table stores all component instances for a
+                        given component type, with one row per component instance.
+                    - requirement: constraint
+                table_index:
+                    - description: >
+                        The index for a component table is a multi-index consisting
+                        of the entity_id and the component_index.
+                    - requirement: constraint
+                subtype_column:
+                    - description: >
+                        Components of different subtypes (i.e. components that are
+                        subsets of the same component and share the same schema)
+                        can reside in the same table. A "component_type" column
+                        distinguishes them.
+                    - requirement: constraint
+                schema_columns:
+                    - description: >
+                        The remaining columns in a component table are the columns
+                        defined by the component schema.
+                    - requirement: constraint
 
 
 component:
