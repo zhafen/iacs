@@ -92,3 +92,17 @@ class IOSystem:
         with open(path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
         return self.read_entity_centered(data)
+
+    def to_component_centered(self, entity_centered: pd.DataFrame):
+        """Convert entity-centered data to component-centered format (Registry).
+
+        Args:
+            entity_centered: DataFrame with columns entity_id, component_index,
+                component_type, component_value.
+
+        Returns:
+            A Registry with one component table per component type.
+        """
+        from iacs.registry import Registry
+
+        raise NotImplementedError
