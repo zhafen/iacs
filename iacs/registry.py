@@ -36,3 +36,41 @@ class Registry:
             KeyError: If the component type doesn't exist in the registry.
         """
         return self._components[component_type].copy()
+
+    @classmethod
+    def from_entity_centered(cls, entity_centered: pd.DataFrame) -> "Registry":
+        """Construct a Registry from entity-centered data.
+
+        Args:
+            entity_centered: DataFrame with columns entity_id, component_index,
+                component_type, component_value.
+
+        Returns:
+            A Registry with one table per component type.
+        """
+        if entity_centered.empty:
+            return cls({})
+
+        components = {}
+        for component_type, group in entity_centered.groupby("component_type"):
+            # Build the component table with multi-index
+            rows = []
+            for _, row in group.iterrows():
+                row_data = {
+                    "component_type": row["component_type"],
+                }
+                # Extract value from component_value dict if present
+                component_value = row["component_value"]
+                if isinstance(component_value, dict) and "value" in component_value:
+                    row_data["value"] = component_value["value"]
+                rows.append({
+                    "entity_id": row["entity_id"],
+                    "component_index": row["component_index"],
+                    **row_data,
+                })
+
+            df = pd.DataFrame(rows)
+            df = df.set_index(["entity_id", "component_index"])
+            components[component_type] = df
+
+        return cls(components)

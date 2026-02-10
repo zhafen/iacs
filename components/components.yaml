@@ -404,6 +404,17 @@ ecs_framework:
                     component_type [str]: The component type to view.
                 - output:
                     table [dataframe]: Copy of the component table.
+            from_entity_centered:
+                - description: >
+                    Class method that constructs a Registry from entity-centered
+                    data. Groups components by type into separate tables.
+                - input:
+                    entity_centered [dataframe]: >
+                        Entity-centered DataFrame with columns: entity_id,
+                        component_index, component_type, component_value.
+                - output:
+                    registry [registry]: >
+                        Registry with one table per component type.
         io_system:
             data:
                 - description: >
@@ -428,15 +439,6 @@ ecs_framework:
                     path [str]: Path to the YAML file.
                 - output:
                     df [dataframe]: Parsed entity-centered DataFrame.
-            to_component_centered:
-                - description: >
-                    Convert entity-centered DataFrame to component-centered
-                    Registry. Groups components by type into separate tables.
-                - input:
-                    df [dataframe]: Entity-centered DataFrame.
-                - output:
-                    registry [registry]: >
-                        Registry with one table per component type.
             to_entity_centered:
                 - description: >
                     Convert component-centered Registry to entity-centered

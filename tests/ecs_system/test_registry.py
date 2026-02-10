@@ -122,3 +122,150 @@ class TestRegistryView:
 
         original = sample_registry.view("description")
         assert original.loc[("iacs", 0), "value"] == "A tool for architects"
+
+
+class TestRegistryFromEntityCentered:
+    """Tests for constructing Registry from entity-centered data."""
+
+    def test_from_entity_centered_returns_registry(self):
+        """from_entity_centered returns a Registry."""
+        from iacs.io_system import IOSystem
+
+        system = IOSystem()
+        entity_centered = system.read_entity_centered({
+            "my_entity": [{"description": "A simple entity."}]
+        })
+
+        result = Registry.from_entity_centered(entity_centered)
+
+        assert isinstance(result, Registry)
+
+    def test_from_entity_centered_creates_table_per_component_type(self):
+        """Each component type gets its own table in the registry."""
+        from iacs.io_system import IOSystem
+
+        system = IOSystem()
+        entity_centered = system.read_entity_centered({
+            "my_task": [
+                {"description": "A task."},
+                "task",
+            ]
+        })
+
+        registry = Registry.from_entity_centered(entity_centered)
+
+        assert "description" in registry.component_types
+        assert "task" in registry.component_types
+
+    def test_from_entity_centered_empty_produces_empty_registry(self):
+        """Empty entity-centered data produces empty registry."""
+        from iacs.io_system import IOSystem
+
+        system = IOSystem()
+        entity_centered = system.read_entity_centered({})
+
+        registry = Registry.from_entity_centered(entity_centered)
+
+        assert len(registry.component_types) == 0
+
+
+class TestRegistryFromEntityCenteredTableStructure:
+    """Tests for component table structure when constructed from entity-centered."""
+
+    def test_component_table_has_multi_index(self):
+        """Component tables have multi-index of (entity_id, component_index)."""
+        from iacs.io_system import IOSystem
+
+        system = IOSystem()
+        entity_centered = system.read_entity_centered({
+            "my_entity": [{"description": "A simple entity."}]
+        })
+
+        registry = Registry.from_entity_centered(entity_centered)
+        table = registry.view("description")
+
+        assert table.index.names == ["entity_id", "component_index"]
+
+    def test_component_table_has_component_type_column(self):
+        """Component tables have a component_type column."""
+        from iacs.io_system import IOSystem
+
+        system = IOSystem()
+        entity_centered = system.read_entity_centered({
+            "my_entity": [{"description": "A simple entity."}]
+        })
+
+        registry = Registry.from_entity_centered(entity_centered)
+        table = registry.view("description")
+
+        assert "component_type" in table.columns
+
+    def test_component_table_has_value_column_for_value_components(self):
+        """Value component tables have a value column."""
+        from iacs.io_system import IOSystem
+
+        system = IOSystem()
+        entity_centered = system.read_entity_centered({
+            "my_entity": [{"description": "A simple entity."}]
+        })
+
+        registry = Registry.from_entity_centered(entity_centered)
+        table = registry.view("description")
+
+        assert "value" in table.columns
+        assert table.loc[("my_entity", 0), "value"] == "A simple entity."
+
+    def test_tag_component_table_has_no_value_column(self):
+        """Tag component tables have component_type but no value column."""
+        from iacs.io_system import IOSystem
+
+        system = IOSystem()
+        entity_centered = system.read_entity_centered({
+            "my_task": ["task"]
+        })
+
+        registry = Registry.from_entity_centered(entity_centered)
+        table = registry.view("task")
+
+        assert "component_type" in table.columns
+        assert len(table) == 1
+
+
+class TestRegistryFromEntityCenteredMultipleEntities:
+    """Tests for from_entity_centered with multiple entities."""
+
+    def test_same_component_type_from_multiple_entities(self):
+        """Components of same type from different entities in same table."""
+        from iacs.io_system import IOSystem
+
+        system = IOSystem()
+        entity_centered = system.read_entity_centered({
+            "entity_a": [{"description": "First entity."}],
+            "entity_b": [{"description": "Second entity."}],
+        })
+
+        registry = Registry.from_entity_centered(entity_centered)
+        table = registry.view("description")
+
+        assert len(table) == 2
+        assert ("entity_a", 0) in table.index
+        assert ("entity_b", 0) in table.index
+
+    def test_multiple_components_same_type_same_entity(self):
+        """Multiple components of same type on one entity have different indices."""
+        from iacs.io_system import IOSystem
+
+        system = IOSystem()
+        entity_centered = system.read_entity_centered({
+            "my_entity": [
+                {"description": "First description."},
+                {"description": "Second description."},
+            ]
+        })
+
+        registry = Registry.from_entity_centered(entity_centered)
+        table = registry.view("description")
+
+        assert len(table) == 2
+        assert table.loc[("my_entity", 0), "value"] == "First description."
+        assert table.loc[("my_entity", 1), "value"] == "Second description."
