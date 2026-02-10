@@ -375,49 +375,102 @@ ecs_framework:
                 is responsible for completing.
     ecs_system:
         data:
-            - description: The infrastructure that supports the ECS framework.
+            - description: >
+                The infrastructure that supports the ECS framework. The system
+                consists of a Registry for component-centered data storage,
+                an IOSystem for file I/O and format conversion, and a
+                TransformSystem for data manipulation.
             - system
         registry:
             data:
-                - description: Data storage/access.
+                - description: >
+                    Stores ECS data in component-centered format. Each component
+                    type has its own table (DataFrame) with a multi-index of
+                    (entity_id, component_index).
                 - system
-            components:
-                - description: Dictionary of ((dataframe))s holding components.
+            init:
+                - description: Initialize from a dict of component DataFrames.
+                - input:
+                    components [dict[str, dataframe]]: >
+                        Mapping of component type names to DataFrames.
+            component_types:
+                - description: Returns list of component types in the registry.
+                - output:
+                    component_types [list[str]]: List of component type names.
+            view:
+                - description: >
+                    Returns a copy of the DataFrame for a given component type.
+                - input:
+                    component_type [str]: The component type to view.
+                - output:
+                    table [dataframe]: Copy of the component table.
         io_system:
             data:
-                - description: Responsible for I/O of ECS data.
-                - system
-            reader:
-                data:
-                    - description: >
-                        Responsible for reading ECS data from provided inputs.
-                    - system
-                entity_centered_reader:
-                    data:
-                        - description: >
-                            Responsible for parsing ECS data from entity-centered
-                            format following the syntax specified in
-                            ((iacs.iacs_ecs_framework.ecs_data_formats.entity_centered)).
-                        - system
-                    read:
-                        - description: >
-                            Load all entity-centered data in a specified location.
-                        - input:
-                            filepath [str]: Location of entity-centered files.
-                        - output:
-                            entities [dataframe]: >
-                                All ECS data in the form of a dataframe with
-                                one row per component, with columns
-                                entity_id, component_index, component_type,
-                                component_value.
-            load_system:
                 - description: >
-                    Responsible for loading ECS data into a registry.
+                    Handles file I/O and format conversion for ECS data.
+                    Converts between entity-centered format (for human editing)
+                    and component-centered format (Registry, for querying).
                 - system
-            transform_system:
+            read_entity_centered:
                 - description: >
-                    Responsible for transforming ECS data stored in a registry.
+                    Parse entity-centered data (dict) into a flat DataFrame with
+                    one row per component.
+                - input:
+                    data [dict]: Entity-centered data structure.
+                - output:
+                    df [dataframe]: >
+                        DataFrame with columns: entity_id, component_index,
+                        component_type, component_value.
+            read_entity_centered_file:
+                - description: >
+                    Read entity-centered data from a YAML file.
+                - input:
+                    path [str]: Path to the YAML file.
+                - output:
+                    df [dataframe]: Parsed entity-centered DataFrame.
+            to_component_centered:
+                - description: >
+                    Convert entity-centered DataFrame to component-centered
+                    Registry. Groups components by type into separate tables.
+                - input:
+                    df [dataframe]: Entity-centered DataFrame.
+                - output:
+                    registry [registry]: >
+                        Registry with one table per component type.
+            to_entity_centered:
+                - description: >
+                    Convert component-centered Registry to entity-centered
+                    DataFrame. (Not yet implemented.)
+                - input:
+                    registry [registry]: Component-centered Registry.
+                - output:
+                    df [dataframe]: Entity-centered DataFrame.
+                - todo: Not yet implemented.
+            write_entity_centered:
+                - description: >
+                    Convert entity-centered DataFrame to dict for serialization.
+                    (Not yet implemented.)
+                - input:
+                    df [dataframe]: Entity-centered DataFrame.
+                - output:
+                    data [dict]: Entity-centered data structure.
+                - todo: Not yet implemented.
+            write_entity_centered_file:
+                - description: >
+                    Write entity-centered data to a YAML file.
+                    (Not yet implemented.)
+                - input:
+                    df [dataframe]: Entity-centered DataFrame.
+                    path [str]: Output file path.
+                - todo: Not yet implemented.
+        transform_system:
+            data:
+                - description: >
+                    Transforms ECS data stored in a registry. Provides operations
+                    for querying, filtering, and manipulating component data.
+                    (Not yet implemented.)
                 - system
+                - todo: Define transform operations.
     ecs_data_formats:
         data:
             - description: iacs stores ECS data in a few formats.
