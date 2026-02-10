@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pandas as pd
+import yaml
 
 
 class IOSystem:
@@ -19,7 +20,32 @@ class IOSystem:
             A DataFrame with columns: entity_id, component_index,
             component_type, component_value.
         """
-        raise NotImplementedError
+        rows = []
+        for entity_id, components in data.items():
+            for component_index, component in enumerate(components):
+                if isinstance(component, str):
+                    # Tag component (no value)
+                    component_type = component
+                    component_value = {}
+                elif isinstance(component, dict):
+                    # Value component
+                    component_type = next(iter(component))
+                    raw_value = component[component_type]
+                    component_value = {"value": raw_value}
+                else:
+                    continue
+
+                rows.append({
+                    "entity_id": entity_id,
+                    "component_index": component_index,
+                    "component_type": component_type,
+                    "component_value": component_value,
+                })
+
+        return pd.DataFrame(
+            rows,
+            columns=["entity_id", "component_index", "component_type", "component_value"],
+        )
 
     def read_entity_centered_file(self, path: Path) -> pd.DataFrame:
         """Read entities and components from an entity-centered file.
@@ -31,4 +57,6 @@ class IOSystem:
             A DataFrame with columns: entity_id, component_index,
             component_type, component_value.
         """
-        raise NotImplementedError
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        return self.read_entity_centered(data)
