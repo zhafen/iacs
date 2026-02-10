@@ -522,57 +522,39 @@ ecs_framework:
                                 - description: >
                                     When the ((component_type)) has ((value)) as an
                                     ancestor then the scalar gives the value for
-                                    the "value" field.
+                                    ((value.value)), i.e. the "value" field.
                                 - requirement: constraint
                             relation_ancestor:
+                                value_is_target:
+                                    - description: >
+                                        When the ((component_type)) has ((relation)) as
+                                        an ancestor and the ((component_key)) is equal
+                                        to a ((component_type)), then the scalar gives
+                                        the value for ((relation.target)), i.e. the
+                                        "target" field.
+                                    - requirement: constraint
+                                value_is_source:
+                                    - description: >
+                                        When the ((component_type)) has ((relation)) as
+                                        an ancestor and the ((component_key)) has the
+                                        format "{component_type} of", then the scalar
+                                        gives the value for ((relation.source)), i.e.
+                                        the "source" field.
+                                    - requirement: constraint
+                        dictionary_component_value:
+                            standard_case:
                                 - description: >
-                                    When the ((component_type)) has ((value)) as an
-                                    ancestor then the scalar gives the value for
-                                    the "value" field.
-                                - requirement: constraint
-                value_component_item:
-                    - description: >
-                        In yaml, components take the form either of strings or of
-                        dictionaries with length 1.
-                    - description: >
-                        When the component is a string it specifies that the
-                        entity owns a component of that type, but provides no
-                        additional data. This is most commonly found for
-                        components that are children of the ((tag)) component type.
-                    - description: >
-                        When a component is a dictionary, the item key for the
-                        dictionary specifies the component type. The value specifies
-                        the data for the component instance.
-                    - description: >
-                        Component data can either be a scalar or a dictionary. 
-                    - description: >
-                        If the component data is a scalar and the component type is
-                        a child type of the ((value)) component, then the scalar
-                        specifies the ((value.value)) field.
-                    - description: >
-                        If the component data is a dictionary, then each key
-                        in the dictionary corresponds to a column in the component
-                        schema.
-                    - description: >
-                        The exception to the above rule about handling components
-                        when component data is a dictionary is if the component type
-                        is ((schema)) or a child of ((schema)). In this case each
-                        key defines a column for the schema for that component type.
-                relation_component_syntax:
-                    - description: >
-                        If the component data is a scalar, the item key is either
-                        "{component_type}" or "{component_type} of", and the
-                        component_type is child type of the ((relation)) component
-                        then the scalar data specifies an ((entity_id)) for a
-                        relation.
-                    - description: >
-                        If the item key is equal to a component type, then the
-                        scalar specifies the ((entity_id)) in ((relation.target)).
-                        The parent entity is then ((relation.source)).
-                    - description: >
-                        If the item key is equal to "{component_type} of", then the
-                        scalar specifies the ((entity_id)) in ((relation.source)).
-                        The parent entity is then ((relation.target)).
+                                    If the ((component_value)) is a dictionary, then each
+                                    key in the dictionary corresponds to a column in the
+                                    ((component_schema)) of the ((component_type)) specified
+                                    by the ((component_key)).
+                            schema_case:
+                                - description: >
+                                    The exception to the above rule about
+                                    ((dictionary_component_value)) is when
+                                    ((component_type)) has ((schema)) as an ancestore.
+                                    In such a case, the dictionary defines the schema,
+                                    with a key per column.
         component_centered:
             data:
                 - description: >
