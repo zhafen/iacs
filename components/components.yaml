@@ -648,6 +648,46 @@ ecs_framework:
                         defined by the component schema.
                     - requirement: constraint
 
+audit_system:
+    data:
+        - description: >
+            The iacs system responsible for evaluating solution quality.
+        - parent: iacs
+    audit:
+        - description: >
+            A single check that evaluates some aspect of a solution design.
+            Returns a pass/fail result with optional diagnostic messages.
+    audit_result:
+        - description: >
+            The outcome of running an audit. Contains pass/fail status,
+            the entities examined, and any diagnostic messages.
+    audit_runner:
+        - description: >
+            Executes one or more audits against a Registry and collects
+            results. Provides summary reporting.
+    builtin_audits:
+        data:
+            - description: Default audits provided by iacs.
+        requirement_coverage_audit:
+            - description: >
+                Checks that requirements have implementing solutions.
+                Flags requirements missing implementations.
+        traceability_audit:
+            - description: >
+                Checks that components trace back to requirements.
+                Flags orphan infrastructure with no motivating requirement.
+        definition_audit:
+            - description: >
+                Validates that component instances conform to their schemas.
+                Flags invalid or malformed definitions.
+        connectivity_audit:
+            - description: >
+                Checks that all infrastructure is connected to the main
+                solution. Flags siloed or disconnected components.
+        todo_audit:
+            - description: >
+                Reports on outstanding todos. Can flag incomplete items
+                or items past a deadline.
 
 component:
     data:
