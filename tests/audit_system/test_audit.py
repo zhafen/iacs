@@ -1,3 +1,4 @@
+import pandas as pd
 import pytest
 
 from iacs.audit_system import Audit, AuditResult, AuditRunner
@@ -28,18 +29,21 @@ class TestAuditResult:
 
         assert result.messages == []
 
-    def test_audit_result_has_entities_attribute(self):
-        """AuditResult has an entities list for flagged entity IDs."""
-        result = AuditResult(passed=False, entities=["entity_a", "entity_b"])
+    def test_audit_result_has_results_attribute(self):
+        """AuditResult has a results DataFrame for flagged records."""
+        results_df = pd.DataFrame({"entity_id": ["entity_a", "entity_b"]})
+        result = AuditResult(passed=False, results=results_df)
 
-        assert hasattr(result, "entities")
-        assert result.entities == ["entity_a", "entity_b"]
+        assert hasattr(result, "results")
+        assert isinstance(result.results, pd.DataFrame)
+        assert len(result.results) == 2
 
-    def test_audit_result_entities_default_to_empty_list(self):
-        """AuditResult entities default to empty list."""
+    def test_audit_result_results_default_to_empty_dataframe(self):
+        """AuditResult results default to empty DataFrame."""
         result = AuditResult(passed=True)
 
-        assert result.entities == []
+        assert isinstance(result.results, pd.DataFrame)
+        assert result.results.empty
 
 
 class TestAuditInterface:

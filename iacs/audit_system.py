@@ -7,6 +7,11 @@ import pandas as pd
 from iacs.registry import Registry
 
 
+def _empty_results_df() -> pd.DataFrame:
+    """Return an empty DataFrame for AuditResult.results."""
+    return pd.DataFrame()
+
+
 @dataclass
 class AuditResult:
     """The outcome of running an audit.
@@ -14,12 +19,12 @@ class AuditResult:
     Attributes:
         passed: Whether the audit passed.
         messages: Diagnostic messages from the audit.
-        entities: Entity IDs flagged by the audit.
+        results: DataFrame of failed records (includes entity_id column).
     """
 
     passed: bool
     messages: list[str] = field(default_factory=list)
-    entities: list[str] = field(default_factory=list)
+    results: pd.DataFrame = field(default_factory=_empty_results_df)
 
 
 class Audit:
@@ -147,14 +152,17 @@ class RequirementCoverageAudit(Audit):
         # Uncovered = no implements AND no children
         uncovered_df = merged[
             merged["implemented_id"].isna() & ~merged["has_children"]
-        ]
-        uncovered = uncovered_df["entity_id"].tolist()
+        ][["entity_id"]].copy()
 
-        if uncovered:
+        if not uncovered_df.empty:
+            messages = [
+                f"Requirement '{e}' has no implementation."
+                for e in uncovered_df["entity_id"]
+            ]
             return AuditResult(
                 passed=False,
-                messages=[f"Requirement '{e}' has no implementation." for e in uncovered],
-                entities=uncovered,
+                messages=messages,
+                results=uncovered_df,
             )
 
         return AuditResult(passed=True)
@@ -216,14 +224,17 @@ class TraceabilityAudit(Audit):
         # Orphans have neither requirement nor implements
         orphans_df = merged[
             merged["has_requirement"].isna() & merged["has_implements"].isna()
-        ]
-        orphans = orphans_df["entity_id"].tolist()
+        ][["entity_id"]].copy()
 
-        if orphans:
+        if not orphans_df.empty:
+            messages = [
+                f"Entity '{e}' does not trace to any requirement."
+                for e in orphans_df["entity_id"]
+            ]
             return AuditResult(
                 passed=False,
-                messages=[f"Entity '{e}' does not trace to any requirement." for e in orphans],
-                entities=orphans,
+                messages=messages,
+                results=orphans_df,
             )
 
         return AuditResult(passed=True)
@@ -252,17 +263,23 @@ class TodoAudit(Audit):
         if todo_table.empty:
             return AuditResult(passed=True)
 
-        # Get unique entities with todos
-        entities_with_todos = todo_table.index.get_level_values("entity_id").unique().tolist()
+        # Build results DataFrame with entity_id
+        results_df = pd.DataFrame({
+            "entity_id": todo_table.index.get_level_values("entity_id").unique()
+        })
 
         # Build messages from the DataFrame
         messages = []
         for entity_id, component_index in todo_table.index:
-            todo_value = todo_table.loc[(entity_id, component_index), "value"] if "value" in todo_table.columns else ""
+            todo_value = (
+                todo_table.loc[(entity_id, component_index), "value"]
+                if "value" in todo_table.columns
+                else ""
+            )
             messages.append(f"{entity_id}: {todo_value}")
 
         return AuditResult(
             passed=False,
             messages=messages,
-            entities=entities_with_todos,
+            results=results_df,
         )

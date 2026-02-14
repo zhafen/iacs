@@ -1,7 +1,4 @@
-import pytest
-
 from iacs.audit_system import (
-    AuditResult,
     RequirementCoverageAudit,
     TraceabilityAudit,
     TodoAudit,
@@ -69,7 +66,7 @@ class TestRequirementCoverageAudit:
         assert result.passed is False
 
     def test_flags_uncovered_requirement_entity(self):
-        """Flags the entity ID of uncovered requirements."""
+        """Flags the entity ID of uncovered requirements in results."""
         io = IOSystem()
         entity_centered = io.read_entity_centered({
             "uncovered_req": [
@@ -82,7 +79,7 @@ class TestRequirementCoverageAudit:
 
         result = audit.run(registry)
 
-        assert "uncovered_req" in result.entities
+        assert "uncovered_req" in result.results["entity_id"].values
 
     def test_multiple_requirements_all_covered(self):
         """Passes when all requirements have implementations."""
@@ -115,8 +112,8 @@ class TestRequirementCoverageAudit:
         result = audit.run(registry)
 
         assert result.passed is False
-        assert "req_b" in result.entities
-        assert "req_a" not in result.entities
+        assert "req_b" in result.results["entity_id"].values
+        assert "req_a" not in result.results["entity_id"].values
 
     def test_passes_when_parent_requirement_has_child_requirements(self):
         """Parent requirement is covered if it has child requirements."""
@@ -140,7 +137,7 @@ class TestRequirementCoverageAudit:
         result = audit.run(registry)
 
         assert result.passed is True
-        assert "parent_req" not in result.entities
+        assert result.results.empty or "parent_req" not in result.results["entity_id"].values
 
     def test_fails_when_leaf_requirement_has_no_implements(self):
         """Leaf requirement (no children) without implements fails."""
@@ -163,8 +160,8 @@ class TestRequirementCoverageAudit:
         result = audit.run(registry)
 
         assert result.passed is False
-        assert "parent_req.child_req" in result.entities
-        assert "parent_req" not in result.entities
+        assert "parent_req.child_req" in result.results["entity_id"].values
+        assert "parent_req" not in result.results["entity_id"].values
 
     def test_deeply_nested_requirements_covered_by_hierarchy(self):
         """Deeply nested requirements are covered by having children."""
@@ -254,7 +251,7 @@ class TestTraceabilityAudit:
         assert result.passed is False
 
     def test_flags_orphan_entity(self):
-        """Flags entity IDs that don't trace to requirements."""
+        """Flags entity IDs that don't trace to requirements in results."""
         io = IOSystem()
         entity_centered = io.read_entity_centered({
             "orphan_entity": [{"description": "No trace."}],
@@ -264,7 +261,7 @@ class TestTraceabilityAudit:
 
         result = audit.run(registry)
 
-        assert "orphan_entity" in result.entities
+        assert "orphan_entity" in result.results["entity_id"].values
 
 
 class TestTodoAudit:
@@ -306,7 +303,7 @@ class TestTodoAudit:
         assert result.passed is False
 
     def test_flags_entities_with_todos(self):
-        """Flags entity IDs that have todo components."""
+        """Flags entity IDs that have todo components in results."""
         io = IOSystem()
         entity_centered = io.read_entity_centered({
             "entity_with_todo": [{"todo": "Do something."}],
@@ -317,8 +314,8 @@ class TestTodoAudit:
 
         result = audit.run(registry)
 
-        assert "entity_with_todo" in result.entities
-        assert "entity_without_todo" not in result.entities
+        assert "entity_with_todo" in result.results["entity_id"].values
+        assert "entity_without_todo" not in result.results["entity_id"].values
 
     def test_reports_todo_content_in_messages(self):
         """Reports todo content in messages."""
