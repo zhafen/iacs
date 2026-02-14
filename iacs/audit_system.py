@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass, field
 
+import pandas as pd
+
 from iacs.registry import Registry
 
 
@@ -94,28 +96,42 @@ class RequirementCoverageAudit(Audit):
         Returns:
             AuditResult flagging requirements without implementations.
         """
-        # Get all entities with requirement components
         if "requirement" not in registry.component_types:
             return AuditResult(passed=True)
 
+        # Get requirements as DataFrame with entity_id column
         requirement_table = registry.view("requirement")
-        requirement_entities = set(requirement_table.index.get_level_values("entity_id"))
+        requirements_df = pd.DataFrame({
+            "entity_id": requirement_table.index.get_level_values("entity_id").unique()
+        })
 
-        # Get all entities that are implemented
-        implemented_entities: set[str] = set()
+        # Get implemented entity IDs as DataFrame
         if "implements" in registry.component_types:
             implements_table = registry.view("implements")
             if "value" in implements_table.columns:
-                implemented_entities = set(implements_table["value"].tolist())
+                implemented_df = pd.DataFrame({
+                    "implemented_id": implements_table["value"].unique()
+                })
+            else:
+                implemented_df = pd.DataFrame({"implemented_id": []})
+        else:
+            implemented_df = pd.DataFrame({"implemented_id": []})
 
-        # Find uncovered requirements
-        uncovered = requirement_entities - implemented_entities
+        # Left join to find uncovered requirements
+        merged = requirements_df.merge(
+            implemented_df,
+            left_on="entity_id",
+            right_on="implemented_id",
+            how="left",
+        )
+        uncovered_df = merged[merged["implemented_id"].isna()]
+        uncovered = uncovered_df["entity_id"].tolist()
 
         if uncovered:
             return AuditResult(
                 passed=False,
                 messages=[f"Requirement '{e}' has no implementation." for e in uncovered],
-                entities=list(uncovered),
+                entities=uncovered,
             )
 
         return AuditResult(passed=True)
@@ -143,37 +159,48 @@ class TraceabilityAudit(Audit):
         if not registry.component_types:
             return AuditResult(passed=True)
 
-        # Collect all entity IDs
-        all_entities: set[str] = set()
+        # Collect all entity IDs into a DataFrame
+        all_entity_ids = []
         for component_type in registry.component_types:
             table = registry.view(component_type)
-            all_entities.update(table.index.get_level_values("entity_id"))
+            all_entity_ids.extend(table.index.get_level_values("entity_id").tolist())
+        all_entities_df = pd.DataFrame({"entity_id": pd.Series(all_entity_ids).unique()})
 
-        # Entities with requirement components are OK
-        entities_with_requirements: set[str] = set()
+        # Get entities with requirement components
         if "requirement" in registry.component_types:
             req_table = registry.view("requirement")
-            entities_with_requirements = set(
-                req_table.index.get_level_values("entity_id")
-            )
+            req_entities_df = pd.DataFrame({
+                "entity_id": req_table.index.get_level_values("entity_id").unique(),
+                "has_requirement": True,
+            })
+        else:
+            req_entities_df = pd.DataFrame({"entity_id": [], "has_requirement": []})
 
-        # Entities with implements components are OK
-        entities_with_implements: set[str] = set()
+        # Get entities with implements components
         if "implements" in registry.component_types:
             impl_table = registry.view("implements")
-            entities_with_implements = set(
-                impl_table.index.get_level_values("entity_id")
-            )
+            impl_entities_df = pd.DataFrame({
+                "entity_id": impl_table.index.get_level_values("entity_id").unique(),
+                "has_implements": True,
+            })
+        else:
+            impl_entities_df = pd.DataFrame({"entity_id": [], "has_implements": []})
 
-        # Find orphans
-        traced_entities = entities_with_requirements | entities_with_implements
-        orphans = all_entities - traced_entities
+        # Join to find entities that have neither
+        merged = all_entities_df.merge(req_entities_df, on="entity_id", how="left")
+        merged = merged.merge(impl_entities_df, on="entity_id", how="left")
+
+        # Orphans have neither requirement nor implements
+        orphans_df = merged[
+            merged["has_requirement"].isna() & merged["has_implements"].isna()
+        ]
+        orphans = orphans_df["entity_id"].tolist()
 
         if orphans:
             return AuditResult(
                 passed=False,
                 messages=[f"Entity '{e}' does not trace to any requirement." for e in orphans],
-                entities=list(orphans),
+                entities=orphans,
             )
 
         return AuditResult(passed=True)
@@ -198,16 +225,17 @@ class TodoAudit(Audit):
             return AuditResult(passed=True)
 
         todo_table = registry.view("todo")
-        entities_with_todos = list(set(todo_table.index.get_level_values("entity_id")))
 
-        if not entities_with_todos:
+        if todo_table.empty:
             return AuditResult(passed=True)
 
-        # Build messages with todo content
+        # Get unique entities with todos
+        entities_with_todos = todo_table.index.get_level_values("entity_id").unique().tolist()
+
+        # Build messages from the DataFrame
         messages = []
-        for idx, row in todo_table.iterrows():
-            entity_id = idx[0]  # First level of multi-index
-            todo_value = row.get("value", "")
+        for entity_id, component_index in todo_table.index:
+            todo_value = todo_table.loc[(entity_id, component_index), "value"] if "value" in todo_table.columns else ""
             messages.append(f"{entity_id}: {todo_value}")
 
         return AuditResult(

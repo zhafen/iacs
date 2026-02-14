@@ -118,6 +118,77 @@ class TestRequirementCoverageAudit:
         assert "req_b" in result.entities
         assert "req_a" not in result.entities
 
+    def test_passes_when_parent_requirement_has_child_requirements(self):
+        """Parent requirement is covered if it has child requirements."""
+        io = IOSystem()
+        entity_centered = io.read_entity_centered({
+            "parent_req": {
+                "data": [
+                    {"description": "A parent requirement."},
+                    "requirement",
+                ],
+                "child_req": [
+                    {"description": "A child requirement."},
+                    "requirement",
+                ],
+            },
+            "solution": [{"implements": "parent_req.child_req"}],
+        })
+        registry = Registry.from_entity_centered(entity_centered)
+        audit = RequirementCoverageAudit()
+
+        result = audit.run(registry)
+
+        assert result.passed is True
+        assert "parent_req" not in result.entities
+
+    def test_fails_when_leaf_requirement_has_no_implements(self):
+        """Leaf requirement (no children) without implements fails."""
+        io = IOSystem()
+        entity_centered = io.read_entity_centered({
+            "parent_req": {
+                "data": [
+                    {"description": "A parent requirement."},
+                    "requirement",
+                ],
+                "child_req": [
+                    {"description": "A child requirement with no solution."},
+                    "requirement",
+                ],
+            },
+        })
+        registry = Registry.from_entity_centered(entity_centered)
+        audit = RequirementCoverageAudit()
+
+        result = audit.run(registry)
+
+        assert result.passed is False
+        assert "parent_req.child_req" in result.entities
+        assert "parent_req" not in result.entities
+
+    def test_deeply_nested_requirements_covered_by_hierarchy(self):
+        """Deeply nested requirements are covered by having children."""
+        io = IOSystem()
+        entity_centered = io.read_entity_centered({
+            "level1": {
+                "data": [{"description": "Level 1."}, "requirement"],
+                "level2": {
+                    "data": [{"description": "Level 2."}, "requirement"],
+                    "level3": [
+                        {"description": "Level 3 leaf."},
+                        "requirement",
+                    ],
+                },
+            },
+            "solution": [{"implements": "level1.level2.level3"}],
+        })
+        registry = Registry.from_entity_centered(entity_centered)
+        audit = RequirementCoverageAudit()
+
+        result = audit.run(registry)
+
+        assert result.passed is True
+
 
 class TestTraceabilityAudit:
     """Tests for TraceabilityAudit."""
