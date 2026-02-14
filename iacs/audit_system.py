@@ -90,11 +90,15 @@ class RequirementCoverageAudit(Audit):
     def run(self, registry: Registry) -> AuditResult:
         """Check that all requirements have implementations.
 
+        A requirement is covered if:
+        - It has an implements reference pointing to it, OR
+        - It has child requirements (sub-requirements)
+
         Args:
             registry: The Registry to audit.
 
         Returns:
-            AuditResult flagging requirements without implementations.
+            AuditResult flagging leaf requirements without implementations.
         """
         if "requirement" not in registry.component_types:
             return AuditResult(passed=True)
@@ -104,6 +108,21 @@ class RequirementCoverageAudit(Audit):
         requirements_df = pd.DataFrame({
             "entity_id": requirement_table.index.get_level_values("entity_id").unique()
         })
+
+        if requirements_df.empty:
+            return AuditResult(passed=True)
+
+        # Find requirements that have child requirements
+        # A child requirement has an entity_id starting with "{parent_id}."
+        requirement_ids = requirements_df["entity_id"].tolist()
+
+        def has_child_requirement(entity_id: str) -> bool:
+            prefix = entity_id + "."
+            return any(rid.startswith(prefix) for rid in requirement_ids)
+
+        requirements_df["has_children"] = requirements_df["entity_id"].apply(
+            has_child_requirement
+        )
 
         # Get implemented entity IDs as DataFrame
         if "implements" in registry.component_types:
@@ -117,14 +136,18 @@ class RequirementCoverageAudit(Audit):
         else:
             implemented_df = pd.DataFrame({"implemented_id": []})
 
-        # Left join to find uncovered requirements
+        # Left join to find requirements without implements
         merged = requirements_df.merge(
             implemented_df,
             left_on="entity_id",
             right_on="implemented_id",
             how="left",
         )
-        uncovered_df = merged[merged["implemented_id"].isna()]
+
+        # Uncovered = no implements AND no children
+        uncovered_df = merged[
+            merged["implemented_id"].isna() & ~merged["has_children"]
+        ]
         uncovered = uncovered_df["entity_id"].tolist()
 
         if uncovered:
