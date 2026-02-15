@@ -172,7 +172,10 @@ class IOSystem:
                 if component_type == "id":
                     continue
                 raw_value = component[component_type]
-                component_value = {"value": raw_value}
+                if isinstance(raw_value, dict):
+                    component_value = raw_value
+                else:
+                    component_value = {"value": raw_value}
             else:
                 continue
 

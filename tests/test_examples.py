@@ -158,8 +158,8 @@ class TestNetworksNetAB:
         ab_id = eid("AB")
         ab = net_ab_data[net_ab_data["entity_id"] == ab_id]
         link_row = ab[ab["component_type"] == "link"].iloc[0]
-        assert link_row["component_value"]["value"]["source"] == "A"
-        assert link_row["component_value"]["value"]["target"] == "B"
+        assert link_row["component_value"]["source"] == "A"
+        assert link_row["component_value"]["target"] == "B"
 
 
 class TestNetworksNetABCD:

@@ -327,11 +327,11 @@ class TestRegistryFromEntityCenteredTableStructure:
         actual = registry.view("requirement")
 
         expected = pd.DataFrame([
-            {"entity_id": "my_entity", "component_index": 0, "value": None, "priority": None},
-            {"entity_id": "my_second_entity", "component_index": 0, "value": None, "priority": None},
-            {"entity_id": "my_third_entity", "component_index": 0, "value": "constraint", "priority": 0.8},
-            {"entity_id": "my_fourth_entity", "component_index": 0, "value": None, "priority": 0.4},
-        ])
+            {"entity_id": eid("my_entity"), "component_index": 1, "component_type": "requirement", "value": None, "priority": None},
+            {"entity_id": eid("my_second_entity"), "component_index": 1, "component_type": "requirement", "value": "constraint", "priority": None},
+            {"entity_id": eid("my_third_entity"), "component_index": 1, "component_type": "requirement", "value": "constraint", "priority": 0.8},
+            {"entity_id": eid("my_fourth_entity"), "component_index": 1, "component_type": "requirement", "value": None, "priority": 0.4},
+        ]).set_index(["entity_id", "component_index"])
 
         pd.testing.assert_frame_equal(
             actual,
