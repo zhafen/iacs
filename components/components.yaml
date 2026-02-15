@@ -199,6 +199,8 @@ iacs:
                 capabilities of the iacs system itself.
         syntax_challenges:
             - todo: >
+                Have files be the topmost entities.
+            - todo: >
                 Notation for multiple components of the same type. Maybe "component_type s"?
             - todo: >
                 Binary relationship notation going both ways.
@@ -806,14 +808,26 @@ iacs_component:
         - parent: value
 
     id:
-        - description: Overrides the entity_id derived by the path.
+        - description: Contains identity information for an entity.
         - schema:
-            value [str]: The overriding entity_id.
+            value [str]: >
+                Entity ID, also referred to as "entity_id" elsewhere. Is the coalesce
+                of the alias and the hash.
+            key [str]: >
+                The entity key is the key for an entity in the entity-centered data 
+                format, inside a given parent entity.
+            path [str]: >
+                The path to the entity is the chain of ((id.key)) values that uniquely
+                identify an entity.
+            hash [str]: >
+                Hash of ((id.path)).
+            alias [str]: >
+                User-provided alias. Defaults to null.
 
     description:
         - description: >
-            A human-readable description of what an entity is or does. This is one of the
-            most common components as nearly every entity should have a description.
+            A human-readable description of what an entity is or does. This is one of
+            the most common components as nearly every entity should have a description.
         - parent: value
         - schema:
             value [str]: The descriptive text.
