@@ -837,6 +837,12 @@ iacs_component:
                 default: 0.5
                 range: [0, 1]
 
+    solution:
+        - description: >
+            A solution relation is used to show a requirement is fulfilled.
+            The ((solution.source)) solves the ((solution)).requirement.
+        - parent: directed_relation
+
     task:
         - description: >
             Indicates that an entity represents a task that needs to be completed,
