@@ -81,6 +81,15 @@ class AuditRunner:
             self._results[audit.name] = audit.run(registry)
         return self._results
 
+    @classmethod
+    def default(cls) -> "AuditRunner":
+        """Create an AuditRunner with all built-in audits loaded."""
+        return cls([
+            RequirementCoverageAudit(),
+            TraceabilityAudit(),
+            TodoAudit(),
+        ])
+
     @property
     def all_passed(self) -> bool:
         """Check if all audits passed."""

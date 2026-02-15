@@ -18,6 +18,7 @@ class Registry:
             components: A dict mapping component type names to DataFrames.
         """
         self._con = ibis.duckdb.connect()
+        self._component_types = list(components.keys())
         for name, df in components.items():
             flat = df.reset_index()
             # Cast object columns to string to avoid DuckDB type errors
@@ -30,7 +31,7 @@ class Registry:
     @property
     def component_types(self) -> list[str]:
         """Return the list of component types in the registry."""
-        return list(self._con.list_tables())
+        return list(self._component_types)
 
     def view(self, component_type: str | list[str]) -> pd.DataFrame:
         """Return a copy of the dataframe for the given component type(s).

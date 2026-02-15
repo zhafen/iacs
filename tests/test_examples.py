@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from iacs.audit_system import AuditRunner
 from iacs.io_system import IOSystem
 from iacs.registry import Registry
 
@@ -73,6 +74,13 @@ class TestMinimalExample:
         registry = Registry.from_entity_centered(minimal_data)
         assert len(registry.component_types) > 0
 
+    def test_minimal_runs_audits(self, minimal_data):
+        """minimal.yaml can be audited without errors."""
+        registry = Registry.from_entity_centered(minimal_data)
+        runner = AuditRunner.default()
+        results = runner.run(registry)
+        assert len(results) > 0
+
     def test_solution_of_references_my_task(self, minimal_data):
         """The solution of component references my_task."""
         infra_id = eid("my_infrastructure")
@@ -120,6 +128,13 @@ class TestMinimal2Example:
         """minimal2.yaml can be loaded into a Registry."""
         registry = Registry.from_entity_centered(minimal2_data)
         assert len(registry.component_types) > 0
+
+    def test_minimal2_runs_audits(self, minimal2_data):
+        """minimal2.yaml can be audited without errors."""
+        registry = Registry.from_entity_centered(minimal2_data)
+        runner = AuditRunner.default()
+        results = runner.run(registry)
+        assert len(results) > 0
 
     def test_sub_entities_have_parent_component(self, minimal2_data):
         """Sub-entities have auto-generated parent components."""
@@ -169,6 +184,13 @@ class TestNetworksNetAB:
         registry = Registry.from_entity_centered(net_ab_data)
         assert len(registry.component_types) > 0
 
+    def test_net_ab_runs_audits(self, net_ab_data):
+        """net_AB.yaml can be audited without errors."""
+        registry = Registry.from_entity_centered(net_ab_data)
+        runner = AuditRunner.default()
+        results = runner.run(registry)
+        assert len(results) > 0
+
     def test_link_has_link_component(self, net_ab_data):
         """Link entity AB has a link component with source/target."""
         ab_id = eid("AB")
@@ -207,6 +229,13 @@ class TestNetworksNetABCD:
         registry = Registry.from_entity_centered(net_abcd_data)
         assert len(registry.component_types) > 0
 
+    def test_net_abcd_runs_audits(self, net_abcd_data):
+        """net_ABCD.yaml can be audited without errors."""
+        registry = Registry.from_entity_centered(net_abcd_data)
+        runner = AuditRunner.default()
+        results = runner.run(registry)
+        assert len(results) > 0
+
     def test_net_abcd_has_link_entities(self, net_abcd_data):
         """net_ABCD.yaml has link entities AB, BC, AD."""
         eids = entity_ids_from(net_abcd_data)
@@ -238,3 +267,10 @@ class TestComponentsExample:
         """components.yaml can be loaded into a Registry."""
         registry = Registry.from_entity_centered(components_data)
         assert len(registry.component_types) > 0
+
+    def test_components_runs_audits(self, components_data):
+        """components.yaml can be audited without errors."""
+        registry = Registry.from_entity_centered(components_data)
+        runner = AuditRunner.default()
+        results = runner.run(registry)
+        assert len(results) > 0
