@@ -26,10 +26,10 @@ def parse_infrastructure():
                 if isinstance(entry, dict):
                     if description is None and "description" in entry:
                         description = str(entry["description"])
-                    if "implements" in entry:
+                    if "solution of" in entry:
                         edges.append({
                             "source": name,
-                            "target": str(entry["implements"]),
+                            "target": str(entry["solution of"]),
                         })
         resources.append({
             "name": name,

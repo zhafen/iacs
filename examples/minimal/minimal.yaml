@@ -4,4 +4,4 @@ my_task:
 
 my_infrastructure:
 - description: Infrastructure to complete the task.
-- implements: my_task
+- solution of: my_task

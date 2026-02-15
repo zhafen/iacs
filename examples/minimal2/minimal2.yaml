@@ -16,8 +16,8 @@ my_infrastructure:
     data:
         - description: The overall infrastructure used to complete the core task.
     infrastructure_for_first_task:
-        - description: This implements the first task.
-        - implements: first_subtask
+        - description: This solves the first task.
+        - solution of: first_subtask
     infrastructure_for_second_task:
-        - description: This implements the second task.
-        - implements: second_subtask
+        - description: This solves the second task.
+        - solution of: second_subtask

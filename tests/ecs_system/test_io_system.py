@@ -125,7 +125,7 @@ class TestIOSystemMinimalExample:
             ],
             "my_infrastructure": [
                 {"description": "Infrastructure to complete the task."},
-                {"implements": "my_task"},
+                {"solution of": "my_task"},
             ],
         }
 
@@ -151,10 +151,10 @@ class TestIOSystemMinimalExample:
         infra_rows = result[result["entity_id"] == "my_infrastructure"]
         assert len(infra_rows) == 2
 
-        implements_row = infra_rows[
-            infra_rows["component_type"] == "implements"
+        solution_of_row = infra_rows[
+            infra_rows["component_type"] == "solution of"
         ].iloc[0]
-        assert implements_row["component_value"] == {"value": "my_task"}
+        assert solution_of_row["component_value"] == {"value": "my_task"}
 
     def test_read_from_file(self, tmp_path):
         """Read from an actual file path."""

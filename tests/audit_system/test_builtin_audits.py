@@ -29,8 +29,8 @@ class TestRequirementCoverageAudit:
 
         assert result.passed is True
 
-    def test_passes_when_requirement_has_implements(self):
-        """Passes when requirement has an implementing solution."""
+    def test_passes_when_requirement_has_solution(self):
+        """Passes when requirement has a solution."""
         io = IOSystem()
         entity_centered = io.read_entity_centered({
             "my_task": [
@@ -38,8 +38,8 @@ class TestRequirementCoverageAudit:
                 "requirement",
             ],
             "my_solution": [
-                {"description": "Implements the requirement."},
-                {"implements": "my_task"},
+                {"description": "Solves the requirement."},
+                {"solution of": "my_task"},
             ],
         })
         registry = Registry.from_entity_centered(entity_centered)
@@ -49,8 +49,8 @@ class TestRequirementCoverageAudit:
 
         assert result.passed is True
 
-    def test_fails_when_requirement_missing_implements(self):
-        """Fails when a requirement has no implementing solution."""
+    def test_fails_when_requirement_missing_solution(self):
+        """Fails when a requirement has no solution."""
         io = IOSystem()
         entity_centered = io.read_entity_centered({
             "my_task": [
@@ -82,13 +82,13 @@ class TestRequirementCoverageAudit:
         assert "uncovered_req" in result.results["entity_id"].values
 
     def test_multiple_requirements_all_covered(self):
-        """Passes when all requirements have implementations."""
+        """Passes when all requirements have solutions."""
         io = IOSystem()
         entity_centered = io.read_entity_centered({
             "req_a": [{"description": "Requirement A."}, "requirement"],
             "req_b": [{"description": "Requirement B."}, "requirement"],
-            "solution_a": [{"implements": "req_a"}],
-            "solution_b": [{"implements": "req_b"}],
+            "solution_a": [{"solution of": "req_a"}],
+            "solution_b": [{"solution of": "req_b"}],
         })
         registry = Registry.from_entity_centered(entity_centered)
         audit = RequirementCoverageAudit()
@@ -103,7 +103,7 @@ class TestRequirementCoverageAudit:
         entity_centered = io.read_entity_centered({
             "req_a": [{"description": "Requirement A."}, "requirement"],
             "req_b": [{"description": "Requirement B."}, "requirement"],
-            "solution_a": [{"implements": "req_a"}],
+            "solution_a": [{"solution of": "req_a"}],
             # req_b has no solution
         })
         registry = Registry.from_entity_centered(entity_centered)
@@ -129,7 +129,7 @@ class TestRequirementCoverageAudit:
                     "requirement",
                 ],
             },
-            "solution": [{"implements": "parent_req.child_req"}],
+            "solution": [{"solution of": "parent_req.child_req"}],
         })
         registry = Registry.from_entity_centered(entity_centered)
         audit = RequirementCoverageAudit()
@@ -139,8 +139,8 @@ class TestRequirementCoverageAudit:
         assert result.passed is True
         assert result.results.empty or "parent_req" not in result.results["entity_id"].values
 
-    def test_fails_when_leaf_requirement_has_no_implements(self):
-        """Leaf requirement (no children) without implements fails."""
+    def test_fails_when_leaf_requirement_has_no_solution(self):
+        """Leaf requirement (no children) without solution fails."""
         io = IOSystem()
         entity_centered = io.read_entity_centered({
             "parent_req": {
@@ -177,7 +177,7 @@ class TestRequirementCoverageAudit:
                     ],
                 },
             },
-            "solution": [{"implements": "level1.level2.level3"}],
+            "solution": [{"solution of": "level1.level2.level3"}],
         })
         registry = Registry.from_entity_centered(entity_centered)
         audit = RequirementCoverageAudit()
@@ -218,14 +218,14 @@ class TestTraceabilityAudit:
 
         assert result.passed is True
 
-    def test_passes_when_entity_implements_requirement(self):
-        """Passes when non-requirement entity implements a requirement."""
+    def test_passes_when_entity_has_solution(self):
+        """Passes when non-requirement entity has a solution of component."""
         io = IOSystem()
         entity_centered = io.read_entity_centered({
             "my_req": [{"description": "A requirement."}, "requirement"],
             "my_solution": [
-                {"description": "Implements the requirement."},
-                {"implements": "my_req"},
+                {"description": "Solves the requirement."},
+                {"solution of": "my_req"},
             ],
         })
         registry = Registry.from_entity_centered(entity_centered)
@@ -240,7 +240,7 @@ class TestTraceabilityAudit:
         io = IOSystem()
         entity_centered = io.read_entity_centered({
             "orphan_entity": [
-                {"description": "No requirement or implements."},
+                {"description": "No requirement or solution."},
             ],
         })
         registry = Registry.from_entity_centered(entity_centered)

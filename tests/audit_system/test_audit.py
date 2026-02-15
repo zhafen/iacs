@@ -143,7 +143,7 @@ class TestAuditRunnerWithRegistry:
             ],
             "my_solution": [
                 {"description": "Solution for the task."},
-                {"implements": "my_task"},
+                {"solution of": "my_task"},
             ],
         })
         return Registry.from_entity_centered(entity_centered)

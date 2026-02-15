@@ -87,23 +87,23 @@ class AuditRunner:
 
 
 class RequirementCoverageAudit(Audit):
-    """Checks that requirements have implementing solutions."""
+    """Checks that requirements have solutions."""
 
     def __init__(self):
         super().__init__(name="requirement_coverage")
 
     def run(self, registry: Registry) -> AuditResult:
-        """Check that all requirements have implementations.
+        """Check that all requirements have solutions.
 
         A requirement is covered if:
-        - It has an implements reference pointing to it, OR
+        - It has a solution of reference pointing to it, OR
         - It has child requirements (sub-requirements)
 
         Args:
             registry: The Registry to audit.
 
         Returns:
-            AuditResult flagging leaf requirements without implementations.
+            AuditResult flagging leaf requirements without solutions.
         """
         if "requirement" not in registry.component_types:
             return AuditResult(passed=True)
@@ -129,34 +129,34 @@ class RequirementCoverageAudit(Audit):
             has_child_requirement
         )
 
-        # Get implemented entity IDs as DataFrame
-        if "implements" in registry.component_types:
-            implements_table = registry.view("implements")
-            if "value" in implements_table.columns:
-                implemented_df = pd.DataFrame({
-                    "implemented_id": implements_table["value"].unique()
+        # Get solved entity IDs as DataFrame
+        if "solution of" in registry.component_types:
+            solution_table = registry.view("solution of")
+            if "value" in solution_table.columns:
+                solved_df = pd.DataFrame({
+                    "solved_id": solution_table["value"].unique()
                 })
             else:
-                implemented_df = pd.DataFrame({"implemented_id": []})
+                solved_df = pd.DataFrame({"solved_id": []})
         else:
-            implemented_df = pd.DataFrame({"implemented_id": []})
+            solved_df = pd.DataFrame({"solved_id": []})
 
-        # Left join to find requirements without implements
+        # Left join to find requirements without solutions
         merged = requirements_df.merge(
-            implemented_df,
+            solved_df,
             left_on="entity_id",
-            right_on="implemented_id",
+            right_on="solved_id",
             how="left",
         )
 
-        # Uncovered = no implements AND no children
+        # Uncovered = no solution AND no children
         uncovered_df = merged[
-            merged["implemented_id"].isna() & ~merged["has_children"]
+            merged["solved_id"].isna() & ~merged["has_children"]
         ][["entity_id"]].copy()
 
         if not uncovered_df.empty:
             messages = [
-                f"Requirement '{e}' has no implementation."
+                f"Requirement '{e}' has no solution."
                 for e in uncovered_df["entity_id"]
             ]
             return AuditResult(
@@ -179,7 +179,7 @@ class TraceabilityAudit(Audit):
 
         An entity traces to a requirement if:
         - It has a requirement component, OR
-        - It has an implements component pointing to a requirement
+        - It has a solution of component pointing to a requirement
 
         Args:
             registry: The Registry to audit.
@@ -207,23 +207,23 @@ class TraceabilityAudit(Audit):
         else:
             req_entities_df = pd.DataFrame({"entity_id": [], "has_requirement": []})
 
-        # Get entities with implements components
-        if "implements" in registry.component_types:
-            impl_table = registry.view("implements")
-            impl_entities_df = pd.DataFrame({
-                "entity_id": impl_table.index.get_level_values("entity_id").unique(),
-                "has_implements": True,
+        # Get entities with solution of components
+        if "solution of" in registry.component_types:
+            solution_table = registry.view("solution of")
+            solution_entities_df = pd.DataFrame({
+                "entity_id": solution_table.index.get_level_values("entity_id").unique(),
+                "has_solution": True,
             })
         else:
-            impl_entities_df = pd.DataFrame({"entity_id": [], "has_implements": []})
+            solution_entities_df = pd.DataFrame({"entity_id": [], "has_solution": []})
 
         # Join to find entities that have neither
         merged = all_entities_df.merge(req_entities_df, on="entity_id", how="left")
-        merged = merged.merge(impl_entities_df, on="entity_id", how="left")
+        merged = merged.merge(solution_entities_df, on="entity_id", how="left")
 
-        # Orphans have neither requirement nor implements
+        # Orphans have neither requirement nor solution
         orphans_df = merged[
-            merged["has_requirement"].isna() & merged["has_implements"].isna()
+            merged["has_requirement"].isna() & merged["has_solution"].isna()
         ][["entity_id"]].copy()
 
         if not orphans_df.empty:

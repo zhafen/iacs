@@ -39,18 +39,18 @@ class TestMinimalExample:
         assert "description" in component_types
         assert "task" in component_types
 
-    def test_my_infrastructure_has_description_and_implements(self, minimal_data):
-        """my_infrastructure entity has description and implements components."""
+    def test_my_infrastructure_has_description_and_solution_of(self, minimal_data):
+        """my_infrastructure entity has description and solution of components."""
         infra = minimal_data[minimal_data["entity_id"] == "my_infrastructure"]
         component_types = infra["component_type"].tolist()
         assert "description" in component_types
-        assert "implements" in component_types
+        assert "solution of" in component_types
 
-    def test_implements_references_my_task(self, minimal_data):
-        """The implements component references my_task."""
+    def test_solution_of_references_my_task(self, minimal_data):
+        """The solution of component references my_task."""
         infra = minimal_data[minimal_data["entity_id"] == "my_infrastructure"]
-        implements = infra[infra["component_type"] == "implements"].iloc[0]
-        assert implements["component_value"] == {"value": "my_task"}
+        solution_of = infra[infra["component_type"] == "solution of"].iloc[0]
+        assert solution_of["component_value"] == {"value": "my_task"}
 
 
 class TestMinimal2Example:
