@@ -1,5 +1,6 @@
 """ECS Registry for storing and accessing component data."""
 
+import ibis
 import pandas as pd
 
 
@@ -16,12 +17,23 @@ class Registry:
         Args:
             components: A dict mapping component type names to DataFrames.
         """
+        self._con = ibis.duckdb.connect()
+        for name, df in components.items():
+            flat = df.reset_index()
+            # Cast object columns to string to avoid DuckDB type errors
+            # (handles all-null columns, lists, dicts, and other non-scalar types)
+            for col in flat.columns:
+                if flat[col].dtype == object:
+                    flat[col] = flat[col].astype(str)
+            self._con.create_table(name, flat)
+
+        # Compatibility bridge: keep _components for view() and from_entity_centered()
         self._components = dict(components)
 
     @property
     def component_types(self) -> list[str]:
         """Return the list of component types in the registry."""
-        return list(self._components.keys())
+        return list(self._con.list_tables())
 
     def view(self, component_type: str | list[str]) -> pd.DataFrame:
         """Return a copy of the dataframe for the given component type(s).

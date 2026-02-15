@@ -27,6 +27,7 @@ class TestRegistryInitialization:
         registry = Registry({"description": description_df})
 
         assert "description" in registry.component_types
+        assert "description" in registry._con.list_tables()
 
     def test_init_with_multiple_component_dataframes(self):
         """Registry can be initialized with multiple component dataframes."""
@@ -52,12 +53,15 @@ class TestRegistryInitialization:
 
         assert "description" in registry.component_types
         assert "requirement" in registry.component_types
+        assert "description" in registry._con.list_tables()
+        assert "requirement" in registry._con.list_tables()
 
     def test_init_with_empty_dict_creates_empty_registry(self):
         """Registry can be initialized with an empty dict."""
         registry = Registry({})
 
         assert len(registry.component_types) == 0
+        assert len(registry._con.list_tables()) == 0
 
     def test_init_preserves_dataframe_index_structure(self):
         """Registry preserves the multi-index structure of component dataframes."""
@@ -74,6 +78,13 @@ class TestRegistryInitialization:
         stored_df = registry.view("description")
         assert stored_df.index.names == ["entity_id", "component_index"]
         assert len(stored_df) == 2
+
+        # Verify Ibis table has correct columns and row count
+        ibis_table = registry._con.table("description")
+        assert "entity_id" in ibis_table.columns
+        assert "component_index" in ibis_table.columns
+        assert "value" in ibis_table.columns
+        assert ibis_table.count().execute() == 2
 
 
 class TestRegistryView:
