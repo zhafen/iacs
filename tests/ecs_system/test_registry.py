@@ -240,10 +240,6 @@ class TestRegistryFromEntityCenteredTableStructure:
         assert "component_type" in table.columns
         assert len(table) == 1
 
-
-class TestRegistryFromEntityCenteredMultipleEntities:
-    """Tests for from_entity_centered with multiple entities."""
-
     def test_same_component_type_from_multiple_entities(self):
         """Components of same type from different entities in same table."""
         from iacs.io_system import IOSystem
@@ -282,6 +278,65 @@ class TestRegistryFromEntityCenteredMultipleEntities:
         values = desc_rows["value"].tolist()
         assert "First description." in values
         assert "Second description." in values
+
+    def test_dict_expansion(self):
+        """Component value dicts are expanded into separate columns."""
+        from iacs.io_system import IOSystem
+
+        system = IOSystem()
+        entity_centered = system.read_entity_centered({
+            "my_entity": [
+                {"metadata": {"created_by": "Alice", "created_at": "2024-01-01"}}
+            ],
+            "my_second_entity": [
+                {"metadata": {"created_by": "Alice", "created_at": "2024-01-02"}}
+            ],
+        })
+
+        registry = Registry.from_entity_centered(entity_centered)
+        table = registry.view("metadata")
+
+        assert "created_by" in table.columns
+        assert "created_at" in table.columns
+        entity_id = eid("my_entity")
+        meta_row = table.loc[entity_id]
+        assert meta_row["created_by"].iloc[0] == "Alice"
+        assert meta_row["created_at"].iloc[0] == "2024-01-01"
+
+    def test_dict_expansion_heterogeneous_components(self):
+        """Component value dicts are expanded into separate columns."""
+        from iacs.io_system import IOSystem
+
+        system = IOSystem()
+        entity_centered = system.read_entity_centered({
+            "my_entity": [
+                "requirement",
+            ],
+            "my_second_entity": [
+                {"requirement": "constraint"}
+            ],
+            "my_third_entity": [
+                {"requirement": {"value": "constraint", "priority": 0.8}}
+            ],
+            "my_fourth_entity": [
+                {"requirement": {"priority": 0.4}}
+            ],
+        })
+
+        registry = Registry.from_entity_centered(entity_centered)
+        actual = registry.view("requirement")
+
+        expected = pd.DataFrame([
+            {"entity_id": "my_entity", "component_index": 0, "value": None, "priority": None},
+            {"entity_id": "my_second_entity", "component_index": 0, "value": None, "priority": None},
+            {"entity_id": "my_third_entity", "component_index": 0, "value": "constraint", "priority": 0.8},
+            {"entity_id": "my_fourth_entity", "component_index": 0, "value": None, "priority": 0.4},
+        ])
+
+        pd.testing.assert_frame_equal(
+            actual,
+            expected
+        )
 
 
 class TestRegistryFromEntityCenteredIdComponent:
