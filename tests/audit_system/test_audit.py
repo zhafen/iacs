@@ -1,3 +1,4 @@
+import ibis
 import pandas as pd
 import pytest
 
@@ -44,6 +45,39 @@ class TestAuditResult:
 
         assert isinstance(result.results, pd.DataFrame)
         assert result.results.empty
+
+    def test_audit_result_view_returns_ibis_table(self):
+        """AuditResult.view() returns an Ibis table from results."""
+        results_df = pd.DataFrame({"entity_id": ["entity_a", "entity_b"]})
+        result = AuditResult(passed=False, results=results_df)
+
+        table = result.view()
+
+        assert isinstance(table, ibis.expr.types.Table)
+        assert table.count().execute() == 2
+        assert "entity_id" in table.columns
+
+    def test_audit_result_view_empty_results(self):
+        """AuditResult.view() returns an empty Ibis table when results are empty."""
+        result = AuditResult(passed=True)
+
+        table = result.view()
+
+        assert isinstance(table, ibis.expr.types.Table)
+        assert table.count().execute() == 0
+
+    def test_audit_result_view_preserves_columns(self):
+        """AuditResult.view() preserves all columns from results."""
+        results_df = pd.DataFrame({
+            "entity_id": ["entity_a"],
+            "extra_info": ["some detail"],
+        })
+        result = AuditResult(passed=False, results=results_df)
+
+        table = result.view()
+
+        assert "entity_id" in table.columns
+        assert "extra_info" in table.columns
 
 
 class TestAuditInterface:

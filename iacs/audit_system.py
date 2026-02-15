@@ -27,6 +27,14 @@ class AuditResult:
     messages: list[str] = field(default_factory=list)
     results: pd.DataFrame = field(default_factory=_empty_results_df)
 
+    def view(self) -> ibis.expr.types.Table:
+        """Return the results as an Ibis table."""
+        if self.results.empty and self.results.columns.empty:
+            return ibis.memtable(
+                {"entity_id": []}, schema={"entity_id": "string"}
+            )
+        return ibis.memtable(self.results)
+
 
 class Audit:
     """A single check that evaluates some aspect of a solution design.
