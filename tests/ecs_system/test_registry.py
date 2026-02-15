@@ -1,7 +1,14 @@
+import hashlib
+
 import pandas as pd
 import pytest
 
 from iacs.registry import Registry
+
+
+def eid(path: str) -> str:
+    """Compute the expected entity_id for a given path (no alias)."""
+    return hashlib.md5(path.encode()).hexdigest()[:12]
 
 
 class TestRegistryInitialization:
@@ -156,6 +163,7 @@ class TestRegistryFromEntityCentered:
 
         assert "description" in registry.component_types
         assert "task" in registry.component_types
+        assert "id" in registry.component_types
 
     def test_from_entity_centered_empty_produces_empty_registry(self):
         """Empty entity-centered data produces empty registry."""
@@ -213,7 +221,9 @@ class TestRegistryFromEntityCenteredTableStructure:
         table = registry.view("description")
 
         assert "value" in table.columns
-        assert table.loc[("my_entity", 0), "value"] == "A simple entity."
+        entity_id = eid("my_entity")
+        desc_row = table.loc[entity_id]
+        assert "A simple entity." in desc_row["value"].values
 
     def test_tag_component_table_has_no_value_column(self):
         """Tag component tables have component_type but no value column."""
@@ -247,9 +257,9 @@ class TestRegistryFromEntityCenteredMultipleEntities:
         registry = Registry.from_entity_centered(entity_centered)
         table = registry.view("description")
 
-        assert len(table) == 2
-        assert ("entity_a", 0) in table.index
-        assert ("entity_b", 0) in table.index
+        entity_ids = table.index.get_level_values("entity_id").unique()
+        assert eid("entity_a") in entity_ids
+        assert eid("entity_b") in entity_ids
 
     def test_multiple_components_same_type_same_entity(self):
         """Multiple components of same type on one entity have different indices."""
@@ -266,9 +276,52 @@ class TestRegistryFromEntityCenteredMultipleEntities:
         registry = Registry.from_entity_centered(entity_centered)
         table = registry.view("description")
 
-        assert len(table) == 2
-        assert table.loc[("my_entity", 0), "value"] == "First description."
-        assert table.loc[("my_entity", 1), "value"] == "Second description."
+        entity_id = eid("my_entity")
+        desc_rows = table.loc[entity_id]
+        assert len(desc_rows) == 2
+        values = desc_rows["value"].tolist()
+        assert "First description." in values
+        assert "Second description." in values
+
+
+class TestRegistryFromEntityCenteredIdComponent:
+    """Tests for id component in registry built from entity-centered data."""
+
+    def test_id_component_table_has_expected_columns(self):
+        """The id component table has value, key, path, hash, alias columns."""
+        from iacs.io_system import IOSystem
+
+        system = IOSystem()
+        entity_centered = system.read_entity_centered({
+            "my_entity": [{"description": "Test."}]
+        })
+
+        registry = Registry.from_entity_centered(entity_centered)
+        table = registry.view("id")
+
+        assert "value" in table.columns
+        assert "key" in table.columns
+        assert "path" in table.columns
+        assert "hash" in table.columns
+        assert "alias" in table.columns
+
+    def test_id_component_preserves_values(self):
+        """The id component preserves all identity values."""
+        from iacs.io_system import IOSystem
+
+        system = IOSystem()
+        entity_centered = system.read_entity_centered({
+            "my_entity": [{"description": "Test."}]
+        })
+
+        registry = Registry.from_entity_centered(entity_centered)
+        table = registry.view("id")
+
+        entity_id = eid("my_entity")
+        row = table.loc[entity_id]
+        assert row["value"].iloc[0] == entity_id
+        assert row["key"].iloc[0] == "my_entity"
+        assert row["path"].iloc[0] == "my_entity"
 
 
 class TestRegistryViewMultipleComponents:
@@ -307,9 +360,9 @@ class TestRegistryViewMultipleComponents:
 
         # entity_c has no requirement, so it should be excluded
         entity_ids = result.index.get_level_values("entity_id").unique()
-        assert "entity_a" in entity_ids
-        assert "entity_b" in entity_ids
-        assert "entity_c" not in entity_ids
+        assert eid("entity_a") in entity_ids
+        assert eid("entity_b") in entity_ids
+        assert eid("entity_c") not in entity_ids
 
     def test_view_multiple_components_has_prefixed_columns(self, multi_component_registry):
         """Joined view has columns prefixed with component type."""

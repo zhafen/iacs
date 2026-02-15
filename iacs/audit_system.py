@@ -117,16 +117,27 @@ class RequirementCoverageAudit(Audit):
         if requirements_df.empty:
             return AuditResult(passed=True)
 
-        # Find requirements that have child requirements
-        # A child requirement has an entity_id starting with "{parent_id}."
-        requirement_ids = requirements_df["entity_id"].tolist()
+        # Find requirements that have child requirements using the parent component
+        requirement_ids_set = set(
+            requirements_df["entity_id"].tolist()
+        )
 
-        def has_child_requirement(entity_id: str) -> bool:
-            prefix = entity_id + "."
-            return any(rid.startswith(prefix) for rid in requirement_ids)
+        if "parent" in registry.component_types:
+            parent_table = registry.view("parent")
+            # Find parent entity_ids where the child is also a requirement
+            req_children = parent_table[
+                parent_table.index.get_level_values("entity_id").isin(
+                    requirement_ids_set
+                )
+            ]
+            parents_with_req_children = (
+                set(req_children["target"].unique()) & requirement_ids_set
+            )
+        else:
+            parents_with_req_children = set()
 
-        requirements_df["has_children"] = requirements_df["entity_id"].apply(
-            has_child_requirement
+        requirements_df["has_children"] = requirements_df["entity_id"].isin(
+            parents_with_req_children
         )
 
         # Get solved entity IDs as DataFrame

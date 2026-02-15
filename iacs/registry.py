@@ -92,10 +92,11 @@ class Registry:
                 row_data = {
                     "component_type": row["component_type"],
                 }
-                # Extract value from component_value dict if present
+                # Extract fields from component_value dict
                 component_value = row["component_value"]
-                if isinstance(component_value, dict) and "value" in component_value:
-                    row_data["value"] = component_value["value"]
+                if isinstance(component_value, dict):
+                    for k, v in component_value.items():
+                        row_data[k] = v
                 rows.append({
                     "entity_id": row["entity_id"],
                     "component_index": row["component_index"],

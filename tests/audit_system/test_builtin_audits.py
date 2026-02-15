@@ -1,3 +1,5 @@
+import hashlib
+
 from iacs.audit_system import (
     RequirementCoverageAudit,
     TraceabilityAudit,
@@ -5,6 +7,11 @@ from iacs.audit_system import (
 )
 from iacs.io_system import IOSystem
 from iacs.registry import Registry
+
+
+def eid(path: str) -> str:
+    """Compute the expected entity_id for a given path (no alias)."""
+    return hashlib.md5(path.encode()).hexdigest()[:12]
 
 
 class TestRequirementCoverageAudit:
@@ -79,7 +86,7 @@ class TestRequirementCoverageAudit:
 
         result = audit.run(registry)
 
-        assert "uncovered_req" in result.results["entity_id"].values
+        assert eid("uncovered_req") in result.results["entity_id"].values
 
     def test_multiple_requirements_all_covered(self):
         """Passes when all requirements have solutions."""
@@ -112,8 +119,8 @@ class TestRequirementCoverageAudit:
         result = audit.run(registry)
 
         assert result.passed is False
-        assert "req_b" in result.results["entity_id"].values
-        assert "req_a" not in result.results["entity_id"].values
+        assert eid("req_b") in result.results["entity_id"].values
+        assert eid("req_a") not in result.results["entity_id"].values
 
     def test_passes_when_parent_requirement_has_child_requirements(self):
         """Parent requirement is covered if it has child requirements."""
@@ -137,7 +144,7 @@ class TestRequirementCoverageAudit:
         result = audit.run(registry)
 
         assert result.passed is True
-        assert result.results.empty or "parent_req" not in result.results["entity_id"].values
+        assert result.results.empty or eid("parent_req") not in result.results["entity_id"].values
 
     def test_fails_when_leaf_requirement_has_no_solution(self):
         """Leaf requirement (no children) without solution fails."""
@@ -160,8 +167,8 @@ class TestRequirementCoverageAudit:
         result = audit.run(registry)
 
         assert result.passed is False
-        assert "parent_req.child_req" in result.results["entity_id"].values
-        assert "parent_req" not in result.results["entity_id"].values
+        assert eid("parent_req.child_req") in result.results["entity_id"].values
+        assert eid("parent_req") not in result.results["entity_id"].values
 
     def test_deeply_nested_requirements_covered_by_hierarchy(self):
         """Deeply nested requirements are covered by having children."""
@@ -261,7 +268,7 @@ class TestTraceabilityAudit:
 
         result = audit.run(registry)
 
-        assert "orphan_entity" in result.results["entity_id"].values
+        assert eid("orphan_entity") in result.results["entity_id"].values
 
 
 class TestTodoAudit:
@@ -314,8 +321,8 @@ class TestTodoAudit:
 
         result = audit.run(registry)
 
-        assert "entity_with_todo" in result.results["entity_id"].values
-        assert "entity_without_todo" not in result.results["entity_id"].values
+        assert eid("entity_with_todo") in result.results["entity_id"].values
+        assert eid("entity_without_todo") not in result.results["entity_id"].values
 
     def test_reports_todo_content_in_messages(self):
         """Reports todo content in messages."""
