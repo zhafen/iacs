@@ -23,19 +23,52 @@ class Registry:
         """Return the list of component types in the registry."""
         return list(self._components.keys())
 
-    def view(self, component_type: str) -> pd.DataFrame:
-        """Return a copy of the dataframe for the given component type.
+    def view(self, component_type: str | list[str]) -> pd.DataFrame:
+        """Return a copy of the dataframe for the given component type(s).
 
         Args:
-            component_type: The name of the component type to view.
+            component_type: The name of the component type to view, or a list
+                of component types to inner join by entity_id.
 
         Returns:
-            A copy of the component's dataframe.
+            A copy of the component's dataframe. When multiple component types
+            are provided, returns an inner join by entity_id with columns
+            prefixed by component type (e.g., "description.value").
 
         Raises:
-            KeyError: If the component type doesn't exist in the registry.
+            KeyError: If a component type doesn't exist in the registry.
         """
-        return self._components[component_type].copy()
+        if isinstance(component_type, str):
+            return self._components[component_type].copy()
+
+        # Multiple component types: inner join by entity_id
+        component_types = component_type
+        result = None
+
+        for comp_type in component_types:
+            df = self._components[comp_type].copy()
+            # Reset index to get entity_id as a column for joining
+            df = df.reset_index()
+            # Prefix columns with component type (except entity_id and component_index)
+            df = df.rename(columns={
+                col: f"{comp_type}.{col}"
+                for col in df.columns
+                if col not in ("entity_id", "component_index")
+            })
+            # Rename component_index to be component-specific
+            df = df.rename(columns={"component_index": f"{comp_type}.component_index"})
+
+            if result is None:
+                result = df
+            else:
+                # Inner join on entity_id
+                result = result.merge(df, on="entity_id", how="inner")
+
+        # Set entity_id as the index
+        if result is not None:
+            result = result.set_index("entity_id")
+
+        return result
 
     @classmethod
     def from_entity_centered(cls, entity_centered: pd.DataFrame) -> "Registry":

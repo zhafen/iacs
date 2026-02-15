@@ -269,3 +269,66 @@ class TestRegistryFromEntityCenteredMultipleEntities:
         assert len(table) == 2
         assert table.loc[("my_entity", 0), "value"] == "First description."
         assert table.loc[("my_entity", 1), "value"] == "Second description."
+
+
+class TestRegistryViewMultipleComponents:
+    """Tests for viewing multiple components joined by entity_id."""
+
+    @pytest.fixture
+    def multi_component_registry(self):
+        """Create a registry with entities having multiple component types."""
+        from iacs.io_system import IOSystem
+
+        system = IOSystem()
+        entity_centered = system.read_entity_centered({
+            "entity_a": [
+                {"description": "Entity A description."},
+                "requirement",
+            ],
+            "entity_b": [
+                {"description": "Entity B description."},
+                "requirement",
+            ],
+            "entity_c": [
+                {"description": "Entity C has no requirement."},
+            ],
+        })
+        return Registry.from_entity_centered(entity_centered)
+
+    def test_view_multiple_components_returns_dataframe(self, multi_component_registry):
+        """view() with list of components returns a DataFrame."""
+        result = multi_component_registry.view(["description", "requirement"])
+
+        assert isinstance(result, pd.DataFrame)
+
+    def test_view_multiple_components_inner_joins_by_entity_id(self, multi_component_registry):
+        """view() with list of components inner joins by entity_id."""
+        result = multi_component_registry.view(["description", "requirement"])
+
+        # entity_c has no requirement, so it should be excluded
+        entity_ids = result.index.get_level_values("entity_id").unique()
+        assert "entity_a" in entity_ids
+        assert "entity_b" in entity_ids
+        assert "entity_c" not in entity_ids
+
+    def test_view_multiple_components_has_prefixed_columns(self, multi_component_registry):
+        """Joined view has columns prefixed with component type."""
+        result = multi_component_registry.view(["description", "requirement"])
+
+        assert "description.value" in result.columns
+        # requirement is a tag, so it has component_type but not value
+        assert "requirement.component_type" in result.columns
+
+    def test_view_multiple_components_preserves_values(self, multi_component_registry):
+        """Joined view preserves the actual values from each component."""
+        result = multi_component_registry.view(["description", "requirement"])
+
+        # Check that entity_a's description value is preserved
+        assert "Entity A description." in result["description.value"].values
+
+    def test_view_single_component_as_list_works(self, multi_component_registry):
+        """view() with single-element list works like single string."""
+        result = multi_component_registry.view(["description"])
+
+        assert isinstance(result, pd.DataFrame)
+        assert "description.value" in result.columns
