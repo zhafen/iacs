@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 
+import ibis
 import pandas as pd
 
 from iacs.registry import Registry
@@ -108,62 +109,52 @@ class RequirementCoverageAudit(Audit):
         if "requirement" not in registry.component_types:
             return AuditResult(passed=True)
 
-        # Get requirements as DataFrame with entity_id column
-        requirement_table = registry.view("requirement")
-        requirements_df = pd.DataFrame({
-            "entity_id": requirement_table.index.get_level_values("entity_id").unique()
-        })
+        # Get unique requirement entity IDs
+        req_table = registry.view("requirement")
+        requirements = req_table.select("entity_id").distinct()
 
-        if requirements_df.empty:
+        if requirements.count().execute() == 0:
             return AuditResult(passed=True)
 
         # Find requirements that have child requirements using the parent component
-        requirement_ids_set = set(
-            requirements_df["entity_id"].tolist()
-        )
-
         if "parent" in registry.component_types:
             parent_table = registry.view("parent")
-            # Find parent entity_ids where the child is also a requirement
-            req_children = parent_table[
-                parent_table.index.get_level_values("entity_id").isin(
-                    requirement_ids_set
-                )
-            ]
-            parents_with_req_children = (
-                set(req_children["target"].unique()) & requirement_ids_set
+            # Children that are requirements, select their parent (target)
+            req_children = parent_table.filter(
+                parent_table.entity_id.isin(requirements.entity_id)
             )
+            parents_with_req_children = req_children.select(
+                entity_id=req_children.target
+            ).filter(
+                lambda t: t.entity_id.isin(requirements.entity_id)
+            ).distinct()
         else:
-            parents_with_req_children = set()
+            parents_with_req_children = ibis.memtable({"entity_id": []}, schema={"entity_id": "string"})
 
-        requirements_df["has_children"] = requirements_df["entity_id"].isin(
-            parents_with_req_children
-        )
-
-        # Get solved entity IDs as DataFrame
+        # Get solved entity IDs
         if "solution of" in registry.component_types:
             solution_table = registry.view("solution of")
             if "value" in solution_table.columns:
-                solved_df = pd.DataFrame({
-                    "solved_id": solution_table["value"].unique()
-                })
+                solved = solution_table.select(
+                    solved_id=solution_table.value
+                ).distinct()
             else:
-                solved_df = pd.DataFrame({"solved_id": []})
+                solved = ibis.memtable({"solved_id": []}, schema={"solved_id": "string"})
         else:
-            solved_df = pd.DataFrame({"solved_id": []})
+            solved = ibis.memtable({"solved_id": []}, schema={"solved_id": "string"})
 
         # Left join to find requirements without solutions
-        merged = requirements_df.merge(
-            solved_df,
-            left_on="entity_id",
-            right_on="solved_id",
-            how="left",
+        merged = requirements.left_join(
+            solved, requirements.entity_id == solved.solved_id
         )
 
         # Uncovered = no solution AND no children
-        uncovered_df = merged[
-            merged["solved_id"].isna() & ~merged["has_children"]
-        ][["entity_id"]].copy()
+        uncovered = merged.filter(
+            merged.solved_id.isnull()
+            & ~merged.entity_id.isin(parents_with_req_children.entity_id)
+        ).select("entity_id")
+
+        uncovered_df = uncovered.execute()
 
         if not uncovered_df.empty:
             messages = [
@@ -201,41 +192,32 @@ class TraceabilityAudit(Audit):
         if not registry.component_types:
             return AuditResult(passed=True)
 
-        # Collect all entity IDs into a DataFrame
-        all_entity_ids = []
-        for component_type in registry.component_types:
-            table = registry.view(component_type)
-            all_entity_ids.extend(table.index.get_level_values("entity_id").tolist())
-        all_entities_df = pd.DataFrame({"entity_id": pd.Series(all_entity_ids).unique()})
+        # Collect all unique entity IDs via union
+        tables = [
+            registry.view(ct).select("entity_id").distinct()
+            for ct in registry.component_types
+        ]
+        all_entities = ibis.union(*tables).distinct()
 
         # Get entities with requirement components
         if "requirement" in registry.component_types:
-            req_table = registry.view("requirement")
-            req_entities_df = pd.DataFrame({
-                "entity_id": req_table.index.get_level_values("entity_id").unique(),
-                "has_requirement": True,
-            })
+            req_entities = registry.view("requirement").select("entity_id").distinct()
         else:
-            req_entities_df = pd.DataFrame({"entity_id": [], "has_requirement": []})
+            req_entities = ibis.memtable({"entity_id": []}, schema={"entity_id": "string"})
 
         # Get entities with solution of components
         if "solution of" in registry.component_types:
-            solution_table = registry.view("solution of")
-            solution_entities_df = pd.DataFrame({
-                "entity_id": solution_table.index.get_level_values("entity_id").unique(),
-                "has_solution": True,
-            })
+            solution_entities = registry.view("solution of").select("entity_id").distinct()
         else:
-            solution_entities_df = pd.DataFrame({"entity_id": [], "has_solution": []})
-
-        # Join to find entities that have neither
-        merged = all_entities_df.merge(req_entities_df, on="entity_id", how="left")
-        merged = merged.merge(solution_entities_df, on="entity_id", how="left")
+            solution_entities = ibis.memtable({"entity_id": []}, schema={"entity_id": "string"})
 
         # Orphans have neither requirement nor solution
-        orphans_df = merged[
-            merged["has_requirement"].isna() & merged["has_solution"].isna()
-        ][["entity_id"]].copy()
+        orphans = all_entities.filter(
+            ~all_entities.entity_id.isin(req_entities.entity_id)
+            & ~all_entities.entity_id.isin(solution_entities.entity_id)
+        )
+
+        orphans_df = orphans.execute()
 
         if not orphans_df.empty:
             messages = [
@@ -271,23 +253,23 @@ class TodoAudit(Audit):
 
         todo_table = registry.view("todo")
 
-        if todo_table.empty:
+        if todo_table.count().execute() == 0:
             return AuditResult(passed=True)
 
-        # Build results DataFrame with entity_id
-        results_df = pd.DataFrame({
-            "entity_id": todo_table.index.get_level_values("entity_id").unique()
-        })
+        # Build results DataFrame with unique entity_ids
+        results_df = todo_table.select("entity_id").distinct().execute()
 
-        # Build messages from the DataFrame
-        messages = []
-        for entity_id, component_index in todo_table.index:
-            todo_value = (
-                todo_table.loc[(entity_id, component_index), "value"]
-                if "value" in todo_table.columns
-                else ""
-            )
-            messages.append(f"{entity_id}: {todo_value}")
+        # Build messages from the todo rows
+        if "value" in todo_table.columns:
+            msg_df = todo_table.select("entity_id", "value").execute()
+        else:
+            msg_df = todo_table.select("entity_id").execute()
+            msg_df["value"] = ""
+
+        messages = [
+            f"{row['entity_id']}: {row['value']}"
+            for _, row in msg_df.iterrows()
+        ]
 
         return AuditResult(
             passed=False,

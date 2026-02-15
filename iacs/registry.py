@@ -50,10 +50,7 @@ class Registry:
         if isinstance(component_type, str):
             if component_type not in self._con.list_tables():
                 raise KeyError(component_type)
-            table = self._con.table(component_type)
-            df = table.execute()
-            df = df.set_index(["entity_id", "component_index"])
-            return df
+            return self._con.table(component_type)
 
         # Multiple component types: inner join by entity_id
         component_types = component_type
@@ -78,8 +75,16 @@ class Registry:
             else:
                 result = result.inner_join(table, "entity_id")
 
+        return result
+
+    def view_df(self, component_type: str | list[str]) -> pd.DataFrame:
+        """Convenience method to return the view as a DataFrame."""
+        result = self.view(component_type)
         df = result.execute()
-        df = df.set_index("entity_id")
+        if isinstance(component_type, str):
+            df = df.set_index(["entity_id", "component_index"])
+        else:
+            df = df.set_index("entity_id")
         return df
 
     @classmethod
