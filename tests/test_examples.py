@@ -213,3 +213,28 @@ class TestNetworksNetABCD:
         assert eid("AB") in eids
         assert eid("BC") in eids
         assert eid("AD") in eids
+
+
+COMPONENTS_DIR = Path(__file__).parent.parent / "components"
+
+
+class TestComponentsExample:
+    """Tests for the components/components.yaml file."""
+
+    @pytest.fixture
+    def components_data(self):
+        """Load components.yaml data."""
+        system = IOSystem()
+        return system.read_entity_centered_file(
+            COMPONENTS_DIR / "components.yaml"
+        )
+
+    def test_components_loads_without_error(self, components_data):
+        """components.yaml loads without error."""
+        assert components_data is not None
+        assert len(components_data) > 0
+
+    def test_components_creates_registry(self, components_data):
+        """components.yaml can be loaded into a Registry."""
+        registry = Registry.from_entity_centered(components_data)
+        assert len(registry.component_types) > 0
