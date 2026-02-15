@@ -75,7 +75,7 @@ class TestRegistryInitialization:
 
         registry = Registry({"description": description_df})
 
-        stored_df = registry.view("description")
+        stored_df = registry.view_df("description")
         assert stored_df.index.names == ["entity_id", "component_index"]
         assert len(stored_df) == 2
 
@@ -114,14 +114,14 @@ class TestRegistryView:
 
     def test_view_returns_component_dataframe(self, sample_registry):
         """view() returns the dataframe for the specified component type."""
-        result = sample_registry.view("description")
+        result = sample_registry.view_df("description")
 
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 2
 
     def test_view_returns_correct_data(self, sample_registry):
         """view() returns the correct data for the component."""
-        result = sample_registry.view("requirement")
+        result = sample_registry.view_df("requirement")
 
         assert "value" in result.columns
         assert "priority" in result.columns
@@ -131,14 +131,14 @@ class TestRegistryView:
     def test_view_nonexistent_component_raises_keyerror(self, sample_registry):
         """view() raises KeyError for a component type that doesn't exist."""
         with pytest.raises(KeyError):
-            sample_registry.view("nonexistent")
+            sample_registry.view_df("nonexistent")
 
     def test_view_returns_copy_not_reference(self, sample_registry):
         """view() returns a copy to prevent accidental modification."""
-        result = sample_registry.view("description")
+        result = sample_registry.view_df("description")
         result.loc[("iacs", 0), "value"] = "Modified"
 
-        original = sample_registry.view("description")
+        original = sample_registry.view_df("description")
         assert original.loc[("iacs", 0), "value"] == "A tool for architects"
 
 
@@ -201,7 +201,7 @@ class TestRegistryFromEntityCenteredTableStructure:
         })
 
         registry = Registry.from_entity_centered(entity_centered)
-        table = registry.view("description")
+        table = registry.view_df("description")
 
         assert table.index.names == ["entity_id", "component_index"]
 
@@ -215,7 +215,7 @@ class TestRegistryFromEntityCenteredTableStructure:
         })
 
         registry = Registry.from_entity_centered(entity_centered)
-        table = registry.view("description")
+        table = registry.view_df("description")
 
         assert "component_type" in table.columns
 
@@ -229,7 +229,7 @@ class TestRegistryFromEntityCenteredTableStructure:
         })
 
         registry = Registry.from_entity_centered(entity_centered)
-        table = registry.view("description")
+        table = registry.view_df("description")
 
         assert "value" in table.columns
         entity_id = eid("my_entity")
@@ -246,7 +246,7 @@ class TestRegistryFromEntityCenteredTableStructure:
         })
 
         registry = Registry.from_entity_centered(entity_centered)
-        table = registry.view("task")
+        table = registry.view_df("task")
 
         assert "component_type" in table.columns
         assert len(table) == 1
@@ -262,7 +262,7 @@ class TestRegistryFromEntityCenteredTableStructure:
         })
 
         registry = Registry.from_entity_centered(entity_centered)
-        table = registry.view("description")
+        table = registry.view_df("description")
 
         entity_ids = table.index.get_level_values("entity_id").unique()
         assert eid("entity_a") in entity_ids
@@ -281,7 +281,7 @@ class TestRegistryFromEntityCenteredTableStructure:
         })
 
         registry = Registry.from_entity_centered(entity_centered)
-        table = registry.view("description")
+        table = registry.view_df("description")
 
         entity_id = eid("my_entity")
         desc_rows = table.loc[entity_id]
@@ -305,7 +305,7 @@ class TestRegistryFromEntityCenteredTableStructure:
         })
 
         registry = Registry.from_entity_centered(entity_centered)
-        table = registry.view("metadata")
+        table = registry.view_df("metadata")
 
         assert "created_by" in table.columns
         assert "created_at" in table.columns
@@ -335,7 +335,7 @@ class TestRegistryFromEntityCenteredTableStructure:
         })
 
         registry = Registry.from_entity_centered(entity_centered)
-        actual = registry.view("requirement")
+        actual = registry.view_df("requirement")
 
         expected = pd.DataFrame([
             {"entity_id": eid("my_entity"), "component_index": 1, "component_type": "requirement", "value": None, "priority": None},
@@ -363,7 +363,7 @@ class TestRegistryFromEntityCenteredIdComponent:
         })
 
         registry = Registry.from_entity_centered(entity_centered)
-        table = registry.view("id")
+        table = registry.view_df("id")
 
         assert "value" in table.columns
         assert "key" in table.columns
@@ -381,7 +381,7 @@ class TestRegistryFromEntityCenteredIdComponent:
         })
 
         registry = Registry.from_entity_centered(entity_centered)
-        table = registry.view("id")
+        table = registry.view_df("id")
 
         entity_id = eid("my_entity")
         row = table.loc[entity_id]
@@ -416,13 +416,13 @@ class TestRegistryViewMultipleComponents:
 
     def test_view_multiple_components_returns_dataframe(self, multi_component_registry):
         """view() with list of components returns a DataFrame."""
-        result = multi_component_registry.view(["description", "requirement"])
+        result = multi_component_registry.view_df(["description", "requirement"])
 
         assert isinstance(result, pd.DataFrame)
 
     def test_view_multiple_components_inner_joins_by_entity_id(self, multi_component_registry):
         """view() with list of components inner joins by entity_id."""
-        result = multi_component_registry.view(["description", "requirement"])
+        result = multi_component_registry.view_df(["description", "requirement"])
 
         # entity_c has no requirement, so it should be excluded
         entity_ids = result.index.get_level_values("entity_id").unique()
@@ -432,7 +432,7 @@ class TestRegistryViewMultipleComponents:
 
     def test_view_multiple_components_has_prefixed_columns(self, multi_component_registry):
         """Joined view has columns prefixed with component type."""
-        result = multi_component_registry.view(["description", "requirement"])
+        result = multi_component_registry.view_df(["description", "requirement"])
 
         assert "description.value" in result.columns
         # requirement is a tag, so it has component_type but not value
@@ -440,14 +440,14 @@ class TestRegistryViewMultipleComponents:
 
     def test_view_multiple_components_preserves_values(self, multi_component_registry):
         """Joined view preserves the actual values from each component."""
-        result = multi_component_registry.view(["description", "requirement"])
+        result = multi_component_registry.view_df(["description", "requirement"])
 
         # Check that entity_a's description value is preserved
         assert "Entity A description." in result["description.value"].values
 
     def test_view_single_component_as_list_works(self, multi_component_registry):
         """view() with single-element list works like single string."""
-        result = multi_component_registry.view(["description"])
+        result = multi_component_registry.view_df(["description"])
 
         assert isinstance(result, pd.DataFrame)
         assert "description.value" in result.columns
