@@ -27,9 +27,6 @@ class Registry:
                     flat[col] = flat[col].astype(str)
             self._con.create_table(name, flat)
 
-        # Compatibility bridge: keep _components for view() and from_entity_centered()
-        self._components = dict(components)
-
     @property
     def component_types(self) -> list[str]:
         """Return the list of component types in the registry."""
@@ -51,36 +48,39 @@ class Registry:
             KeyError: If a component type doesn't exist in the registry.
         """
         if isinstance(component_type, str):
-            return self._components[component_type].copy()
+            if component_type not in self._con.list_tables():
+                raise KeyError(component_type)
+            table = self._con.table(component_type)
+            df = table.execute()
+            df = df.set_index(["entity_id", "component_index"])
+            return df
 
         # Multiple component types: inner join by entity_id
         component_types = component_type
         result = None
 
         for comp_type in component_types:
-            df = self._components[comp_type].copy()
-            # Reset index to get entity_id as a column for joining
-            df = df.reset_index()
-            # Prefix columns with component type (except entity_id and component_index)
-            df = df.rename(columns={
-                col: f"{comp_type}.{col}"
-                for col in df.columns
+            if comp_type not in self._con.list_tables():
+                raise KeyError(comp_type)
+            table = self._con.table(comp_type)
+            # Rename non-join columns with component type prefix
+            # Ibis rename mapping is {new_name: old_name}
+            rename_map = {
+                f"{comp_type}.{col}": col
+                for col in table.columns
                 if col not in ("entity_id", "component_index")
-            })
-            # Rename component_index to be component-specific
-            df = df.rename(columns={"component_index": f"{comp_type}.component_index"})
+            }
+            rename_map[f"{comp_type}.component_index"] = "component_index"
+            table = table.rename(rename_map)
 
             if result is None:
-                result = df
+                result = table
             else:
-                # Inner join on entity_id
-                result = result.merge(df, on="entity_id", how="inner")
+                result = result.inner_join(table, "entity_id")
 
-        # Set entity_id as the index
-        if result is not None:
-            result = result.set_index("entity_id")
-
-        return result
+        df = result.execute()
+        df = df.set_index("entity_id")
+        return df
 
     @classmethod
     def from_entity_centered(cls, entity_centered: pd.DataFrame) -> "Registry":
