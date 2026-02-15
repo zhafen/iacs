@@ -205,20 +205,6 @@ class TestRegistryFromEntityCenteredTableStructure:
 
         assert table.index.names == ["entity_id", "component_index"]
 
-    def test_component_table_has_component_type_column(self):
-        """Component tables have a component_type column."""
-        from iacs.io_system import IOSystem
-
-        system = IOSystem()
-        entity_centered = system.read_entity_centered({
-            "my_entity": [{"description": "A simple entity."}]
-        })
-
-        registry = Registry.from_entity_centered(entity_centered)
-        table = registry.view_df("description")
-
-        assert "component_type" in table.columns
-
     def test_component_table_has_value_column_for_value_components(self):
         """Value component tables have a value column."""
         from iacs.io_system import IOSystem
@@ -237,7 +223,7 @@ class TestRegistryFromEntityCenteredTableStructure:
         assert "A simple entity." in desc_row["value"].values
 
     def test_tag_component_table_has_no_value_column(self):
-        """Tag component tables have component_type but no value column."""
+        """Tag component tables have no value column."""
         from iacs.io_system import IOSystem
 
         system = IOSystem()
@@ -248,7 +234,7 @@ class TestRegistryFromEntityCenteredTableStructure:
         registry = Registry.from_entity_centered(entity_centered)
         table = registry.view_df("task")
 
-        assert "component_type" in table.columns
+        assert "value" not in table.columns
         assert len(table) == 1
 
     def test_same_component_type_from_multiple_entities(self):
@@ -338,10 +324,10 @@ class TestRegistryFromEntityCenteredTableStructure:
         actual = registry.view_df("requirement")
 
         expected = pd.DataFrame([
-            {"entity_id": eid("my_entity"), "component_index": 1, "component_type": "requirement", "value": None, "priority": None},
-            {"entity_id": eid("my_second_entity"), "component_index": 1, "component_type": "requirement", "value": "constraint", "priority": None},
-            {"entity_id": eid("my_third_entity"), "component_index": 1, "component_type": "requirement", "value": "constraint", "priority": 0.8},
-            {"entity_id": eid("my_fourth_entity"), "component_index": 1, "component_type": "requirement", "value": None, "priority": 0.4},
+            {"entity_id": eid("my_entity"), "component_index": 1, "value": None, "priority": None},
+            {"entity_id": eid("my_second_entity"), "component_index": 1, "value": "constraint", "priority": None},
+            {"entity_id": eid("my_third_entity"), "component_index": 1, "value": "constraint", "priority": 0.8},
+            {"entity_id": eid("my_fourth_entity"), "component_index": 1, "value": None, "priority": 0.4},
         ]).set_index(["entity_id", "component_index"])
 
         pd.testing.assert_frame_equal(
@@ -431,23 +417,25 @@ class TestRegistryViewMultipleComponents:
         assert eid("entity_c") not in entity_ids
 
     def test_view_multiple_components_has_prefixed_columns(self, multi_component_registry):
-        """Joined view has columns prefixed with component type."""
+        """Joined view has columns prefixed for overlapping names."""
         result = multi_component_registry.view_df(["description", "requirement"])
 
-        assert "description.value" in result.columns
-        # requirement is a tag, so it has component_type but not value
-        assert "requirement.component_type" in result.columns
+        # component_index overlaps, so both get prefixed
+        assert "description.component_index" in result.columns
+        assert "requirement.component_index" in result.columns
+        # value is only in description, stays unprefixed
+        assert "value" in result.columns
 
     def test_view_multiple_components_preserves_values(self, multi_component_registry):
         """Joined view preserves the actual values from each component."""
         result = multi_component_registry.view_df(["description", "requirement"])
 
         # Check that entity_a's description value is preserved
-        assert "Entity A description." in result["description.value"].values
+        assert "Entity A description." in result["value"].values
 
     def test_view_single_component_as_list_works(self, multi_component_registry):
         """view() with single-element list works like single string."""
         result = multi_component_registry.view_df(["description"])
 
         assert isinstance(result, pd.DataFrame)
-        assert "description.value" in result.columns
+        assert "value" in result.columns

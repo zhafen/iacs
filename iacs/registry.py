@@ -3,6 +3,8 @@
 import ibis
 import pandas as pd
 
+ibis.options.interactive = True
+
 
 class Registry:
     """A registry that stores ECS component data as dataframes.
@@ -33,6 +35,10 @@ class Registry:
         """Return the list of component types in the registry."""
         return list(self._component_types)
 
+    def table(self, key: str):
+        """Return the Ibis table for the given component type."""
+        return self._con.table(key)
+
     def view(self, component_type: str | list[str]) -> pd.DataFrame:
         """Return a copy of the dataframe for the given component type(s).
 
@@ -57,24 +63,23 @@ class Registry:
         component_types = component_type
         result = None
 
-        for comp_type in component_types:
+        for i, comp_type in enumerate(component_types):
             if comp_type not in self._con.list_tables():
                 raise KeyError(comp_type)
             table = self._con.table(comp_type)
-            # Rename non-join columns with component type prefix
-            # Ibis rename mapping is {new_name: old_name}
-            rename_map = {
-                f"{comp_type}.{col}": col
-                for col in table.columns
-                if col not in ("entity_id", "component_index")
-            }
-            rename_map[f"{comp_type}.component_index"] = "component_index"
-            table = table.rename(rename_map)
 
             if result is None:
                 result = table
             else:
-                result = result.inner_join(table, "entity_id")
+                if i == 1:
+                    lname = f"{component_types[0]}.{{name}}"
+                    rname = f"{comp_type}.{{name}}"
+                else:
+                    lname = "{name}"
+                    rname = f"{comp_type}.{{name}}"
+                result = result.inner_join(
+                    table, "entity_id", lname=lname, rname=rname
+                )
 
         return result
 
@@ -107,9 +112,7 @@ class Registry:
             # Build the component table with multi-index
             rows = []
             for _, row in group.iterrows():
-                row_data = {
-                    "component_type": row["component_type"],
-                }
+                row_data = {}
                 # Extract fields from component_value dict
                 component_value = row["component_value"]
                 if isinstance(component_value, dict):
