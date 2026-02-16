@@ -488,15 +488,18 @@ ecs_framework:
                         DAG frameworks like Hamilton are battle-tested, widely
                         used, and actively maintained. This means fewer bugs,
                         better documentation, and community support.
+                    - weight: 0.7
                 pro_built_in_visualization:
                     - description: >
                         Hamilton provides DAG visualization out of the box,
                         making it easy to inspect and debug transform pipelines.
+                    - weight: 0.6
                 pro_familiar_pattern:
                     - description: >
                         Functions-as-nodes is a well-known pattern in the data
                         engineering community. New contributors can understand
                         the transform system quickly.
+                    - weight: 0.5
                 con_impedance_mismatch:
                     - description: >
                         In an ECS framework, joins between component tables are
@@ -506,18 +509,21 @@ ecs_framework:
                         the DAG nodes end up being thin wrappers around
                         registry.table() calls, adding boilerplate without adding
                         value.
+                    - weight: -0.9
                 con_module_level_function_requirement:
                     - description: >
                         Hamilton requires dataflow functions to live in a
                         separate .py module with return type hints on every
                         function. This makes notebook-based or dynamic
                         workflows awkward, requiring sys.modules hacks to work.
+                    - weight: -0.7
                 con_result_type_assumptions:
                     - description: >
                         Hamilton's default result builder assumes pandas
                         DataFrames. Using Ibis tables requires overriding the
                         result builder (e.g. DictResult), and the framework may
                         not fully support lazy evaluation semantics.
+                    - weight: -0.6
             custom_approach:
                 data:
                     - description: >
@@ -531,33 +537,39 @@ ecs_framework:
                         and Registry.table(), leveraging the ECS data model
                         where joins on entity_id are the natural operation.
                         No impedance mismatch.
+                    - weight: 0.9
                 pro_simplicity:
                     - description: >
                         No external dependency required. The transform system
                         can be exactly as complex as needed and no more,
                         following the iacs principle of minimizing duplication
                         and keeping things simple.
+                    - weight: 0.8
                 pro_ibis_native:
                     - description: >
                         Can be designed from the start around Ibis lazy
                         expressions, fully leveraging deferred execution and
                         backend-agnostic queries without adapter workarounds.
+                    - weight: 0.7
                 con_maintenance_burden:
                     - description: >
                         Any features that a DAG framework provides for free
                         (dependency resolution, cycle detection, visualization,
                         caching) would need to be built and maintained in-house.
+                    - weight: -0.6
                 con_less_proven:
                     - description: >
                         A custom system has no community validation. Edge cases
                         and design mistakes will only be discovered through use,
                         whereas established frameworks have already encountered
                         and resolved many of these issues.
+                    - weight: -0.5
                 con_limited_visualization:
                     - description: >
                         DAG visualization would need to be built separately or
                         omitted entirely, losing a useful debugging and
                         communication tool.
+                    - weight: -0.4
     ecs_data_formats:
         data:
             - description: iacs stores ECS data in a few formats.
