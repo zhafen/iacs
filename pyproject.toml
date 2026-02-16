@@ -9,6 +9,7 @@ dependencies = [
     "ibis-framework[duckdb]>=2.0.0",
     "pandas>=2.0.0",
     "pyyaml>=6.0",
+    "sf-hamilton>=1.88.0",
 ]
 
 [project.optional-dependencies]
