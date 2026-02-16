@@ -474,7 +474,90 @@ ecs_framework:
                     for querying, filtering, and manipulating component data.
                     (Not yet implemented.)
                 - system
-                - todo: Define transform operations.
+                - todo: Choose between DAG-based and custom approach and implement.
+            dag_based_approach:
+                data:
+                    - description: >
+                        Use an existing DAG framework (e.g. Hamilton) where each
+                        transform is a Python function whose name is the output
+                        node and whose parameters declare dependencies on other
+                        nodes. The framework handles dependency resolution,
+                        execution ordering, and visualization.
+                pro_mature_ecosystem:
+                    - description: >
+                        DAG frameworks like Hamilton are battle-tested, widely
+                        used, and actively maintained. This means fewer bugs,
+                        better documentation, and community support.
+                pro_built_in_visualization:
+                    - description: >
+                        Hamilton provides DAG visualization out of the box,
+                        making it easy to inspect and debug transform pipelines.
+                pro_familiar_pattern:
+                    - description: >
+                        Functions-as-nodes is a well-known pattern in the data
+                        engineering community. New contributors can understand
+                        the transform system quickly.
+                con_impedance_mismatch:
+                    - description: >
+                        In an ECS framework, joins between component tables are
+                        a core operation handled automatically by Registry.view().
+                        DAG frameworks model linear pipelines of transforms, not
+                        the star-schema joins that are natural in ECS. This means
+                        the DAG nodes end up being thin wrappers around
+                        registry.table() calls, adding boilerplate without adding
+                        value.
+                con_module_level_function_requirement:
+                    - description: >
+                        Hamilton requires dataflow functions to live in a
+                        separate .py module with return type hints on every
+                        function. This makes notebook-based or dynamic
+                        workflows awkward, requiring sys.modules hacks to work.
+                con_result_type_assumptions:
+                    - description: >
+                        Hamilton's default result builder assumes pandas
+                        DataFrames. Using Ibis tables requires overriding the
+                        result builder (e.g. DictResult), and the framework may
+                        not fully support lazy evaluation semantics.
+            custom_approach:
+                data:
+                    - description: >
+                        Build a lightweight transform system tailored to ECS
+                        semantics. Transforms would operate directly on
+                        Registry objects using the existing view() and table()
+                        API, with joins handled naturally by the component model.
+                pro_native_ecs_integration:
+                    - description: >
+                        A custom system can work directly with Registry.view()
+                        and Registry.table(), leveraging the ECS data model
+                        where joins on entity_id are the natural operation.
+                        No impedance mismatch.
+                pro_simplicity:
+                    - description: >
+                        No external dependency required. The transform system
+                        can be exactly as complex as needed and no more,
+                        following the iacs principle of minimizing duplication
+                        and keeping things simple.
+                pro_ibis_native:
+                    - description: >
+                        Can be designed from the start around Ibis lazy
+                        expressions, fully leveraging deferred execution and
+                        backend-agnostic queries without adapter workarounds.
+                con_maintenance_burden:
+                    - description: >
+                        Any features that a DAG framework provides for free
+                        (dependency resolution, cycle detection, visualization,
+                        caching) would need to be built and maintained in-house.
+                con_less_proven:
+                    - description: >
+                        A custom system has no community validation. Edge cases
+                        and design mistakes will only be discovered through use,
+                        whereas established frameworks have already encountered
+                        and resolved many of these issues.
+                con_limited_visualization:
+                    - description: >
+                        DAG visualization would need to be built separately or
+                        omitted entirely, losing a useful debugging and
+                        communication tool.
     ecs_data_formats:
         data:
             - description: iacs stores ECS data in a few formats.
