@@ -379,14 +379,14 @@ ecs_framework:
         data:
             - description: >
                 The infrastructure that supports the ECS framework. The system
-                consists of a Registry for component-centered data storage,
+                consists of a Registry for component-first data storage,
                 an IOSystem for file I/O and format conversion, and a
                 TransformSystem for data manipulation.
             - system
         registry:
             data:
                 - description: >
-                    Stores ECS data in component-centered format. Each component
+                    Stores ECS data in component-first format. Each component
                     type has its own table (DataFrame) with a multi-index of
                     (entity_id, component_index).
                 - system
@@ -406,12 +406,12 @@ ecs_framework:
                     component_type [str]: The component type to view.
                 - output:
                     table [dataframe]: Copy of the component table.
-            from_entity_centered:
+            from_entity_first:
                 - description: >
-                    Class method that constructs a Registry from entity-centered
+                    Class method that constructs a Registry from entity-first
                     data. Groups components by type into separate tables.
                 - input:
-                    entity_centered [dataframe]: >
+                    entity_first [dataframe]: >
                         Entity-centered DataFrame with columns: entity_id,
                         component_index, component_type, component_value.
                 - output:
@@ -421,12 +421,12 @@ ecs_framework:
             data:
                 - description: >
                     Handles file I/O and format conversion for ECS data.
-                    Converts between entity-centered format (for human editing)
-                    and component-centered format (Registry, for querying).
+                    Converts between entity-first format (for human editing)
+                    and component-first format (Registry, for querying).
                 - system
-            read_entity_centered:
+            read_entity_first:
                 - description: >
-                    Parse entity-centered data (dict) into a flat DataFrame with
+                    Parse entity-first data (dict) into a flat DataFrame with
                     one row per component.
                 - input:
                     data [dict]: Entity-centered data structure.
@@ -434,34 +434,34 @@ ecs_framework:
                     df [dataframe]: >
                         DataFrame with columns: entity_id, component_index,
                         component_type, component_value.
-            read_entity_centered_file:
+            read_entity_first_file:
                 - description: >
-                    Read entity-centered data from a YAML file.
+                    Read entity-first data from a YAML file.
                 - input:
                     path [str]: Path to the YAML file.
                 - output:
-                    df [dataframe]: Parsed entity-centered DataFrame.
-            to_entity_centered:
+                    df [dataframe]: Parsed entity-first DataFrame.
+            to_entity_first:
                 - description: >
-                    Convert component-centered Registry to entity-centered
+                    Convert component-first Registry to entity-first
                     DataFrame. (Not yet implemented.)
                 - input:
                     registry [registry]: Component-centered Registry.
                 - output:
                     df [dataframe]: Entity-centered DataFrame.
                 - todo: Not yet implemented.
-            write_entity_centered:
+            write_entity_first:
                 - description: >
-                    Convert entity-centered DataFrame to dict for serialization.
+                    Convert entity-first DataFrame to dict for serialization.
                     (Not yet implemented.)
                 - input:
                     df [dataframe]: Entity-centered DataFrame.
                 - output:
                     data [dict]: Entity-centered data structure.
                 - todo: Not yet implemented.
-            write_entity_centered_file:
+            write_entity_first_file:
                 - description: >
-                    Write entity-centered data to a YAML file.
+                    Write entity-first data to a YAML file.
                     (Not yet implemented.)
                 - input:
                     df [dataframe]: Entity-centered DataFrame.
@@ -573,10 +573,10 @@ ecs_framework:
     ecs_data_formats:
         data:
             - description: iacs stores ECS data in a few formats.
-        entity_centered:
+        entity_first:
             data:
                 - description: >
-                    The entity-centered ECS format organizes the data around entities,
+                    The entity-first ECS format organizes the data around entities,
                     grouping together components associated with an entity.
                     This format is best for inspecting a single entity, and is
                     typically best for manual data input, often via yaml.
@@ -709,10 +709,10 @@ ecs_framework:
                                     ((component_type)) has ((schema)) as an ancestore.
                                     In such a case, the dictionary defines the schema,
                                     with a key per column.
-        component_centered:
+        component_first:
             data:
                 - description: >
-                    The component-centered ECS format organizes the data around
+                    The component-first ECS format organizes the data around
                     component types, grouping together component instances of the
                     same type. This format is best for querying and analysis.
                 - requirement: constraint
@@ -909,7 +909,7 @@ iacs_component:
                 Entity ID, also referred to as "entity_id" elsewhere. Is the coalesce
                 of the alias and the hash.
             key [str]: >
-                The entity key is the key for an entity in the entity-centered data 
+                The entity key is the key for an entity in the entity-first data 
                 format, inside a given parent entity.
             path [str]: >
                 The path to the entity is the chain of ((id.key)) values that uniquely
