@@ -8,6 +8,7 @@ dependencies = [
     "flask>=3.0.0",
     "ibis-framework[duckdb]>=2.0.0",
     "pandas>=2.0.0",
+    "pydantic>=2.10.6",
     "pyyaml>=6.0",
     "sf-hamilton>=1.88.0",
 ]
