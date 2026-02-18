@@ -1,6 +1,6 @@
 """Hamilton DAG for converting entity-centered data to component-centered data."""
 
-from hamilton.function_modifiers import extract_fields
+from hamilton.function_modifiers import extract_fields, unpack_fields
 import ibis
 import pydantic
 from ..registry import Registry
@@ -43,8 +43,8 @@ def flattened_entity_first_data(raw_entity_first_data: dict) -> dict:
 
 @extract_fields(
     {
-        "schema": dict,
-        "parent": ibis.Table,
+        "schema": list,
+        "parent": list,
     }
 )
 def component_first_data(flattened_entity_first_data: dict) -> dict[str, list]:
