@@ -9,6 +9,7 @@ import pydantic
 import pytest
 
 from iacs.transforms.manifest_to_registry import (
+    _hash_path,
     raw_entity_first_data,
     flattened_entity_first_data,
     component_first_data,
@@ -73,17 +74,31 @@ def nested_entity_data():
 
 @pytest.fixture
 def flat_entity_data():
-    """Flattened entity-first data (no hierarchy, parent components added)."""
+    """Flattened entity-first data (no hierarchy, parent components added) with hashed IDs."""
+    core_id = _hash_path("core_task")
+    sub_id = _hash_path("core_task.subtask_a")
     return {
-        "core_task": [
+        core_id: [
             {"description": "The main task."},
             "task",
         ],
-        "core_task.subtask_a": [
+        sub_id: [
             {"description": "A subtask."},
             "task",
-            {"parent": "core_task"},
+            {"parent": core_id},
         ],
+    }
+
+
+@pytest.fixture
+def flat_entity_name_to_id():
+    """Name-to-id mapping corresponding to flat_entity_data."""
+    core_id = _hash_path("core_task")
+    sub_id = _hash_path("core_task.subtask_a")
+    return {
+        "core_task": core_id,
+        "subtask_a": sub_id,
+        "core_task.subtask_a": sub_id,
     }
 
 
@@ -194,25 +209,39 @@ class TestFlattenedEntityFirstData:
             ],
         }
         result = flattened_entity_first_data(data)
-        assert "my_task" in result
-        assert isinstance(result["my_task"], list)
+        flattened = result["flattened_data"]
+        task_id = _hash_path("my_task")
+        assert task_id in flattened
+        assert isinstance(flattened[task_id], list)
+
+    def test_name_to_id_mapping_returned(self):
+        """Should return a name_to_id mapping alongside flattened data."""
+        data = {
+            "my_task": [
+                {"description": "A task."},
+            ],
+        }
+        result = flattened_entity_first_data(data)
+        assert "name_to_id" in result
+        assert "my_task" in result["name_to_id"]
+        assert result["name_to_id"]["my_task"] == _hash_path("my_task")
 
     def test_nested_entities_are_flattened(self, nested_entity_data):
         result = flattened_entity_first_data(nested_entity_data)
-        # Parent entity should be present
-        assert "core_task" in result
-        # Child entity should be present with dotted path or similar key
-        child_keys = [k for k in result if k != "core_task"]
+        flattened = result["flattened_data"]
+        core_id = _hash_path("core_task")
+        assert core_id in flattened
+        child_keys = [k for k in flattened if k != core_id]
         assert len(child_keys) >= 1, "Child entity should be flattened to top level"
 
     def test_parent_components_added(self, nested_entity_data):
         """Flattening should add parent components to child entities."""
         result = flattened_entity_first_data(nested_entity_data)
-        # Find the child entity's components
-        child_keys = [k for k in result if k != "core_task"]
+        flattened = result["flattened_data"]
+        core_id = _hash_path("core_task")
+        child_keys = [k for k in flattened if k != core_id]
         assert len(child_keys) >= 1
-        child_components = result[child_keys[0]]
-        # Should contain a parent reference
+        child_components = flattened[child_keys[0]]
         parent_refs = [
             c for c in child_components
             if isinstance(c, dict) and "parent" in c
@@ -221,8 +250,9 @@ class TestFlattenedEntityFirstData:
 
     def test_returns_dict(self, nested_entity_data):
         result = flattened_entity_first_data(nested_entity_data)
-        assert isinstance(result, dict)
-        for v in result.values():
+        flattened = result["flattened_data"]
+        assert isinstance(flattened, dict)
+        for v in flattened.values():
             assert isinstance(v, list), "Each entity value should be a component list"
 
 
@@ -232,28 +262,76 @@ class TestFlattenedEntityFirstData:
 
 class TestComponentFirstData:
 
-    def test_returns_dict_of_lists(self, flat_entity_data):
-        result = component_first_data(flat_entity_data)
+    def test_returns_dict_of_lists(self, flat_entity_data, flat_entity_name_to_id):
+        result = component_first_data(flat_entity_data, flat_entity_name_to_id)
         assert isinstance(result, dict)
         for v in result.values():
             assert isinstance(v, list)
 
-    def test_contains_schema_key(self, flat_entity_data):
-        result = component_first_data(flat_entity_data)
+    def test_contains_schema_key(self, flat_entity_data, flat_entity_name_to_id):
+        result = component_first_data(flat_entity_data, flat_entity_name_to_id)
         assert "schema" in result
 
-    def test_contains_parent_key(self, flat_entity_data):
-        result = component_first_data(flat_entity_data)
+    def test_contains_parent_key(self, flat_entity_data, flat_entity_name_to_id):
+        result = component_first_data(flat_entity_data, flat_entity_name_to_id)
         assert "parent" in result
 
-    def test_groups_by_component_type(self, flat_entity_data):
-        result = component_first_data(flat_entity_data)
-        # Should have description and task component types
+    def test_groups_by_component_type(self, flat_entity_data, flat_entity_name_to_id):
+        result = component_first_data(flat_entity_data, flat_entity_name_to_id)
         assert "description" in result
         assert "task" in result
 
-    def test_component_instances_have_entity_id(self, flat_entity_data):
-        result = component_first_data(flat_entity_data)
+    def test_contains_name_component(self, flat_entity_data, flat_entity_name_to_id):
+        """Each entity should get a 'name' component with its original path."""
+        result = component_first_data(flat_entity_data, flat_entity_name_to_id)
+        assert "name" in result
+        names = {inst["value"] for inst in result["name"]}
+        assert "core_task" in names
+        assert "core_task.subtask_a" in names
+
+    def test_references_resolved_to_hashed_ids(self):
+        """Cross-entity references in target/value fields should be resolved to hashed IDs."""
+        task_id = _hash_path("my_task")
+        infra_id = _hash_path("my_infra")
+        data = {
+            task_id: [
+                {"description": "A task."},
+                "task",
+            ],
+            infra_id: [
+                {"description": "Infrastructure."},
+                {"solution of": "my_task"},
+            ],
+        }
+        name_to_id = {"my_task": task_id, "my_infra": infra_id}
+        result = component_first_data(data, name_to_id)
+        sol_instances = result["solution of"]
+        assert sol_instances[0]["value"] == task_id
+
+    def test_parent_of_creates_inverse_parent(self):
+        """'parent of: Y' should create a parent component with source=Y, target=current."""
+        root_id = _hash_path("root")
+        child_id = _hash_path("child_entity")
+        data = {
+            root_id: [
+                {"parent of": "child_entity"},
+            ],
+            child_id: [
+                "task",
+            ],
+        }
+        name_to_id = {"root": root_id, "child_entity": child_id}
+        result = component_first_data(data, name_to_id)
+        parent_instances = result["parent"]
+        assert len(parent_instances) == 1
+        p = parent_instances[0]
+        # "parent of" sets entity_id to the resolved child ID
+        assert p["entity_id"] == child_id
+        assert p["source"] == child_id
+        assert p["target"] == root_id
+
+    def test_component_instances_have_entity_id(self, flat_entity_data, flat_entity_name_to_id):
+        result = component_first_data(flat_entity_data, flat_entity_name_to_id)
         for comp_type, instances in result.items():
             for instance in instances:
                 assert "entity_id" in instance, (
@@ -362,6 +440,19 @@ class TestComponentsDatabase:
         models = {"description": model}
         conn, components = components_database(comp_data, models)
         assert isinstance(components["description"], ibis.Table)
+
+    def test_complex_values_kept_as_raw_list(self):
+        """Components with dict/list values should be kept as raw lists, not ibis Tables."""
+        comp_data = {
+            "schema": [
+                {"entity_id": "description", "columns": {"value": {"type": "str"}}},
+            ],
+        }
+        model = pydantic.create_model("schema")
+        models = {"schema": model}
+        conn, components = components_database(comp_data, models)
+        assert isinstance(components["schema"], list)
+        assert not isinstance(components["schema"], ibis.Table)
 
     def test_table_has_expected_rows(self):
         comp_data = {

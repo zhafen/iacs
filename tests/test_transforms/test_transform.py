@@ -23,8 +23,10 @@ COMPONENTS_YAML = Path(__file__).parent.parent.parent / "components"
 
 def test_hamilton_dag():
     raw = raw_entity_first_data(str(COMPONENTS_YAML))
-    flat = flattened_entity_first_data(raw)
-    comp_first = component_first_data(flat)
+    flat_result = flattened_entity_first_data(raw)
+    flattened_data = flat_result["flattened_data"]
+    name_to_id = flat_result["name_to_id"]
+    comp_first = component_first_data(flattened_data, name_to_id)
     schema = complete_schema(comp_first["schema"], comp_first["parent"])
     models = data_models(schema)
     conn, comps = components_database(comp_first, models)

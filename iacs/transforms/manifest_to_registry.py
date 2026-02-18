@@ -1,5 +1,6 @@
 """Hamilton DAG for converting entity-centered data to component-centered data."""
 
+import hashlib
 from pathlib import Path
 from typing import Any
 
@@ -34,31 +35,54 @@ def raw_entity_first_data(input_dir: str) -> dict:
     return result
 
 
-def _flatten(data: dict, parent_path: str = "", result: dict | None = None) -> dict:
-    """Recursively flatten entity-first data."""
+def _hash_path(path: str) -> str:
+    """Return a deterministic 12-char hex hash of an entity path."""
+    return hashlib.sha256(path.encode()).hexdigest()[:12]
+
+
+def _flatten(
+    data: dict,
+    parent_path: str = "",
+    result: dict | None = None,
+    name_to_id: dict | None = None,
+) -> tuple[dict, dict]:
+    """Recursively flatten entity-first data, using hashed entity IDs.
+
+    Metadata
+    --------
+    - todo: We probably don't need an entirely separate name_to_id. We can just store the original path in the ID component...
+    """
     if result is None:
         result = {}
+    if name_to_id is None:
+        name_to_id = {}
     for key, value in data.items():
         path = f"{parent_path}.{key}" if parent_path else key
+        entity_id = _hash_path(path)
+        name_to_id[key] = entity_id
+        name_to_id[path] = entity_id
+        parent_id = _hash_path(parent_path) if parent_path else None
         if isinstance(value, list):
-            # Already a flat entity with component list
             components = list(value)
-            if parent_path:
-                components.append({"parent": parent_path})
-            result[path] = components
+            if parent_id is not None:
+                components.append({"parent": parent_id})
+            result[entity_id] = components
         elif isinstance(value, dict):
-            # May have "data" key for parent's own components
             components = list(value.get("data", []))
-            # Add parent component for this child
-            if parent_path:
-                components.append({"parent": parent_path})
-            result[path] = components
-            # Recurse into sub-entity keys
+            if parent_id is not None:
+                components.append({"parent": parent_id})
+            result[entity_id] = components
             sub = {k: v for k, v in value.items() if k != "data"}
-            _flatten(sub, path, result)
-    return result
+            _flatten(sub, path, result, name_to_id)
+    return result, name_to_id
 
 
+@extract_fields(
+    {
+        "flattened_data": dict,
+        "name_to_id": dict,
+    }
+)
 def flattened_entity_first_data(raw_entity_first_data: dict) -> dict:
     """Flatten the raw entity-first data into a dictionary with no hierarchical
     structure. The structure of the data is preserved as ((parent)) components.
@@ -71,9 +95,12 @@ def flattened_entity_first_data(raw_entity_first_data: dict) -> dict:
     Returns
     -------
     dict
-        Entity-first ECS data with no hierarchical structure.
+        Contains 'flattened_data' (entity-first ECS data with no hierarchical
+        structure, using hashed entity IDs) and 'name_to_id' (mapping from
+        original names/paths to hashed IDs).
     """
-    return _flatten(raw_entity_first_data)
+    flattened_data, name_to_id = _flatten(raw_entity_first_data)
+    return {"flattened_data": flattened_data, "name_to_id": name_to_id}
 
 
 def _parse_component(entity_id: str, component):
@@ -87,6 +114,8 @@ def _parse_component(entity_id: str, component):
             return comp_type, dict(raw_value)
         elif comp_type == "parent":
             return comp_type, {"source": entity_id, "target": raw_value}
+        elif comp_type == "parent of":
+            return "parent", {"entity_id": raw_value, "source": raw_value, "target": entity_id}
         else:
             return comp_type, {"value": raw_value}
     return None, None
@@ -98,12 +127,16 @@ def _parse_component(entity_id: str, component):
         "parent": list,
     }
 )
-def component_first_data(flattened_entity_first_data: dict) -> dict[str, list]:
+def component_first_data(flattened_data: dict, name_to_id: dict) -> dict[str, list]:
     """Switch the organization of the entity-first data to be component-first.
 
     Parameters
     ----------
-    flattened_entity_first_data : dict
+    flattened_data : dict
+        Flattened entity-first data with hashed entity IDs as keys.
+
+    name_to_id : dict
+        Mapping from original entity names/paths to hashed IDs.
 
     Returns
     -------
@@ -112,15 +145,39 @@ def component_first_data(flattened_entity_first_data: dict) -> dict[str, list]:
         a list of component instances.
         The "schema" item is a component containing the schema of all the components.
         The "parent" item records the hierarchy of entities.
+        The "name" item stores the original name for each entity.
     """
     result: dict[str, list] = {}
-    for entity_id, components in flattened_entity_first_data.items():
+    # Build reverse mapping: hashed_id -> original path (use longest path)
+    id_to_name = {}
+    for name, hid in name_to_id.items():
+        if hid not in id_to_name or len(name) > len(id_to_name[hid]):
+            id_to_name[hid] = name
+
+    for entity_id, components in flattened_data.items():
+        # Add a name component for human readability
+        if entity_id in id_to_name:
+            result.setdefault("name", []).append(
+                {"entity_id": entity_id, "value": id_to_name[entity_id]}
+            )
         for component in components:
             comp_type, fields = _parse_component(entity_id, component)
             if comp_type is None:
                 continue
             instance = {"entity_id": entity_id, **fields}
             result.setdefault(comp_type, []).append(instance)
+
+    # Resolve name references to hashed IDs in entity_id/target/value/source fields
+    for comp_type, instances in result.items():
+        if comp_type == "name":
+            continue
+        for instance in instances:
+            for field in ("entity_id", "target", "value", "source"):
+                if field in instance and isinstance(instance[field], str):
+                    ref = instance[field]
+                    if ref in name_to_id:
+                        instance[field] = name_to_id[ref]
+
     # Ensure required keys exist for @extract_fields
     result.setdefault("schema", [])
     result.setdefault("parent", [])
@@ -226,15 +283,27 @@ def components_database(
         An Ibis backend containing the component tables.
 
     components : dict[str, ibis.Table | dict]
+
+    Metadata
+    --------
+    - todo: This isn't actually using the data models to check if a table is complex or not...
     """
     conn = ibis.duckdb.connect()
     components = {}
     for comp_type, instances in component_first_data.items():
         if not instances:
             continue
+        # Check if any instance has dict/list values — keep as raw list if so
+        has_complex = any(
+            isinstance(v, (dict, list))
+            for inst in instances
+            for k, v in inst.items()
+            if k != "entity_id"
+        )
+        if has_complex:
+            components[comp_type] = instances
+            continue
         df = pd.DataFrame(instances)
-        # Cast object columns to string to avoid DuckDB/pyarrow type errors
-        # with non-scalar values (dicts, lists, etc.)
         for col in df.columns:
             if df[col].dtype == object:
                 df[col] = df[col].astype(str)
@@ -259,6 +328,10 @@ def validated_components(
     -------
     dict[str, ibis.Table | dict]
         The same component tables, but with validation applied.
+
+    Metadata
+    --------
+    - todo: Don't do a damn pandas round trip just for validation.
     """
     for comp_type, table in components.items():
         if comp_type in data_models and isinstance(table, ibis.Table):

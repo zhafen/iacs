@@ -20,9 +20,16 @@ class Registry:
             components: A dict mapping component type names to ibis Tables
                 (or other values like dicts). Keys other than "schema" are
                 treated as component types.
+
+        Metadata:
+        - todo: We likely want to store the schema with the other component types and/or just have a filter on type.
         """
         self._con = conn
-        self._component_types = [k for k in components if k != "schema"]
+        self._components = components
+        self._component_types = [
+            k for k, v in components.items()
+            if k != "schema" and isinstance(v, ibis.Table)
+        ]
 
     @property
     def component_types(self) -> list[str]:

@@ -6,6 +6,7 @@ import pytest
 
 from iacs.audit_system import AuditRunner
 from iacs.transforms.manifest_to_registry import (
+    _hash_path,
     raw_entity_first_data,
     flattened_entity_first_data,
     component_first_data,
@@ -24,8 +25,10 @@ COMPONENTS_DIR = Path(__file__).parent.parent / "components"
 def _build_registry(input_dir: str):
     """Build a registry from a directory using the manifest_to_registry pipeline."""
     raw = raw_entity_first_data(input_dir)
-    flat = flattened_entity_first_data(raw)
-    comp_first = component_first_data(flat)
+    flat_result = flattened_entity_first_data(raw)
+    flattened_data = flat_result["flattened_data"]
+    name_to_id = flat_result["name_to_id"]
+    comp_first = component_first_data(flattened_data, name_to_id)
     schema = complete_schema(comp_first["schema"], comp_first["parent"])
     models = data_models(schema)
     conn, comps = components_database(comp_first, models)
@@ -45,23 +48,23 @@ class TestMinimalExample:
         """minimal.yaml contains two entities."""
         desc_df = minimal_registry.view("description").to_pandas()
         entity_ids = set(desc_df["entity_id"].unique())
-        assert "my_task" in entity_ids
-        assert "my_infrastructure" in entity_ids
+        assert _hash_path("my_task") in entity_ids
+        assert _hash_path("my_infrastructure") in entity_ids
 
     def test_my_task_has_description(self, minimal_registry):
         """my_task entity has a description component."""
         desc = minimal_registry.view("description").to_pandas()
-        assert "my_task" in desc["entity_id"].values
+        assert _hash_path("my_task") in desc["entity_id"].values
 
     def test_my_task_has_task_component(self, minimal_registry):
         """my_task entity has a task component."""
         task = minimal_registry.view("task").to_pandas()
-        assert "my_task" in task["entity_id"].values
+        assert _hash_path("my_task") in task["entity_id"].values
 
     def test_my_infrastructure_has_solution_of(self, minimal_registry):
         """my_infrastructure entity has a solution of component."""
         sol = minimal_registry.view("solution of").to_pandas()
-        assert "my_infrastructure" in sol["entity_id"].values
+        assert _hash_path("my_infrastructure") in sol["entity_id"].values
 
     def test_minimal_creates_registry(self, minimal_registry):
         """minimal.yaml can be loaded into a Registry."""
@@ -90,21 +93,21 @@ class TestMinimal2Example:
         """minimal2.yaml has core_task and my_infrastructure."""
         desc = minimal2_registry.view("description").to_pandas()
         entity_ids = set(desc["entity_id"].unique())
-        assert "core_task" in entity_ids
-        assert "my_infrastructure" in entity_ids
+        assert _hash_path("core_task") in entity_ids
+        assert _hash_path("my_infrastructure") in entity_ids
 
     def test_minimal2_has_sub_entities(self, minimal2_registry):
         """minimal2.yaml has sub-entities with dotted paths."""
         desc = minimal2_registry.view("description").to_pandas()
         entity_ids = set(desc["entity_id"].unique())
-        assert "core_task.first_subtask" in entity_ids
-        assert "core_task.second_subtask" in entity_ids
+        assert _hash_path("core_task.first_subtask") in entity_ids
+        assert _hash_path("core_task.second_subtask") in entity_ids
 
     def test_sub_entities_have_parent_component(self, minimal2_registry):
         """Sub-entities have parent components."""
         parent = minimal2_registry.view("parent").to_pandas()
         child_ids = set(parent["entity_id"].unique())
-        assert "core_task.first_subtask" in child_ids
+        assert _hash_path("core_task.first_subtask") in child_ids
 
     def test_minimal2_runs_audits(self, minimal2_registry):
         """minimal2.yaml can be audited without errors."""
@@ -130,8 +133,8 @@ class TestNetworksNetAB:
         if "node" in net_ab_registry.component_types:
             node = net_ab_registry.view("node").to_pandas()
             entity_ids = set(node["entity_id"].unique())
-            assert "A" in entity_ids
-            assert "B" in entity_ids
+            assert _hash_path("A") in entity_ids
+            assert _hash_path("B") in entity_ids
 
     def test_net_ab_runs_audits(self, net_ab_registry):
         """net_AB.yaml can be audited without errors."""

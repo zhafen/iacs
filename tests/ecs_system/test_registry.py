@@ -50,6 +50,23 @@ class TestRegistryInitialization:
 
         assert len(registry.component_types) == 0
 
+    def test_non_table_components_excluded_from_component_types(self):
+        """Components that are raw lists (not ibis Tables) should be excluded from component_types."""
+        conn = ibis.duckdb.connect()
+        conn.create_table(
+            "description",
+            {"entity_id": ["e1"], "value": ["Hello"]},
+        )
+        components = {
+            "description": conn.table("description"),
+            "schema_comp": [{"entity_id": "description", "columns": {"value": {"type": "str"}}}],
+        }
+
+        registry = Registry(conn, components)
+
+        assert "description" in registry.component_types
+        assert "schema_comp" not in registry.component_types
+
     def test_schema_key_excluded_from_component_types(self):
         """The 'schema' key in components is not treated as a component type."""
         conn = ibis.duckdb.connect()
