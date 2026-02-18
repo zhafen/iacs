@@ -5,21 +5,34 @@ from pathlib import Path
 import ibis
 from hamilton import driver, base
 
-from iacs.io_system import IOSystem
-from iacs.registry import Registry
+from iacs.transforms.manifest_to_registry import (
+    raw_entity_first_data,
+    flattened_entity_first_data,
+    component_first_data,
+    complete_schema,
+    data_models,
+    components_database,
+    validated_components,
+    registry,
+)
 
 import tests.test_transforms.test_transform_dataflow as dataflow_module
 
-COMPONENTS_YAML = Path(__file__).parent.parent.parent / "components" / "components.yaml"
+COMPONENTS_YAML = Path(__file__).parent.parent.parent / "components"
 
 
 def test_hamilton_dag():
-    io = IOSystem()
-    entity_centered = io.read_entity_centered_file(str(COMPONENTS_YAML))
-    registry = Registry.from_entity_centered(entity_centered)
+    raw = raw_entity_first_data(str(COMPONENTS_YAML))
+    flat = flattened_entity_first_data(raw)
+    comp_first = component_first_data(flat)
+    schema = complete_schema(comp_first["schema"], comp_first["parent"])
+    models = data_models(schema)
+    conn, comps = components_database(comp_first, models)
+    v_comps = validated_components(comps, models)
+    reg = registry(conn, v_comps)
 
     dr = driver.Driver(
-        {"registry": registry},
+        {"registry": reg},
         dataflow_module,
         adapter=base.DictResult(),
     )

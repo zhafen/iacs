@@ -3,8 +3,9 @@ import pandas as pd
 import pytest
 
 from iacs.audit_system import Audit, AuditResult, AuditRunner
-from iacs.io_system import IOSystem
 from iacs.registry import Registry
+
+from tests.conftest import make_registry
 
 
 class TestAuditResult:
@@ -99,7 +100,7 @@ class TestAuditInterface:
     def test_audit_run_returns_audit_result(self):
         """Audit.run returns an AuditResult."""
         audit = Audit(name="test_audit")
-        registry = Registry({})
+        registry = Registry(ibis.duckdb.connect(), {})
 
         result = audit.run(registry)
 
@@ -108,7 +109,7 @@ class TestAuditInterface:
     def test_base_audit_passes_by_default(self):
         """Base Audit passes by default (no checks)."""
         audit = Audit(name="test_audit")
-        registry = Registry({})
+        registry = Registry(ibis.duckdb.connect(), {})
 
         result = audit.run(registry)
 
@@ -131,7 +132,7 @@ class TestAuditRunner:
         """AuditRunner.run returns a dict mapping audit names to results."""
         audit = Audit(name="test_audit")
         runner = AuditRunner(audits=[audit])
-        registry = Registry({})
+        registry = Registry(ibis.duckdb.connect(), {})
 
         results = runner.run(registry)
 
@@ -144,7 +145,7 @@ class TestAuditRunner:
         audit1 = Audit(name="audit_1")
         audit2 = Audit(name="audit_2")
         runner = AuditRunner(audits=[audit1, audit2])
-        registry = Registry({})
+        registry = Registry(ibis.duckdb.connect(), {})
 
         results = runner.run(registry)
 
@@ -155,7 +156,7 @@ class TestAuditRunner:
         """AuditRunner has all_passed property for quick check."""
         audit = Audit(name="test_audit")
         runner = AuditRunner(audits=[audit])
-        registry = Registry({})
+        registry = Registry(ibis.duckdb.connect(), {})
 
         runner.run(registry)
 
@@ -169,18 +170,18 @@ class TestAuditRunnerWithRegistry:
     @pytest.fixture
     def sample_registry(self):
         """Create a registry with sample data."""
-        io = IOSystem()
-        entity_centered = io.read_entity_centered({
-            "my_task": [
-                {"description": "A task to complete."},
-                "requirement",
+        return make_registry({
+            "description": [
+                {"entity_id": "my_task", "value": "A task to complete."},
+                {"entity_id": "my_solution", "value": "Solution for the task."},
             ],
-            "my_solution": [
-                {"description": "Solution for the task."},
-                {"solution of": "my_task"},
+            "requirement": [
+                {"entity_id": "my_task"},
+            ],
+            "solution of": [
+                {"entity_id": "my_solution", "value": "my_task"},
             ],
         })
-        return Registry.from_entity_centered(entity_centered)
 
     def test_audit_runner_with_sample_data(self, sample_registry):
         """AuditRunner can process a registry with data."""

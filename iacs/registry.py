@@ -7,28 +7,22 @@ ibis.options.interactive = True
 
 
 class Registry:
-    """A registry that stores ECS component data as dataframes.
+    """A registry that stores ECS component data as ibis tables.
 
-    Each component type has its own dataframe with a multi-index of
-    (entity_id, component_index).
+    Each component type has its own table backed by a DuckDB connection.
     """
 
-    def __init__(self, components: dict[str, pd.DataFrame]):
-        """Initialize the registry with component dataframes.
+    def __init__(self, conn: ibis.BaseBackend, components: dict):
+        """Initialize the registry with a connection and components.
 
         Args:
-            components: A dict mapping component type names to DataFrames.
+            conn: An ibis DuckDB backend containing the component tables.
+            components: A dict mapping component type names to ibis Tables
+                (or other values like dicts). Keys other than "schema" are
+                treated as component types.
         """
-        self._con = ibis.duckdb.connect()
-        self._component_types = list(components.keys())
-        for name, df in components.items():
-            flat = df.reset_index()
-            # Cast object columns to string to avoid DuckDB type errors
-            # (handles all-null columns, lists, dicts, and other non-scalar types)
-            for col in flat.columns:
-                if flat[col].dtype == object:
-                    flat[col] = flat[col].astype(str)
-            self._con.create_table(name, flat)
+        self._con = conn
+        self._component_types = [k for k in components if k != "schema"]
 
     @property
     def component_types(self) -> list[str]:
@@ -87,45 +81,5 @@ class Registry:
         """Convenience method to return the view as a DataFrame."""
         result = self.view(component_type)
         df = result.execute()
-        if isinstance(component_type, str):
-            df = df.set_index(["entity_id", "component_index"])
-        else:
-            df = df.set_index("entity_id")
+        df = df.set_index("entity_id")
         return df
-
-    @classmethod
-    def from_entity_centered(cls, entity_centered: pd.DataFrame) -> "Registry":
-        """Construct a Registry from entity-centered data.
-
-        Args:
-            entity_centered: DataFrame with columns entity_id, component_index,
-                component_type, component_value.
-
-        Returns:
-            A Registry with one table per component type.
-        """
-        if entity_centered.empty:
-            return cls({})
-
-        components = {}
-        for component_type, group in entity_centered.groupby("component_type"):
-            # Build the component table with multi-index
-            rows = []
-            for _, row in group.iterrows():
-                row_data = {}
-                # Extract fields from component_value dict
-                component_value = row["component_value"]
-                if isinstance(component_value, dict):
-                    for k, v in component_value.items():
-                        row_data[k] = v
-                rows.append({
-                    "entity_id": row["entity_id"],
-                    "component_index": row["component_index"],
-                    **row_data,
-                })
-
-            df = pd.DataFrame(rows)
-            df = df.set_index(["entity_id", "component_index"])
-            components[component_type] = df
-
-        return cls(components)
