@@ -8,9 +8,9 @@ from hamilton import driver, base
 from iacs.io_system import IOSystem
 from iacs.registry import Registry
 
-import tests.test_transform_dataflow as dataflow_module
+import tests.test_transforms.test_transform_dataflow as dataflow_module
 
-COMPONENTS_YAML = Path(__file__).parent.parent / "components" / "components.yaml"
+COMPONENTS_YAML = Path(__file__).parent.parent.parent / "components" / "components.yaml"
 
 
 def test_hamilton_dag():
