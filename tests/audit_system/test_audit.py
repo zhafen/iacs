@@ -2,8 +2,9 @@ import ibis
 import pandas as pd
 import pytest
 
-from iacs.audit_system import Audit, AuditResult, AuditRunner
+from iacs.audit_system import AuditResult, AuditRunner
 from iacs.registry import Registry
+from iacs.transforms import audit_requirement_coverage, audit_traceability, audit_todo
 
 from tests.conftest import make_registry
 
@@ -81,81 +82,39 @@ class TestAuditResult:
         assert "extra_info" in table.columns
 
 
-class TestAuditInterface:
-    """Tests for the Audit base class interface."""
-
-    def test_audit_has_name_attribute(self):
-        """Audit has a name attribute."""
-        audit = Audit(name="test_audit")
-
-        assert audit.name == "test_audit"
-
-    def test_audit_has_run_method(self):
-        """Audit has a run method that takes a Registry."""
-        audit = Audit(name="test_audit")
-
-        assert hasattr(audit, "run")
-        assert callable(audit.run)
-
-    def test_audit_run_returns_audit_result(self):
-        """Audit.run returns an AuditResult."""
-        audit = Audit(name="test_audit")
-        registry = Registry(ibis.duckdb.connect(), {})
-
-        result = audit.run(registry)
-
-        assert isinstance(result, AuditResult)
-
-    def test_base_audit_passes_by_default(self):
-        """Base Audit passes by default (no checks)."""
-        audit = Audit(name="test_audit")
-        registry = Registry(ibis.duckdb.connect(), {})
-
-        result = audit.run(registry)
-
-        assert result.passed is True
-
-
 class TestAuditRunner:
     """Tests for AuditRunner."""
 
-    def test_audit_runner_can_be_created_with_audits(self):
-        """AuditRunner can be initialized with a list of audits."""
-        audit1 = Audit(name="audit_1")
-        audit2 = Audit(name="audit_2")
+    def test_audit_runner_can_be_created_with_modules(self):
+        """AuditRunner can be initialized with a list of modules."""
+        runner = AuditRunner(audit_modules=[audit_todo])
 
-        runner = AuditRunner(audits=[audit1, audit2])
-
-        assert len(runner.audits) == 2
+        assert len(runner.audit_modules) == 1
 
     def test_audit_runner_run_returns_dict_of_results(self):
         """AuditRunner.run returns a dict mapping audit names to results."""
-        audit = Audit(name="test_audit")
-        runner = AuditRunner(audits=[audit])
+        runner = AuditRunner(audit_modules=[audit_todo])
         registry = Registry(ibis.duckdb.connect(), {})
 
         results = runner.run(registry)
 
         assert isinstance(results, dict)
-        assert "test_audit" in results
-        assert isinstance(results["test_audit"], AuditResult)
+        assert "todo" in results
+        assert isinstance(results["todo"], AuditResult)
 
-    def test_audit_runner_runs_all_audits(self):
-        """AuditRunner runs all registered audits."""
-        audit1 = Audit(name="audit_1")
-        audit2 = Audit(name="audit_2")
-        runner = AuditRunner(audits=[audit1, audit2])
+    def test_audit_runner_runs_all_modules(self):
+        """AuditRunner runs all registered audit modules."""
+        runner = AuditRunner(audit_modules=[audit_requirement_coverage, audit_todo])
         registry = Registry(ibis.duckdb.connect(), {})
 
         results = runner.run(registry)
 
-        assert "audit_1" in results
-        assert "audit_2" in results
+        assert "requirement_coverage" in results
+        assert "todo" in results
 
     def test_audit_runner_all_passed_property(self):
         """AuditRunner has all_passed property for quick check."""
-        audit = Audit(name="test_audit")
-        runner = AuditRunner(audits=[audit])
+        runner = AuditRunner(audit_modules=[audit_todo])
         registry = Registry(ibis.duckdb.connect(), {})
 
         runner.run(registry)
@@ -185,9 +144,8 @@ class TestAuditRunnerWithRegistry:
 
     def test_audit_runner_with_sample_data(self, sample_registry):
         """AuditRunner can process a registry with data."""
-        audit = Audit(name="test_audit")
-        runner = AuditRunner(audits=[audit])
+        runner = AuditRunner(audit_modules=[audit_todo])
 
         results = runner.run(sample_registry)
 
-        assert results["test_audit"].passed is True
+        assert results["todo"].passed is True

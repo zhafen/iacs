@@ -1,0 +1,78 @@
+"""Hamilton DAG for the requirement coverage audit."""
+
+import ibis
+import pandas as pd
+
+from iacs.audit_system import AuditResult
+from iacs.registry import Registry
+
+
+def requirement_entities(registry: Registry) -> ibis.expr.types.Table | None:
+    """Get unique requirement entity IDs, or None if no requirements exist."""
+    if "requirement" not in registry.component_types:
+        return None
+    req_table = registry.view("requirement")
+    reqs = req_table.select("entity_id").distinct()
+    if reqs.count().execute() == 0:
+        return None
+    return reqs
+
+
+def parents_with_req_children(
+    registry: Registry, requirement_entities: ibis.expr.types.Table | None
+) -> ibis.expr.types.Table:
+    """Find requirement entities that have child requirements."""
+    empty = ibis.memtable({"entity_id": []}, schema={"entity_id": "string"})
+    if requirement_entities is None:
+        return empty
+    if "parent" not in registry.component_types:
+        return empty
+    parent_table = registry.view("parent")
+    req_children = parent_table.filter(
+        parent_table.entity_id.isin(requirement_entities.entity_id)
+    )
+    return (
+        req_children.select(entity_id=req_children.target)
+        .filter(lambda t: t.entity_id.isin(requirement_entities.entity_id))
+        .distinct()
+    )
+
+
+def solved_requirements(registry: Registry) -> ibis.expr.types.Table:
+    """Get entity IDs that have been solved."""
+    empty = ibis.memtable({"solved_id": []}, schema={"solved_id": "string"})
+    if "solution of" not in registry.component_types:
+        return empty
+    solution_table = registry.view("solution of")
+    if "value" not in solution_table.columns:
+        return empty
+    return solution_table.select(solved_id=solution_table.value).distinct()
+
+
+def uncovered_requirements(
+    requirement_entities: ibis.expr.types.Table | None,
+    parents_with_req_children: ibis.expr.types.Table,
+    solved_requirements: ibis.expr.types.Table,
+) -> ibis.expr.types.Table:
+    """Find requirements that have no solution and no children."""
+    if requirement_entities is None:
+        return ibis.memtable({"entity_id": []}, schema={"entity_id": "string"})
+    merged = requirement_entities.left_join(
+        solved_requirements,
+        requirement_entities.entity_id == solved_requirements.solved_id,
+    )
+    return merged.filter(
+        merged.solved_id.isnull()
+        & ~merged.entity_id.isin(parents_with_req_children.entity_id)
+    ).select("entity_id")
+
+
+def requirement_coverage(uncovered_requirements: ibis.expr.types.Table) -> AuditResult:
+    """Produce the requirement coverage audit result."""
+    uncovered_df = uncovered_requirements.execute()
+    if not uncovered_df.empty:
+        messages = [
+            f"Requirement '{e}' has no solution." for e in uncovered_df["entity_id"]
+        ]
+        return AuditResult(passed=False, messages=messages, results=uncovered_df)
+    return AuditResult(passed=True)

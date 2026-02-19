@@ -1,9 +1,22 @@
 import ibis
 
-from iacs.audit_system import (
-    RequirementCoverageAudit,
-    TraceabilityAudit,
-    TodoAudit,
+from iacs.transforms.audit_requirement_coverage import (
+    requirement_entities,
+    parents_with_req_children,
+    solved_requirements,
+    uncovered_requirements,
+    requirement_coverage,
+)
+from iacs.transforms.audit_traceability import (
+    all_entities,
+    req_entities,
+    solution_entities,
+    orphan_entities,
+    traceability,
+)
+from iacs.transforms.audit_todo import (
+    todo_table,
+    todo,
 )
 from iacs.registry import Registry
 
@@ -11,22 +24,23 @@ from tests.conftest import make_registry
 
 
 class TestRequirementCoverageAudit:
-    """Tests for RequirementCoverageAudit."""
+    """Tests for requirement coverage audit DAG."""
 
-    def test_requirement_coverage_audit_has_correct_name(self):
-        """RequirementCoverageAudit has the expected name."""
-        audit = RequirementCoverageAudit()
-
-        assert audit.name == "requirement_coverage"
+    def _run(self, registry):
+        """Run the full requirement coverage DAG."""
+        re = requirement_entities(registry)
+        pwrc = parents_with_req_children(registry, re)
+        sr = solved_requirements(registry)
+        ur = uncovered_requirements(re, pwrc, sr)
+        return requirement_coverage(ur)
 
     def test_passes_when_no_requirements(self):
         """Passes when there are no requirements to cover."""
         registry = make_registry({
             "description": [{"entity_id": "my_entity", "value": "Just a description."}],
         })
-        audit = RequirementCoverageAudit()
 
-        result = audit.run(registry)
+        result = self._run(registry)
 
         assert result.passed is True
 
@@ -40,9 +54,8 @@ class TestRequirementCoverageAudit:
             "requirement": [{"entity_id": "my_task"}],
             "solution of": [{"entity_id": "my_solution", "value": "my_task"}],
         })
-        audit = RequirementCoverageAudit()
 
-        result = audit.run(registry)
+        result = self._run(registry)
 
         assert result.passed is True
 
@@ -52,9 +65,8 @@ class TestRequirementCoverageAudit:
             "description": [{"entity_id": "my_task", "value": "A requirement with no solution."}],
             "requirement": [{"entity_id": "my_task"}],
         })
-        audit = RequirementCoverageAudit()
 
-        result = audit.run(registry)
+        result = self._run(registry)
 
         assert result.passed is False
 
@@ -64,9 +76,8 @@ class TestRequirementCoverageAudit:
             "description": [{"entity_id": "uncovered_req", "value": "No solution for this."}],
             "requirement": [{"entity_id": "uncovered_req"}],
         })
-        audit = RequirementCoverageAudit()
 
-        result = audit.run(registry)
+        result = self._run(registry)
 
         assert "uncovered_req" in result.results["entity_id"].values
 
@@ -82,9 +93,8 @@ class TestRequirementCoverageAudit:
                 {"entity_id": "solution_b", "value": "req_b"},
             ],
         })
-        audit = RequirementCoverageAudit()
 
-        result = audit.run(registry)
+        result = self._run(registry)
 
         assert result.passed is True
 
@@ -99,9 +109,8 @@ class TestRequirementCoverageAudit:
                 {"entity_id": "solution_a", "value": "req_a"},
             ],
         })
-        audit = RequirementCoverageAudit()
 
-        result = audit.run(registry)
+        result = self._run(registry)
 
         assert result.passed is False
         assert "req_b" in result.results["entity_id"].values
@@ -125,9 +134,8 @@ class TestRequirementCoverageAudit:
                 {"entity_id": "solution", "value": "child_req"},
             ],
         })
-        audit = RequirementCoverageAudit()
 
-        result = audit.run(registry)
+        result = self._run(registry)
 
         assert result.passed is True
         assert result.results.empty or "parent_req" not in result.results["entity_id"].values
@@ -147,9 +155,8 @@ class TestRequirementCoverageAudit:
                 {"entity_id": "child_req", "source": "child_req", "target": "parent_req"},
             ],
         })
-        audit = RequirementCoverageAudit()
 
-        result = audit.run(registry)
+        result = self._run(registry)
 
         assert result.passed is False
         assert "child_req" in result.results["entity_id"].values
@@ -171,28 +178,28 @@ class TestRequirementCoverageAudit:
                 {"entity_id": "solution", "value": "level3"},
             ],
         })
-        audit = RequirementCoverageAudit()
 
-        result = audit.run(registry)
+        result = self._run(registry)
 
         assert result.passed is True
 
 
 class TestTraceabilityAudit:
-    """Tests for TraceabilityAudit."""
+    """Tests for traceability audit DAG."""
 
-    def test_traceability_audit_has_correct_name(self):
-        """TraceabilityAudit has the expected name."""
-        audit = TraceabilityAudit()
-
-        assert audit.name == "traceability"
+    def _run(self, registry):
+        """Run the full traceability DAG."""
+        ae = all_entities(registry)
+        re = req_entities(registry)
+        se = solution_entities(registry)
+        oe = orphan_entities(ae, re, se)
+        return traceability(oe)
 
     def test_passes_when_empty_registry(self):
         """Passes when registry is empty."""
         registry = Registry(ibis.duckdb.connect(), {})
-        audit = TraceabilityAudit()
 
-        result = audit.run(registry)
+        result = self._run(registry)
 
         assert result.passed is True
 
@@ -201,9 +208,8 @@ class TestTraceabilityAudit:
         registry = make_registry({
             "requirement": [{"entity_id": "req_a"}],
         })
-        audit = TraceabilityAudit()
 
-        result = audit.run(registry)
+        result = self._run(registry)
 
         assert result.passed is True
 
@@ -213,9 +219,8 @@ class TestTraceabilityAudit:
             "requirement": [{"entity_id": "my_req"}],
             "solution of": [{"entity_id": "my_solution", "value": "my_req"}],
         })
-        audit = TraceabilityAudit()
 
-        result = audit.run(registry)
+        result = self._run(registry)
 
         assert result.passed is True
 
@@ -224,9 +229,8 @@ class TestTraceabilityAudit:
         registry = make_registry({
             "description": [{"entity_id": "orphan_entity", "value": "No requirement or solution."}],
         })
-        audit = TraceabilityAudit()
 
-        result = audit.run(registry)
+        result = self._run(registry)
 
         assert result.passed is False
 
@@ -235,30 +239,27 @@ class TestTraceabilityAudit:
         registry = make_registry({
             "description": [{"entity_id": "orphan_entity", "value": "No trace."}],
         })
-        audit = TraceabilityAudit()
 
-        result = audit.run(registry)
+        result = self._run(registry)
 
         assert "orphan_entity" in result.results["entity_id"].values
 
 
 class TestTodoAudit:
-    """Tests for TodoAudit."""
+    """Tests for todo audit DAG."""
 
-    def test_todo_audit_has_correct_name(self):
-        """TodoAudit has the expected name."""
-        audit = TodoAudit()
-
-        assert audit.name == "todo"
+    def _run(self, registry):
+        """Run the full todo DAG."""
+        tt = todo_table(registry)
+        return todo(tt)
 
     def test_passes_when_no_todos(self):
         """Passes when there are no todo components."""
         registry = make_registry({
             "description": [{"entity_id": "my_entity", "value": "No todos here."}],
         })
-        audit = TodoAudit()
 
-        result = audit.run(registry)
+        result = self._run(registry)
 
         assert result.passed is True
 
@@ -268,9 +269,8 @@ class TestTodoAudit:
             "description": [{"entity_id": "my_entity", "value": "Has a todo."}],
             "todo": [{"entity_id": "my_entity", "value": "Fix this thing."}],
         })
-        audit = TodoAudit()
 
-        result = audit.run(registry)
+        result = self._run(registry)
 
         assert result.passed is False
 
@@ -280,9 +280,8 @@ class TestTodoAudit:
             "todo": [{"entity_id": "entity_with_todo", "value": "Do something."}],
             "description": [{"entity_id": "entity_without_todo", "value": "Clean."}],
         })
-        audit = TodoAudit()
 
-        result = audit.run(registry)
+        result = self._run(registry)
 
         assert "entity_with_todo" in result.results["entity_id"].values
         assert "entity_without_todo" not in result.results["entity_id"].values
@@ -292,8 +291,7 @@ class TestTodoAudit:
         registry = make_registry({
             "todo": [{"entity_id": "my_entity", "value": "Remember to refactor."}],
         })
-        audit = TodoAudit()
 
-        result = audit.run(registry)
+        result = self._run(registry)
 
         assert any("Remember to refactor" in msg for msg in result.messages)
