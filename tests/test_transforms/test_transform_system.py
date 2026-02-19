@@ -3,7 +3,7 @@
 import ibis
 
 from tests.conftest import make_registry
-from tests.test_transforms import test_transform_dataflow, test_transform_dataflow_b
+from tests.test_transforms.dags import dataflow, dataflow_b
 from iacs.transform_system import TransformSystem
 
 
@@ -21,37 +21,37 @@ def _sample_registry():
 class TestTransformSystemConstruction:
     def test_can_create_with_registry_and_dataflows(self):
         registry = _sample_registry()
-        ts = TransformSystem(registry, [test_transform_dataflow])
+        ts = TransformSystem(registry, [dataflow])
         assert ts is not None
 
     def test_accepts_multiple_dataflow_modules(self):
         registry = _sample_registry()
-        ts = TransformSystem(registry, [test_transform_dataflow, test_transform_dataflow_b])
+        ts = TransformSystem(registry, [dataflow, dataflow_b])
         assert ts is not None
 
 
 class TestTransformSystemExecute:
     def test_execute_returns_dict(self):
         registry = _sample_registry()
-        ts = TransformSystem(registry, [test_transform_dataflow])
+        ts = TransformSystem(registry, [dataflow])
         result = ts.execute(["entity_summary"])
         assert isinstance(result, dict)
 
     def test_execute_result_contains_requested_keys(self):
         registry = _sample_registry()
-        ts = TransformSystem(registry, [test_transform_dataflow])
+        ts = TransformSystem(registry, [dataflow])
         result = ts.execute(["entity_summary"])
         assert "entity_summary" in result
 
     def test_execute_result_value_is_ibis_table(self):
         registry = _sample_registry()
-        ts = TransformSystem(registry, [test_transform_dataflow])
+        ts = TransformSystem(registry, [dataflow])
         result = ts.execute(["entity_summary"])
         assert isinstance(result["entity_summary"], ibis.expr.types.Table)
 
     def test_execute_result_has_expected_data(self):
         registry = _sample_registry()
-        ts = TransformSystem(registry, [test_transform_dataflow])
+        ts = TransformSystem(registry, [dataflow])
         result = ts.execute(["entity_summary"])
         df = result["entity_summary"].execute()
         assert len(df) == 2
@@ -60,14 +60,14 @@ class TestTransformSystemExecute:
 
     def test_execute_multiple_nodes(self):
         registry = _sample_registry()
-        ts = TransformSystem(registry, [test_transform_dataflow])
+        ts = TransformSystem(registry, [dataflow])
         result = ts.execute(["description_table", "entity_summary"])
         assert "description_table" in result
         assert "entity_summary" in result
 
     def test_execute_empty_list_returns_empty_dict(self):
         registry = _sample_registry()
-        ts = TransformSystem(registry, [test_transform_dataflow])
+        ts = TransformSystem(registry, [dataflow])
         result = ts.execute([])
         assert result == {}
 
@@ -75,13 +75,13 @@ class TestTransformSystemExecute:
 class TestTransformSystemOutputs:
     def test_outputs_lists_available_nodes(self):
         registry = _sample_registry()
-        ts = TransformSystem(registry, [test_transform_dataflow])
+        ts = TransformSystem(registry, [dataflow])
         outputs = ts.outputs
         assert "entity_summary" in outputs
         assert "description_table" in outputs
 
     def test_outputs_does_not_include_input_nodes(self):
         registry = _sample_registry()
-        ts = TransformSystem(registry, [test_transform_dataflow])
+        ts = TransformSystem(registry, [dataflow])
         outputs = ts.outputs
         assert "registry" not in outputs

@@ -16,7 +16,7 @@ from iacs.transforms.manifest_to_registry import (
     registry,
 )
 
-import tests.test_transforms.test_transform_dataflow as dataflow_module
+import tests.test_transforms.dags.dataflow as dataflow_module
 
 COMPONENTS_YAML = Path(__file__).parent.parent.parent / "components"
 
