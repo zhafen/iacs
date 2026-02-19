@@ -65,8 +65,29 @@ def uncovered_requirements(
     ).select("entity_id")
 
 
-def requirement_coverage(uncovered_requirements: ibis.expr.types.Table) -> ibis.expr.types.Table:
-    """Return uncovered requirements. Empty table means all covered."""
-    return uncovered_requirements.mutate(
-        message=("Requirement '" + uncovered_requirements.entity_id + "' has no solution.")
-    )
+def requirement_coverage(
+    registry: Registry, uncovered_requirements: ibis.expr.types.Table
+) -> ibis.expr.types.Table:
+    """Return uncovered requirements with context columns. Empty table means all covered."""
+    result = uncovered_requirements
+    if "id" in registry.component_types:
+        id_table = registry.view("id")
+        cols = [c for c in ["key", "path"] if c in id_table.columns]
+        if cols:
+            id_table = id_table.select("entity_id", *cols)
+            result = result.left_join(
+                id_table, "entity_id"
+            ).select(result.entity_id, *[id_table[c] for c in cols])
+    if "description" in registry.component_types:
+        desc_table = registry.view("description").select("entity_id", description="value")
+        result = result.left_join(
+            desc_table, "entity_id"
+        ).select(*[result[c] for c in result.columns], desc_table.description)
+    if "requirement" in registry.component_types:
+        req_table = registry.view("requirement")
+        if "priority" in req_table.columns:
+            req_table = req_table.select("entity_id", "priority")
+            result = result.left_join(
+                req_table, "entity_id"
+            ).select(*[result[c] for c in result.columns], req_table.priority)
+    return result

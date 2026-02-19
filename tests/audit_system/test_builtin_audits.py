@@ -32,7 +32,7 @@ class TestRequirementCoverageAudit:
         pwrc = parents_with_req_children(registry, re)
         sr = solved_requirements(registry)
         ur = uncovered_requirements(re, pwrc, sr)
-        return requirement_coverage(ur)
+        return requirement_coverage(registry, ur)
 
     def test_passes_when_no_requirements(self):
         """Passes when there are no requirements to cover."""
