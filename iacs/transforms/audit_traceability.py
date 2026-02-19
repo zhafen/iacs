@@ -1,9 +1,7 @@
 """Hamilton DAG for the traceability audit."""
 
 import ibis
-import pandas as pd
 
-from iacs.audit_system import AuditResult
 from iacs.registry import Registry
 
 
@@ -46,13 +44,8 @@ def orphan_entities(
     )
 
 
-def traceability(orphan_entities: ibis.expr.types.Table) -> AuditResult:
-    """Produce the traceability audit result."""
-    orphans_df = orphan_entities.execute()
-    if not orphans_df.empty:
-        messages = [
-            f"Entity '{e}' does not trace to any requirement."
-            for e in orphans_df["entity_id"]
-        ]
-        return AuditResult(passed=False, messages=messages, results=orphans_df)
-    return AuditResult(passed=True)
+def traceability(orphan_entities: ibis.expr.types.Table) -> ibis.expr.types.Table:
+    """Return orphan entities. Empty table means full traceability."""
+    return orphan_entities.mutate(
+        message=("Entity '" + orphan_entities.entity_id + "' does not trace to any requirement.")
+    )

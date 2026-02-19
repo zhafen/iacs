@@ -1,9 +1,7 @@
 """Hamilton DAG for the requirement coverage audit."""
 
 import ibis
-import pandas as pd
 
-from iacs.audit_system import AuditResult
 from iacs.registry import Registry
 
 
@@ -67,12 +65,8 @@ def uncovered_requirements(
     ).select("entity_id")
 
 
-def requirement_coverage(uncovered_requirements: ibis.expr.types.Table) -> AuditResult:
-    """Produce the requirement coverage audit result."""
-    uncovered_df = uncovered_requirements.execute()
-    if not uncovered_df.empty:
-        messages = [
-            f"Requirement '{e}' has no solution." for e in uncovered_df["entity_id"]
-        ]
-        return AuditResult(passed=False, messages=messages, results=uncovered_df)
-    return AuditResult(passed=True)
+def requirement_coverage(uncovered_requirements: ibis.expr.types.Table) -> ibis.expr.types.Table:
+    """Return uncovered requirements. Empty table means all covered."""
+    return uncovered_requirements.mutate(
+        message=("Requirement '" + uncovered_requirements.entity_id + "' has no solution.")
+    )

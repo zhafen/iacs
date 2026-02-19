@@ -2,7 +2,6 @@
 
 import ibis
 
-from iacs.audit_system import AuditResult
 from iacs.registry import Registry
 
 
@@ -16,21 +15,13 @@ def todo_table(registry: Registry) -> ibis.expr.types.Table | None:
     return table
 
 
-def todo(todo_table: ibis.expr.types.Table | None) -> AuditResult:
-    """Produce the todo audit result."""
+def todo(todo_table: ibis.expr.types.Table | None) -> ibis.expr.types.Table:
+    """Return outstanding todos. Empty table means no todos."""
     if todo_table is None:
-        return AuditResult(passed=True)
-
-    results_df = todo_table.select("entity_id").distinct().execute()
-
+        return ibis.memtable(
+            {"entity_id": [], "value": []},
+            schema={"entity_id": "string", "value": "string"},
+        )
     if "value" in todo_table.columns:
-        msg_df = todo_table.select("entity_id", "value").execute()
-    else:
-        msg_df = todo_table.select("entity_id").execute()
-        msg_df["value"] = ""
-
-    messages = [
-        f"{row['entity_id']}: {row['value']}" for _, row in msg_df.iterrows()
-    ]
-
-    return AuditResult(passed=False, messages=messages, results=results_df)
+        return todo_table.select("entity_id", "value")
+    return todo_table.select("entity_id").mutate(value=ibis.literal(""))

@@ -42,7 +42,7 @@ class TestRequirementCoverageAudit:
 
         result = self._run(registry)
 
-        assert result.passed is True
+        assert result.count().execute() == 0
 
     def test_passes_when_requirement_has_solution(self):
         """Passes when requirement has a solution."""
@@ -57,7 +57,7 @@ class TestRequirementCoverageAudit:
 
         result = self._run(registry)
 
-        assert result.passed is True
+        assert result.count().execute() == 0
 
     def test_fails_when_requirement_missing_solution(self):
         """Fails when a requirement has no solution."""
@@ -68,7 +68,7 @@ class TestRequirementCoverageAudit:
 
         result = self._run(registry)
 
-        assert result.passed is False
+        assert result.count().execute() > 0
 
     def test_flags_uncovered_requirement_entity(self):
         """Flags the entity ID of uncovered requirements in results."""
@@ -79,7 +79,7 @@ class TestRequirementCoverageAudit:
 
         result = self._run(registry)
 
-        assert "uncovered_req" in result.results["entity_id"].values
+        assert "uncovered_req" in result.execute()["entity_id"].values
 
     def test_multiple_requirements_all_covered(self):
         """Passes when all requirements have solutions."""
@@ -96,7 +96,7 @@ class TestRequirementCoverageAudit:
 
         result = self._run(registry)
 
-        assert result.passed is True
+        assert result.count().execute() == 0
 
     def test_multiple_requirements_some_uncovered(self):
         """Fails and flags only uncovered requirements."""
@@ -112,9 +112,10 @@ class TestRequirementCoverageAudit:
 
         result = self._run(registry)
 
-        assert result.passed is False
-        assert "req_b" in result.results["entity_id"].values
-        assert "req_a" not in result.results["entity_id"].values
+        assert result.count().execute() > 0
+        result_df = result.execute()
+        assert "req_b" in result_df["entity_id"].values
+        assert "req_a" not in result_df["entity_id"].values
 
     def test_passes_when_parent_requirement_has_child_requirements(self):
         """Parent requirement is covered if it has child requirements."""
@@ -137,8 +138,7 @@ class TestRequirementCoverageAudit:
 
         result = self._run(registry)
 
-        assert result.passed is True
-        assert result.results.empty or "parent_req" not in result.results["entity_id"].values
+        assert result.count().execute() == 0
 
     def test_fails_when_leaf_requirement_has_no_solution(self):
         """Leaf requirement (no children) without solution fails."""
@@ -158,9 +158,10 @@ class TestRequirementCoverageAudit:
 
         result = self._run(registry)
 
-        assert result.passed is False
-        assert "child_req" in result.results["entity_id"].values
-        assert "parent_req" not in result.results["entity_id"].values
+        result_df = result.execute()
+        assert result.count().execute() > 0
+        assert "child_req" in result_df["entity_id"].values
+        assert "parent_req" not in result_df["entity_id"].values
 
     def test_deeply_nested_requirements_covered_by_hierarchy(self):
         """Deeply nested requirements are covered by having children."""
@@ -181,7 +182,7 @@ class TestRequirementCoverageAudit:
 
         result = self._run(registry)
 
-        assert result.passed is True
+        assert result.count().execute() == 0
 
 
 class TestTraceabilityAudit:
@@ -201,7 +202,7 @@ class TestTraceabilityAudit:
 
         result = self._run(registry)
 
-        assert result.passed is True
+        assert result.count().execute() == 0
 
     def test_passes_when_all_entities_are_requirements(self):
         """Passes when all entities are requirements (no orphans)."""
@@ -211,7 +212,7 @@ class TestTraceabilityAudit:
 
         result = self._run(registry)
 
-        assert result.passed is True
+        assert result.count().execute() == 0
 
     def test_passes_when_entity_has_solution(self):
         """Passes when non-requirement entity has a solution of component."""
@@ -222,7 +223,7 @@ class TestTraceabilityAudit:
 
         result = self._run(registry)
 
-        assert result.passed is True
+        assert result.count().execute() == 0
 
     def test_fails_when_entity_has_no_requirement_trace(self):
         """Fails when an entity doesn't trace to any requirement."""
@@ -232,7 +233,7 @@ class TestTraceabilityAudit:
 
         result = self._run(registry)
 
-        assert result.passed is False
+        assert result.count().execute() > 0
 
     def test_flags_orphan_entity(self):
         """Flags entity IDs that don't trace to requirements in results."""
@@ -242,7 +243,7 @@ class TestTraceabilityAudit:
 
         result = self._run(registry)
 
-        assert "orphan_entity" in result.results["entity_id"].values
+        assert "orphan_entity" in result.execute()["entity_id"].values
 
 
 class TestTodoAudit:
@@ -261,7 +262,7 @@ class TestTodoAudit:
 
         result = self._run(registry)
 
-        assert result.passed is True
+        assert result.count().execute() == 0
 
     def test_fails_when_todos_exist(self):
         """Fails when there are outstanding todos."""
@@ -272,7 +273,7 @@ class TestTodoAudit:
 
         result = self._run(registry)
 
-        assert result.passed is False
+        assert result.count().execute() > 0
 
     def test_flags_entities_with_todos(self):
         """Flags entity IDs that have todo components in results."""
@@ -283,15 +284,18 @@ class TestTodoAudit:
 
         result = self._run(registry)
 
-        assert "entity_with_todo" in result.results["entity_id"].values
-        assert "entity_without_todo" not in result.results["entity_id"].values
+        result_df = result.execute()
+        assert "entity_with_todo" in result_df["entity_id"].values
+        assert "entity_without_todo" not in result_df["entity_id"].values
 
-    def test_reports_todo_content_in_messages(self):
-        """Reports todo content in messages."""
+    def test_reports_todo_content_in_value_column(self):
+        """Reports todo content in the value column."""
         registry = make_registry({
             "todo": [{"entity_id": "my_entity", "value": "Remember to refactor."}],
         })
 
         result = self._run(registry)
 
-        assert any("Remember to refactor" in msg for msg in result.messages)
+        result_df = result.execute()
+        assert "value" in result_df.columns
+        assert any("Remember to refactor" in v for v in result_df["value"].values)
