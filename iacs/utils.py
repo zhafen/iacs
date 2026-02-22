@@ -1,0 +1,5 @@
+import hashlib
+
+def hash(path: str) -> str:
+    """Return a deterministic 12-char hex hash."""
+    return hashlib.sha256(path.encode()).hexdigest()[:12]

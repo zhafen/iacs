@@ -11,6 +11,7 @@ import pydantic
 import yaml
 
 from ..registry import Registry
+from ..utils import hash
 
 
 def raw_entity_first_data(input_dir: str) -> dict:
@@ -35,11 +36,6 @@ def raw_entity_first_data(input_dir: str) -> dict:
     return result
 
 
-def _hash_path(path: str) -> str:
-    """Return a deterministic 12-char hex hash of an entity path."""
-    return hashlib.sha256(path.encode()).hexdigest()[:12]
-
-
 def db_conn() -> ibis.BaseBackend:
     """Create an Ibis database connection for the data to be stored in.
 
@@ -50,42 +46,6 @@ def db_conn() -> ibis.BaseBackend:
     """
     return ibis.duckdb.connect()
 
-
-# def _flatten(
-#     data: dict,
-#     parent_path: str = "",
-#     result: dict | None = None,
-#     name_to_id: dict | None = None,
-# ) -> tuple[dict, dict]:
-#     """Recursively flatten entity-first data, using hashed entity IDs.
-# 
-#     Metadata
-#     --------
-#     - todo: We probably don't need an entirely separate name_to_id. We can just store the original path in the ID component...
-#     """
-#     if result is None:
-#         result = {}
-#     if name_to_id is None:
-#         name_to_id = {}
-#     for key, value in data.items():
-#         path = f"{parent_path}.{key}" if parent_path else key
-#         entity_id = _hash_path(path)
-#         name_to_id[key] = entity_id
-#         name_to_id[path] = entity_id
-#         parent_id = _hash_path(parent_path) if parent_path else None
-#         if isinstance(value, list):
-#             components = list(value)
-#             if parent_id is not None:
-#                 components.append({"parent": parent_id})
-#             result[entity_id] = components
-#         elif isinstance(value, dict):
-#             components = list(value.get("data", []))
-#             if parent_id is not None:
-#                 components.append({"parent": parent_id})
-#             result[entity_id] = components
-#             sub = {k: v for k, v in value.items() if k != "data"}
-#             _flatten(sub, path, result, name_to_id)
-#     return result, name_to_id
 
 def pathvalue_pairs(raw_entity_first_data: dict, db_conn: ibis.BaseBackend) -> ibis.Table:
     """Convert the raw entity-first data into a database table with two fields:
@@ -192,6 +152,42 @@ def registry(db_conn: ibis.BaseBackend, spine: ibis.Table, component_tables: dic
         A registry object containing the component tables.
     """
     return
+
+# def _flatten(
+#     data: dict,
+#     parent_path: str = "",
+#     result: dict | None = None,
+#     name_to_id: dict | None = None,
+# ) -> tuple[dict, dict]:
+#     """Recursively flatten entity-first data, using hashed entity IDs.
+# 
+#     Metadata
+#     --------
+#     - todo: We probably don't need an entirely separate name_to_id. We can just store the original path in the ID component...
+#     """
+#     if result is None:
+#         result = {}
+#     if name_to_id is None:
+#         name_to_id = {}
+#     for key, value in data.items():
+#         path = f"{parent_path}.{key}" if parent_path else key
+#         entity_id = _hash_path(path)
+#         name_to_id[key] = entity_id
+#         name_to_id[path] = entity_id
+#         parent_id = _hash_path(parent_path) if parent_path else None
+#         if isinstance(value, list):
+#             components = list(value)
+#             if parent_id is not None:
+#                 components.append({"parent": parent_id})
+#             result[entity_id] = components
+#         elif isinstance(value, dict):
+#             components = list(value.get("data", []))
+#             if parent_id is not None:
+#                 components.append({"parent": parent_id})
+#             result[entity_id] = components
+#             sub = {k: v for k, v in value.items() if k != "data"}
+#             _flatten(sub, path, result, name_to_id)
+#     return result, name_to_id
 
 
 # Commenting out old code for now to start simpler.
