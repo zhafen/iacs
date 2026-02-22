@@ -1,23 +1,23 @@
-core_task:
+core_requirement:
     data:
-        - description: The main task the infrastructure must complete.
-        - task
-    first_subtask:
+        - description: The main requirement the infrastructure must complete.
+        - requirement
+    first_subrequirement:
         - description: >
-              This task is a subtask of the core task, necessary to complete the core task.
-        - task
-    second_subtask:
+              This requirement is a subrequirement of the core requirement, necessary to complete the core requirement.
+        - requirement
+    second_subrequirement:
         - description: >
-              This task is also a subtask of the core task,
-              necessary to complete the core task.
-        - task
+              This requirement is also a subrequirement of the core requirement,
+              necessary to complete the core requirement.
+        - requirement
 
 my_infrastructure:
     data:
-        - description: The overall infrastructure used to complete the core task.
-    infrastructure_for_first_task:
-        - description: This solves the first task.
-        - solution of: first_subtask
-    infrastructure_for_second_task:
-        - description: This solves the second task.
-        - solution of: second_subtask
+        - description: The overall infrastructure used to complete the core requirement.
+    infrastructure_for_first_requirement:
+        - description: This solves the first requirement.
+        - solution of: first_subrequirement
+    infrastructure_for_second_requirement:
+        - description: This solves the second requirement.
+        - solution of: second_subrequirement
