@@ -11,7 +11,7 @@ import pydantic
 import yaml
 
 from ..registry import Registry
-from ..utils import hash
+from ..utils import dhash
 
 
 def raw_entity_first_data(input_dir: str) -> dict:
@@ -83,6 +83,7 @@ def parsed_paths(pathvalue_pairs: ibis.Table) -> tuple[ibis.Table, ibis.Table]:
         It has the below columns:
         - entity_id: the hashed ID of the entity
         - component_index: Index of the component in the original list of components for that entity (derived from the path)
+        - entity_key: The name of the entity, the last part of the path for an entity.
         - component_type: the type of the component
         - modifier: any modifiers for the component instance, which may affect interpretation of the fields (e.g. "parent" vs "parent of")
         - path: the original path

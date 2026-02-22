@@ -1,7 +1,7 @@
-my_task:
+my_requirement:
 - description: A task I need to complete.
-- task
+- requirement
+- solution: my_infrastructure
 
 my_infrastructure:
 - description: Infrastructure to complete the task.
-- solution of: my_task
