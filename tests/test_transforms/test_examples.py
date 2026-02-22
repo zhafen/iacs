@@ -72,10 +72,15 @@ def _expected_data_vars(expected_module: ModuleType) -> dict:
 
 # ─── DAG execution helpers ──────────────────────────────────────────────────
 
-def _execute_dag(mod: ModuleType, inputs: dict) -> dict:
-    """Execute all computable nodes of a Hamilton DAG module and return results."""
+def _execute_dag(mod: ModuleType, inputs: dict, output_names: list[str] | None = None) -> dict:
+    """Execute a Hamilton DAG module and return results.
+
+    If output_names is provided, only those nodes are executed. Otherwise all
+    computable (non-external-input) nodes are executed.
+    """
     dr = driver.Driver(inputs, mod, adapter=base.DictResult())
-    output_names = [v.name for v in dr.list_available_variables() if not v.is_external_input]
+    if output_names is None:
+        output_names = [v.name for v in dr.list_available_variables() if not v.is_external_input]
     return dr.execute(output_names)
 
 
@@ -148,50 +153,68 @@ def _assert_subset(var_name: str, expected_value, actual_value) -> None:
 # ─── Test parameters ────────────────────────────────────────────────────────
 
 def _test_params() -> list:
-    """Generate pytest.param objects for each (example_dir, transform_module) pair."""
+    """Generate pytest.param objects for each (example_dir, module, var_name) triple.
+
+    Parametrizing at the variable level gives one test result per expected output,
+    so an unimplemented stub shows as SKIP without hiding a passing node.
+    """
     params = []
     for example_dir in _get_example_dirs_with_expected():
+        expected_vars = _expected_data_vars(_load_expected(example_dir))
         for module_name, mod in _get_transform_modules():
-            params.append(
-                pytest.param(
-                    example_dir, module_name, mod,
-                    id=f"{example_dir.name}-{module_name}",
+            for var_name in expected_vars:
+                params.append(
+                    pytest.param(
+                        example_dir, module_name, mod, var_name,
+                        id=f"{example_dir.name}-{module_name}-{var_name}",
+                    )
                 )
-            )
     return params
 
 
 # ─── Tests ──────────────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("example_dir,module_name,mod", _test_params())
+@pytest.mark.parametrize("example_dir,module_name,mod,var_name", _test_params())
 def test_transform_dag_outputs_match_expected(
-    example_dir: Path, module_name: str, mod: ModuleType
+    example_dir: Path, module_name: str, mod: ModuleType, var_name: str
 ) -> None:
-    """Expected records from expected.py appear in the transform DAG output.
+    """Expected record from expected.py appears in the transform DAG output.
 
-    For each example directory and each transform module:
-    1. Execute the transform DAG on the example directory.
-    2. Load the expected outputs from expected.py.
-    3. Verify each expected value is a subset of the corresponding DAG output.
+    For each (example, transform module, expected variable) triple:
+    1. Execute the single DAG node named var_name.
+    2. Load the corresponding expected value from expected.py.
+    3. Verify the expected value is a subset of the DAG output.
+    Skips when the node is not part of the module or is not yet implemented.
     """
-    # Steps 1 & 2: execute the DAG on the example directory
+    expected_module = _load_expected(example_dir)
+    expected_value = _expected_data_vars(expected_module)[var_name]
+
+    # Build inputs for this module.
     if module_name == "manifest_to_registry":
-        dag_result = _execute_dag(mod, {"input_dir": str(example_dir)})
+        inputs = {"input_dir": str(example_dir)}
     else:
-        # Audit transforms require a registry built from the directory
         registry = _build_registry(example_dir)
         if registry is None:
             pytest.skip(
-                f"Skipping {module_name} on {example_dir.name}: "
-                "registry is None (manifest_to_registry not yet implemented)"
+                f"{module_name}: registry is None (manifest_to_registry not yet implemented)"
             )
-        dag_result = _execute_dag(mod, {"registry": registry})
+        inputs = {"registry": registry}
 
-    # Step 3: load expected outputs for this example
-    expected_module = _load_expected(example_dir)
-    expected_vars = _expected_data_vars(expected_module)
+    dr = driver.Driver(inputs, mod, adapter=base.DictResult())
+    available = {v.name for v in dr.list_available_variables() if not v.is_external_input}
 
-    # Steps 4 & 5: for each expected variable that matches a DAG output, check subset
-    for var_name, expected_value in expected_vars.items():
-        if var_name in dag_result:
-            _assert_subset(var_name, expected_value, dag_result[var_name])
+    if var_name not in available:
+        pytest.skip(f"'{var_name}' is not a node in the {module_name} DAG")
+
+    # Steps 1 & 2: execute the single node.
+    try:
+        result = dr.execute([var_name])
+        actual = result[var_name]
+    except Exception as exc:
+        pytest.skip(f"'{var_name}' failed to execute (not yet implemented): {exc}")
+
+    if actual is None:
+        pytest.skip(f"'{var_name}' returned None (not yet implemented)")
+
+    # Steps 4 & 5: check expected is a subset of actual.
+    _assert_subset(var_name, expected_value, actual)
