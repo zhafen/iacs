@@ -48,18 +48,18 @@ class TestMinimalExample:
         """minimal.yaml contains two entities."""
         desc_df = minimal_registry.view("description").to_pandas()
         entity_ids = set(desc_df["entity_id"].unique())
-        assert _hash_path("my_task") in entity_ids
+        assert _hash_path("my_requirement") in entity_ids
         assert _hash_path("my_infrastructure") in entity_ids
 
-    def test_my_task_has_description(self, minimal_registry):
-        """my_task entity has a description component."""
+    def test_my_requirement_has_description(self, minimal_registry):
+        """my_requirement entity has a description component."""
         desc = minimal_registry.view("description").to_pandas()
-        assert _hash_path("my_task") in desc["entity_id"].values
+        assert _hash_path("my_requirement") in desc["entity_id"].values
 
-    def test_my_task_has_task_component(self, minimal_registry):
-        """my_task entity has a task component."""
-        task = minimal_registry.view("task").to_pandas()
-        assert _hash_path("my_task") in task["entity_id"].values
+    def test_my_requirement_has_requirement_component(self, minimal_registry):
+        """my_requirement entity has a requirement component."""
+        requirement = minimal_registry.view("requirement").to_pandas()
+        assert _hash_path("my_requirement") in requirement["entity_id"].values
 
     def test_my_infrastructure_has_solution_of(self, minimal_registry):
         """my_infrastructure entity has a solution of component."""
@@ -90,24 +90,24 @@ class TestMinimal2Example:
         assert len(minimal2_registry.component_types) > 0
 
     def test_minimal2_has_top_level_entities(self, minimal2_registry):
-        """minimal2.yaml has core_task and my_infrastructure."""
+        """minimal2.yaml has core_requirement and my_infrastructure."""
         desc = minimal2_registry.view("description").to_pandas()
         entity_ids = set(desc["entity_id"].unique())
-        assert _hash_path("core_task") in entity_ids
+        assert _hash_path("core_requirement") in entity_ids
         assert _hash_path("my_infrastructure") in entity_ids
 
     def test_minimal2_has_sub_entities(self, minimal2_registry):
         """minimal2.yaml has sub-entities with dotted paths."""
         desc = minimal2_registry.view("description").to_pandas()
         entity_ids = set(desc["entity_id"].unique())
-        assert _hash_path("core_task.first_subtask") in entity_ids
-        assert _hash_path("core_task.second_subtask") in entity_ids
+        assert _hash_path("core_requirement.first_subrequirement") in entity_ids
+        assert _hash_path("core_requirement.second_subrequirement") in entity_ids
 
     def test_sub_entities_have_parent_component(self, minimal2_registry):
         """Sub-entities have parent components."""
         parent = minimal2_registry.view("parent").to_pandas()
         child_ids = set(parent["entity_id"].unique())
-        assert _hash_path("core_task.first_subtask") in child_ids
+        assert _hash_path("core_requirement.first_subrequirement") in child_ids
 
     def test_minimal2_runs_audits(self, minimal2_registry):
         """minimal2.yaml can be audited without errors."""
