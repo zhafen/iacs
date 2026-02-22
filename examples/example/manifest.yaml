@@ -1,4 +1,4 @@
-be_an_all_in_one_tool_to_make_cats_happy:
+make_cats_happy:
     data:
         - description: The mission of our cat-happiness device.
         - requirement:
@@ -25,25 +25,30 @@ be_an_all_in_one_tool_to_make_cats_happy:
 cat_happiness_device:
     data:
         - description: An all-in-one tool to make cats happy.
-        - solution of: be_an_all_in_one_tool_to_make_cats_happy
+        - solution of: make_cats_happy
     feeding_system:
         data:
-            - solution of: be_an_all_in_one_tool_to_make_cats_happy.feed_and_water_cats
+            - solution of: "make_cats_happy.feed_and_water_cats"
         feed_cats:
             - description: The task to feed the cats.
             - task
-            - solution of: feed_cats
+            - solution of: "make_cats_happy.feed_and_water_cats.feed_cats"
         water_cats:
             - description: The task to water the cats.
             - task
             - solution of: water_cats
     cleaning_system:
-        - solution of: be_an_all_in_one_tool_to_make_cats_happy.sift_cat_box
+        - solution of: make_cats_happy.sift_cat_box
     adoring_system:
-        - solution of: be_an_all_in_one_tool_to_make_cats_happy.adore_cats
+        - solution of: make_cats_happy.adore_cats
 
 cat:
-    - description: A data representation of cats.
+    - description: A data representation of a cat.
     - field:
         name: name
-        description:
+        value: The cat's name.
+        type: str
+    - field:
+        name: breed
+        value: The breed of the cat, e.g. orange.
+        type: str
