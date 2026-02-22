@@ -724,7 +724,15 @@ ecs_framework:
                 table_index:
                     - description: >
                         The index for a component table is a multi-index consisting
-                        of the entity_id and the component_index.
+                        of the entity_id and the component_index. This is true for 
+                        all tables, so all tables have shared indices (spines).
+                        Shared-spine data has a number of benefits, and to take full
+                        advantage of those benefits the authors of Hamilton recommend
+                        the below approach.
+                        
+                        - Load data via functions, defined in their own specific module.
+                        - Take that loaded data, and transform/ensure indexes match the output you want to create.
+                        - Continue with transformations.
                     - requirement: constraint
                 subtype_column:
                     - description: >

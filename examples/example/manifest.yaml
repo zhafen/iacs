@@ -1,0 +1,49 @@
+be_an_all_in_one_tool_to_make_cats_happy:
+    data:
+        - description: The mission of our cat-happiness device.
+        - requirement:
+            priority: 1
+    feed_and_water_cats:
+        data:
+            - description: Obviously.
+            - requirement:
+                priority: 1
+        feed_cats:
+            - requirement
+            - alias: feed_cats
+        water_cats:
+            - requirement
+            - alias: water_cats
+    sift_cat_box:
+        - description: Unfortunately.
+        - requirement:
+            priority: 0.8
+    adore_cats:
+        - description: Of course.
+        - requirement
+
+cat_happiness_device:
+    data:
+        - description: An all-in-one tool to make cats happy.
+        - solution of: be_an_all_in_one_tool_to_make_cats_happy
+    feeding_system:
+        data:
+            - solution of: be_an_all_in_one_tool_to_make_cats_happy.feed_and_water_cats
+        feed_cats:
+            - description: The task to feed the cats.
+            - task
+            - solution of: feed_cats
+        water_cats:
+            - description: The task to water the cats.
+            - task
+            - solution of: water_cats
+    cleaning_system:
+        - solution of: be_an_all_in_one_tool_to_make_cats_happy.sift_cat_box
+    adoring_system:
+        - solution of: be_an_all_in_one_tool_to_make_cats_happy.adore_cats
+
+cat:
+    - description: A data representation of cats.
+    - field:
+        name: name
+        description:
