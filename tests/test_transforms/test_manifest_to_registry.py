@@ -8,18 +8,9 @@ import ibis
 import pydantic
 import pytest
 
-from iacs.transforms.manifest_to_registry import (
-    _hash_path,
-    raw_entity_first_data,
-    flattened_entity_first_data,
-    component_first_data,
-    complete_schema,
-    data_models,
-    components_database,
-    validated_components,
-    registry,
-)
+from iacs.transforms import manifest_to_registry
 from iacs.registry import Registry
+from iacs.utils import dhash
 
 
 # ---------------------------------------------------------------------------
@@ -75,8 +66,8 @@ def nested_entity_data():
 @pytest.fixture
 def flat_entity_data():
     """Flattened entity-first data (no hierarchy, parent components added) with hashed IDs."""
-    core_id = _hash_path("core_task")
-    sub_id = _hash_path("core_task.subtask_a")
+    core_id = dhash("core_task")
+    sub_id = dhash("core_task.subtask_a")
     return {
         core_id: [
             {"description": "The main task."},
@@ -93,8 +84,8 @@ def flat_entity_data():
 @pytest.fixture
 def flat_entity_name_to_id():
     """Name-to-id mapping corresponding to flat_entity_data."""
-    core_id = _hash_path("core_task")
-    sub_id = _hash_path("core_task.subtask_a")
+    core_id = dhash("core_task")
+    sub_id = dhash("core_task.subtask_a")
     return {
         "core_task": core_id,
         "subtask_a": sub_id,
@@ -210,7 +201,7 @@ class TestFlattenedEntityFirstData:
         }
         result = flattened_entity_first_data(data)
         flattened = result["flattened_data"]
-        task_id = _hash_path("my_task")
+        task_id = dhash("my_task")
         assert task_id in flattened
         assert isinstance(flattened[task_id], list)
 
@@ -224,12 +215,12 @@ class TestFlattenedEntityFirstData:
         result = flattened_entity_first_data(data)
         assert "name_to_id" in result
         assert "my_task" in result["name_to_id"]
-        assert result["name_to_id"]["my_task"] == _hash_path("my_task")
+        assert result["name_to_id"]["my_task"] == dhash("my_task")
 
     def test_nested_entities_are_flattened(self, nested_entity_data):
         result = flattened_entity_first_data(nested_entity_data)
         flattened = result["flattened_data"]
-        core_id = _hash_path("core_task")
+        core_id = dhash("core_task")
         assert core_id in flattened
         child_keys = [k for k in flattened if k != core_id]
         assert len(child_keys) >= 1, "Child entity should be flattened to top level"
@@ -238,7 +229,7 @@ class TestFlattenedEntityFirstData:
         """Flattening should add parent components to child entities."""
         result = flattened_entity_first_data(nested_entity_data)
         flattened = result["flattened_data"]
-        core_id = _hash_path("core_task")
+        core_id = dhash("core_task")
         child_keys = [k for k in flattened if k != core_id]
         assert len(child_keys) >= 1
         child_components = flattened[child_keys[0]]
@@ -291,8 +282,8 @@ class TestComponentFirstData:
 
     def test_references_resolved_to_hashed_ids(self):
         """Cross-entity references in target/value fields should be resolved to hashed IDs."""
-        task_id = _hash_path("my_task")
-        infra_id = _hash_path("my_infra")
+        task_id = dhash("my_task")
+        infra_id = dhash("my_infra")
         data = {
             task_id: [
                 {"description": "A task."},
@@ -310,8 +301,8 @@ class TestComponentFirstData:
 
     def test_parent_of_creates_inverse_parent(self):
         """'parent of: Y' should create a parent component with source=Y, target=current."""
-        root_id = _hash_path("root")
-        child_id = _hash_path("child_entity")
+        root_id = dhash("root")
+        child_id = dhash("child_entity")
         data = {
             root_id: [
                 {"parent of": "child_entity"},
