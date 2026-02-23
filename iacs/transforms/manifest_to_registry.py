@@ -1,6 +1,7 @@
 """Hamilton DAG for converting entity-centered data to component-centered data."""
 
 import hashlib
+import re
 from pathlib import Path
 from typing import Any
 
@@ -128,6 +129,51 @@ def pathvalue_pairs(raw_entity_first_data: dict, db_conn: ibis.BaseBackend) -> i
     df = pd.DataFrame(pairs, columns=["path", "value"])
     db_conn.create_table("pathvalue_pairs", df, overwrite=True)
     return db_conn.table("pathvalue_pairs")
+
+
+_PATH_RE = re.compile(r"^(.+)\[(\d+)\]\.(.+)$")
+
+
+def _parse_one_path(path: str) -> dict | None:
+    """Parse a path string into spine fields.
+
+    Returns a dict with spine columns plus 'entity_path' (for hierarchy) and
+    '_spine_path' (for deduplication), or None if the path does not match
+    the expected ``entity_prefix[index].component_type`` format.
+    """
+    m = _PATH_RE.match(path)
+    if not m:
+        return None
+    entity_prefix, idx_str, after = m.group(1), m.group(2), m.group(3)
+
+    # First dot-segment of 'after' is the full component type (may contain spaces).
+    component_type_full = after.split(".")[0]
+
+    # Strip the '.data' suffix added for nested entities' own components.
+    if entity_prefix.endswith(".data"):
+        entity_path = entity_prefix[:-5]
+    else:
+        entity_path = entity_prefix
+
+    # Split 'solution of' → type='solution', modifier='of'.
+    parts = component_type_full.split(" ", 1)
+    component_type = parts[0]
+    modifier = parts[1] if len(parts) > 1 else None
+
+    spine_path = f"{entity_prefix}[{idx_str}].{component_type_full}"
+
+    return {
+        "entity_id": dhash(entity_path),
+        "component_index": int(idx_str),
+        "entity_key": entity_path.split(".")[-1],
+        "component_type": component_type,
+        "modifier": modifier,
+        "path": spine_path,
+        "entity_path": entity_path,
+        "_spine_path": spine_path,
+    }
+
+
 @unpack_fields("spine", "hierarchy")
 def parsed_paths(pathvalue_pairs: ibis.Table) -> tuple[ibis.Table, ibis.Table]:
     """Hash the paths into entity IDs, and extract the parent-child relationships
@@ -159,8 +205,54 @@ def parsed_paths(pathvalue_pairs: ibis.Table) -> tuple[ibis.Table, ibis.Table]:
         - entity_id: the hashed ID of the entity (derived from the path)
         - parent_id: the hashed ID of the parent entity (derived from the parent path)
     """
+    SPINE_COLS = [
+        "entity_id", "component_index", "entity_key",
+        "component_type", "modifier", "path",
+    ]
 
-    return
+    df = pathvalue_pairs.to_pandas()
+
+    spine_rows: list[dict] = []
+    seen_spine: set[str] = set()
+    entity_paths: list[str] = []
+    seen_entity_paths: set[str] = set()
+
+    for path in df["path"]:
+        row = _parse_one_path(path)
+        if row is None:
+            continue
+        sp = row["_spine_path"]
+        if sp not in seen_spine:
+            seen_spine.add(sp)
+            spine_rows.append(row)
+        ep = row["entity_path"]
+        if ep not in seen_entity_paths:
+            seen_entity_paths.add(ep)
+            entity_paths.append(ep)
+
+    spine_df = (
+        pd.DataFrame(spine_rows)[SPINE_COLS]
+        if spine_rows
+        else pd.DataFrame(columns=SPINE_COLS)
+    )
+
+    hierarchy_rows = []
+    for ep in entity_paths:
+        if "." not in ep:
+            continue
+        parent_path = ep.rsplit(".", 1)[0]
+        if parent_path in seen_entity_paths:
+            hierarchy_rows.append({
+                "entity_id": dhash(ep),
+                "parent_id": dhash(parent_path),
+            })
+
+    hierarchy_df = pd.DataFrame(
+        hierarchy_rows if hierarchy_rows else [],
+        columns=["entity_id", "parent_id"],
+    )
+
+    return ibis.memtable(spine_df), ibis.memtable(hierarchy_df)
 
 def incomplete_component_tables(
     db_conn: ibis.BaseBackend,

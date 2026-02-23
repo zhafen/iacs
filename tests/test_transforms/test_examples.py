@@ -120,8 +120,8 @@ def _assert_df_rows_subset(
     common_cols = [c for c in expected.columns if c in actual.columns]
     if not common_cols:
         return
-    exp_str = expected[common_cols].astype(str).reset_index(drop=True)
-    act_str = actual[common_cols].astype(str).reset_index(drop=True)
+    exp_str = expected[common_cols].fillna("__NULL__").astype(str).reset_index(drop=True)
+    act_str = actual[common_cols].fillna("__NULL__").astype(str).reset_index(drop=True)
     for _, row in exp_str.iterrows():
         found = (act_str == row).all(axis=1).any()
         assert found, (
