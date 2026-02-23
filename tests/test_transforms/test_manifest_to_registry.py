@@ -1,9 +1,5 @@
 """Tests for the manifest_to_registry Hamilton DAG functions."""
 
-import os
-import tempfile
-from pathlib import Path
-
 import ibis
 import pandas as pd
 import pytest
@@ -86,23 +82,18 @@ class TestRawEntityFirstData:
 class TestRegistry:
 
     def test_returns_registry_instance(self):
-        con = ibis.duckdb.connect()
-        con.create_table("description", {"entity_id": ["e1"], "value": ["Hello"]})
         spine = ibis.memtable(pd.DataFrame([{"entity_id": 1}]))
-        comps = {"description": con.table("description")}
-        result = manifest_to_registry.registry(con, spine, comps)
+        comps = {"description": ibis.memtable(pd.DataFrame([{"entity_id": "e1", "value": "Hello"}]))}
+        result = manifest_to_registry.registry(spine, comps)
         assert isinstance(result, Registry)
 
     def test_registry_has_component_types(self):
-        con = ibis.duckdb.connect()
-        con.create_table("description", {"entity_id": ["e1"], "value": ["Hello"]})
-        con.create_table("task", {"entity_id": ["e1"]})
         spine = ibis.memtable(pd.DataFrame([{"entity_id": 1}]))
         comps = {
-            "description": con.table("description"),
-            "task": con.table("task"),
+            "description": ibis.memtable(pd.DataFrame([{"entity_id": "e1", "value": "Hello"}])),
+            "task": ibis.memtable(pd.DataFrame([{"entity_id": "e1"}])),
         }
-        result = manifest_to_registry.registry(con, spine, comps)
+        result = manifest_to_registry.registry(spine, comps)
         assert "description" in result.component_types
         assert "task" in result.component_types
 
@@ -113,69 +104,65 @@ class TestRegistry:
 
 class TestPathvaluePairs:
 
-    @pytest.fixture
-    def conn(self):
-        return manifest_to_registry.db_conn()
-
-    def test_returns_ibis_table(self, conn):
+    def test_returns_ibis_table(self):
         data = {"my_task": [{"description": "A task."}]}
-        result = manifest_to_registry.pathvalue_pairs(data, conn)
+        result = manifest_to_registry.pathvalue_pairs(data)
         assert isinstance(result, ibis.Table)
 
-    def test_has_path_and_value_columns(self, conn):
+    def test_has_path_and_value_columns(self):
         data = {"my_task": [{"description": "A task."}]}
-        result = manifest_to_registry.pathvalue_pairs(data, conn)
+        result = manifest_to_registry.pathvalue_pairs(data)
         assert "path" in result.columns
         assert "value" in result.columns
 
-    def test_scalar_component(self, conn):
+    def test_scalar_component(self):
         """A dict component with a string value produces one (path, value) row."""
         data = {"my_task": [{"description": "A task."}]}
-        result = manifest_to_registry.pathvalue_pairs(data, conn)
+        result = manifest_to_registry.pathvalue_pairs(data)
         df = result.to_pandas()
         assert "my_task[0].description" in df["path"].values
         row = df[df["path"] == "my_task[0].description"]
         assert row["value"].iloc[0] == "A task."
 
-    def test_tag_component(self, conn):
+    def test_tag_component(self):
         """A bare-string tag produces a row with an empty value."""
         data = {"my_task": ["task"]}
-        result = manifest_to_registry.pathvalue_pairs(data, conn)
+        result = manifest_to_registry.pathvalue_pairs(data)
         df = result.to_pandas()
         assert "my_task[0].task" in df["path"].values
         assert df[df["path"] == "my_task[0].task"]["value"].iloc[0] == ""
 
-    def test_tag_index_preserved(self, conn):
+    def test_tag_index_preserved(self):
         """A tag at list index N shifts subsequent components to N+1."""
         data = {"my_task": ["task", {"description": "A task."}]}
-        result = manifest_to_registry.pathvalue_pairs(data, conn)
+        result = manifest_to_registry.pathvalue_pairs(data)
         df = result.to_pandas()
         assert "my_task[1].description" in df["path"].values
 
-    def test_dict_valued_component(self, conn):
+    def test_dict_valued_component(self):
         """A component whose value is a dict produces one row per sub-field."""
         data = {"entity": [{"requirement": {"priority": 1}}]}
-        result = manifest_to_registry.pathvalue_pairs(data, conn)
+        result = manifest_to_registry.pathvalue_pairs(data)
         df = result.to_pandas()
         assert "entity[0].requirement.priority" in df["path"].values
         assert df[df["path"] == "entity[0].requirement.priority"]["value"].iloc[0] == "1"
 
-    def test_component_key_with_space(self, conn):
+    def test_component_key_with_space(self):
         """Component keys containing spaces (e.g. 'solution of') are preserved."""
         data = {"entity": [{"solution of": "other_entity"}]}
-        result = manifest_to_registry.pathvalue_pairs(data, conn)
+        result = manifest_to_registry.pathvalue_pairs(data)
         df = result.to_pandas()
         assert "entity[0].solution of" in df["path"].values
         assert df[df["path"] == "entity[0].solution of"]["value"].iloc[0] == "other_entity"
 
-    def test_nested_entity_data_prefix(self, conn):
+    def test_nested_entity_data_prefix(self):
         """Components of a nested entity are placed under the .data[N] prefix."""
         data = {"parent": {"data": [{"description": "A parent."}]}}
-        result = manifest_to_registry.pathvalue_pairs(data, conn)
+        result = manifest_to_registry.pathvalue_pairs(data)
         df = result.to_pandas()
         assert "parent.data[0].description" in df["path"].values
 
-    def test_nested_entity_sub_entities_recurse(self, conn):
+    def test_nested_entity_sub_entities_recurse(self):
         """Sub-entities of a nested entity get their own paths."""
         data = {
             "parent": {
@@ -183,25 +170,25 @@ class TestPathvaluePairs:
                 "child": [{"description": "A child."}],
             }
         }
-        result = manifest_to_registry.pathvalue_pairs(data, conn)
+        result = manifest_to_registry.pathvalue_pairs(data)
         df = result.to_pandas()
         assert "parent.data[0].description" in df["path"].values
         assert "parent.child[0].description" in df["path"].values
 
-    def test_multiple_entities(self, conn):
+    def test_multiple_entities(self):
         """Multiple top-level entities each contribute their own paths."""
         data = {
             "req": [{"description": "A req."}],
             "infra": [{"description": "Infrastructure."}],
         }
-        result = manifest_to_registry.pathvalue_pairs(data, conn)
+        result = manifest_to_registry.pathvalue_pairs(data)
         df = result.to_pandas()
         assert "req[0].description" in df["path"].values
         assert "infra[0].description" in df["path"].values
 
 
 # ---------------------------------------------------------------------------
-# parsed_paths
+# spine
 # ---------------------------------------------------------------------------
 
 def _pvp(pairs: list[tuple[str, str]]) -> ibis.Table:
@@ -209,37 +196,23 @@ def _pvp(pairs: list[tuple[str, str]]) -> ibis.Table:
     return ibis.memtable(pd.DataFrame(pairs, columns=["path", "value"]))
 
 
-def _conn():
-    return manifest_to_registry.db_conn()
-
-
-class TestParsedPaths:
+class TestSpine:
 
     def _call(self, pairs):
-        pvp = _pvp(pairs)
-        return manifest_to_registry.parsed_paths(pvp, _conn())
+        return manifest_to_registry.spine(_pvp(pairs))
 
-    def test_returns_two_ibis_tables(self):
-        spine, hierarchy = self._call([("my_task[0].description", "A task.")])
-        assert isinstance(spine, ibis.Table)
-        assert isinstance(hierarchy, ibis.Table)
+    def test_returns_ibis_table(self):
+        result = self._call([("my_task[0].description", "A task.")])
+        assert isinstance(result, ibis.Table)
 
-    def test_spine_has_required_columns(self):
-        spine, _ = self._call([("my_task[0].description", "A task.")])
+    def test_has_required_columns(self):
+        result = self._call([("my_task[0].description", "A task.")])
         for col in ["entity_id", "component_index", "entity_key", "component_type", "modifier", "path"]:
-            assert col in spine.columns
-
-    def test_hierarchy_has_required_columns(self):
-        _, hierarchy = self._call([
-            ("parent.data[0].description", "A parent."),
-            ("parent.child[0].description", "A child."),
-        ])
-        assert "entity_id" in hierarchy.columns
-        assert "parent_id" in hierarchy.columns
+            assert col in result.columns
 
     def test_flat_entity_spine_row(self):
         """Flat entity path produces correct spine row."""
-        spine, _ = self._call([("my_task[0].description", "A task.")])
+        spine = self._call([("my_task[0].description", "A task.")])
         df = spine.to_pandas()
         row = df[df["path"] == "my_task[0].description"].iloc[0]
         assert row["entity_id"] == dhash("my_task")
@@ -250,7 +223,7 @@ class TestParsedPaths:
 
     def test_tag_component(self):
         """Bare-string tag produces a spine row with the tag name as component_type."""
-        spine, _ = self._call([("my_task[0].requirement", "")])
+        spine = self._call([("my_task[0].requirement", "")])
         df = spine.to_pandas()
         assert "my_task[0].requirement" in df["path"].values
         row = df[df["path"] == "my_task[0].requirement"].iloc[0]
@@ -258,7 +231,7 @@ class TestParsedPaths:
 
     def test_modifier_extracted(self):
         """'solution of' produces component_type='solution', modifier='of'."""
-        spine, _ = self._call([("entity[0].solution of", "other")])
+        spine = self._call([("entity[0].solution of", "other")])
         df = spine.to_pandas()
         row = df[df["path"] == "entity[0].solution of"].iloc[0]
         assert row["component_type"] == "solution"
@@ -271,7 +244,7 @@ class TestParsedPaths:
             ("cat[0].field.value", "The cat's name."),
             ("cat[0].field.type", "str"),
         ]
-        spine, _ = self._call(pairs)
+        spine = self._call(pairs)
         df = spine.to_pandas()
         field_rows = df[df["component_type"] == "field"]
         assert len(field_rows) == 1
@@ -279,7 +252,7 @@ class TestParsedPaths:
 
     def test_entity_key_is_last_path_segment(self):
         """entity_key is the last dot-separated segment of the entity path."""
-        spine, _ = self._call([("outer.inner[0].description", "Hi.")])
+        spine = self._call([("outer.inner[0].description", "Hi.")])
         df = spine.to_pandas()
         row = df.iloc[0]
         assert row["entity_key"] == "inner"
@@ -287,47 +260,23 @@ class TestParsedPaths:
 
     def test_nested_entity_strips_data_suffix(self):
         """entity.data[N].key → entity_path='entity', entity_key='entity'."""
-        spine, _ = self._call([("parent.data[0].description", "A parent.")])
+        spine = self._call([("parent.data[0].description", "A parent.")])
         df = spine.to_pandas()
         row = df.iloc[0]
         assert row["entity_id"] == dhash("parent")
         assert row["entity_key"] == "parent"
 
-    def test_hierarchy_parent_child(self):
-        """A sub-entity whose parent exists in the data produces a hierarchy row."""
-        pairs = [
-            ("parent.data[0].description", "A parent."),
-            ("parent.child[0].description", "A child."),
-        ]
-        _, hierarchy = self._call(pairs)
-        df = hierarchy.to_pandas()
-        assert len(df) >= 1
-        child_row = df[df["entity_id"] == dhash("parent.child")]
-        assert len(child_row) == 1
-        assert child_row.iloc[0]["parent_id"] == dhash("parent")
-
-    def test_empty_hierarchy_for_flat_entities(self):
-        """Flat top-level entities with no nesting produce an empty hierarchy."""
-        pairs = [
-            ("task[0].description", "A task."),
-            ("infra[0].description", "Infrastructure."),
-        ]
-        _, hierarchy = self._call(pairs)
-        df = hierarchy.to_pandas()
-        assert len(df) == 0
-
 
 # ---------------------------------------------------------------------------
-# incomplete_component_tables
+# component_tables
 # ---------------------------------------------------------------------------
 
-class TestIncompleteComponentTables:
+class TestComponentTables:
 
     def _call(self, data: dict) -> dict:
-        conn = _conn()
-        pvp = manifest_to_registry.pathvalue_pairs(data, conn)
-        spine, _ = manifest_to_registry.parsed_paths(pvp, conn)
-        return manifest_to_registry.incomplete_component_tables(conn, pvp, spine)
+        pvp = manifest_to_registry.pathvalue_pairs(data)
+        sp = manifest_to_registry.spine(pvp)
+        return manifest_to_registry.component_tables(pvp, sp)
 
     def test_returns_dict_of_ibis_tables(self):
         data = {"entity": [{"description": "A thing."}]}

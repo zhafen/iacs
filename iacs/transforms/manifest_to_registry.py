@@ -1,14 +1,10 @@
 """Hamilton DAG for converting entity-centered data to component-centered data."""
 
-import hashlib
 import re
 from pathlib import Path
-from typing import Any
 
-from hamilton.function_modifiers import extract_fields, unpack_fields
 import ibis
 import pandas as pd
-import pydantic
 import yaml
 
 from ..registry import Registry
@@ -36,16 +32,6 @@ def raw_entity_first_data(input_dir: str) -> dict:
             result.update(data)
     return result
 
-
-def db_conn() -> ibis.BaseBackend:
-    """Create an Ibis database connection for the data to be stored in.
-
-    Returns
-    -------
-    ibis.BaseBackend
-        An Ibis backend containing the component tables.
-    """
-    return ibis.duckdb.connect()
 
 
 def _add_component_pairs(
@@ -107,7 +93,7 @@ def _flatten_to_pathvalue(data: dict, parent_path: str = "") -> list[tuple[str, 
     return result
 
 
-def pathvalue_pairs(raw_entity_first_data: dict, db_conn: ibis.BaseBackend) -> ibis.Table:
+def pathvalue_pairs(raw_entity_first_data: dict) -> ibis.Table:
     """Convert the raw entity-first data into a database table with two fields:
     path and value, both of type str. This is the first step in the transformation
     process, and serves as a way to inspect the raw data in a tabular format before
@@ -127,8 +113,7 @@ def pathvalue_pairs(raw_entity_first_data: dict, db_conn: ibis.BaseBackend) -> i
     """
     pairs = _flatten_to_pathvalue(raw_entity_first_data)
     df = pd.DataFrame(pairs, columns=["path", "value"])
-    db_conn.create_table("pathvalue_pairs", df, overwrite=True)
-    return db_conn.table("pathvalue_pairs")
+    return ibis.memtable(df)
 
 
 _PATH_RE = re.compile(r"^(.+)\[(\d+)\]\.(.+)$")
@@ -137,7 +122,7 @@ _PATH_RE = re.compile(r"^(.+)\[(\d+)\]\.(.+)$")
 def _parse_one_path(path: str) -> dict | None:
     """Parse a path string into spine fields.
 
-    Returns a dict with spine columns plus 'entity_path' (for hierarchy) and
+    Returns a dict with spine columns plus 'entity_path' and
     '_spine_path' (for deduplication), or None if the path does not match
     the expected ``entity_prefix[index].component_type`` format.
     """
@@ -174,8 +159,7 @@ def _parse_one_path(path: str) -> dict | None:
     }
 
 
-@unpack_fields("spine", "hierarchy")
-def parsed_paths(pathvalue_pairs: ibis.Table, db_conn: ibis.BaseBackend) -> tuple[ibis.Table, ibis.Table]:
+def spine(pathvalue_pairs: ibis.Table) -> ibis.Table:
     """Hash the paths into entity IDs, and extract the parent-child relationships
     and component types.
 
@@ -197,14 +181,6 @@ def parsed_paths(pathvalue_pairs: ibis.Table, db_conn: ibis.BaseBackend) -> tupl
         - component_type: the type of the component
         - modifier: any modifiers for the component instance, which may affect interpretation of the fields (e.g. "parent" vs "parent of")
         - path: the original path
-
-    hierarchy : ibis.Table
-        The parent-child relationships between entities as encoded in the paths.
-        Note that the ((parent)) component instances in the pathvalue_pairs
-        may encode additional relationships.
-        A table with the below columns:
-        - entity_id: the hashed ID of the entity (derived from the path)
-        - parent_id: the hashed ID of the parent entity (derived from the parent path)
     """
     SPINE_COLS = [
         "entity_id", "component_index", "entity_key",
@@ -239,38 +215,15 @@ def parsed_paths(pathvalue_pairs: ibis.Table, db_conn: ibis.BaseBackend) -> tupl
     # DuckDB requires non-NULL column types; modifier may be all-None.
     spine_df["modifier"] = spine_df["modifier"].astype(pd.StringDtype())
 
-    hierarchy_rows = []
-    for ep in entity_paths:
-        if "." not in ep:
-            continue
-        parent_path = ep.rsplit(".", 1)[0]
-        if parent_path in seen_entity_paths:
-            hierarchy_rows.append({
-                "entity_id": dhash(ep),
-                "parent_id": dhash(parent_path),
-            })
-
-    if hierarchy_rows:
-        hierarchy_df = pd.DataFrame(hierarchy_rows, columns=["entity_id", "parent_id"])
-    else:
-        hierarchy_df = pd.DataFrame({
-            "entity_id": pd.array([], dtype="int64"),
-            "parent_id": pd.array([], dtype="int64"),
-        })
-
-    db_conn.create_table("spine", spine_df, overwrite=True)
-    db_conn.create_table("hierarchy", hierarchy_df, overwrite=True)
-    return db_conn.table("spine"), db_conn.table("hierarchy")
+    return ibis.memtable(spine_df)
 
 
-def incomplete_component_tables(
-    db_conn: ibis.BaseBackend,
+def component_tables(
     pathvalue_pairs: ibis.Table,
     spine: ibis.Table,
 ) -> dict[str, ibis.Table]:
     """Join the pathvalue_pairs and spine on path and group the results by component
-    type to create a dictionary of component tables. The result is "incomplete" because
-    it doesn't incorporate information from the hierarchy yet.
+    type to create a dictionary of component tables.
 
     Parameters
     ----------
@@ -322,32 +275,12 @@ def incomplete_component_tables(
 
         comp_df = pd.DataFrame(list(instances.values()))
         comp_df["modifier"] = comp_df["modifier"].astype(pd.StringDtype())
-
-        table_name = f"incomplete_{comp_type}"
-        db_conn.create_table(table_name, comp_df, overwrite=True)
-        result[comp_type] = db_conn.table(table_name)
+        result[comp_type] = ibis.memtable(comp_df)
 
     return result
 
-def component_tables(
-    incomplete_component_tables: dict[str, ibis.Table],
-    hierarchy: ibis.Table
-) -> dict[str, ibis.Table]:
-    """Incorporate the hierarchy information into the component tables by unioning it
-    with the parent component table.
 
-    Parameters
-    ----------
-    incomplete_component_tables : dict[str, ibis.Table]
-
-    Returns
-    -------
-    dict[str, ibis.Table]
-        A dictionary of component tables, ready to be loaded into the registry.
-    """
-    return
-
-def registry(db_conn: ibis.BaseBackend, spine: ibis.Table, component_tables: dict[str, ibis.Table]) -> Registry:
+def registry(spine: ibis.Table, component_tables: dict[str, ibis.Table]) -> Registry:
     """Load the constituents of a registry into the registry object. The spine is used as the shared index for the registry, and the component tables are attached to it.
 
     Parameters
