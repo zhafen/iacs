@@ -315,3 +315,83 @@ class TestParsedPaths:
         _, hierarchy = self._call(pairs)
         df = hierarchy.to_pandas()
         assert len(df) == 0
+
+
+# ---------------------------------------------------------------------------
+# incomplete_component_tables
+# ---------------------------------------------------------------------------
+
+class TestIncompleteComponentTables:
+
+    def _call(self, data: dict) -> dict:
+        conn = _conn()
+        pvp = manifest_to_registry.pathvalue_pairs(data, conn)
+        spine, _ = manifest_to_registry.parsed_paths(pvp, conn)
+        return manifest_to_registry.incomplete_component_tables(conn, pvp, spine)
+
+    def test_returns_dict_of_ibis_tables(self):
+        data = {"entity": [{"description": "A thing."}]}
+        result = self._call(data)
+        assert isinstance(result, dict)
+        for val in result.values():
+            assert isinstance(val, ibis.Table)
+
+    def test_keys_are_component_types(self):
+        data = {
+            "entity": [{"description": "A thing."}, "requirement"],
+        }
+        result = self._call(data)
+        assert "description" in result
+        assert "requirement" in result
+
+    def test_scalar_component_has_value_column(self):
+        """A simple key-value component produces a 'value' column."""
+        data = {"entity": [{"description": "A thing."}]}
+        result = self._call(data)
+        df = result["description"].to_pandas()
+        assert "value" in df.columns
+        row = df[df["entity_id"] == dhash("entity")].iloc[0]
+        assert row["value"] == "A thing."
+
+    def test_tag_component_has_value_column(self):
+        """A bare-string tag produces a 'value' column with empty string."""
+        data = {"entity": ["requirement"]}
+        result = self._call(data)
+        df = result["requirement"].to_pandas()
+        assert "value" in df.columns
+        row = df[df["entity_id"] == dhash("entity")].iloc[0]
+        assert row["value"] == ""
+
+    def test_sub_field_component_has_field_columns(self):
+        """A dict-valued component produces one column per sub-field."""
+        data = {"entity": [{"field": {"name": "x", "type": "str"}}]}
+        result = self._call(data)
+        df = result["field"].to_pandas()
+        assert "name" in df.columns
+        assert "type" in df.columns
+        row = df[df["entity_id"] == dhash("entity")].iloc[0]
+        assert row["name"] == "x"
+        assert row["type"] == "str"
+
+    def test_multi_field_component_collapsed_to_one_row(self):
+        """Multiple sub-fields of the same component instance → one row."""
+        data = {"cat": [{"field": {"name": "breed", "value": "orange", "type": "str"}}]}
+        result = self._call(data)
+        df = result["field"].to_pandas()
+        assert len(df[df["entity_id"] == dhash("cat")]) == 1
+
+    def test_modifier_preserved(self):
+        """Modifier from spine is carried into the component table."""
+        data = {"entity": [{"solution of": "other"}]}
+        result = self._call(data)
+        df = result["solution"].to_pandas()
+        row = df[df["entity_id"] == dhash("entity")].iloc[0]
+        assert row["modifier"] == "of"
+
+    def test_entity_id_and_component_index_present(self):
+        """Every component table has entity_id and component_index columns."""
+        data = {"entity": [{"description": "A thing."}]}
+        result = self._call(data)
+        df = result["description"].to_pandas()
+        assert "entity_id" in df.columns
+        assert "component_index" in df.columns

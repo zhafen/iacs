@@ -274,17 +274,60 @@ def incomplete_component_tables(
 
     Parameters
     ----------
-    conn : ibis.BaseBackend
-        An Ibis backend containing the component tables.
-
-    validated_components : dict[str, ibis.Table | dict]
+    db_conn : ibis.BaseBackend
+    pathvalue_pairs : ibis.Table
+    spine : ibis.Table
 
     Returns
     -------
-    Registry
-        A registry object.
+    dict[str, ibis.Table]
+        Keys are component types; each value is an ibis Table with columns
+        entity_id, component_index, modifier, and one column per sub-field
+        (or "value" for scalar components).
     """
-    return
+    pvp_df = pathvalue_pairs.to_pandas()
+    spine_df = spine.to_pandas()
+
+    def _spine_path_and_field(pvp_path):
+        parsed = _parse_one_path(pvp_path)
+        if parsed is None:
+            return None, None
+        sp = parsed["path"]
+        field = pvp_path[len(sp) + 1:] if pvp_path != sp else "value"
+        return sp, field
+
+    pvp_df[["spine_path", "field_name"]] = pvp_df["path"].apply(
+        lambda p: pd.Series(_spine_path_and_field(p))
+    )
+
+    spine_for_join = spine_df[
+        ["entity_id", "component_index", "component_type", "modifier", "path"]
+    ].rename(columns={"path": "_spine_path"})
+    merged = pvp_df.merge(
+        spine_for_join, left_on="spine_path", right_on="_spine_path", how="inner"
+    )
+
+    result = {}
+    for comp_type, group in merged.groupby("component_type"):
+        instances: dict[tuple, dict] = {}
+        for _, row in group.iterrows():
+            key = (row["entity_id"], row["component_index"])
+            if key not in instances:
+                instances[key] = {
+                    "entity_id": row["entity_id"],
+                    "component_index": row["component_index"],
+                    "modifier": row["modifier"],
+                }
+            instances[key][row["field_name"]] = row["value"]
+
+        comp_df = pd.DataFrame(list(instances.values()))
+        comp_df["modifier"] = comp_df["modifier"].astype(pd.StringDtype())
+
+        table_name = f"incomplete_{comp_type}"
+        db_conn.create_table(table_name, comp_df, overwrite=True)
+        result[comp_type] = db_conn.table(table_name)
+
+    return result
 
 def component_tables(
     incomplete_component_tables: dict[str, ibis.Table],

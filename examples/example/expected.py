@@ -145,7 +145,7 @@ incomplete_component_tables = {
             {
                 "entity_id": dhash("make_cats_happy"),
                 "component_index": 1,
-                "priority": 1,
+                "priority": "1",
             },
             {
                 "entity_id": dhash("make_cats_happy.feed_and_water_cats.feed_cats"),
@@ -155,7 +155,7 @@ incomplete_component_tables = {
             {
                 "entity_id": dhash("make_cats_happy.sift_cat_box"),
                 "component_index": 1,
-                "priority": 0.8,
+                "priority": "0.8",
             },
         ]
     ),
