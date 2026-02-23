@@ -175,13 +175,14 @@ def _parse_one_path(path: str) -> dict | None:
 
 
 @unpack_fields("spine", "hierarchy")
-def parsed_paths(pathvalue_pairs: ibis.Table) -> tuple[ibis.Table, ibis.Table]:
+def parsed_paths(pathvalue_pairs: ibis.Table, db_conn: ibis.BaseBackend) -> tuple[ibis.Table, ibis.Table]:
     """Hash the paths into entity IDs, and extract the parent-child relationships
     and component types.
 
     Parameters
     ----------
     pathvalue_pairs : ibis.Table
+    db_conn : ibis.BaseBackend
 
     Returns
     -------
@@ -235,6 +236,8 @@ def parsed_paths(pathvalue_pairs: ibis.Table) -> tuple[ibis.Table, ibis.Table]:
         if spine_rows
         else pd.DataFrame(columns=SPINE_COLS)
     )
+    # DuckDB requires non-NULL column types; modifier may be all-None.
+    spine_df["modifier"] = spine_df["modifier"].astype(pd.StringDtype())
 
     hierarchy_rows = []
     for ep in entity_paths:
@@ -247,12 +250,17 @@ def parsed_paths(pathvalue_pairs: ibis.Table) -> tuple[ibis.Table, ibis.Table]:
                 "parent_id": dhash(parent_path),
             })
 
-    hierarchy_df = pd.DataFrame(
-        hierarchy_rows if hierarchy_rows else [],
-        columns=["entity_id", "parent_id"],
-    )
+    if hierarchy_rows:
+        hierarchy_df = pd.DataFrame(hierarchy_rows, columns=["entity_id", "parent_id"])
+    else:
+        hierarchy_df = pd.DataFrame({
+            "entity_id": pd.array([], dtype="int64"),
+            "parent_id": pd.array([], dtype="int64"),
+        })
 
-    return ibis.memtable(spine_df), ibis.memtable(hierarchy_df)
+    db_conn.create_table("spine", spine_df, overwrite=True)
+    db_conn.create_table("hierarchy", hierarchy_df, overwrite=True)
+    return db_conn.table("spine"), db_conn.table("hierarchy")
 
 
 def incomplete_component_tables(

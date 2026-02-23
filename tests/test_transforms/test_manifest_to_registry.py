@@ -209,11 +209,15 @@ def _pvp(pairs: list[tuple[str, str]]) -> ibis.Table:
     return ibis.memtable(pd.DataFrame(pairs, columns=["path", "value"]))
 
 
+def _conn():
+    return manifest_to_registry.db_conn()
+
+
 class TestParsedPaths:
 
     def _call(self, pairs):
         pvp = _pvp(pairs)
-        return manifest_to_registry.parsed_paths(pvp)
+        return manifest_to_registry.parsed_paths(pvp, _conn())
 
     def test_returns_two_ibis_tables(self):
         spine, hierarchy = self._call([("my_task[0].description", "A task.")])
