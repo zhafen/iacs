@@ -13,8 +13,6 @@ import yaml
 from ..registry import Registry
 from ..utils import dhash
 
-_hash_path = dhash  # public alias used by tests
-
 
 def raw_entity_first_data(input_dir: str) -> dict:
     """Load all yaml files from the input directory and its sub directories.
