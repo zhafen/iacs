@@ -8,7 +8,7 @@ import ibis
 import pydantic
 import pytest
 
-from iacs.transforms import manifest_to_registry
+from iacs.transforms.manifest_to_registry import raw_entity_first_data, db_conn, pathvalue_pairs
 from iacs.registry import Registry
 from iacs.utils import dhash
 
@@ -525,3 +525,96 @@ class TestRegistry:
         result = registry(con, comps)
         assert "description" in result.component_types
         assert "task" in result.component_types
+
+
+# ---------------------------------------------------------------------------
+# pathvalue_pairs
+# ---------------------------------------------------------------------------
+
+class TestPathvaluePairs:
+
+    @pytest.fixture
+    def conn(self):
+        return db_conn()
+
+    def test_returns_ibis_table(self, conn):
+        data = {"my_task": [{"description": "A task."}]}
+        result = pathvalue_pairs(data, conn)
+        assert isinstance(result, ibis.Table)
+
+    def test_has_path_and_value_columns(self, conn):
+        data = {"my_task": [{"description": "A task."}]}
+        result = pathvalue_pairs(data, conn)
+        assert "path" in result.columns
+        assert "value" in result.columns
+
+    def test_scalar_component(self, conn):
+        """A dict component with a string value produces one (path, value) row."""
+        data = {"my_task": [{"description": "A task."}]}
+        result = pathvalue_pairs(data, conn)
+        df = result.to_pandas()
+        assert "my_task[0].description" in df["path"].values
+        row = df[df["path"] == "my_task[0].description"]
+        assert row["value"].iloc[0] == "A task."
+
+    def test_tag_component(self, conn):
+        """A bare-string tag produces a row with an empty value."""
+        data = {"my_task": ["task"]}
+        result = pathvalue_pairs(data, conn)
+        df = result.to_pandas()
+        assert "my_task[0].task" in df["path"].values
+        assert df[df["path"] == "my_task[0].task"]["value"].iloc[0] == ""
+
+    def test_tag_index_preserved(self, conn):
+        """A tag at list index N shifts subsequent components to N+1."""
+        data = {"my_task": ["task", {"description": "A task."}]}
+        result = pathvalue_pairs(data, conn)
+        df = result.to_pandas()
+        assert "my_task[1].description" in df["path"].values
+
+    def test_dict_valued_component(self, conn):
+        """A component whose value is a dict produces one row per sub-field."""
+        data = {"entity": [{"requirement": {"priority": 1}}]}
+        result = pathvalue_pairs(data, conn)
+        df = result.to_pandas()
+        assert "entity[0].requirement.priority" in df["path"].values
+        assert df[df["path"] == "entity[0].requirement.priority"]["value"].iloc[0] == "1"
+
+    def test_component_key_with_space(self, conn):
+        """Component keys containing spaces (e.g. 'solution of') are preserved."""
+        data = {"entity": [{"solution of": "other_entity"}]}
+        result = pathvalue_pairs(data, conn)
+        df = result.to_pandas()
+        assert "entity[0].solution of" in df["path"].values
+        assert df[df["path"] == "entity[0].solution of"]["value"].iloc[0] == "other_entity"
+
+    def test_nested_entity_data_prefix(self, conn):
+        """Components of a nested entity are placed under the .data[N] prefix."""
+        data = {"parent": {"data": [{"description": "A parent."}]}}
+        result = pathvalue_pairs(data, conn)
+        df = result.to_pandas()
+        assert "parent.data[0].description" in df["path"].values
+
+    def test_nested_entity_sub_entities_recurse(self, conn):
+        """Sub-entities of a nested entity get their own paths."""
+        data = {
+            "parent": {
+                "data": [{"description": "A parent."}],
+                "child": [{"description": "A child."}],
+            }
+        }
+        result = pathvalue_pairs(data, conn)
+        df = result.to_pandas()
+        assert "parent.data[0].description" in df["path"].values
+        assert "parent.child[0].description" in df["path"].values
+
+    def test_multiple_entities(self, conn):
+        """Multiple top-level entities each contribute their own paths."""
+        data = {
+            "req": [{"description": "A req."}],
+            "infra": [{"description": "Infrastructure."}],
+        }
+        result = pathvalue_pairs(data, conn)
+        df = result.to_pandas()
+        assert "req[0].description" in df["path"].values
+        assert "infra[0].description" in df["path"].values

@@ -13,6 +13,8 @@ import yaml
 from ..registry import Registry
 from ..utils import dhash
 
+_hash_path = dhash  # public alias used by tests
+
 
 def raw_entity_first_data(input_dir: str) -> dict:
     """Load all yaml files from the input directory and its sub directories.
@@ -47,6 +49,65 @@ def db_conn() -> ibis.BaseBackend:
     return ibis.duckdb.connect()
 
 
+def _add_component_pairs(
+    entity_path: str, index: int, component, result: list
+) -> None:
+    """Append (path, value) pairs for one component entry to result.
+
+    Parameters
+    ----------
+    entity_path : str
+        The dot-separated path to the owning entity, e.g. "a.b.c".
+    index : int
+        The 0-based position of this component in the entity's list
+        (bare-string tags count toward the index).
+    component : str | dict
+        The raw YAML component value.
+    result : list
+        Accumulator of (path, value) string tuples.
+    """
+    prefix = f"{entity_path}[{index}]"
+    if isinstance(component, str):
+        # Tag component: bare string, no associated value.
+        result.append((f"{prefix}.{component}", ""))
+    elif isinstance(component, dict):
+        key = next(iter(component))
+        value = component[key]
+        if isinstance(value, dict):
+            # Component with sub-fields, e.g. {"requirement": {"priority": 1}}.
+            for sub_key, sub_val in value.items():
+                str_val = "" if sub_val is None else str(sub_val)
+                result.append((f"{prefix}.{key}.{sub_key}", str_val))
+        else:
+            # Simple scalar component, e.g. {"description": "..."}.
+            str_val = "" if value is None else str(value)
+            result.append((f"{prefix}.{key}", str_val))
+
+
+def _flatten_to_pathvalue(data: dict, parent_path: str = "") -> list[tuple[str, str]]:
+    """Recursively flatten entity-first data into (path, value) string pairs.
+
+    For flat entities (list value) the path is ``entity[N].key``.
+    For nested entities (dict value with an optional ``data`` key) the entity's
+    own components are at ``entity.data[N].key`` and sub-entities are processed
+    recursively.
+    """
+    result = []
+    for entity_key, entity_value in data.items():
+        entity_path = f"{parent_path}.{entity_key}" if parent_path else entity_key
+        if isinstance(entity_value, list):
+            for i, component in enumerate(entity_value):
+                _add_component_pairs(entity_path, i, component, result)
+        elif isinstance(entity_value, dict):
+            # Entity's own components live under the "data" key (if present).
+            for i, component in enumerate(entity_value.get("data", [])):
+                _add_component_pairs(f"{entity_path}.data", i, component, result)
+            # Recurse into sub-entities (every key except "data").
+            sub_entities = {k: v for k, v in entity_value.items() if k != "data"}
+            result.extend(_flatten_to_pathvalue(sub_entities, entity_path))
+    return result
+
+
 def pathvalue_pairs(raw_entity_first_data: dict, db_conn: ibis.BaseBackend) -> ibis.Table:
     """Convert the raw entity-first data into a database table with two fields:
     path and value, both of type str. This is the first step in the transformation
@@ -61,10 +122,14 @@ def pathvalue_pairs(raw_entity_first_data: dict, db_conn: ibis.BaseBackend) -> i
     Returns
     -------
     ibis.Table
-        A table with columns "path" and "value", where "path" is the entity path (e.g. "a.b.c") and "value" is the corresponding value from the raw data, serialized as a string.
+        A table with columns "path" and "value", where "path" is the entity path
+        (e.g. "a.b.c[0].key") and "value" is the corresponding leaf value from
+        the raw data, serialized as a string.
     """
-
-    return
+    pairs = _flatten_to_pathvalue(raw_entity_first_data)
+    df = pd.DataFrame(pairs, columns=["path", "value"])
+    db_conn.create_table("pathvalue_pairs", df, overwrite=True)
+    return db_conn.table("pathvalue_pairs")
 @unpack_fields("spine", "hierarchy")
 def parsed_paths(pathvalue_pairs: ibis.Table) -> tuple[ibis.Table, ibis.Table]:
     """Hash the paths into entity IDs, and extract the parent-child relationships

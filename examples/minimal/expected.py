@@ -17,7 +17,7 @@ raw_entity_first_data = {
 pathvalue_pairs = pd.DataFrame(
     [
         ["my_requirement[0].description", "A task I need to complete."],
-        ["my_requirement[1].solution", "my_infrastructure"],
+        ["my_requirement[2].solution", "my_infrastructure"],
         ["my_infrastructure[0].description", "Infrastructure to complete the task."],
     ],
     columns=["path", "value"],
@@ -35,11 +35,11 @@ spine = pd.DataFrame(
         },
         {
             "entity_id": dhash("my_requirement"),
-            "component_index": 1,
+            "component_index": 2,
             "entity_key": "my_requirement",
             "component_type": "solution",
             "modifier": None,
-            "path": "my_requirement[1].solution",
+            "path": "my_requirement[2].solution",
         },
         {
             "entity_id": dhash("my_infrastructure"),
