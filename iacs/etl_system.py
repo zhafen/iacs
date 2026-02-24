@@ -1,4 +1,4 @@
-"""TransformSystem for executing Hamilton DAG transforms against a Registry."""
+"""ETLSystem for executing Hamilton DAG dataflows against a Registry."""
 
 from types import ModuleType
 from typing import Any
@@ -8,7 +8,7 @@ from hamilton import driver, base
 from iacs.registry import Registry
 
 
-class TransformSystem:
+class ETLSystem:
     """Executes Hamilton dataflow transforms against a Registry."""
 
     def __init__(self, registry: Registry, dataflows: list[ModuleType]):

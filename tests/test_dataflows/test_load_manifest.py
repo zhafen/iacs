@@ -4,7 +4,7 @@ import ibis
 import pandas as pd
 import pytest
 
-import iacs.transforms.load_manifest as load_manifest
+import iacs.dataflows.load_manifest as load_manifest
 from iacs.registry import Registry
 from iacs.utils import dhash
 

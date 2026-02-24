@@ -45,7 +45,7 @@ class AuditRunner:
     @classmethod
     def default(cls) -> "AuditRunner":
         """Create an AuditRunner with all built-in audits loaded."""
-        from iacs.transforms.audit import (
+        from iacs.dataflows.audit import (
             requirement_coverage,
             traceability,
             todo,

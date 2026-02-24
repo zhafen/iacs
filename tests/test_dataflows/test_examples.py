@@ -1,8 +1,8 @@
-"""This test file contains code to test the transforms on each of the example manifests.
+"""This test file contains code to test the dataflows on each of the example manifests.
 
 The pseudo-code logic is as follows:
 Loop over each example manifest in the examples directory:
-    Loop over each transform module in iacs.transforms:
+    Loop over each dataflow module in iacs.dataflows:
         1. get the DAG for the module
         2. execute the DAG on the dir
         3. load the expected outputs for the module from expected.py
@@ -20,27 +20,27 @@ import pandas as pd
 import pytest
 from hamilton import driver, base
 
-import iacs.transforms as transforms_pkg
-from iacs.transforms import load_manifest as load_manifest_module
+import iacs.dataflows as dataflows_pkg
+from iacs.dataflows import load_manifest as load_manifest_module
 
 EXAMPLES_DIR = Path(__file__).parent.parent.parent / "examples"
 
 
 # ─── Discovery helpers ──────────────────────────────────────────────────────
 
-def _get_transform_modules() -> list[tuple[str, ModuleType]]:
-    """Return (name, module) for every Hamilton DAG module in iacs.transforms."""
-    transforms_path = Path(transforms_pkg.__file__).parent
+def _get_dataflow_modules() -> list[tuple[str, ModuleType]]:
+    """Return (name, module) for every Hamilton DAG module in iacs.dataflows."""
+    dataflows_path = Path(dataflows_pkg.__file__).parent
     result = []
-    for _, name, ispkg in pkgutil.iter_modules([str(transforms_path)]):
+    for _, name, ispkg in pkgutil.iter_modules([str(dataflows_path)]):
         if ispkg:
-            subpkg = importlib.import_module(f"iacs.transforms.{name}")
+            subpkg = importlib.import_module(f"iacs.dataflows.{name}")
             subpkg_path = Path(subpkg.__file__).parent
             for _, subname, _ in pkgutil.iter_modules([str(subpkg_path)]):
-                module = importlib.import_module(f"iacs.transforms.{name}.{subname}")
+                module = importlib.import_module(f"iacs.dataflows.{name}.{subname}")
                 result.append((f"{name}.{subname}", module))
         else:
-            module = importlib.import_module(f"iacs.transforms.{name}")
+            module = importlib.import_module(f"iacs.dataflows.{name}")
             result.append((name, module))
     return result
 
@@ -163,7 +163,7 @@ def _test_params() -> list:
     """Generate pytest.param objects for each (example_dir, module) pair."""
     params = []
     for example_dir in _get_example_dirs_with_expected():
-        for module_name, mod in _get_transform_modules():
+        for module_name, mod in _get_dataflow_modules():
             params.append(
                 pytest.param(
                     example_dir, module_name, mod,
@@ -176,12 +176,12 @@ def _test_params() -> list:
 # ─── Tests ──────────────────────────────────────────────────────────────────
 
 @pytest.mark.parametrize("example_dir,module_name,mod", _test_params())
-def test_transform_dag_outputs_match_expected(
+def test_dataflow_dag_outputs_match_expected(
     example_dir: Path, module_name: str, mod: ModuleType,
 ) -> None:
-    """All expected outputs from expected.py appear in the transform DAG output.
+    """All expected outputs from expected.py appear in the dataflow DAG output.
 
-    For each (example, transform module) pair:
+    For each (example, dataflow module) pair:
     1. Execute all DAG nodes that have a corresponding expected variable.
     2. For each expected variable present in the results, verify it is a subset
        of the DAG output.
