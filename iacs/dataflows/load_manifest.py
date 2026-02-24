@@ -264,7 +264,7 @@ def registry(spine: ir.Table, component_tables: dict[str, ir.Table]) -> Registry
     """
     conn = ibis.duckdb.connect()
     conn.create_table("spine", spine.to_pandas(), overwrite=True)
-    components = {}
+    components = {"spine": conn.table("spine")}
     for comp_type, table in component_tables.items():
         conn.create_table(comp_type, table.to_pandas(), overwrite=True)
         components[comp_type] = conn.table(comp_type)
