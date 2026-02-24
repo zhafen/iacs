@@ -21,7 +21,7 @@ import pytest
 from hamilton import driver, base
 
 import iacs.transforms as transforms_pkg
-from iacs.transforms import manifest_to_registry as manifest_to_registry_module
+from iacs.transforms import load_manifest as load_manifest_module
 
 EXAMPLES_DIR = Path(__file__).parent.parent.parent / "examples"
 
@@ -32,9 +32,16 @@ def _get_transform_modules() -> list[tuple[str, ModuleType]]:
     """Return (name, module) for every Hamilton DAG module in iacs.transforms."""
     transforms_path = Path(transforms_pkg.__file__).parent
     result = []
-    for _, name, _ in pkgutil.iter_modules([str(transforms_path)]):
-        module = importlib.import_module(f"iacs.transforms.{name}")
-        result.append((name, module))
+    for _, name, ispkg in pkgutil.iter_modules([str(transforms_path)]):
+        if ispkg:
+            subpkg = importlib.import_module(f"iacs.transforms.{name}")
+            subpkg_path = Path(subpkg.__file__).parent
+            for _, subname, _ in pkgutil.iter_modules([str(subpkg_path)]):
+                module = importlib.import_module(f"iacs.transforms.{name}.{subname}")
+                result.append((f"{name}.{subname}", module))
+        else:
+            module = importlib.import_module(f"iacs.transforms.{name}")
+            result.append((name, module))
     return result
 
 
@@ -85,12 +92,12 @@ def _execute_dag(mod: ModuleType, inputs: dict, output_names: list[str] | None =
 
 
 def _build_registry(example_dir: Path):
-    """Build a Registry from an example directory via the manifest_to_registry DAG.
+    """Build a Registry from an example directory via the load_manifest DAG.
 
     Returns None if the DAG cannot be executed (e.g. stub implementations).
     """
     try:
-        result = _execute_dag(manifest_to_registry_module, {"input_dir": str(example_dir)})
+        result = _execute_dag(load_manifest_module, {"input_dir": str(example_dir)})
         return result.get("registry")
     except Exception:
         return None
@@ -183,7 +190,7 @@ def test_transform_dag_outputs_match_expected(
     expected_vars = _expected_data_vars(_load_expected(example_dir))
 
     # Build inputs for this module.
-    if module_name == "manifest_to_registry":
+    if module_name == "load_manifest":
         inputs = {"input_dir": str(example_dir)}
     else:
         registry = _build_registry(example_dir)

@@ -3,7 +3,7 @@ import pytest
 
 from iacs.audit_system import AuditRunner
 from iacs.registry import Registry
-from iacs.transforms import audit_requirement_coverage, audit_traceability, audit_todo
+from iacs.transforms.audit import requirement_coverage as audit_requirement_coverage, traceability as audit_traceability, todo as audit_todo
 
 from tests.conftest import make_registry
 

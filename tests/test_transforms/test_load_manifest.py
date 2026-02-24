@@ -1,10 +1,10 @@
-"""Tests for the manifest_to_registry Hamilton DAG functions."""
+"""Tests for the load_manifest Hamilton DAG functions."""
 
 import ibis
 import pandas as pd
 import pytest
 
-import iacs.transforms.manifest_to_registry as manifest_to_registry
+import iacs.transforms.load_manifest as load_manifest
 from iacs.registry import Registry
 from iacs.utils import dhash
 
@@ -49,27 +49,27 @@ def multi_file_yaml_dir(tmp_path):
 class TestRawEntityFirstData:
 
     def test_loads_single_yaml_file(self, minimal_yaml_dir):
-        result = manifest_to_registry.raw_entity_first_data(minimal_yaml_dir)
+        result = load_manifest.raw_entity_first_data(minimal_yaml_dir)
         assert isinstance(result, dict)
         assert "my_task" in result
 
     def test_loads_multiple_yaml_files(self, multi_file_yaml_dir):
-        result = manifest_to_registry.raw_entity_first_data(multi_file_yaml_dir)
+        result = load_manifest.raw_entity_first_data(multi_file_yaml_dir)
         assert isinstance(result, dict)
         assert "my_task" in result
         assert "my_infra" in result
 
     def test_loads_yaml_from_subdirectories(self, multi_file_yaml_dir):
-        result = manifest_to_registry.raw_entity_first_data(multi_file_yaml_dir)
+        result = load_manifest.raw_entity_first_data(multi_file_yaml_dir)
         # my_infra is in a subdirectory
         assert "my_infra" in result
 
     def test_returns_empty_dict_for_empty_dir(self, tmp_path):
-        result = manifest_to_registry.raw_entity_first_data(str(tmp_path))
+        result = load_manifest.raw_entity_first_data(str(tmp_path))
         assert result == {}
 
     def test_preserves_raw_structure(self, minimal_yaml_dir):
-        result = manifest_to_registry.raw_entity_first_data(minimal_yaml_dir)
+        result = load_manifest.raw_entity_first_data(minimal_yaml_dir)
         # The value should be the raw list from the YAML
         assert isinstance(result["my_task"], list)
         assert {"description": "A task I need to complete."} in result["my_task"]
@@ -84,7 +84,7 @@ class TestRegistry:
     def test_returns_registry_instance(self):
         spine = ibis.memtable(pd.DataFrame([{"entity_id": 1}]))
         comps = {"description": ibis.memtable(pd.DataFrame([{"entity_id": "e1", "value": "Hello"}]))}
-        result = manifest_to_registry.registry(spine, comps)
+        result = load_manifest.registry(spine, comps)
         assert isinstance(result, Registry)
 
     def test_registry_has_component_types(self):
@@ -93,7 +93,7 @@ class TestRegistry:
             "description": ibis.memtable(pd.DataFrame([{"entity_id": "e1", "value": "Hello"}])),
             "task": ibis.memtable(pd.DataFrame([{"entity_id": "e1"}])),
         }
-        result = manifest_to_registry.registry(spine, comps)
+        result = load_manifest.registry(spine, comps)
         assert "description" in result.component_types
         assert "task" in result.component_types
 
@@ -106,19 +106,19 @@ class TestPathvaluePairs:
 
     def test_returns_ibis_table(self):
         data = {"my_task": [{"description": "A task."}]}
-        result = manifest_to_registry.pathvalue_pairs(data)
+        result = load_manifest.pathvalue_pairs(data)
         assert isinstance(result, ibis.Table)
 
     def test_has_path_and_value_columns(self):
         data = {"my_task": [{"description": "A task."}]}
-        result = manifest_to_registry.pathvalue_pairs(data)
+        result = load_manifest.pathvalue_pairs(data)
         assert "path" in result.columns
         assert "value" in result.columns
 
     def test_scalar_component(self):
         """A dict component with a string value produces one (path, value) row."""
         data = {"my_task": [{"description": "A task."}]}
-        result = manifest_to_registry.pathvalue_pairs(data)
+        result = load_manifest.pathvalue_pairs(data)
         df = result.to_pandas()
         assert "my_task[0].description" in df["path"].values
         row = df[df["path"] == "my_task[0].description"]
@@ -127,7 +127,7 @@ class TestPathvaluePairs:
     def test_tag_component(self):
         """A bare-string tag produces a row with an empty value."""
         data = {"my_task": ["task"]}
-        result = manifest_to_registry.pathvalue_pairs(data)
+        result = load_manifest.pathvalue_pairs(data)
         df = result.to_pandas()
         assert "my_task[0].task" in df["path"].values
         assert df[df["path"] == "my_task[0].task"]["value"].iloc[0] == ""
@@ -135,14 +135,14 @@ class TestPathvaluePairs:
     def test_tag_index_preserved(self):
         """A tag at list index N shifts subsequent components to N+1."""
         data = {"my_task": ["task", {"description": "A task."}]}
-        result = manifest_to_registry.pathvalue_pairs(data)
+        result = load_manifest.pathvalue_pairs(data)
         df = result.to_pandas()
         assert "my_task[1].description" in df["path"].values
 
     def test_dict_valued_component(self):
         """A component whose value is a dict produces one row per sub-field."""
         data = {"entity": [{"requirement": {"priority": 1}}]}
-        result = manifest_to_registry.pathvalue_pairs(data)
+        result = load_manifest.pathvalue_pairs(data)
         df = result.to_pandas()
         assert "entity[0].requirement.priority" in df["path"].values
         assert df[df["path"] == "entity[0].requirement.priority"]["value"].iloc[0] == "1"
@@ -150,7 +150,7 @@ class TestPathvaluePairs:
     def test_component_key_with_space(self):
         """Component keys containing spaces (e.g. 'solution of') are preserved."""
         data = {"entity": [{"solution of": "other_entity"}]}
-        result = manifest_to_registry.pathvalue_pairs(data)
+        result = load_manifest.pathvalue_pairs(data)
         df = result.to_pandas()
         assert "entity[0].solution of" in df["path"].values
         assert df[df["path"] == "entity[0].solution of"]["value"].iloc[0] == "other_entity"
@@ -158,7 +158,7 @@ class TestPathvaluePairs:
     def test_nested_entity_data_prefix(self):
         """Components of a nested entity are placed under the .data[N] prefix."""
         data = {"parent": {"data": [{"description": "A parent."}]}}
-        result = manifest_to_registry.pathvalue_pairs(data)
+        result = load_manifest.pathvalue_pairs(data)
         df = result.to_pandas()
         assert "parent.data[0].description" in df["path"].values
 
@@ -170,7 +170,7 @@ class TestPathvaluePairs:
                 "child": [{"description": "A child."}],
             }
         }
-        result = manifest_to_registry.pathvalue_pairs(data)
+        result = load_manifest.pathvalue_pairs(data)
         df = result.to_pandas()
         assert "parent.data[0].description" in df["path"].values
         assert "parent.child[0].description" in df["path"].values
@@ -181,7 +181,7 @@ class TestPathvaluePairs:
             "req": [{"description": "A req."}],
             "infra": [{"description": "Infrastructure."}],
         }
-        result = manifest_to_registry.pathvalue_pairs(data)
+        result = load_manifest.pathvalue_pairs(data)
         df = result.to_pandas()
         assert "req[0].description" in df["path"].values
         assert "infra[0].description" in df["path"].values
@@ -199,7 +199,7 @@ def _pvp(pairs: list[tuple[str, str]]) -> ibis.Table:
 class TestSpine:
 
     def _call(self, pairs):
-        return manifest_to_registry.spine(_pvp(pairs))
+        return load_manifest.spine(_pvp(pairs))
 
     def test_returns_ibis_table(self):
         result = self._call([("my_task[0].description", "A task.")])
@@ -274,9 +274,9 @@ class TestSpine:
 class TestComponentTables:
 
     def _call(self, data: dict) -> dict:
-        pvp = manifest_to_registry.pathvalue_pairs(data)
-        sp = manifest_to_registry.spine(pvp)
-        return manifest_to_registry.component_tables(pvp, sp)
+        pvp = load_manifest.pathvalue_pairs(data)
+        sp = load_manifest.spine(pvp)
+        return load_manifest.component_tables(pvp, sp)
 
     def test_returns_dict_of_ibis_tables(self):
         data = {"entity": [{"description": "A thing."}]}

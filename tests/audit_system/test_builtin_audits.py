@@ -1,20 +1,20 @@
 import ibis
 
-from iacs.transforms.audit_requirement_coverage import (
+from iacs.transforms.audit.requirement_coverage import (
     requirement_entities,
     parents_with_req_children,
     solved_requirements,
     uncovered_requirements,
     requirement_coverage,
 )
-from iacs.transforms.audit_traceability import (
+from iacs.transforms.audit.traceability import (
     all_entities,
     req_entities,
     solution_entities,
     orphan_entities,
     traceability,
 )
-from iacs.transforms.audit_todo import (
+from iacs.transforms.audit.todo import (
     todo_table,
     todo,
 )

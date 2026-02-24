@@ -32,9 +32,8 @@ class AuditRunner:
         self._results = {}
         for module in self.audit_modules:
             # Derive the final variable name from the module name
-            # e.g. iacs.transforms.audit_todo -> "todo"
-            module_leaf = module.__name__.rsplit(".", 1)[-1]
-            final_var = module_leaf.removeprefix("audit_")
+            # e.g. iacs.transforms.audit.todo -> "todo"
+            final_var = module.__name__.rsplit(".", 1)[-1]
 
             dr = driver.Driver(
                 {"registry": registry}, module, adapter=base.DictResult()
@@ -46,16 +45,16 @@ class AuditRunner:
     @classmethod
     def default(cls) -> "AuditRunner":
         """Create an AuditRunner with all built-in audits loaded."""
-        from iacs.transforms import (
-            audit_requirement_coverage,
-            audit_traceability,
-            audit_todo,
+        from iacs.transforms.audit import (
+            requirement_coverage,
+            traceability,
+            todo,
         )
 
         return cls([
-            audit_requirement_coverage,
-            audit_traceability,
-            audit_todo,
+            requirement_coverage,
+            traceability,
+            todo,
         ])
 
     @property
