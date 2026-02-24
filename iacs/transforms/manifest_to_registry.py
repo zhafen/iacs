@@ -1,14 +1,13 @@
 """Hamilton DAG for converting entity-centered data to component-centered data."""
 
-import re
 from pathlib import Path
 
 import ibis
+import ibis.expr.types as ir
 import pandas as pd
 import yaml
 
 from ..registry import Registry
-from ..utils import dhash
 
 
 def raw_entity_first_data(input_dir: str) -> dict:
@@ -93,7 +92,7 @@ def _flatten_to_pathvalue(data: dict, parent_path: str = "") -> list[tuple[str, 
     return result
 
 
-def pathvalue_pairs(raw_entity_first_data: dict) -> ibis.Table:
+def pathvalue_pairs(raw_entity_first_data: dict) -> ir.Table:
     """Convert the raw entity-first data into a database table with two fields:
     path and value, both of type str. This is the first step in the transformation
     process, and serves as a way to inspect the raw data in a tabular format before
@@ -106,7 +105,7 @@ def pathvalue_pairs(raw_entity_first_data: dict) -> ibis.Table:
 
     Returns
     -------
-    ibis.Table
+    ir.Table
         A table with columns "path" and "value", where "path" is the entity path
         (e.g. "a.b.c[0].key") and "value" is the corresponding leaf value from
         the raw data, serialized as a string.
@@ -116,61 +115,41 @@ def pathvalue_pairs(raw_entity_first_data: dict) -> ibis.Table:
     return ibis.memtable(df)
 
 
-_PATH_RE = re.compile(r"^(.+)\[(\d+)\]\.(.+)$")
+_PATH_PATTERN = r"^(.+)\[(\d+)\]\.(.+)$"
 
 
-def _parse_one_path(path: str) -> dict | None:
-    """Parse a path string into spine fields.
+@ibis.udf.scalar.builtin
+def sha256(a: str) -> str: ...
 
-    Returns a dict with spine columns plus 'entity_path' and
-    '_spine_path' (for deduplication), or None if the path does not match
-    the expected ``entity_prefix[index].component_type`` format.
+
+def _with_spine_path(t: ir.Table) -> ir.Table:
+    """Add a spine_path column to a table that has a 'path' column.
+
+    Assumes all rows already match _PATH_PATTERN (pre-filter before calling).
+    Also adds intermediate columns _prefix, _idx, _after, _ctf.
     """
-    m = _PATH_RE.match(path)
-    if not m:
-        return None
-    entity_prefix, idx_str, after = m.group(1), m.group(2), m.group(3)
-
-    # First dot-segment of 'after' is the full component type (may contain spaces).
-    component_type_full = after.split(".")[0]
-
-    # Strip the '.data' suffix added for nested entities' own components.
-    if entity_prefix.endswith(".data"):
-        entity_path = entity_prefix[:-5]
-    else:
-        entity_path = entity_prefix
-
-    # Split 'solution of' → type='solution', modifier='of'.
-    parts = component_type_full.split(" ", 1)
-    component_type = parts[0]
-    modifier = parts[1] if len(parts) > 1 else None
-
-    spine_path = f"{entity_prefix}[{idx_str}].{component_type_full}"
-
-    return {
-        "entity_id": dhash(entity_path),
-        "component_index": int(idx_str),
-        "entity_key": entity_path.split(".")[-1],
-        "component_type": component_type,
-        "modifier": modifier,
-        "path": spine_path,
-        "entity_path": entity_path,
-        "_spine_path": spine_path,
-    }
+    t = t.mutate(
+        _prefix=t.path.re_extract(_PATH_PATTERN, 1),
+        _idx=t.path.re_extract(_PATH_PATTERN, 2),
+        _after=t.path.re_extract(_PATH_PATTERN, 3),
+    )
+    # _ctf: first dot-segment of _after (component_type_full, may include spaces)
+    t = t.mutate(_ctf=t["_after"].re_extract(r"^([^.]*)", 1))
+    return t.mutate(spine_path=t["_prefix"] + "[" + t["_idx"] + "]." + t["_ctf"])
 
 
-def spine(pathvalue_pairs: ibis.Table) -> ibis.Table:
+def spine(pathvalue_pairs: ir.Table) -> ir.Table:
     """Hash the paths into entity IDs, and extract the parent-child relationships
     and component types.
 
     Parameters
     ----------
-    pathvalue_pairs : ibis.Table
+    pathvalue_pairs : ir.Table
     db_conn : ibis.BaseBackend
 
     Returns
     -------
-    spine : ibis.Table
+    spine : ir.Table
         The spine is the shared index of the registry that contains one row per
         component instance, with the entity_id, component type, and original path.
         The entity_id and component_index columns are the actual index of the registry, and the component_type column is used to pivot into component tables.
@@ -182,86 +161,77 @@ def spine(pathvalue_pairs: ibis.Table) -> ibis.Table:
         - modifier: any modifiers for the component instance, which may affect interpretation of the fields (e.g. "parent" vs "parent of")
         - path: the original path
     """
-    SPINE_COLS = [
-        "entity_id", "component_index", "entity_key",
-        "component_type", "modifier", "path",
-    ]
+    t = pathvalue_pairs.filter(pathvalue_pairs.path.re_search(_PATH_PATTERN))
+    t = _with_spine_path(t)
 
-    df = pathvalue_pairs.to_pandas()
-
-    spine_rows: list[dict] = []
-    seen_spine: set[str] = set()
-    entity_paths: list[str] = []
-    seen_entity_paths: set[str] = set()
-
-    for path in df["path"]:
-        row = _parse_one_path(path)
-        if row is None:
-            continue
-        sp = row["_spine_path"]
-        if sp not in seen_spine:
-            seen_spine.add(sp)
-            spine_rows.append(row)
-        ep = row["entity_path"]
-        if ep not in seen_entity_paths:
-            seen_entity_paths.add(ep)
-            entity_paths.append(ep)
-
-    spine_df = (
-        pd.DataFrame(spine_rows)[SPINE_COLS]
-        if spine_rows
-        else pd.DataFrame(columns=SPINE_COLS)
+    # entity_path: strip the '.data' suffix that marks a nested entity's own components.
+    t = t.mutate(
+        entity_path=ibis.ifelse(
+            t["_prefix"].endswith(".data"),
+            t["_prefix"].substr(0, t["_prefix"].length() - 5),
+            t["_prefix"],
+        ),
+        component_type=t["_ctf"].re_extract(r"^(\S+)", 1),
+        modifier=t["_ctf"].re_extract(r"^\S+ (.+)$", 1).nullif(""),
+        component_index=t["_idx"].cast("int32"),
     )
-    # DuckDB requires non-NULL column types; modifier may be all-None.
-    spine_df["modifier"] = spine_df["modifier"].astype(pd.StringDtype())
-
-    return ibis.memtable(spine_df)
+    # entity_id: first 12 hex chars of SHA-256 (matches dhash in utils).
+    # entity_key: last dot-segment of entity_path.
+    t = t.mutate(
+        entity_id=sha256(t.entity_path).substr(0, 12),
+        entity_key=t.entity_path.re_extract(r"([^.]+)$", 1),
+    )
+    return t.select(
+        "entity_id", "component_index", "entity_key", "component_type", "modifier",
+        t.spine_path.name("path"),
+    ).distinct()
 
 
 def component_tables(
-    pathvalue_pairs: ibis.Table,
-    spine: ibis.Table,
-) -> dict[str, ibis.Table]:
+    pathvalue_pairs: ir.Table,
+    spine: ir.Table,
+) -> dict[str, ir.Table]:
     """Join the pathvalue_pairs and spine on path and group the results by component
     type to create a dictionary of component tables.
 
     Parameters
     ----------
     db_conn : ibis.BaseBackend
-    pathvalue_pairs : ibis.Table
-    spine : ibis.Table
+    pathvalue_pairs : ir.Table
+    spine : ir.Table
 
     Returns
     -------
-    dict[str, ibis.Table]
+    dict[str, ir.Table]
         Keys are component types; each value is an ibis Table with columns
         entity_id, component_index, modifier, and one column per sub-field
         (or "value" for scalar components).
     """
-    pvp_df = pathvalue_pairs.to_pandas()
-    spine_df = spine.to_pandas()
+    # Add spine_path to every matching pvp row using the same ibis expression logic.
+    pvp = pathvalue_pairs.filter(pathvalue_pairs.path.re_search(_PATH_PATTERN))
+    pvp = _with_spine_path(pvp)
 
-    def _spine_path_and_field(pvp_path):
-        parsed = _parse_one_path(pvp_path)
-        if parsed is None:
-            return None, None
-        sp = parsed["path"]
-        field = pvp_path[len(sp) + 1:] if pvp_path != sp else "value"
-        return sp, field
-
-    pvp_df[["spine_path", "field_name"]] = pvp_df["path"].apply(
-        lambda p: pd.Series(_spine_path_and_field(p))
+    # Join pvp to spine on spine_path == spine.path.
+    spine_for_join = spine.rename(spine_path="path").select(
+        "entity_id", "component_index", "component_type", "modifier", "spine_path"
     )
+    joined = pvp.join(spine_for_join, "spine_path")
 
-    spine_for_join = spine_df[
-        ["entity_id", "component_index", "component_type", "modifier", "path"]
-    ].rename(columns={"path": "_spine_path"})
-    merged = pvp_df.merge(
-        spine_for_join, left_on="spine_path", right_on="_spine_path", how="inner"
-    )
+    # field_name: sub-field suffix after the spine_path, or "value" for scalar components.
+    joined = joined.mutate(
+        field_name=ibis.ifelse(
+            joined["path"] == joined["spine_path"],
+            "value",
+            joined["path"].substr(joined["spine_path"].length() + 1),
+        )
+    ).select("entity_id", "component_index", "component_type", "modifier", "field_name", "value")
+
+    # Dynamic pivot: one column per field_name. Cannot be expressed as a static ibis
+    # expression because column names depend on data, so we drop to pandas here.
+    df = joined.to_pandas()
 
     result = {}
-    for comp_type, group in merged.groupby("component_type"):
+    for comp_type, group in df.groupby("component_type"):
         instances: dict[tuple, dict] = {}
         for _, row in group.iterrows():
             key = (row["entity_id"], row["component_index"])
@@ -280,12 +250,12 @@ def component_tables(
     return result
 
 
-def registry(spine: ibis.Table, component_tables: dict[str, ibis.Table]) -> Registry:
+def registry(spine: ir.Table, component_tables: dict[str, ir.Table]) -> Registry:
     """Load the constituents of a registry into the registry object. The spine is used as the shared index for the registry, and the component tables are attached to it.
 
     Parameters
     ----------
-    component_tables : dict[str, ibis.Table]
+    component_tables : dict[str, ir.Table]
 
     Returns
     -------
