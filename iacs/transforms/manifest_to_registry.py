@@ -262,5 +262,11 @@ def registry(spine: ir.Table, component_tables: dict[str, ir.Table]) -> Registry
     Registry
         A registry object containing the component tables.
     """
-    return
+    conn = ibis.duckdb.connect()
+    conn.create_table("spine", spine.to_pandas(), overwrite=True)
+    components = {}
+    for comp_type, table in component_tables.items():
+        conn.create_table(comp_type, table.to_pandas(), overwrite=True)
+        components[comp_type] = conn.table(comp_type)
+    return Registry(conn, components)
 
