@@ -18,17 +18,21 @@ component:
         - id: value
         - description: >
             A component that is a single value of arbitrary type.
-        - schema:
-            value: The value itself.
+        - field:
+            value: value
+            description: The value itself.
     relation:
         data:
             - id: relation
             - description: >
                 A component that describes a relation between two entities. Which is
                 ((relation.source)) and which is ((relation.value)) is arbitrary.
-            - schema:
-                source: An entity.
-                target: An entity related to the first entity.
+            - field:
+                value: source
+                description: An entity related to the target entity.
+            - field:
+                value: target
+                description: An entity related to the source entity.
         directed_relation:
             data:
                 - id: directed_relation
@@ -39,7 +43,7 @@ component:
             parent:
                 - description: The target entity is the parent of the source entity.
 
-data_type:
+base_data_type:
     data:
         - description: >
             A ((data_type)) component is a ((value)) component with additional
@@ -67,15 +71,20 @@ data_type:
     timestamp:
         - id: categorical
         - description: Timestamp data type.
-        - schema:
-            value: The value of the timestamp as a string, float, or int.
-            timezone [str]:
-                value: The timezone of the the format.
-                default: UTC
-            format [categorical]:
-                value: How to interpret the timezone.
-                default: str
-                range: [str, epoch_time]
+        - field:
+            value: value
+            description: The value of the timestamp as a string, float, or int.
+        - field:
+            value: timezone
+            description: The timezone.
+            type: str
+            default: UTC
+        - field:
+            value: format
+            description: How to interpret the value.
+            type: str
+            default: str
+            range: [str, epoch_time]
 
 data_structure:
     data:
@@ -89,81 +98,86 @@ data_structure:
             A component that specifies the constraints on a data field. Used to define
             the schema for components.
         - parent: dict
-        - schema:
-            value: A description of the field.
-            type: Data or component type for the field.
-            default: The default value for the field.
-            range: >
+        - field:
+            value: value
+            description: The name of the field.
+            type: str
+        - field:
+            value: description
+            description: A text description of the field.
+            type: str
+        - field:
+            value: type
+            description: The type of the field.
+            type: str
+        - field:
+            value: default
+            description: The default value for the field.
+        - field:
+            value: range
+            description: >
                 A data structure specifying the allowed values for the field. If a
                 list, then the type should be categorical or a child of that type.
         - todo: >
             Should we use "domain" instead of "range"? Is there a better other term?
     schema:
         - description: >
-            When an entity includes this component the entity is itself defining a
-            new type of component.
-        - parent: dict
-        - schema:
-            value [dict[str, field]]: >
-                The fields defining the schema. Entries can optionally follow
-                the format "field_name [type] = default: value".
-    dataframe:
+            A list of ((field)) components that defines the columns in a component
+            table.
+        - parent: list
+        - field:
+            value: value
+            description: A list of ((field)) components.
+            type: list[field]
+    table:
         - description: >
-            Dataframe data type. Dataframes are dictionaries of component instances.
+            Tabular data type. From a row-first perspective tables are lists of
+            dictionaries of fields. From a column-first perspective tables are
+            dictionaries of lists of fields.
         - parent: dict
-        - schema:
-            value [dict[component_type, component_type]]: Data itself.
-            index_type [component_type]: Component type for the dictionary keys.
-            value_type [component_type]: Component type for the values.
+        - field:
+            value: value
+            description: The data itself.
+        - field:
+            value: schema
+            description: The ordered fields for the table columns.
+            type: schema
 
 iacs_component:
     data:
         - description: Additional useful components defined by iacs.
         - parent: value
 
-    id:
-        - description: Contains identity information for an entity.
-        - schema:
-            value [str]: >
-                Entity ID, also referred to as "entity_id" elsewhere. Is the coalesce
-                of the alias and the hash.
-            key [str]: >
-                The entity key is the key for an entity in the entity-first data 
-                format, inside a given parent entity.
-            path [str]: >
-                The path to the entity is the chain of ((id.key)) values that uniquely
-                identify an entity.
-            hash [str]: >
-                Hash of ((id.path)).
-            alias [str]: >
-                User-provided alias. Defaults to null.
-
     description:
         - description: >
             A human-readable description of what an entity is or does. This is one of
             the most common components as nearly every entity should have a description.
         - parent: value
-        - schema:
-            value [str]: The descriptive text.
+        - field:
+            value: value
+            description: The descriptive text.
+            type: str
 
     requirement:
         - description: >
             Indicates that an entity represents a requirement that must be satisfied
             by the system design. Requirements should be traced to implementations.
         - parent: value
-        - schema:
-            value:
-                value: The type of requirement.
-                type: categorical
-                range:
-                    - functional
-                    - quality
-                    - constraint
-            priority [float]:
-                value: >
-                    The priority, with higher values corresponding to higher priority.
-                default: 0.5
-                range: [0, 1]
+        - field:
+            value: value
+            description: The type of requirement.
+            type: str
+            range:
+                - functional
+                - quality
+                - constraint
+        - field:
+            value: priority
+            description: >
+                The priority, with higher values corresponding to higher priority.
+            type: float
+            default: 0.5
+            range: [0, 1]
 
     solution:
         - description: >
@@ -182,10 +196,14 @@ iacs_component:
             Indicates something about the entity that needs to be addressed or completed.
             Used to track pending work items.
         - parent: value
-        - schema:
-            value [str]: Description of what needs to be done.
-            priority [float]:
-                value: >
-                    The priority, with higher values corresponding to higher priority.
-                default: 0.5
-                range: [0, 1]
+        - field:
+            value: value
+            description: Description of what needs to be done.
+            type: str
+        - field:
+            value: priority
+            description: >
+                The priority, with higher values corresponding to higher priority.
+            type: float
+            default: 0.5
+            range: [0, 1]
