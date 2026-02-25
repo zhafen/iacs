@@ -1,5 +1,6 @@
 """Hamilton DAG for converting entity-centered data to component-centered data."""
 
+import re
 from pathlib import Path
 
 import ibis
@@ -8,6 +9,7 @@ import pandas as pd
 import yaml
 
 from ..registry import Registry
+from ..utils import dhash
 
 
 def raw_entity_first_data(input_dir: str) -> dict:
@@ -248,6 +250,44 @@ def component_tables(
         result[comp_type] = ibis.memtable(comp_df)
 
     return result
+
+
+_ENTITY_PATH_PATTERN = re.compile(r"^(.+?)\[\d+\]\..+$")
+
+
+def updated_parent(spine: ir.Table) -> pd.DataFrame:
+    """Extract parent-child relationships from nested entity paths in the spine.
+
+    Parameters
+    ----------
+    spine : ir.Table
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns: entity_id, parent_id. One row per nested entity, giving the
+        hashed ID of the entity and the hashed ID of its immediate parent.
+    """
+    df = spine.to_pandas()
+
+    def extract_entity_path(path):
+        m = _ENTITY_PATH_PATTERN.match(path)
+        if not m:
+            return None
+        prefix = m.group(1)
+        return prefix[:-5] if prefix.endswith(".data") else prefix
+
+    df["entity_path"] = df["path"].apply(extract_entity_path)
+    pairs = df[["entity_id", "entity_path"]].dropna().drop_duplicates()
+    nested = pairs[pairs["entity_path"].str.contains(".", regex=False)].copy()
+
+    if nested.empty:
+        return pd.DataFrame([], columns=["entity_id", "parent_id"])
+
+    nested["parent_id"] = nested["entity_path"].apply(
+        lambda ep: dhash(ep.rsplit(".", 1)[0])
+    )
+    return nested[["entity_id", "parent_id"]].reset_index(drop=True)
 
 
 def registry(spine: ir.Table, component_tables: dict[str, ir.Table]) -> Registry:
