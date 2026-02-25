@@ -16,9 +16,9 @@ raw_entity_first_data = {
 
 pathvalue_pairs = pd.DataFrame(
     [
-        ["my_requirement[0].description", "A task I need to complete."],
-        ["my_requirement[2].solution", "my_infrastructure"],
-        ["my_infrastructure[0].description", "Infrastructure to complete the task."],
+        ["examples/minimal/minimal.yaml:my_requirement[0].description", "A task I need to complete."],
+        ["examples/minimal/minimal.yaml:my_requirement[2].solution", "my_infrastructure"],
+        ["examples/minimal/minimal.yaml:my_infrastructure[0].description", "Infrastructure to complete the task."],
     ],
     columns=["path", "value"],
 )
@@ -26,15 +26,15 @@ pathvalue_pairs = pd.DataFrame(
 spine = pd.DataFrame(
     [
         {
-            "entity_id": dhash("my_requirement"),
+            "entity_id": dhash("examples/minimal/minimal.yaml:my_requirement"),
             "component_index": 0,
             "entity_key": "my_requirement",
             "component_type": "description",
             "modifier": None,
-            "path": "my_requirement[0].description",
+            "path": "examples/minimal/minimal.yaml:my_requirement[0].description",
         },
         {
-            "entity_id": dhash("my_requirement"),
+            "entity_id": dhash("examples/minimal/minimal.yaml:my_requirement"),
             "component_index": 2,
             "entity_key": "my_requirement",
             "component_type": "solution",
@@ -42,12 +42,12 @@ spine = pd.DataFrame(
             "path": "my_requirement[2].solution",
         },
         {
-            "entity_id": dhash("my_infrastructure"),
+            "entity_id": dhash("examples/minimal/minimal.yaml:my_infrastructure"),
             "component_index": 0,
             "entity_key": "my_infrastructure",
             "component_type": "description",
             "modifier": None,
-            "path": "my_infrastructure[0].description",
+            "path": "examples/minimal/minimal.yaml:my_infrastructure[0].description",
         },
     ]
 )
@@ -59,18 +59,18 @@ component_tables = {
     "description": pd.DataFrame(
         [
             {
-                "entity_id": dhash("my_requirement"),
+                "entity_id": dhash("examples/minimal/minimal.yaml:my_requirement"),
                 "value": "A task I need to complete.",
             },
             {
-                "entity_id": dhash("my_infrastructure"),
+                "entity_id": dhash("examples/minimal/minimal.yaml:my_infrastructure"),
                 "value": "Infrastructure to complete the task.",
             },
         ]
     ),
     "solution": pd.DataFrame(
         [
-            {"entity_id": dhash("my_requirement"), "value": "my_infrastructure"},
+            {"entity_id": dhash("examples/minimal/minimal.yaml:my_requirement"), "value": "my_infrastructure"},
         ]
     ),
 }
