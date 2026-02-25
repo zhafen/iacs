@@ -86,7 +86,8 @@ data_structure:
         - description: Dictionary data type.
     field:
         - description: >
-            A component that specifies the constraints on a data field. Used with [schema].
+            A component that specifies the constraints on a data field. Used to define
+            the schema for components.
         - parent: dict
         - schema:
             value: A description of the field.

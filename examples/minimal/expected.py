@@ -53,9 +53,9 @@ spine = pd.DataFrame(
 )
 
 
-hierarchy = pd.DataFrame([], columns=["entity_id", "parent_id"])
+updated_parent = pd.DataFrame([], columns=["entity_id", "parent_id"])
 
-incomplete_component_tables = {
+component_tables = {
     "description": pd.DataFrame(
         [
             {
@@ -74,5 +74,3 @@ incomplete_component_tables = {
         ]
     ),
 }
-
-component_tables = incomplete_component_tables

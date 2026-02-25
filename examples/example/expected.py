@@ -108,29 +108,7 @@ spine = pd.DataFrame(
     ]
 )
 
-hierarchy = pd.DataFrame(
-    [
-        {
-            "entity_id": dhash("make_cats_happy.feed_and_water_cats.feed_cats"),
-            "parent_id": dhash("make_cats_happy.feed_and_water_cats"),
-        },
-        {
-            "entity_id": dhash("make_cats_happy.feed_and_water_cats"),
-            "parent_id": dhash("make_cats_happy"),
-        },
-        {
-            "entity_id": dhash("cat_happiness_device.feeding_system.feed_cats"),
-            "parent_id": dhash("cat_happiness_device.feeding_system"),
-        },
-        {
-            "entity_id": dhash("cat_happiness_device.feeding_system"),
-            "parent_id": dhash("cat_happiness_device"),
-        },
-    ],
-    columns=["entity_id", "parent_id"],
-)
-
-incomplete_component_tables = {
+component_tables = {
     "description": pd.DataFrame(
         [
             {
@@ -189,4 +167,24 @@ incomplete_component_tables = {
     ),
 }
 
-component_tables = incomplete_component_tables
+updated_parent = pd.DataFrame(
+    [
+        {
+            "entity_id": dhash("make_cats_happy.feed_and_water_cats.feed_cats"),
+            "parent_id": dhash("make_cats_happy.feed_and_water_cats"),
+        },
+        {
+            "entity_id": dhash("make_cats_happy.feed_and_water_cats"),
+            "parent_id": dhash("make_cats_happy"),
+        },
+        {
+            "entity_id": dhash("cat_happiness_device.feeding_system.feed_cats"),
+            "parent_id": dhash("cat_happiness_device.feeding_system"),
+        },
+        {
+            "entity_id": dhash("cat_happiness_device.feeding_system"),
+            "parent_id": dhash("cat_happiness_device"),
+        },
+    ],
+    columns=["entity_id", "parent_id"],
+)
