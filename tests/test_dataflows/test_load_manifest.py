@@ -261,7 +261,10 @@ class TestSpine:
 
     def test_has_required_columns(self):
         result = self._call([("my_task[0].description", "A task.")])
-        for col in ["entity_id", "component_index", "entity_key", "component_type", "modifier", "path"]:
+        for col in [
+            "entity_id", "component_index", "entity_key",
+            "component_type", "modifier", "filepath", "path",
+        ]:
             assert col in result.columns
 
     def test_flat_entity_spine_row(self):
@@ -327,6 +330,14 @@ class TestSpine:
         row = df.iloc[0]
         assert row["entity_id"] == dhash("file.yaml:my_entity")
         assert row["entity_key"] == "my_entity"
+        assert row["filepath"] == "file.yaml"
+
+    def test_filepath_null_without_prefix(self):
+        """Paths without a file prefix produce a NULL filepath."""
+        spine = self._call([("my_entity[0].description", "Hi.")])
+        df = spine.to_pandas()
+        row = df.iloc[0]
+        assert row["filepath"] is None or pd.isna(row["filepath"])
 
 
 # ---------------------------------------------------------------------------

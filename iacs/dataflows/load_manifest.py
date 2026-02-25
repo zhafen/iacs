@@ -195,6 +195,7 @@ def spine(pathvalue_pairs: ir.Table) -> ir.Table:
         - entity_key: The name of the entity, the last part of the path for an entity.
         - component_type: the type of the component
         - modifier: any modifiers for the component instance, which may affect interpretation of the fields (e.g. "parent" vs "parent of")
+        - filepath: the file identifier of the source file (everything before the ':' in the path), or NULL if no file prefix is present
         - path: the original path
     """
     t = pathvalue_pairs.filter(pathvalue_pairs.path.re_search(_PATH_PATTERN))
@@ -212,14 +213,16 @@ def spine(pathvalue_pairs: ir.Table) -> ir.Table:
         component_index=t["_idx"].cast("int32"),
     )
     # entity_id: first 12 hex chars of SHA-256 (matches dhash in utils).
-    # entity_key: last dot-segment of entity_path.
+    # entity_key: last segment after the last ':' or '.' in entity_path.
+    # filepath: the file identifier prefix (before ':'), NULL if absent.
     t = t.mutate(
         entity_id=sha256(t.entity_path).substr(0, 12),
         entity_key=t.entity_path.re_extract(r"([^:.]+)$", 1),
+        filepath=t.entity_path.re_extract(r"^([^:]+):", 1).nullif(""),
     )
     return t.select(
         "entity_id", "component_index", "entity_key", "component_type", "modifier",
-        t.spine_path.name("path"),
+        "filepath", t.spine_path.name("path"),
     ).distinct()
 
 
