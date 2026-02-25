@@ -97,7 +97,7 @@ def _build_registry(example_dir: Path):
     Returns None if the DAG cannot be executed (e.g. stub implementations).
     """
     try:
-        result = _execute_dag(load_manifest_module, {"input_dir": str(example_dir)})
+        result = _execute_dag(load_manifest_module, {"input_dir": [str(example_dir)]})
         return result.get("registry")
     except Exception:
         return None
@@ -191,7 +191,7 @@ def test_dataflow_dag_outputs_match_expected(
 
     # Build inputs for this module.
     if module_name == "load_manifest":
-        inputs = {"input_dir": str(example_dir)}
+        inputs = {"input_dir": [str(example_dir)]}
     else:
         registry = _build_registry(example_dir)
         if registry is None:

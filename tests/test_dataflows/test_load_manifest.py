@@ -48,31 +48,57 @@ def multi_file_yaml_dir(tmp_path):
 
 class TestRawEntityFirstData:
 
+    def _all_entities(self, result: dict) -> dict:
+        """Flatten all per-file entity dicts into one dict (for assertions)."""
+        merged = {}
+        for entities in result.values():
+            if isinstance(entities, dict):
+                merged.update(entities)
+        return merged
+
     def test_loads_single_yaml_file(self, minimal_yaml_dir):
-        result = load_manifest.raw_entity_first_data(minimal_yaml_dir)
+        result = load_manifest.raw_entity_first_data([minimal_yaml_dir])
         assert isinstance(result, dict)
-        assert "my_task" in result
+        assert "my_task" in self._all_entities(result)
 
     def test_loads_multiple_yaml_files(self, multi_file_yaml_dir):
-        result = load_manifest.raw_entity_first_data(multi_file_yaml_dir)
-        assert isinstance(result, dict)
-        assert "my_task" in result
-        assert "my_infra" in result
+        result = load_manifest.raw_entity_first_data([multi_file_yaml_dir])
+        entities = self._all_entities(result)
+        assert "my_task" in entities
+        assert "my_infra" in entities
 
     def test_loads_yaml_from_subdirectories(self, multi_file_yaml_dir):
-        result = load_manifest.raw_entity_first_data(multi_file_yaml_dir)
+        result = load_manifest.raw_entity_first_data([multi_file_yaml_dir])
         # my_infra is in a subdirectory
-        assert "my_infra" in result
+        assert "my_infra" in self._all_entities(result)
 
-    def test_returns_empty_dict_for_empty_dir(self, tmp_path):
-        result = load_manifest.raw_entity_first_data(str(tmp_path))
-        assert result == {}
+    def test_empty_dir_has_only_builtin(self, tmp_path):
+        result = load_manifest.raw_entity_first_data([str(tmp_path)])
+        assert "builtins.components" in result
+        assert len(result) == 1
+
+    def test_always_includes_builtin(self, minimal_yaml_dir):
+        result = load_manifest.raw_entity_first_data([minimal_yaml_dir])
+        assert "builtins.components" in result
 
     def test_preserves_raw_structure(self, minimal_yaml_dir):
-        result = load_manifest.raw_entity_first_data(minimal_yaml_dir)
+        result = load_manifest.raw_entity_first_data([minimal_yaml_dir])
+        entities = self._all_entities(result)
         # The value should be the raw list from the YAML
-        assert isinstance(result["my_task"], list)
-        assert {"description": "A task I need to complete."} in result["my_task"]
+        assert isinstance(entities["my_task"], list)
+        assert {"description": "A task I need to complete."} in entities["my_task"]
+
+    def test_keyed_by_file_path(self, minimal_yaml_dir):
+        result = load_manifest.raw_entity_first_data([minimal_yaml_dir])
+        # At least one key should end with 'minimal.yaml' (the user file)
+        user_keys = [k for k in result if k != "builtins.components"]
+        assert any(k.endswith("minimal.yaml") for k in user_keys)
+
+    def test_accepts_single_file_path(self, tmp_path):
+        yaml_file = tmp_path / "single.yaml"
+        yaml_file.write_text("my_entity:\n- description: A thing.\n")
+        result = load_manifest.raw_entity_first_data([str(yaml_file)])
+        assert "my_entity" in self._all_entities(result)
 
 
 # ---------------------------------------------------------------------------
@@ -102,89 +128,117 @@ class TestRegistry:
 # pathvalue_pairs
 # ---------------------------------------------------------------------------
 
+_FILE_ID = "test.yaml"
+
+
+def _wrap(entities: dict) -> dict:
+    """Wrap a flat entities dict in the file-keyed format expected by pathvalue_pairs."""
+    return {_FILE_ID: entities}
+
+
+def _path(entity_path: str) -> str:
+    """Build the expected path string with the test file prefix."""
+    return f"{_FILE_ID}:{entity_path}"
+
+
 class TestPathvaluePairs:
 
     def test_returns_ibis_table(self):
-        data = {"my_task": [{"description": "A task."}]}
+        data = _wrap({"my_task": [{"description": "A task."}]})
         result = load_manifest.pathvalue_pairs(data)
         assert isinstance(result, ibis.Table)
 
     def test_has_path_and_value_columns(self):
-        data = {"my_task": [{"description": "A task."}]}
+        data = _wrap({"my_task": [{"description": "A task."}]})
         result = load_manifest.pathvalue_pairs(data)
         assert "path" in result.columns
         assert "value" in result.columns
 
     def test_scalar_component(self):
         """A dict component with a string value produces one (path, value) row."""
-        data = {"my_task": [{"description": "A task."}]}
+        data = _wrap({"my_task": [{"description": "A task."}]})
         result = load_manifest.pathvalue_pairs(data)
         df = result.to_pandas()
-        assert "my_task[0].description" in df["path"].values
-        row = df[df["path"] == "my_task[0].description"]
+        expected_path = _path("my_task[0].description")
+        assert expected_path in df["path"].values
+        row = df[df["path"] == expected_path]
         assert row["value"].iloc[0] == "A task."
 
     def test_tag_component(self):
         """A bare-string tag produces a row with an empty value."""
-        data = {"my_task": ["task"]}
+        data = _wrap({"my_task": ["task"]})
         result = load_manifest.pathvalue_pairs(data)
         df = result.to_pandas()
-        assert "my_task[0].task" in df["path"].values
-        assert df[df["path"] == "my_task[0].task"]["value"].iloc[0] == ""
+        expected_path = _path("my_task[0].task")
+        assert expected_path in df["path"].values
+        assert df[df["path"] == expected_path]["value"].iloc[0] == ""
 
     def test_tag_index_preserved(self):
         """A tag at list index N shifts subsequent components to N+1."""
-        data = {"my_task": ["task", {"description": "A task."}]}
+        data = _wrap({"my_task": ["task", {"description": "A task."}]})
         result = load_manifest.pathvalue_pairs(data)
         df = result.to_pandas()
-        assert "my_task[1].description" in df["path"].values
+        assert _path("my_task[1].description") in df["path"].values
 
     def test_dict_valued_component(self):
         """A component whose value is a dict produces one row per sub-field."""
-        data = {"entity": [{"requirement": {"priority": 1}}]}
+        data = _wrap({"entity": [{"requirement": {"priority": 1}}]})
         result = load_manifest.pathvalue_pairs(data)
         df = result.to_pandas()
-        assert "entity[0].requirement.priority" in df["path"].values
-        assert df[df["path"] == "entity[0].requirement.priority"]["value"].iloc[0] == "1"
+        expected_path = _path("entity[0].requirement.priority")
+        assert expected_path in df["path"].values
+        assert df[df["path"] == expected_path]["value"].iloc[0] == "1"
 
     def test_component_key_with_space(self):
         """Component keys containing spaces (e.g. 'solution of') are preserved."""
-        data = {"entity": [{"solution of": "other_entity"}]}
+        data = _wrap({"entity": [{"solution of": "other_entity"}]})
         result = load_manifest.pathvalue_pairs(data)
         df = result.to_pandas()
-        assert "entity[0].solution of" in df["path"].values
-        assert df[df["path"] == "entity[0].solution of"]["value"].iloc[0] == "other_entity"
+        expected_path = _path("entity[0].solution of")
+        assert expected_path in df["path"].values
+        assert df[df["path"] == expected_path]["value"].iloc[0] == "other_entity"
 
     def test_nested_entity_data_prefix(self):
         """Components of a nested entity are placed under the .data[N] prefix."""
-        data = {"parent": {"data": [{"description": "A parent."}]}}
+        data = _wrap({"parent": {"data": [{"description": "A parent."}]}})
         result = load_manifest.pathvalue_pairs(data)
         df = result.to_pandas()
-        assert "parent.data[0].description" in df["path"].values
+        assert _path("parent.data[0].description") in df["path"].values
 
     def test_nested_entity_sub_entities_recurse(self):
         """Sub-entities of a nested entity get their own paths."""
-        data = {
+        data = _wrap({
             "parent": {
                 "data": [{"description": "A parent."}],
                 "child": [{"description": "A child."}],
             }
-        }
+        })
         result = load_manifest.pathvalue_pairs(data)
         df = result.to_pandas()
-        assert "parent.data[0].description" in df["path"].values
-        assert "parent.child[0].description" in df["path"].values
+        assert _path("parent.data[0].description") in df["path"].values
+        assert _path("parent.child[0].description") in df["path"].values
 
     def test_multiple_entities(self):
         """Multiple top-level entities each contribute their own paths."""
-        data = {
+        data = _wrap({
             "req": [{"description": "A req."}],
             "infra": [{"description": "Infrastructure."}],
+        })
+        result = load_manifest.pathvalue_pairs(data)
+        df = result.to_pandas()
+        assert _path("req[0].description") in df["path"].values
+        assert _path("infra[0].description") in df["path"].values
+
+    def test_multiple_files_produce_prefixed_paths(self):
+        """Each file's paths are prefixed with that file's identifier."""
+        data = {
+            "file_a.yaml": {"entity_a": [{"description": "A."}]},
+            "file_b.yaml": {"entity_b": [{"description": "B."}]},
         }
         result = load_manifest.pathvalue_pairs(data)
         df = result.to_pandas()
-        assert "req[0].description" in df["path"].values
-        assert "infra[0].description" in df["path"].values
+        assert "file_a.yaml:entity_a[0].description" in df["path"].values
+        assert "file_b.yaml:entity_b[0].description" in df["path"].values
 
 
 # ---------------------------------------------------------------------------
@@ -266,6 +320,14 @@ class TestSpine:
         assert row["entity_id"] == dhash("parent")
         assert row["entity_key"] == "parent"
 
+    def test_file_prefixed_path(self):
+        """File-prefixed paths produce entity_ids that include the file prefix."""
+        spine = self._call([("file.yaml:my_entity[0].description", "Hi.")])
+        df = spine.to_pandas()
+        row = df.iloc[0]
+        assert row["entity_id"] == dhash("file.yaml:my_entity")
+        assert row["entity_key"] == "my_entity"
+
 
 # ---------------------------------------------------------------------------
 # component_tables
@@ -274,9 +336,13 @@ class TestSpine:
 class TestComponentTables:
 
     def _call(self, data: dict) -> dict:
-        pvp = load_manifest.pathvalue_pairs(data)
+        wrapped = {_FILE_ID: data}
+        pvp = load_manifest.pathvalue_pairs(wrapped)
         sp = load_manifest.spine(pvp)
         return load_manifest.component_tables(pvp, sp)
+
+    def _eid(self, entity_key: str) -> str:
+        return dhash(f"{_FILE_ID}:{entity_key}")
 
     def test_returns_dict_of_ibis_tables(self):
         data = {"entity": [{"description": "A thing."}]}
@@ -299,7 +365,7 @@ class TestComponentTables:
         result = self._call(data)
         df = result["description"].to_pandas()
         assert "value" in df.columns
-        row = df[df["entity_id"] == dhash("entity")].iloc[0]
+        row = df[df["entity_id"] == self._eid("entity")].iloc[0]
         assert row["value"] == "A thing."
 
     def test_tag_component_has_value_column(self):
@@ -308,7 +374,7 @@ class TestComponentTables:
         result = self._call(data)
         df = result["requirement"].to_pandas()
         assert "value" in df.columns
-        row = df[df["entity_id"] == dhash("entity")].iloc[0]
+        row = df[df["entity_id"] == self._eid("entity")].iloc[0]
         assert row["value"] == ""
 
     def test_sub_field_component_has_field_columns(self):
@@ -318,7 +384,7 @@ class TestComponentTables:
         df = result["field"].to_pandas()
         assert "name" in df.columns
         assert "type" in df.columns
-        row = df[df["entity_id"] == dhash("entity")].iloc[0]
+        row = df[df["entity_id"] == self._eid("entity")].iloc[0]
         assert row["name"] == "x"
         assert row["type"] == "str"
 
@@ -327,14 +393,14 @@ class TestComponentTables:
         data = {"cat": [{"field": {"name": "breed", "value": "orange", "type": "str"}}]}
         result = self._call(data)
         df = result["field"].to_pandas()
-        assert len(df[df["entity_id"] == dhash("cat")]) == 1
+        assert len(df[df["entity_id"] == self._eid("cat")]) == 1
 
     def test_modifier_preserved(self):
         """Modifier from spine is carried into the component table."""
         data = {"entity": [{"solution of": "other"}]}
         result = self._call(data)
         df = result["solution"].to_pandas()
-        row = df[df["entity_id"] == dhash("entity")].iloc[0]
+        row = df[df["entity_id"] == self._eid("entity")].iloc[0]
         assert row["modifier"] == "of"
 
     def test_entity_id_and_component_index_present(self):

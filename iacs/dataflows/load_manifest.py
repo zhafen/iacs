@@ -12,27 +12,57 @@ from ..registry import Registry
 from ..utils import dhash
 
 
-def raw_entity_first_data(input_dir: str) -> dict:
-    """Load all yaml files from the input directory and its sub directories.
+_BUILTIN_COMPONENTS = Path(__file__).parent.parent.parent / "builtins" / "components.yaml"
+_BUILTIN_ID = "builtins.components"
+
+
+def raw_entity_first_data(input_dir: list[str]) -> dict:
+    """Load yaml files from a list of files or directories.
+
+    Always includes builtins/components.yaml (identified as "builtins.components").
+    User-provided files are identified by their path relative to the current
+    working directory.
 
     Parameters
     ----------
-    input_dir : str
+    input_dir : list[str]
+        A list of yaml file paths or directory paths. Directories are searched
+        recursively for yaml files.
 
     Returns
     -------
     dict
-        A dictionary containing all the entities from across the files,
-        with no transformations applied.
+        A dict keyed by file identifier, where each value is the dict of
+        entities loaded from that file.
     """
-    result = {}
-    for path in Path(input_dir).rglob("*.y*ml"):
-        if path.suffix in (".yaml", ".yml"):
-            with open(path, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f) or {}
-            result.update(data)
-    return result
+    cwd = Path.cwd()
+    all_files: list[tuple[Path, str]] = []
 
+    for item in input_dir:
+        p = Path(item)
+        if p.is_file() and p.suffix in (".yaml", ".yml"):
+            try:
+                file_id = str(p.relative_to(cwd))
+            except ValueError:
+                file_id = str(p)
+            all_files.append((p, file_id))
+        elif p.is_dir():
+            for f in sorted(p.rglob("*.y*ml")):
+                if f.suffix in (".yaml", ".yml"):
+                    try:
+                        file_id = str(f.relative_to(cwd))
+                    except ValueError:
+                        file_id = str(f)
+                    all_files.append((f, file_id))
+
+    all_files.append((_BUILTIN_COMPONENTS, _BUILTIN_ID))
+
+    result = {}
+    for file_path, file_id in all_files:
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        result[file_id] = data
+    return result
 
 
 def _add_component_pairs(
@@ -100,19 +130,23 @@ def pathvalue_pairs(raw_entity_first_data: dict) -> ir.Table:
     process, and serves as a way to inspect the raw data in a tabular format before
     applying the more complex transformations.
 
+    Each path is prefixed with the file identifier using a ':' separator, e.g.
+    "examples/foo.yaml:my_entity[0].description".
+
     Parameters
     ----------
     raw_entity_first_data : dict
-    conn : ibis.BaseBackend
+        Nested dict of the form {file_id: {entity_key: entity_data}}.
 
     Returns
     -------
     ir.Table
-        A table with columns "path" and "value", where "path" is the entity path
-        (e.g. "a.b.c[0].key") and "value" is the corresponding leaf value from
-        the raw data, serialized as a string.
+        A table with columns "path" and "value".
     """
-    pairs = _flatten_to_pathvalue(raw_entity_first_data)
+    pairs = []
+    for file_id, entities in raw_entity_first_data.items():
+        for entity_path, value in _flatten_to_pathvalue(entities):
+            pairs.append((f"{file_id}:{entity_path}", value))
     df = pd.DataFrame(pairs, columns=["path", "value"])
     return ibis.memtable(df)
 
@@ -181,7 +215,7 @@ def spine(pathvalue_pairs: ir.Table) -> ir.Table:
     # entity_key: last dot-segment of entity_path.
     t = t.mutate(
         entity_id=sha256(t.entity_path).substr(0, 12),
-        entity_key=t.entity_path.re_extract(r"([^.]+)$", 1),
+        entity_key=t.entity_path.re_extract(r"([^:.]+)$", 1),
     )
     return t.select(
         "entity_id", "component_index", "entity_key", "component_type", "modifier",
@@ -277,15 +311,28 @@ def updated_parent(spine: ir.Table) -> pd.DataFrame:
         prefix = m.group(1)
         return prefix[:-5] if prefix.endswith(".data") else prefix
 
+    def has_parent(entity_path):
+        # Only dots after the ':' file-id separator count as nesting.
+        sep = entity_path.find(":")
+        name_part = entity_path[sep + 1:] if sep != -1 else entity_path
+        return "." in name_part
+
+    def get_parent_path(entity_path):
+        sep = entity_path.find(":")
+        if sep != -1:
+            file_id, name_part = entity_path[:sep], entity_path[sep + 1:]
+            return f"{file_id}:{name_part.rsplit('.', 1)[0]}"
+        return entity_path.rsplit(".", 1)[0]
+
     df["entity_path"] = df["path"].apply(extract_entity_path)
     pairs = df[["entity_id", "entity_path"]].dropna().drop_duplicates()
-    nested = pairs[pairs["entity_path"].str.contains(".", regex=False)].copy()
+    nested = pairs[pairs["entity_path"].apply(has_parent)].copy()
 
     if nested.empty:
         return pd.DataFrame([], columns=["entity_id", "parent_id"])
 
     nested["parent_id"] = nested["entity_path"].apply(
-        lambda ep: dhash(ep.rsplit(".", 1)[0])
+        lambda ep: dhash(get_parent_path(ep))
     )
     return nested[["entity_id", "parent_id"]].reset_index(drop=True)
 
@@ -309,4 +356,3 @@ def registry(spine: ir.Table, component_tables: dict[str, ir.Table]) -> Registry
         conn.create_table(comp_type, table.to_pandas(), overwrite=True)
         components[comp_type] = conn.table(comp_type)
     return Registry(conn, components)
-

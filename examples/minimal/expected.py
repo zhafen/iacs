@@ -4,14 +4,16 @@ from iacs.utils import dhash
 
 
 raw_entity_first_data = {
-    "my_requirement": [
-        {"description": "A task I need to complete."},
-        "requirement",
-        {"solution": "my_infrastructure"},
-    ],
-    "my_infrastructure": [
-        {"description": "A task I need to complete."},
-    ],
+    "examples/minimal/minimal.yaml": {
+        "my_requirement": [
+            {"description": "A task I need to complete."},
+            "requirement",
+            {"solution": "my_infrastructure"},
+        ],
+        "my_infrastructure": [
+            {"description": "Infrastructure to complete the task."},
+        ],
+    },
 }
 
 pathvalue_pairs = pd.DataFrame(
@@ -39,7 +41,7 @@ spine = pd.DataFrame(
             "entity_key": "my_requirement",
             "component_type": "solution",
             "modifier": None,
-            "path": "my_requirement[2].solution",
+            "path": "examples/minimal/minimal.yaml:my_requirement[2].solution",
         },
         {
             "entity_id": dhash("examples/minimal/minimal.yaml:my_infrastructure"),

@@ -188,7 +188,7 @@ updated_parent = pd.DataFrame(
         },
         {
             "entity_id": dhash("examples/example/manifest.yaml:make_cats_happy.feed_and_water_cats"),
-            "parent_id": dhash("make_cats_happy"),
+            "parent_id": dhash("examples/example/manifest.yaml:make_cats_happy"),
         },
         {
             "entity_id": dhash("examples/example/manifest.yaml:cat_happiness_device.feeding_system.feed_cats"),
