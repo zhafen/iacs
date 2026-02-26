@@ -5,6 +5,7 @@ warns as appropriate.
 import re
 
 import pandas as pd
+import pandera.ibis as pa
 from hamilton.function_modifiers import extract_fields
 import ibis
 import ibis.expr.types as ir
@@ -117,6 +118,14 @@ def updated_parent(spine: ir.Table, parent: ir.Table) -> ir.Table:
     return ibis.memtable(combined)
 
 
+_IACS_TO_PYTHON_TYPE: dict[str, type] = {
+    "str": str,
+    "bool": bool,
+    "int": int,
+    "float": float,
+}
+
+
 def validated_field(field: ir.Table) -> ir.Table:
     """The ((field)) component contains the data for the schema for all components.
     This includes the ((field)) component itself. We will use the ((field)) component
@@ -124,18 +133,75 @@ def validated_field(field: ir.Table) -> ir.Table:
     records in the ((field)) component to validate the data in just the ((field))
     component.
 
+    The schema for ``field`` is defined by the entity
+    ``builtins.components:data_structure.field``.  Each row with that
+    ``entity_id`` declares a field name (``value`` column) and an expected type
+    (``type`` column).  Those rows are materialised (they are a handful of
+    records) to build a :class:`pandera.ibis.DataFrameSchema`; the schema is
+    then applied to the full table lazily so the rest of the data never leaves
+    the query engine.
+
     Parameters
     ----------
     field : ir.Table
-        _description_
+        The raw ``field`` component table from the registry.
 
     Returns
     -------
     ir.Table
-        _description_
+        A lazy ibis expression with type coercions applied for every column
+        that has a known type in the ``data_structure.field`` schema.
     """
+    field_entity_id = dhash("builtins.components:data_structure.field")
 
-    return
+    # ── Materialise only the schema-defining rows (O(1) records) ──────────
+    # We need these as Python objects to build the pandera schema.  The full
+    # table is never pulled into memory.
+    select_cols = [c for c in ("value", "type") if c in field.columns]
+    if len(select_cols) < 2:
+        return field
+
+    schema_df = (
+        field
+        .filter(field["entity_id"] == field_entity_id)
+        .select(select_cols)
+        .execute()
+    )
+
+    type_map: dict[str, type] = {}
+    for _, row in schema_df.iterrows():
+        name, dtype = row["value"], row["type"]
+        if pd.notna(name) and name and pd.notna(dtype) and dtype in _IACS_TO_PYTHON_TYPE:
+            type_map[str(name)] = _IACS_TO_PYTHON_TYPE[str(dtype)]
+
+    if not type_map:
+        return field
+
+    # ── Lazily cast typed columns using ibis expressions ──────────────────
+    # pandera ibis validates ibis column types (not raw values), so the casts
+    # must be applied to the ibis expression tree before pandera sees it.
+    # For bool columns we also convert "" → NULL first; DuckDB raises on
+    # CAST('' AS BOOLEAN) but handles NULL cleanly.
+    existing = set(field.columns)
+    _IBIS_DTYPE = {bool: "boolean", str: "string", int: "int64", float: "float64"}
+
+    result = field
+    for col_name, col_type in type_map.items():
+        if col_name not in existing:
+            continue
+        expr = result[col_name]
+        if col_type is bool:
+            expr = expr.nullif("")
+        result = result.mutate(**{col_name: expr.cast(_IBIS_DTYPE[col_type])})
+
+    # ── Validate with pandera (types now match; no coerce needed) ─────────
+    columns = {
+        col_name: pa.Column(col_type, nullable=True)
+        for col_name, col_type in type_map.items()
+        if col_name in existing
+    }
+    schema = pa.DataFrameSchema(columns)
+    return schema.validate(result)
 
 
 def derived_field(validated_field: ir.Table, updated_parent: ir.Table) -> ir.Table:

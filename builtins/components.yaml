@@ -111,6 +111,14 @@ data_structure:
             description: The type of the field.
             type: str
         - field:
+            value: nullable
+            description: Whether or not nulls can exist in the field.
+            type: bool
+        - field:
+            value: unique
+            description: Whether or not there should be only unique values.
+            type: bool
+        - field:
             value: default
             description: The default value for the field.
         - field:
