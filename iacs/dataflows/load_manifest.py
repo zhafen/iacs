@@ -154,10 +154,6 @@ def pathvalue_pairs(raw_entity_first_data: dict) -> ir.Table:
 _PATH_PATTERN = r"^(.+)\[(\d+)\]\.(.+)$"
 
 
-@ibis.udf.scalar.builtin
-def sha256(a: str) -> str: ...
-
-
 def _with_spine_path(t: ir.Table) -> ir.Table:
     """Add a spine_path column to a table that has a 'path' column.
 
@@ -216,7 +212,7 @@ def spine(pathvalue_pairs: ir.Table) -> ir.Table:
     # entity_key: last segment after the last ':' or '.' in entity_path.
     # filepath: the file identifier prefix (before ':'), NULL if absent.
     t = t.mutate(
-        entity_id=sha256(t.entity_path).substr(0, 12),
+        entity_id=t.entity_path.hexdigest("sha256").substr(0, 12),
         entity_key=t.entity_path.re_extract(r"([^:.]+)$", 1),
         filepath=t.entity_path.re_extract(r"^([^:]+):", 1).nullif(""),
     )
