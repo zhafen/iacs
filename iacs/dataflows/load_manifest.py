@@ -285,57 +285,6 @@ def component_tables(
     return result
 
 
-_ENTITY_PATH_PATTERN = re.compile(r"^(.+?)\[\d+\]\..+$")
-
-
-def updated_parent(spine: ir.Table) -> pd.DataFrame:
-    """Extract parent-child relationships from nested entity paths in the spine.
-
-    Parameters
-    ----------
-    spine : ir.Table
-
-    Returns
-    -------
-    pd.DataFrame
-        Columns: entity_id, parent_id. One row per nested entity, giving the
-        hashed ID of the entity and the hashed ID of its immediate parent.
-    """
-    df = spine.to_pandas()
-
-    def extract_entity_path(path):
-        m = _ENTITY_PATH_PATTERN.match(path)
-        if not m:
-            return None
-        prefix = m.group(1)
-        return prefix[:-5] if prefix.endswith(".data") else prefix
-
-    def has_parent(entity_path):
-        # Only dots after the ':' file-id separator count as nesting.
-        sep = entity_path.find(":")
-        name_part = entity_path[sep + 1:] if sep != -1 else entity_path
-        return "." in name_part
-
-    def get_parent_path(entity_path):
-        sep = entity_path.find(":")
-        if sep != -1:
-            file_id, name_part = entity_path[:sep], entity_path[sep + 1:]
-            return f"{file_id}:{name_part.rsplit('.', 1)[0]}"
-        return entity_path.rsplit(".", 1)[0]
-
-    df["entity_path"] = df["path"].apply(extract_entity_path)
-    pairs = df[["entity_id", "entity_path"]].dropna().drop_duplicates()
-    nested = pairs[pairs["entity_path"].apply(has_parent)].copy()
-
-    if nested.empty:
-        return pd.DataFrame([], columns=["entity_id", "parent_id"])
-
-    nested["parent_id"] = nested["entity_path"].apply(
-        lambda ep: dhash(get_parent_path(ep))
-    )
-    return nested[["entity_id", "parent_id"]].reset_index(drop=True)
-
-
 def registry(spine: ir.Table, component_tables: dict[str, ir.Table]) -> Registry:
     """Load the constituents of a registry into the registry object. The spine is used as the shared index for the registry, and the component tables are attached to it.
 
