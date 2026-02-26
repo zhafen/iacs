@@ -31,6 +31,22 @@ class Registry:
             if k != "schema" and isinstance(v, ibis.Table)
         ]
 
+    def close(self) -> None:
+        """Close the underlying database connection."""
+        self._con.disconnect()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:  # pylint: disable=broad-except
+            pass
+
     @property
     def component_types(self) -> list[str]:
         """Return the list of component types in the registry."""
