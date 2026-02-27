@@ -218,30 +218,29 @@ updated_parent = pd.DataFrame(
     columns=["entity_id", "parent_id"],
 )
 
-# validated_field = pd.DataFrame(
-#     [
-#         {
-#             "entity_id": dhash("examples/example/manifest.yaml:cat"),
-#             "component_index": 1,
-#             "value": "name",
-#             "description": "The cat's name.",
-#             "type": "str",
-#             "nullable": True,
-#             "unique": True,
-#             "default": None,
-#             "range": None,
-#         },
-#         {
-#             "entity_id": dhash("examples/example/manifest.yaml:cat"),
-#             "component_index": 2,
-#             "value": "name",
-#             "description": "The cat's name.",
-#             "type": "str",
-#             "nullable": True,
-#             "unique": True,
-#             "default": None,
-#             "range": None,
-#         }
-#     ]
-# )
-# 
+validated_field = pd.DataFrame(
+    [
+        {
+            "entity_id": dhash("examples/example/manifest.yaml:cat"),
+            "component_index": 1,
+            "value": "name",
+            "description": "The cat's name.",
+            "type": "str",
+            "nullable": True,
+            "unique": True,
+            "default": None,
+            "range": None,
+        },
+        {
+            "entity_id": dhash("examples/example/manifest.yaml:cat"),
+            "component_index": 2,
+            "value": "breed",
+            "description": "The breed of the cat, e.g. orange.",
+            "type": "str",
+            "nullable": True,
+            "unique": False,
+            "default": None,
+            "range": None,
+        }
+    ]
+)

@@ -157,8 +157,8 @@ def validated_field(field: ir.Table) -> ir.Table:
     # ── Materialise only the schema-defining rows (O(1) records) ──────────
     # We need these as Python objects to build the pandera schema.  The full
     # table is never pulled into memory.
-    select_cols = [c for c in ("value", "type") if c in field.columns]
-    if len(select_cols) < 2:
+    select_cols = [c for c in ("value", "type", "default") if c in field.columns]
+    if "value" not in select_cols:
         return field
 
     schema_df = (
@@ -169,28 +169,54 @@ def validated_field(field: ir.Table) -> ir.Table:
     )
 
     type_map: dict[str, type] = {}
+    default_map: dict[str, object] = {}
     for _, row in schema_df.iterrows():
-        name, dtype = row["value"], row["type"]
-        if pd.notna(name) and name and pd.notna(dtype) and dtype in _IACS_TO_PYTHON_TYPE:
-            type_map[str(name)] = _IACS_TO_PYTHON_TYPE[str(dtype)]
+        name = row.get("value")
+        dtype = row.get("type")
+        default_val = row.get("default")
+        if pd.notna(name) and name:
+            name = str(name)
+            if pd.notna(dtype) and str(dtype) in _IACS_TO_PYTHON_TYPE:
+                type_map[name] = _IACS_TO_PYTHON_TYPE[str(dtype)]
+            if pd.notna(default_val):
+                default_map[name] = default_val
 
-    if not type_map:
+    if not type_map and not default_map:
         return field
+
+    existing = set(field.columns)
+    original_existing = set(existing)
+    _IBIS_DTYPE = {bool: "boolean", str: "string", int: "int64", float: "float64"}
+
+    result = field
+
+    # ── Add missing schema columns with null values ────────────────────────
+    for col_name, col_type in type_map.items():
+        if col_name not in existing:
+            result = result.mutate(**{col_name: ibis.null().cast(_IBIS_DTYPE[col_type])})
+            existing.add(col_name)
+
+    # ── Fill in schema defaults for null values ────────────────────────────
+    for col_name, default_val in default_map.items():
+        if col_name not in existing:
+            continue
+        col_type = type_map.get(col_name)
+        if col_type is not None:
+            lit = ibis.literal(default_val).cast(_IBIS_DTYPE[col_type])
+        else:
+            lit = ibis.literal(str(default_val))
+        result = result.mutate(**{col_name: result[col_name].fillna(lit)})
 
     # ── Lazily cast typed columns using ibis expressions ──────────────────
     # pandera ibis validates ibis column types (not raw values), so the casts
     # must be applied to the ibis expression tree before pandera sees it.
-    # For bool columns we also convert "" → NULL first; DuckDB raises on
-    # CAST('' AS BOOLEAN) but handles NULL cleanly.
-    existing = set(field.columns)
-    _IBIS_DTYPE = {bool: "boolean", str: "string", int: "int64", float: "float64"}
-
-    result = field
+    # For bool columns that came from raw data we also convert "" → NULL first;
+    # DuckDB raises on CAST('' AS BOOLEAN) but handles NULL cleanly.
     for col_name, col_type in type_map.items():
         if col_name not in existing:
             continue
         expr = result[col_name]
-        if col_type is bool:
+        if col_type is bool and col_name in original_existing:
             expr = expr.nullif("")
         result = result.mutate(**{col_name: expr.cast(_IBIS_DTYPE[col_type])})
 
