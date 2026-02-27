@@ -85,7 +85,9 @@ pathvalue_pairs = pd.DataFrame(
 spine = pd.DataFrame(
     [
         {
-            "entity_id": (main_req_id := dhash("examples/example/manifest.yaml:make_cats_happy")),
+            "entity_id": (
+                main_req_id := dhash("examples/example/manifest.yaml:make_cats_happy")
+            ),
             "component_index": 0,
             "entity_key": "make_cats_happy",
             "component_type": "description",
@@ -142,7 +144,9 @@ component_tables = {
                 "priority": None,
             },
             {
-                "entity_id": dhash("examples/example/manifest.yaml:make_cats_happy.sift_cat_box"),
+                "entity_id": dhash(
+                    "examples/example/manifest.yaml:make_cats_happy.sift_cat_box"
+                ),
                 "component_index": 1,
                 "priority": "0.8",
             },
@@ -151,7 +155,9 @@ component_tables = {
     "solution": pd.DataFrame(
         [
             {
-                "entity_id": dhash("examples/example/manifest.yaml:cat_happiness_device"),
+                "entity_id": dhash(
+                    "examples/example/manifest.yaml:cat_happiness_device"
+                ),
                 "component_index": 1,
                 "modifier": "of",
                 "value": "make_cats_happy",
@@ -184,20 +190,58 @@ updated_parent = pd.DataFrame(
             "entity_id": dhash(
                 "examples/example/manifest.yaml:make_cats_happy.feed_and_water_cats.feed_cats"
             ),
-            "parent_id": dhash("examples/example/manifest.yaml:make_cats_happy.feed_and_water_cats"),
+            "parent_id": dhash(
+                "examples/example/manifest.yaml:make_cats_happy.feed_and_water_cats"
+            ),
         },
         {
-            "entity_id": dhash("examples/example/manifest.yaml:make_cats_happy.feed_and_water_cats"),
+            "entity_id": dhash(
+                "examples/example/manifest.yaml:make_cats_happy.feed_and_water_cats"
+            ),
             "parent_id": dhash("examples/example/manifest.yaml:make_cats_happy"),
         },
         {
-            "entity_id": dhash("examples/example/manifest.yaml:cat_happiness_device.feeding_system.feed_cats"),
-            "parent_id": dhash("examples/example/manifest.yaml:cat_happiness_device.feeding_system"),
+            "entity_id": dhash(
+                "examples/example/manifest.yaml:cat_happiness_device.feeding_system.feed_cats"
+            ),
+            "parent_id": dhash(
+                "examples/example/manifest.yaml:cat_happiness_device.feeding_system"
+            ),
         },
         {
-            "entity_id": dhash("examples/example/manifest.yaml:cat_happiness_device.feeding_system"),
+            "entity_id": dhash(
+                "examples/example/manifest.yaml:cat_happiness_device.feeding_system"
+            ),
             "parent_id": dhash("examples/example/manifest.yaml:cat_happiness_device"),
         },
     ],
     columns=["entity_id", "parent_id"],
 )
+
+# validated_field = pd.DataFrame(
+#     [
+#         {
+#             "entity_id": dhash("examples/example/manifest.yaml:cat"),
+#             "component_index": 1,
+#             "value": "name",
+#             "description": "The cat's name.",
+#             "type": "str",
+#             "nullable": True,
+#             "unique": True,
+#             "default": None,
+#             "range": None,
+#         },
+#         {
+#             "entity_id": dhash("examples/example/manifest.yaml:cat"),
+#             "component_index": 2,
+#             "value": "name",
+#             "description": "The cat's name.",
+#             "type": "str",
+#             "nullable": True,
+#             "unique": True,
+#             "default": None,
+#             "range": None,
+#         }
+#     ]
+# )
+# 

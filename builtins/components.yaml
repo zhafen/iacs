@@ -114,10 +114,12 @@ data_structure:
             value: nullable
             description: Whether or not nulls can exist in the field.
             type: bool
+            default: true
         - field:
             value: unique
             description: Whether or not there should be only unique values.
             type: bool
+            default: false
         - field:
             value: default
             description: The default value for the field.
