@@ -289,22 +289,33 @@ def derived_field(validated_field: ir.Table, updated_parent: ir.Table) -> ir.Tab
 def updated_components(
     updated_parent: ir.Table, derived_field: ir.Table, registry: Registry
 ) -> dict:
-    """Store the components updated so far back in the registry.
+    """Return a copy of the registry's component dict with the two tables that
+    were processed earlier in the DAG replaced by their updated versions.
+
+    ``updated_parent`` has merged the hierarchy-implied parent rows with the
+    explicit ones; ``derived_field`` has resolved field inheritance.  Both need
+    to be visible to the rest of the pipeline before component-level validation
+    begins.
 
     Parameters
     ----------
     updated_parent : ir.Table
-        _description_
+        The merged parent-relationship table from ``updated_parent``.
     derived_field : ir.Table
-        _description_
+        The inheritance-resolved field table from ``derived_field``.
+    registry : Registry
+        The registry whose components dict is used as the base.
 
     Returns
     -------
-    Registry
-        _description_
+    dict
+        A shallow copy of ``registry._components`` with ``"parent"`` replaced
+        by ``updated_parent`` and ``"field"`` replaced by ``derived_field``.
     """
-
-    return
+    components = dict(registry._components)
+    components["parent"] = updated_parent
+    components["field"] = derived_field
+    return components
 
 def validated_components(updated_components: dict, derived_field: ir.Table) -> dict:
     """Use the schemas defined by the ((field)) component to validate and coerce the data in each component.

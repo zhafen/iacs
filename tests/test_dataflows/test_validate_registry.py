@@ -5,7 +5,9 @@ import pandas as pd
 import pytest
 
 import iacs.dataflows.validate_registry as validate_registry
+from iacs.registry import Registry
 from iacs.utils import dhash
+from tests.conftest import make_registry
 
 
 # The entity_id for data_structure.field in builtins
@@ -208,3 +210,58 @@ class TestDerivedField:
             [_parent_row("a", "b"), _parent_row("b", "a")],
         )
         assert "x" in self._field_names(df, "a")
+
+
+# ---------------------------------------------------------------------------
+# updated_components
+# ---------------------------------------------------------------------------
+
+class TestUpdatedComponents:
+
+    def _registry(self):
+        return make_registry({
+            "parent":      [{"entity_id": "e1", "value": "old_parent"}],
+            "field":       [{"entity_id": "e1", "value": "old_field"}],
+            "description": [{"entity_id": "e1", "value": "hello"}],
+        })
+
+    def test_returns_dict(self):
+        reg = self._registry()
+        up = ibis.memtable(pd.DataFrame([{"entity_id": "e2", "parent_id": "e1"}]))
+        df = ibis.memtable(pd.DataFrame([{"entity_id": "e2", "value": "new_field"}]))
+        result = validate_registry.updated_components(up, df, reg)
+        assert isinstance(result, dict)
+
+    def test_parent_is_replaced(self):
+        reg = self._registry()
+        up = ibis.memtable(pd.DataFrame([{"entity_id": "e2", "parent_id": "e1"}]))
+        df = ibis.memtable(pd.DataFrame([{"entity_id": "e1", "value": "f"}]))
+        result = validate_registry.updated_components(up, df, reg)
+        rows = result["parent"].execute()
+        assert list(rows["entity_id"]) == ["e2"]
+
+    def test_field_is_replaced(self):
+        reg = self._registry()
+        up = ibis.memtable(pd.DataFrame([{"entity_id": "e1", "parent_id": "e2"}]))
+        new_field = ibis.memtable(pd.DataFrame([{"entity_id": "e9", "value": "new_f"}]))
+        result = validate_registry.updated_components(up, new_field, reg)
+        rows = result["field"].execute()
+        assert list(rows["entity_id"]) == ["e9"]
+
+    def test_other_components_are_preserved(self):
+        reg = self._registry()
+        up = ibis.memtable(pd.DataFrame([{"entity_id": "e1", "parent_id": "e2"}]))
+        df = ibis.memtable(pd.DataFrame([{"entity_id": "e1", "value": "f"}]))
+        result = validate_registry.updated_components(up, df, reg)
+        assert "description" in result
+        rows = result["description"].execute()
+        assert rows.iloc[0]["value"] == "hello"
+
+    def test_registry_is_not_mutated(self):
+        reg = self._registry()
+        original_parent = reg._components["parent"].execute().copy()
+        up = ibis.memtable(pd.DataFrame([{"entity_id": "e2", "parent_id": "e1"}]))
+        df = ibis.memtable(pd.DataFrame([{"entity_id": "e1", "value": "f"}]))
+        validate_registry.updated_components(up, df, reg)
+        after = reg._components["parent"].execute()
+        pd.testing.assert_frame_equal(original_parent, after)
