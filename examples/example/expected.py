@@ -169,15 +169,15 @@ component_tables = {
             {
                 "entity_id": dhash("examples/example/manifest.yaml:cat"),
                 "component_index": 1,
-                "name": "name",
-                "value": "The cat's name.",
+                "value": "name",
+                "description": "The cat's name.",
                 "type": "str",
             },
             {
                 "entity_id": dhash("examples/example/manifest.yaml:cat"),
                 "component_index": 2,
-                "name": "breed",
-                "value": "The breed of the cat, e.g. orange.",
+                "value": "breed",
+                "description": "The breed of the cat, e.g. orange.",
                 "type": "str",
             },
         ]
