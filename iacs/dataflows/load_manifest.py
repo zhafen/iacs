@@ -154,23 +154,12 @@ def pathvalue_pairs(raw_entity_first_data: dict) -> ir.Table:
 _PATH_PATTERN = r"^(.+)\[(\d+)\]\.(.+)$"
 
 
-def _with_spine_path(t: ir.Table) -> ir.Table:
-    """Add a spine_path column to a table that has a 'path' column.
+def keyvalue_store(pathvalue_pairs: ir.Table) -> ir.Table:
 
-    Assumes all rows already match _PATH_PATTERN (pre-filter before calling).
-    Also adds intermediate columns _prefix, _idx, _after, _ctf.
-    """
-    t = t.mutate(
-        _prefix=t.path.re_extract(_PATH_PATTERN, 1),
-        _idx=t.path.re_extract(_PATH_PATTERN, 2),
-        _after=t.path.re_extract(_PATH_PATTERN, 3),
-    )
-    # _ctf: first dot-segment of _after (component_type_full, may include spaces)
-    t = t.mutate(_ctf=t["_after"].re_extract(r"^([^.]*)", 1))
-    return t.mutate(spine_path=t["_prefix"] + "[" + t["_idx"] + "]." + t["_ctf"])
+    return
 
 
-def spine(pathvalue_pairs: ir.Table) -> ir.Table:
+def spine(keyvalue_store: ir.Table) -> ir.Table:
     """Hash the paths into entity IDs, and extract the parent-child relationships
     and component types.
 
@@ -223,8 +212,7 @@ def spine(pathvalue_pairs: ir.Table) -> ir.Table:
 
 
 def component_tables(
-    pathvalue_pairs: ir.Table,
-    spine: ir.Table,
+    keyvalue_store: ir.Table,
 ) -> dict[str, ir.Table]:
     """Join the pathvalue_pairs and spine on path and group the results by component
     type to create a dictionary of component tables.
