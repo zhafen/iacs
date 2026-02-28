@@ -69,6 +69,7 @@ sustenance:
                 value: brand
                 description: The brand of cat food.
                 type: str
+                default: shiny_sustenance
             - field:
                 value: type
                 description: The type of cat food.
@@ -78,5 +79,23 @@ sustenance:
                 default: wet
         gourmet_food:
             - description: Especially good cat food.
+
+cat_food_supply:
+    shiny_sustenance:
+        - description: "Our supply of shiny sustenance brand cat food."
+        - food: 24
+    furina:
+        - description: "Our supply of furina brand cat food."
+        - food:
+            value: "32"
+            brand: furina
+            type: dry
+    mystery_meat:
+        - description: "Our supply of eldritch cat food."
+        - food:
+            value: -5
+            brand: chellthulu
+            type: cosmic_horror
+
 
 

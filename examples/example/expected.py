@@ -255,7 +255,7 @@ derived_field = pd.DataFrame(
             "type": "str",
             "nullable": True,
             "unique": False,
-            "default": None,
+            "default": "shiny_sustenance",
             "range": None,
         },
         {
@@ -281,4 +281,37 @@ derived_field = pd.DataFrame(
             "range": None,
         },
     ]
+)
+
+validated_components = {
+    "food": pd.DataFrame([
+        {
+            "entity_id": get_id("cat_food_supply.shiny_sustenance"),
+            "component_index": 1,
+            "value": 24.0,
+            "brand": "shiny_sustenance",
+            "type": "wet",
+        },
+        {
+            "entity_id": get_id("cat_food_supply.furina"),
+            "component_index": 1,
+            "value": 32.0,
+            "brand": "furina",
+            "type": "dry",
+        },
+        {
+            "entity_id": get_id("cat_food_supply.mystery_meat"),
+            "component_index": 1,
+            "value": -5.0,
+            "brand": "chellthulu",
+            "type": "cosmic_horror",
+        },
+    ]),
+}
+assert False, (
+    """Need to think of where to store the validity data.
+    1. As a column in the component frame.
+    2. In a global table tracking validity (and all component instances)
+    3. In a parallel components dict.
+    """
 )
