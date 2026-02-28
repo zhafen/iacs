@@ -2,8 +2,15 @@ import pandas as pd
 
 from iacs.utils import dhash
 
+filepath = "examples/example/manifest.yaml"
+
+
+def get_id(path):
+    return get_id("{path}")
+
+
 raw_entity_first_data = {
-    "examples/example/manifest.yaml": {
+    filepath: {
         "make_cats_happy": {
             "data": [
                 {"description": "The mission of our cat-happiness device."},
@@ -66,15 +73,15 @@ raw_entity_first_data = {
 pathvalue_pairs = pd.DataFrame(
     [
         [
-            "examples/example/manifest.yaml:make_cats_happy.data[0].description",
+            f"{filepath}:make_cats_happy.data[0].description",
             "The mission of our cat-happiness device.",
         ],
         [
-            "examples/example/manifest.yaml:make_cats_happy.feed_and_water_cats.feed_cats[1].alias",
+            f"{filepath}:make_cats_happy.feed_and_water_cats.feed_cats[1].alias",
             "feed_cats",
         ],
         [
-            "examples/example/manifest.yaml:cat_happiness_device.feeding_system.feed_cats[2].solution of",
+            f"{filepath}:cat_happiness_device.feeding_system.feed_cats[2].solution of",
             "make_cats_happy.feed_and_water_cats.feed_cats",
         ],
         ["builtins.components:base_data_type.float[1].description", "Float data type."],
@@ -85,38 +92,36 @@ pathvalue_pairs = pd.DataFrame(
 spine = pd.DataFrame(
     [
         {
-            "entity_id": (
-                main_req_id := dhash("examples/example/manifest.yaml:make_cats_happy")
-            ),
+            "entity_id": (main_req_id := get_id("make_cats_happy")),
             "component_index": 0,
             "entity_key": "make_cats_happy",
             "component_type": "description",
             "modifier": None,
-            "path": "examples/example/manifest.yaml:make_cats_happy.data[0].description",
+            "path": f"{filepath}:make_cats_happy.data[0].description",
         },
         {
             "entity_id": (
-                feed_cats_req_id := dhash(
-                    "examples/example/manifest.yaml:make_cats_happy.feed_and_water_cats.feed_cats"
+                feed_cats_req_id := get_id(
+                    "make_cats_happy.feed_and_water_cats.feed_cats"
                 )
             ),
             "component_index": 1,
             "entity_key": "feed_cats",
             "component_type": "alias",
             "modifier": None,
-            "path": "examples/example/manifest.yaml:make_cats_happy.feed_and_water_cats.feed_cats[1].alias",
+            "path": f"{filepath}:make_cats_happy.feed_and_water_cats.feed_cats[1].alias",
         },
         {
             "entity_id": (
-                feed_cats_soln_id := dhash(
-                    "examples/example/manifest.yaml:cat_happiness_device.feeding_system.feed_cats"
+                feed_cats_soln_id := get_id(
+                    "cat_happiness_device.feeding_system.feed_cats"
                 )
             ),
             "component_index": 2,
             "entity_key": "feed_cats",
             "component_type": "solution",
             "modifier": "of",
-            "path": "examples/example/manifest.yaml:cat_happiness_device.feeding_system.feed_cats[2].solution of",
+            "path": f"{filepath}:cat_happiness_device.feeding_system.feed_cats[2].solution of",
         },
     ]
 )
@@ -144,9 +149,7 @@ component_tables = {
                 "priority": None,
             },
             {
-                "entity_id": dhash(
-                    "examples/example/manifest.yaml:make_cats_happy.sift_cat_box"
-                ),
+                "entity_id": get_id("make_cats_happy.sift_cat_box"),
                 "component_index": 1,
                 "priority": "0.8",
             },
@@ -155,9 +158,7 @@ component_tables = {
     "solution": pd.DataFrame(
         [
             {
-                "entity_id": dhash(
-                    "examples/example/manifest.yaml:cat_happiness_device"
-                ),
+                "entity_id": get_id("cat_happiness_device"),
                 "component_index": 1,
                 "modifier": "of",
                 "value": "make_cats_happy",
@@ -167,14 +168,14 @@ component_tables = {
     "field": pd.DataFrame(
         [
             {
-                "entity_id": dhash("examples/example/manifest.yaml:cat"),
+                "entity_id": get_id("cat"),
                 "component_index": 1,
                 "value": "name",
                 "description": "The cat's name.",
                 "type": "str",
             },
             {
-                "entity_id": dhash("examples/example/manifest.yaml:cat"),
+                "entity_id": get_id("cat"),
                 "component_index": 2,
                 "value": "breed",
                 "description": "The breed of the cat, e.g. orange.",
@@ -187,32 +188,20 @@ component_tables = {
 updated_parent = pd.DataFrame(
     [
         {
-            "entity_id": dhash(
-                "examples/example/manifest.yaml:make_cats_happy.feed_and_water_cats.feed_cats"
-            ),
-            "parent_id": dhash(
-                "examples/example/manifest.yaml:make_cats_happy.feed_and_water_cats"
-            ),
+            "entity_id": get_id("make_cats_happy.feed_and_water_cats.feed_cats"),
+            "parent_id": get_id("make_cats_happy.feed_and_water_cats"),
         },
         {
-            "entity_id": dhash(
-                "examples/example/manifest.yaml:make_cats_happy.feed_and_water_cats"
-            ),
-            "parent_id": dhash("examples/example/manifest.yaml:make_cats_happy"),
+            "entity_id": get_id("make_cats_happy.feed_and_water_cats"),
+            "parent_id": get_id("make_cats_happy"),
         },
         {
-            "entity_id": dhash(
-                "examples/example/manifest.yaml:cat_happiness_device.feeding_system.feed_cats"
-            ),
-            "parent_id": dhash(
-                "examples/example/manifest.yaml:cat_happiness_device.feeding_system"
-            ),
+            "entity_id": get_id("cat_happiness_device.feeding_system.feed_cats"),
+            "parent_id": get_id("cat_happiness_device.feeding_system"),
         },
         {
-            "entity_id": dhash(
-                "examples/example/manifest.yaml:cat_happiness_device.feeding_system"
-            ),
-            "parent_id": dhash("examples/example/manifest.yaml:cat_happiness_device"),
+            "entity_id": get_id("cat_happiness_device.feeding_system"),
+            "parent_id": get_id("cat_happiness_device"),
         },
     ],
     columns=["entity_id", "parent_id"],
@@ -221,7 +210,7 @@ updated_parent = pd.DataFrame(
 validated_field = pd.DataFrame(
     [
         {
-            "entity_id": dhash("examples/example/manifest.yaml:cat"),
+            "entity_id": get_id("cat"),
             "component_index": 1,
             "value": "name",
             "description": "The cat's name.",
@@ -232,7 +221,7 @@ validated_field = pd.DataFrame(
             "range": None,
         },
         {
-            "entity_id": dhash("examples/example/manifest.yaml:cat"),
+            "entity_id": get_id("cat"),
             "component_index": 2,
             "value": "breed",
             "description": "The breed of the cat, e.g. orange.",
@@ -241,6 +230,55 @@ validated_field = pd.DataFrame(
             "unique": False,
             "default": None,
             "range": None,
-        }
+        },
+    ]
+)
+
+derived_field = pd.DataFrame(
+    [
+        {
+            "entity_id": get_id("sustenance"),
+            "component_index": 1,
+            "value": "value",
+            "description": "The quantity of the sustenance.",
+            "type": "float",
+            "nullable": False,
+            "unique": False,
+            "default": None,
+            "range": None,
+        },
+        {
+            "entity_id": get_id("sustenance.food"),
+            "component_index": 1,
+            "value": "brand",
+            "description": "The brand of cat food.",
+            "type": "str",
+            "nullable": True,
+            "unique": False,
+            "default": None,
+            "range": None,
+        },
+        {
+            "entity_id": get_id("sustenance.food"),
+            "component_index": 2,
+            "value": "type",
+            "description": "The type of cat food.",
+            "type": "str",
+            "nullable": False,
+            "unique": False,
+            "default": "wet",
+            "range": ["wet", "dry"],
+        },
+        {
+            "entity_id": get_id("sustenance.food"),
+            "component_index": 3,
+            "value": "value",
+            "description": "The quantity of the sustenance.",
+            "type": "float",
+            "nullable": False,
+            "unique": False,
+            "default": None,
+            "range": None,
+        },
     ]
 )
