@@ -329,7 +329,7 @@ validated_components = {
         },
     ]),
 }
-invalid_fields = pd.DataFrame(
+invalid_field = pd.DataFrame(
     [
         {
             "entity_id": get_id("cat_food_supply.mystery_meat"),
@@ -349,8 +349,3 @@ invalid_fields = pd.DataFrame(
         },
     ]
 )
-
-# TODO: Need to think of where to store the validity data.
-#   1. As a column in the component frame.
-#   2. In a global table tracking validity (and all component instances)
-#   3. In a parallel components dict.
