@@ -253,7 +253,8 @@ def _pvp(pairs: list[tuple[str, str]]) -> ibis.Table:
 class TestSpine:
 
     def _call(self, pairs):
-        return load_manifest.spine(_pvp(pairs))
+        kvs = load_manifest.keyvalue_store(_pvp(pairs))
+        return load_manifest.spine(kvs)
 
     def test_returns_ibis_table(self):
         result = self._call([("my_task[0].description", "A task.")])
@@ -349,8 +350,8 @@ class TestComponentTables:
     def _call(self, data: dict) -> dict:
         wrapped = {_FILE_ID: data}
         pvp = load_manifest.pathvalue_pairs(wrapped)
-        sp = load_manifest.spine(pvp)
-        return load_manifest.component_tables(pvp, sp)
+        kvs = load_manifest.keyvalue_store(pvp)
+        return load_manifest.component_tables(kvs)
 
     def _eid(self, entity_key: str) -> str:
         return dhash(f"{_FILE_ID}:{entity_key}")

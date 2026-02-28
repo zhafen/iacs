@@ -154,34 +154,33 @@ def pathvalue_pairs(raw_entity_first_data: dict) -> ir.Table:
 _PATH_PATTERN = r"^(.+)\[(\d+)\]\.(.+)$"
 
 
+def _with_spine_path(t: ir.Table) -> ir.Table:
+    """Add a spine_path column to a table that has a 'path' column.
+
+    Assumes all rows already match _PATH_PATTERN (pre-filter before calling).
+    Also adds intermediate columns _prefix, _idx, _after, _ctf.
+    """
+    t = t.mutate(
+        _prefix=t.path.re_extract(_PATH_PATTERN, 1),
+        _idx=t.path.re_extract(_PATH_PATTERN, 2),
+        _after=t.path.re_extract(_PATH_PATTERN, 3),
+    )
+    # _ctf: first dot-segment of _after (component_type_full, may include spaces)
+    t = t.mutate(_ctf=t["_after"].re_extract(r"^([^.]*)", 1))
+    return t.mutate(spine_path=t["_prefix"] + "[" + t["_idx"] + "]." + t["_ctf"])
+
+
 def keyvalue_store(pathvalue_pairs: ir.Table) -> ir.Table:
+    """Parse path-value pairs into a structured long-format table.
 
-    return
-
-
-def spine(keyvalue_store: ir.Table) -> ir.Table:
-    """Hash the paths into entity IDs, and extract the parent-child relationships
-    and component types.
-
-    Parameters
-    ----------
-    pathvalue_pairs : ir.Table
-    db_conn : ibis.BaseBackend
+    One row per (entity, component, field). Centralises all path-parsing so
+    that ``spine`` and ``component_tables`` are simple derivations.
 
     Returns
     -------
-    spine : ir.Table
-        The spine is the shared index of the registry that contains one row per
-        component instance, with the entity_id, component type, and original path.
-        The entity_id and component_index columns are the actual index of the registry, and the component_type column is used to pivot into component tables.
-        It has the below columns:
-        - entity_id: the hashed ID of the entity
-        - component_index: Index of the component in the original list of components for that entity (derived from the path)
-        - entity_key: The name of the entity, the last part of the path for an entity.
-        - component_type: the type of the component
-        - modifier: any modifiers for the component instance, which may affect interpretation of the fields (e.g. "parent" vs "parent of")
-        - filepath: the file identifier of the source file (everything before the ':' in the path), or NULL if no file prefix is present
-        - path: the original path
+    ir.Table
+        Columns: entity_id, entity_key, entity_path, filepath,
+        component_index, component_type, modifier, spine_path, field, value.
     """
     t = pathvalue_pairs.filter(pathvalue_pairs.path.re_search(_PATH_PATTERN))
     t = _with_spine_path(t)
@@ -205,53 +204,49 @@ def spine(keyvalue_store: ir.Table) -> ir.Table:
         entity_key=t.entity_path.re_extract(r"([^:.]+)$", 1),
         filepath=t.entity_path.re_extract(r"^([^:]+):", 1).nullif(""),
     )
+    # field: sub-field name after the spine_path, or "value" for scalar components.
+    t = t.mutate(
+        field=ibis.ifelse(
+            t["path"] == t["spine_path"],
+            ibis.literal("value"),
+            t["path"].substr(t["spine_path"].length() + 1),
+        )
+    )
     return t.select(
+        "entity_id", "entity_key", "entity_path", "filepath",
+        "component_index", "component_type", "modifier",
+        "spine_path", "field", "value",
+    )
+
+
+def spine(keyvalue_store: ir.Table) -> ir.Table:
+    """Extract distinct component instances (the spine) from the key-value store.
+
+    Returns
+    -------
+    ir.Table
+        Columns: entity_id, component_index, entity_key, component_type,
+        modifier, filepath, path.
+    """
+    return keyvalue_store.select(
         "entity_id", "component_index", "entity_key", "component_type", "modifier",
-        "filepath", t.spine_path.name("path"),
+        "filepath", keyvalue_store.spine_path.name("path"),
     ).distinct()
 
 
-def component_tables(
-    keyvalue_store: ir.Table,
-) -> dict[str, ir.Table]:
-    """Join the pathvalue_pairs and spine on path and group the results by component
-    type to create a dictionary of component tables.
-
-    Parameters
-    ----------
-    db_conn : ibis.BaseBackend
-    pathvalue_pairs : ir.Table
-    spine : ir.Table
+def component_tables(keyvalue_store: ir.Table) -> dict[str, ir.Table]:
+    """Pivot the key-value store by component type.
 
     Returns
     -------
     dict[str, ir.Table]
         Keys are component types; each value is an ibis Table with columns
-        entity_id, component_index, modifier, and one column per sub-field
+        entity_id, component_index, modifier, and one column per field
         (or "value" for scalar components).
     """
-    # Add spine_path to every matching pvp row using the same ibis expression logic.
-    pvp = pathvalue_pairs.filter(pathvalue_pairs.path.re_search(_PATH_PATTERN))
-    pvp = _with_spine_path(pvp)
-
-    # Join pvp to spine on spine_path == spine.path.
-    spine_for_join = spine.rename(spine_path="path").select(
-        "entity_id", "component_index", "component_type", "modifier", "spine_path"
-    )
-    joined = pvp.join(spine_for_join, "spine_path")
-
-    # field_name: sub-field suffix after the spine_path, or "value" for scalar components.
-    joined = joined.mutate(
-        field_name=ibis.ifelse(
-            joined["path"] == joined["spine_path"],
-            "value",
-            joined["path"].substr(joined["spine_path"].length() + 1),
-        )
-    ).select("entity_id", "component_index", "component_type", "modifier", "field_name", "value")
-
-    # Dynamic pivot: one column per field_name. Cannot be expressed as a static ibis
-    # expression because column names depend on data, so we drop to pandas here.
-    df = joined.to_pandas()
+    df = keyvalue_store.select(
+        "entity_id", "component_index", "component_type", "modifier", "field", "value"
+    ).to_pandas()
 
     result = {}
     for comp_type, group in df.groupby("component_type"):
@@ -264,7 +259,7 @@ def component_tables(
                     "component_index": row["component_index"],
                     "modifier": row["modifier"],
                 }
-            instances[key][row["field_name"]] = row["value"]
+            instances[key][row["field"]] = row["value"]
 
         comp_df = pd.DataFrame(list(instances.values()))
         comp_df["modifier"] = comp_df["modifier"].astype(pd.StringDtype())

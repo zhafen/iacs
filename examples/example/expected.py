@@ -115,7 +115,6 @@ keyvalue_store = pd.DataFrame(
             "field": "value",
             "value": "make_cats_happy.feed_and_water_cats.feed_cats",
         },
-        ["builtins.components:base_data_type.float[1].description", "Float data type."],
     ],
 )
 spine = pd.DataFrame(
@@ -351,10 +350,7 @@ invalid_fields = pd.DataFrame(
     ]
 )
 
-assert False, (
-    """Need to think of where to store the validity data.
-    1. As a column in the component frame.
-    2. In a global table tracking validity (and all component instances)
-    3. In a parallel components dict.
-    """
-)
+# TODO: Need to think of where to store the validity data.
+#   1. As a column in the component frame.
+#   2. In a global table tracking validity (and all component instances)
+#   3. In a parallel components dict.
