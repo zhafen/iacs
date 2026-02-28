@@ -554,19 +554,23 @@ def validated_data(
     return validated_comps, invalid_table
 
 def validated_registry(validated_components: dict, invalid_field: ir.Table, registry: Registry) -> Registry:
-    """Store the components back in the registry.
+    """Store the validated components back in the registry, including invalid_field.
 
     Parameters
     ----------
     validated_components : dict
-        _description_
+        Dict of component_type -> coerced ibis Table (from ``validated_data``).
+    invalid_field : ir.Table
+        Table of constraint violations (from ``validated_data``), stored as the
+        ``"invalid_field"`` component.
     registry : Registry
-        _description_
+        The original registry, whose connection is reused.
 
     Returns
     -------
     Registry
-        _description_
+        A new Registry with the validated components and ``invalid_field``.
     """
-
-    return
+    components = dict(validated_components)
+    components["invalid_field"] = invalid_field
+    return Registry(registry._con, components)
