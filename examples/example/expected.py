@@ -89,6 +89,35 @@ pathvalue_pairs = pd.DataFrame(
     columns=["path", "value"],
 )
 
+keyvalue_store = pd.DataFrame(
+    [
+        {
+            "entity_id": get_id("make_cats_happy"),
+            "component_index": 0,
+            "component_type": "description",
+            "modifier": None,
+            "field": "value",
+            "value": "The mission of our cat-happiness device.",
+        },
+        {
+            "entity_id": get_id("make_cats_happy.feed_and_water_cats.feed_cats"),
+            "component_index": 1,
+            "component_type": "alias",
+            "modifier": None,
+            "field": "value",
+            "value": "feed_cats",
+        },
+        {
+            "entity_id": get_id("cat_happiness_device.feeding_system.feed_cats"),
+            "component_index": 2,
+            "component_type": "solution",
+            "modifier": "of",
+            "field": "value",
+            "value": "make_cats_happy.feed_and_water_cats.feed_cats",
+        },
+        ["builtins.components:base_data_type.float[1].description", "Float data type."],
+    ],
+)
 spine = pd.DataFrame(
     [
         {
@@ -299,15 +328,29 @@ validated_components = {
             "brand": "furina",
             "type": "dry",
         },
+    ]),
+}
+invalid_fields = pd.DataFrame(
+    [
         {
             "entity_id": get_id("cat_food_supply.mystery_meat"),
             "component_index": 1,
-            "value": -5.0,
-            "brand": "chellthulu",
-            "type": "cosmic_horror",
+            "component_type": "food",
+            "field": "value",
+            "value": None,
+            "error_type": "nullable",
         },
-    ]),
-}
+        {
+            "entity_id": get_id("cat_food_supply.mystery_meat"),
+            "component_index": 1,
+            "component_type": "food",
+            "field": "type",
+            "value": "cosmic_horror",
+            "error_type": "range",
+        },
+    ]
+)
+
 assert False, (
     """Need to think of where to store the validity data.
     1. As a column in the component frame.

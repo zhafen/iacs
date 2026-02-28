@@ -93,7 +93,6 @@ cat_food_supply:
     mystery_meat:
         - description: "Our supply of eldritch cat food."
         - food:
-            value: -5
             brand: chellthulu
             type: cosmic_horror
 
