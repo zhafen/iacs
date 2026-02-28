@@ -6,7 +6,7 @@ filepath = "examples/example/manifest.yaml"
 
 
 def get_id(path):
-    return get_id("{path}")
+    return dhash(f"{filepath}:{path}")
 
 
 raw_entity_first_data = {

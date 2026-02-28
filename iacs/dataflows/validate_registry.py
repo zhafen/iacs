@@ -196,7 +196,18 @@ def validated_field(field: ir.Table) -> ir.Table:
             result = result.mutate(**{col_name: ibis.null().cast(_IBIS_DTYPE[col_type])})
             existing.add(col_name)
 
-    # ── Fill in schema defaults for null values ────────────────────────────
+    # ── Cast typed columns first (raw data is all strings; cast before fill) ─
+    # For bool columns from raw data we also convert "" → NULL first; DuckDB
+    # raises on CAST('' AS BOOLEAN) but handles NULL cleanly.
+    for col_name, col_type in type_map.items():
+        if col_name not in existing:
+            continue
+        expr = result[col_name]
+        if col_type is bool and col_name in original_existing:
+            expr = expr.nullif("")
+        result = result.mutate(**{col_name: expr.cast(_IBIS_DTYPE[col_type])})
+
+    # ── Fill in schema defaults for null values (after casting so types match) ─
     for col_name, default_val in default_map.items():
         if col_name not in existing:
             continue
@@ -205,20 +216,7 @@ def validated_field(field: ir.Table) -> ir.Table:
             lit = ibis.literal(default_val).cast(_IBIS_DTYPE[col_type])
         else:
             lit = ibis.literal(str(default_val))
-        result = result.mutate(**{col_name: result[col_name].fillna(lit)})
-
-    # ── Lazily cast typed columns using ibis expressions ──────────────────
-    # pandera ibis validates ibis column types (not raw values), so the casts
-    # must be applied to the ibis expression tree before pandera sees it.
-    # For bool columns that came from raw data we also convert "" → NULL first;
-    # DuckDB raises on CAST('' AS BOOLEAN) but handles NULL cleanly.
-    for col_name, col_type in type_map.items():
-        if col_name not in existing:
-            continue
-        expr = result[col_name]
-        if col_type is bool and col_name in original_existing:
-            expr = expr.nullif("")
-        result = result.mutate(**{col_name: expr.cast(_IBIS_DTYPE[col_type])})
+        result = result.mutate(**{col_name: result[col_name].fill_null(lit)})
 
     # ── Validate with pandera (types now match; no coerce needed) ─────────
     columns = {
@@ -297,8 +295,19 @@ def derived_field(validated_field: ir.Table, updated_parent: ir.Table) -> ir.Tab
 
     result_rows = []
     for entity_id in sorted(all_entities):
+        own_fields = entity_own_fields.get(entity_id, {})
+        own_field_names = set(own_fields)
+        own_indices = [r.get("component_index", 0) for r in own_fields.values()]
+        next_index = max(own_indices, default=0) + 1
+
         for fname, frow in resolve_fields(entity_id).items():
-            result_rows.append({**frow, "entity_id": entity_id})
+            if fname in own_field_names:
+                result_rows.append({**frow, "entity_id": entity_id})
+            else:
+                result_rows.append(
+                    {**frow, "entity_id": entity_id, "component_index": next_index}
+                )
+                next_index += 1
 
     if result_rows:
         result_df = (
