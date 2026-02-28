@@ -384,24 +384,18 @@ def _parse_range(val):
     return None
 
 
-def _to_bool(v):
-    if _isnull(v):
-        return None
-    if isinstance(v, bool):
-        return v
-    return str(v).strip().lower() in ("true", "1", "yes")
-
-
 @unpack_fields("validated_components", "invalid_field")
 def validated_data(
     updated_components: dict, derived_field: ir.Table, spine: ir.Table
 ) -> tuple[dict, ir.Table]:
     """Use the schemas defined by the ((field)) component to validate and coerce the data in each component.
 
-    For each component type, looks up the schema entity in ``derived_field``
-    by matching the component type name against ``entity_key`` values in the
-    spine.  Then coerces types, applies defaults, and validates nullable and
-    range constraints.
+    Follows the same pattern as ``validated_field``: materialise only the
+    schema-defining rows (O(fields) records per component type), build ibis
+    mutate chains for column addition, type casting, and default filling, then
+    validate types with :mod:`pandera.ibis`.  Constraint violations (nullable,
+    categorical range) are collected as ibis filter sub-queries and unioned
+    into ``invalid_field`` without pulling component data into memory.
 
     Parameters
     ----------
@@ -419,11 +413,12 @@ def validated_data(
         is a dict of component_type -> coerced ibis Table, and ``invalid_field``
         is an ibis Table of rows that failed nullable or range constraints.
     """
-    # ── 1. Find entity_ids that are schema definitions (appear in derived_field)
+    _IBIS_DTYPE = {bool: "boolean", str: "string", int: "int64", float: "float64"}
+
+    # ── 1. Materialise schema rows (small) and build entity_key -> ids ─────
     df_derived = derived_field.execute()
     schema_entity_ids = set(df_derived["entity_id"].dropna().astype(str))
 
-    # ── 2. Build entity_key -> [schema entity_id] mapping via spine ───────
     key_to_schema_ids: dict[str, list[str]] = {}
     df_spine = spine.execute()
     if {"entity_id", "entity_key"}.issubset(df_spine.columns):
@@ -437,19 +432,16 @@ def validated_data(
             if eid in schema_entity_ids:
                 key_to_schema_ids.setdefault(ekey, []).append(eid)
 
-    # ── 3. Build per-component-type schema ────────────────────────────────
-    # {component_type -> {field_name -> {type, nullable, default, range}}}
+    # ── 2. Build per-component-type schema dict (small) ────────────────────
     component_schemas: dict[str, dict] = {}
     for ctype in updated_components:
         schema: dict[str, dict] = {}
         for eid in key_to_schema_ids.get(ctype, []):
             for _, row in df_derived[df_derived["entity_id"] == eid].iterrows():
                 fname = row.get("value")
-                if _isnull(fname):
+                if _isnull(fname) or str(fname) in schema:
                     continue
                 fname = str(fname)
-                if fname in schema:
-                    continue  # first definition wins
                 nullable = row.get("nullable")
                 schema[fname] = {
                     "type": None if _isnull(row.get("type")) else str(row["type"]),
@@ -460,81 +452,106 @@ def validated_data(
         if schema:
             component_schemas[ctype] = schema
 
-    # ── 4. Validate and coerce each component table ────────────────────────
+    # ── 3. Validate and coerce each component table via ibis + pandera ─────
     validated_comps: dict = {}
-    invalid_rows: list[dict] = []
+    violation_tables: list[ir.Table] = []
 
     for ctype, table in updated_components.items():
-        df = table.execute().copy()
+        t = table
         schema = component_schemas.get(ctype, {})
 
         if not schema:
-            validated_comps[ctype] = ibis.memtable(df)
+            validated_comps[ctype] = t
             continue
 
-        # Add missing schema columns as null
-        for fname in schema:
-            if fname not in df.columns:
-                df[fname] = None
+        existing = set(t.columns)
+        original_existing = set(existing)
+        type_map = {
+            fname: _IACS_TO_PYTHON_TYPE[fschema["type"]]
+            for fname, fschema in schema.items()
+            if fschema["type"] in _IACS_TO_PYTHON_TYPE
+        }
 
-        # Apply defaults then coerce types
+        # Add missing typed columns as null
+        for fname, py_type in type_map.items():
+            if fname not in existing:
+                t = t.mutate(**{fname: ibis.null().cast(_IBIS_DTYPE[py_type])})
+                existing.add(fname)
+
+        # Cast typed columns (bool: nullif "" only for original string columns)
+        t_schema = t.schema()
+        for fname, py_type in type_map.items():
+            expr = t[fname]
+            if py_type is bool and fname in original_existing and t_schema[fname].is_string():
+                expr = expr.nullif("")
+            t = t.mutate(**{fname: expr.cast(_IBIS_DTYPE[py_type])})
+
+        # Apply defaults after casting so literal types match
         for fname, fschema in schema.items():
             default = fschema["default"]
-            ftype = fschema["type"]
+            if default is None or fname not in existing:
+                continue
+            py_type = type_map.get(fname)
+            lit = (
+                ibis.literal(default).cast(_IBIS_DTYPE[py_type])
+                if py_type is not None
+                else ibis.literal(str(default))
+            )
+            t = t.mutate(**{fname: t[fname].fill_null(lit)})
 
-            if default is not None:
-                df[fname] = df[fname].fillna(default)
+        # Pandera type validation
+        pa_columns = {
+            fname: pa.Column(py_type, nullable=True)
+            for fname, py_type in type_map.items()
+            if fname in existing
+        }
+        if pa_columns:
+            t = pa.DataFrameSchema(pa_columns).validate(t)
 
-            if ftype in _IACS_TO_PYTHON_TYPE:
-                py_type = _IACS_TO_PYTHON_TYPE[ftype]
-                if py_type in (int, float):
-                    df[fname] = pd.to_numeric(df[fname], errors="coerce")
-                elif py_type is bool:
-                    df[fname] = df[fname].map(_to_bool)
-                else:  # str
-                    df[fname] = df[fname].where(df[fname].isna(), df[fname].astype(str))
+        validated_comps[ctype] = t
 
-        # Check nullable and range constraints
-        for _, row in df.iterrows():
-            for fname, fschema in schema.items():
-                val = row.get(fname)
-                is_null = _isnull(val)
+        # ── Collect violations as lazy ibis sub-queries ────────────────────
+        for fname, fschema in schema.items():
+            if fname not in existing:
+                continue
 
-                if not fschema["nullable"] and is_null:
-                    invalid_rows.append({
-                        "entity_id": row.get("entity_id"),
-                        "component_index": row.get("component_index"),
-                        "component_type": ctype,
-                        "field": fname,
-                        "value": None,
-                        "error_type": "nullable",
-                    })
-                elif (
-                    fschema["type"] == "str"
-                    and isinstance(fschema["range"], list)
-                    and not is_null
-                    and val not in fschema["range"]
-                ):
-                    invalid_rows.append({
-                        "entity_id": row.get("entity_id"),
-                        "component_index": row.get("component_index"),
-                        "component_type": ctype,
-                        "field": fname,
-                        "value": val,
-                        "error_type": "range",
-                    })
+            # Nullable violations
+            if not fschema["nullable"]:
+                violation_tables.append(
+                    t.filter(t[fname].isnull()).select(
+                        t["entity_id"],
+                        t["component_index"],
+                        ibis.literal(ctype).name("component_type"),
+                        ibis.literal(fname).name("field"),
+                        ibis.null().cast("string").name("value"),
+                        ibis.literal("nullable").name("error_type"),
+                    )
+                )
 
-        validated_comps[ctype] = ibis.memtable(df)
+            # Categorical range violations (str fields only)
+            frange = fschema["range"]
+            if fschema["type"] == "str" and isinstance(frange, list):
+                violation_tables.append(
+                    t.filter(t[fname].notnull() & ~t[fname].isin(frange)).select(
+                        t["entity_id"],
+                        t["component_index"],
+                        ibis.literal(ctype).name("component_type"),
+                        ibis.literal(fname).name("field"),
+                        t[fname].cast("string").name("value"),
+                        ibis.literal("range").name("error_type"),
+                    )
+                )
 
-    # ── 5. Build invalid_field table ───────────────────────────────────────
+    # ── 4. Union all violation sub-queries ─────────────────────────────────
     _INVALID_COLS = ["entity_id", "component_index", "component_type", "field", "value", "error_type"]
-    invalid_df = (
-        pd.DataFrame(invalid_rows, columns=_INVALID_COLS)
-        if invalid_rows
-        else pd.DataFrame(columns=_INVALID_COLS)
-    )
+    if violation_tables:
+        invalid_table = violation_tables[0]
+        for vt in violation_tables[1:]:
+            invalid_table = invalid_table.union(vt)
+    else:
+        invalid_table = ibis.memtable(pd.DataFrame(columns=_INVALID_COLS))
 
-    return validated_comps, ibis.memtable(invalid_df)
+    return validated_comps, invalid_table
 
 def validated_registry(validated_components: dict, invalid_field: ir.Table, registry: Registry) -> Registry:
     """Store the components back in the registry.
