@@ -10,12 +10,12 @@ component:
             Fundamental component type used throughout the iacs system.
             Children of ((component)) are themselves component definitions.
     tag:
-        - id: tag
+        - alias: tag
         - description: >
             A tag has no data. It simply indicates that the entity owns a component
             of a given type.
     value:
-        - id: value
+        - alias: value
         - description: >
             A component that is a single value of arbitrary type.
         - field:
@@ -23,7 +23,7 @@ component:
             description: The value itself.
     relation:
         data:
-            - id: relation
+            - alias: relation
             - description: >
                 A component that describes a relation between two entities. Which is
                 ((relation.source)) and which is ((relation.value)) is arbitrary.
@@ -35,7 +35,7 @@ component:
                 description: An entity related to the source entity.
         directed_relation:
             data:
-                - id: directed_relation
+                - alias: directed_relation
                 - description: A relation where direction matters.
                 - schema:
                     source: The originating entity.
@@ -50,26 +50,29 @@ base_data_type:
             specifications.
         - parent: value
     int:
-        - id: int
+        - alias: int
         - description: Integer data type.
     float:
-        - id: float
+        - alias: float
         - description: Float data type.
     str:
         data:
-            - id: str
+            - alias: str
             - description: String data type.
+        entity_id:
+            - alias: entity_id
+            - description: Data type for entity IDs.
         component_type:
-            - id: component_type
+            - alias: component_type
             - description: >
                 The component_type data type means the value must point to
                 an entity with a [component_definition] component.
         categorical:
-            - id: categorical
+            - alias: categorical
             - description: Data type for a limited set of categories.
             - todo: Is this redundant with [field.range]?
     timestamp:
-        - id: categorical
+        - alias: categorical
         - description: Timestamp data type.
         - field:
             value: value
@@ -199,7 +202,57 @@ iacs_component:
         - description: >
             Indicates that an entity represents a task that needs to be completed,
             either by a human or by automated infrastructure.
-        - parent: tag
+            To create a repeatable task to execute, create an entity that
+            inherits from ((task)).
+            To create an instance of a task, including start time, execution_state,
+            etc., add a component instance of ((task)) to an entity.
+        - parent: value
+        - field:
+            value: start
+            description: Time the task was started at.
+            type: timestamp
+        - field:
+            value: end
+            description: Time the task ended.
+            type: timestamp
+        - field:
+            value: execution_state
+            description: State of the task in execution.
+            default: not started
+            type: str
+            range:
+                - not started
+                - in progress
+                - complete
+        - field:
+            value: result_state
+            description: Outcome state of the task.
+            type: str
+            range:
+                - success
+                - failure
+                - interrupted
+        - field:
+            value: executor
+            description: The entity responsible for executing the task.
+            type: entity_id
+
+    work_state:
+        - description: >
+            The status of an entity, in terms of implementation.
+        - parent: value
+        - field:
+            value: value
+            description: A string indicating the status of the entity.
+            type: str
+            range:
+                - new
+                - in progress
+                - in review
+                - blocked
+                - done
+                - removed
+            nullable: false
 
     todo:
         - description: >

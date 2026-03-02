@@ -9,7 +9,8 @@ make_cats_happy:
             - requirement:
                 priority: 1
         feed_cats:
-            - requirement
+            - requirement:
+                priority: 0.9
             - alias: feed_cats
         water_cats:
             - requirement
@@ -31,16 +32,15 @@ cat_happiness_device:
             - solution of: "make_cats_happy.feed_and_water_cats"
         feed_cats:
             - description: The task to feed the cats.
-            - task
+            - parent: task
             - solution of: "make_cats_happy.feed_and_water_cats.feed_cats"
+            - status: in progress
         water_cats:
             - description: The task to water the cats.
-            - task
+            - parent: task
             - solution of: water_cats
     cleaning_system:
         - solution of: make_cats_happy.sift_cat_box
-    adoring_system:
-        - solution of: make_cats_happy.adore_cats
 
 cat:
     - description: A data representation of a cat.
