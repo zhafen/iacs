@@ -19,7 +19,7 @@ def minimal_yaml_dir(tmp_path):
     (tmp_path / "minimal.yaml").write_text(
         "my_task:\n"
         "- description: A task I need to complete.\n"
-        "- task\n"
+        "- parent: task\n"
     )
     return str(tmp_path)
 
@@ -30,7 +30,7 @@ def multi_file_yaml_dir(tmp_path):
     (tmp_path / "tasks.yaml").write_text(
         "my_task:\n"
         "- description: A task.\n"
-        "- task\n"
+        "- parent: task\n"
     )
     sub = tmp_path / "sub"
     sub.mkdir()
