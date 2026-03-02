@@ -7,7 +7,15 @@ import ibis.expr.types as ir
 from iacs.registry import Registry
 
 @extract_fields({
-    "requirement": ir.Table
+    "requirement": ir.Table,
+    "solution": ir.Table,
+    "work_state": ir.Table,
 })
 def components(registry: Registry) -> dict:
+    return registry._components
+
+def solution_with_state(solution: ir.Table, work_state: ir.Table) -> ir.Table:
+    return
+
+def requirement_coverage(requirement: ir.Table, solution_with_state: ir.Table) -> ir.Table:
     return
