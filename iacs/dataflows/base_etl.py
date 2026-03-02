@@ -1,0 +1,20 @@
+from hamilton.function_modifiers import subdag, source
+
+from . import load_manifest, validate_registry, derive_components
+from ..registry import Registry
+
+@subdag(
+    load_manifest,
+    inputs={"input_dir": source("input_dir")},
+    config={}
+)
+def loaded_registry(registry: Registry) -> Registry:
+    return registry
+
+@subdag(
+    validate_registry,
+    inputs={"registry": source("loaded_registry")},
+   config={}
+)
+def validated_registry(validated_registry: Registry) -> Registry:
+    return validated_registry

@@ -14,7 +14,7 @@ dependencies = [
     "pydantic>=2.10.6",
     "pytest>=9.0.2",
     "pyyaml>=6.0",
-    "sf-hamilton>=1.88.0",
+    "sf-hamilton[sdk,ui]>=1.88.0",
 ]
 
 [project.optional-dependencies]
