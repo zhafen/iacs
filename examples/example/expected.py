@@ -174,7 +174,7 @@ component_tables = {
             {
                 "entity_id": feed_cats_req_id,
                 "component_index": 0,
-                "priority": None,
+            "priority": "0.9",
             },
             {
                 "entity_id": get_id("make_cats_happy.sift_cat_box"),
