@@ -331,6 +331,40 @@ ecs_framework:
                     (e.g. they are all requirements) repeating a "requirement"
                     component can be verbose and exhausting.
                 - requirement: quality
+        be_easy_to_use:
+            data:
+                - requirement: quality
+            have_good_formatting:
+                data:
+                    - description: >
+                        As defined by the sub-requirements.
+                    - requirement: quality
+                formatting_is_powerful:
+                    enable_pointing_to_entities:
+                        - description: This is required for ((relation)) components.
+                        - requirement:
+                            value: quality
+                            priority: 0.9
+                formatting_is_concise:
+                    children_inherit_components_of_parents:
+                        - requirement:
+                            value: quality
+                            priority: 0.7
+                formatting_is_clear:
+                    commonly_used_components_have_compressed_format:
+                        - description: >
+                            For example, it would be nice to concisely define a
+                            field with something like "my_field[str] = 'default': a
+                            description of my field".
+                        - requirement:
+                            value: quality
+                            priority: 0.6
+                formatting_is_flexible:
+                    allow_relations_to_be_defined_as_part_of_target_entities:
+                        - description: I.e, enable use of "parent of".
+                        - requirement:
+                            value: quality
+                            priority: 0.5
     core_concepts:
         data:
             - description: >
