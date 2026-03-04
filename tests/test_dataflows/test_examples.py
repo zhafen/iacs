@@ -176,7 +176,7 @@ def _test_params() -> list:
 # ─── Tests ──────────────────────────────────────────────────────────────────
 
 @pytest.mark.parametrize("example_dir,module_name,mod", _test_params())
-def test_dataflow_dag_outputs_match_expected(
+def test_ingestion_dataflows_match_expected(
     example_dir: Path, module_name: str, mod: ModuleType,
 ) -> None:
     """All expected outputs from expected.py appear in the dataflow DAG output.
