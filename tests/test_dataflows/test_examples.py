@@ -214,6 +214,12 @@ def test_ingestion_dataflows_match_expected(
 
     to_execute = [name for name in expected_vars if name in available]
     if not to_execute:
+        if expected_vars:
+            pytest.fail(
+                f"Expected variables {list(expected_vars)} are defined in expected.py "
+                f"but none are nodes in the {module_name} DAG. "
+                f"This likely means the ingestion for this example is not yet implemented."
+            )
         pytest.skip(f"No expected variables are nodes in the {module_name} DAG")
 
     try:
