@@ -1,0 +1,4 @@
+product_id,name,category,price_usd
+17,Widget A,hardware,9.99
+42,Widget B,hardware,24.99
+88,Service Plan,service,49.99
