@@ -184,6 +184,12 @@ def test_ingestion_dataflows_match_expected(
         }
         to_execute = [name for name in expected_vars if name in results]
         if not to_execute:
+            if expected_vars:
+                pytest.fail(
+                    f"Expected variables {list(expected_vars)} are defined in expected.py "
+                    f"but none match {module_name} registry output. "
+                    f"This likely means ingestion for this example is not yet implemented."
+                )
             pytest.skip(f"No expected variables match {module_name} registry output")
     elif module_name == "load_manifest":
         dr = driver.Driver({"input_dir": [str(example_dir)]}, mod, adapter=base.DictResult())
