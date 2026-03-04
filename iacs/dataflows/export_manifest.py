@@ -1,6 +1,9 @@
 """Hamilton DAG for converting component-centered registry data back to entity-centered manifest data."""
 
+from pathlib import Path
+
 import pandas as pd
+import yaml
 
 from ..registry import Registry
 
@@ -80,19 +83,18 @@ def entity_first_data(components: dict) -> dict:
     }
 
 
-def manifests(entity_first_data: dict) -> dict:
-    """Convert entity-first data into per-file manifest dicts ready for YAML serialization.
+def manifest(entity_first_data: dict, output_path: str) -> None:
+    """Write entity-first data to the filesystem as a YAML file.
 
     Parameters
     ----------
     entity_first_data : dict
-        The nested entity-first structure keyed by filepath, as returned by
+        The entity-centered structure to serialize, as returned by
         ``entity_first_data``.
-
-    Returns
-    -------
-    dict
-        A dict mapping each filepath to its top-level entity dict, matching
-        the structure of the original manifest YAML files.
+    output_path : str
+        Path to write the YAML file to.
     """
-    return
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        yaml.dump(entity_first_data, f, default_flow_style=False, allow_unicode=True)
