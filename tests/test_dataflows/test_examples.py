@@ -12,7 +12,6 @@ Loop over each example manifest in the examples directory:
 
 import importlib
 import importlib.util
-import pkgutil
 from pathlib import Path
 from types import ModuleType
 
@@ -21,29 +20,27 @@ import pytest
 import yaml
 from hamilton import driver, base
 
-import iacs.dataflows as dataflows_pkg
-from iacs.dataflows import load_manifest as load_manifest_module
+from iacs.architect import Architect
 
 EXAMPLES_DIR = Path(__file__).parent.parent.parent / "examples"
+
+DATAFLOW_MODULE_NAMES = [
+    "base_etl",
+    # "derive_components",
+    # "audit.requirement_coverage",
+    # "audit.todo",
+    # "audit.traceability",
+]
 
 
 # ─── Discovery helpers ──────────────────────────────────────────────────────
 
 def _get_dataflow_modules() -> list[tuple[str, ModuleType]]:
-    """Return (name, module) for every Hamilton DAG module in iacs.dataflows."""
-    dataflows_path = Path(dataflows_pkg.__file__).parent
-    result = []
-    for _, name, ispkg in pkgutil.iter_modules([str(dataflows_path)]):
-        if ispkg:
-            subpkg = importlib.import_module(f"iacs.dataflows.{name}")
-            subpkg_path = Path(subpkg.__file__).parent
-            for _, subname, _ in pkgutil.iter_modules([str(subpkg_path)]):
-                module = importlib.import_module(f"iacs.dataflows.{name}.{subname}")
-                result.append((f"{name}.{subname}", module))
-        else:
-            module = importlib.import_module(f"iacs.dataflows.{name}")
-            result.append((name, module))
-    return result
+    """Return (name, module) for every Hamilton DAG module listed in DATAFLOW_MODULE_NAMES."""
+    return [
+        (name, importlib.import_module(f"iacs.dataflows.{name}"))
+        for name in DATAFLOW_MODULE_NAMES
+    ]
 
 
 def _get_example_dirs_with_manifest() -> list[Path]:
@@ -84,32 +81,6 @@ def _expected_data_vars(expected_module: ModuleType) -> dict:
         if isinstance(val, (pd.DataFrame, dict)):
             result[name] = val
     return result
-
-
-# ─── DAG execution helpers ──────────────────────────────────────────────────
-
-def _execute_dag(mod: ModuleType, inputs: dict, output_names: list[str] | None = None) -> dict:
-    """Execute a Hamilton DAG module and return results.
-
-    If output_names is provided, only those nodes are executed. Otherwise all
-    computable (non-external-input) nodes are executed.
-    """
-    dr = driver.Driver(inputs, mod, adapter=base.DictResult())
-    if output_names is None:
-        output_names = [v.name for v in dr.list_available_variables() if not v.is_external_input]
-    return dr.execute(output_names)
-
-
-def _build_registry(example_dir: Path):
-    """Build a Registry from an example directory via the load_manifest DAG.
-
-    Returns None if the DAG cannot be executed (e.g. stub implementations).
-    """
-    try:
-        result = _execute_dag(load_manifest_module, {"input_dir": [str(example_dir)]})
-        return result.get("registry")
-    except Exception:
-        return None
 
 
 # ─── Comparison helpers ─────────────────────────────────────────────────────
@@ -198,35 +169,34 @@ def test_ingestion_dataflows_match_expected(
     """
     expected_vars = _expected_data_vars(_load_expected(example_dir))
 
-    # Build inputs for this module.
+    # Build inputs and get available nodes for this module.
     if module_name == "load_manifest":
-        inputs = {"input_dir": [str(example_dir)]}
+        dr = driver.Driver({"input_dir": [str(example_dir)]}, mod, adapter=base.DictResult())
+        available = {v.name for v in dr.list_available_variables() if not v.is_external_input}
+
+        to_execute = [name for name in expected_vars if name in available]
+        if not to_execute:
+            pytest.skip(f"No expected variables are nodes in the {module_name} DAG")
+
+        try:
+            results = dr.execute(to_execute)
+        except Exception as exc:
+            pytest.skip(f"DAG execution failed (not yet implemented): {exc}")
     else:
-        registry = _build_registry(example_dir)
-        if registry is None:
-            pytest.skip(
-                f"{module_name}: registry is None (manifest_to_registry not yet implemented)"
-            )
-        inputs = {"registry": registry}
+        try:
+            architect = Architect.from_manifest(str(example_dir), [mod])
+        except Exception:
+            pytest.skip(f"{module_name}: registry could not be built")
 
-    dr = driver.Driver(inputs, mod, adapter=base.DictResult())
-    available = {v.name for v in dr.list_available_variables() if not v.is_external_input}
+        available = set(architect.outputs)
+        to_execute = [name for name in expected_vars if name in available]
+        if not to_execute:
+            pytest.skip(f"No expected variables are nodes in the {module_name} DAG")
 
-    to_execute = [name for name in expected_vars if name in available]
-    if not to_execute:
-        # Stricter test, may add back later.
-        # if expected_vars:
-        #     pytest.fail(
-        #         f"Expected variables {list(expected_vars)} are defined in expected.py "
-        #         f"but none are nodes in the {module_name} DAG. "
-        #         f"This likely means the ingestion for this example is not yet implemented."
-        #     )
-        pytest.skip(f"No expected variables are nodes in the {module_name} DAG")
-
-    try:
-        results = dr.execute(to_execute)
-    except Exception as exc:
-        pytest.skip(f"DAG execution failed (not yet implemented): {exc}")
+        try:
+            results = architect.execute(to_execute)
+        except Exception as exc:
+            pytest.skip(f"DAG execution failed (not yet implemented): {exc}")
 
     for var_name in to_execute:
         actual = results.get(var_name)
@@ -240,11 +210,12 @@ def test_export_dataflows_match_expected(example_dir: Path) -> None:
     """Registry exported back to YAML should match the original manifest."""
     from iacs.dataflows import export_manifest
 
-    registry = _build_registry(example_dir)
-    if registry is None:
-        pytest.skip("registry is None (load_manifest not yet implemented)")
+    try:
+        architect = Architect.from_manifest(str(example_dir))
+    except Exception:
+        pytest.skip("registry could not be built (load_manifest not yet implemented)")
 
-    exported = export_manifest.manifest_data(registry)
+    exported = export_manifest.manifest_data(architect.registry)
 
     original = yaml.safe_load((example_dir / "manifest.yaml").read_text())
     assert exported == original

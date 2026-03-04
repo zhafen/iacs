@@ -30,9 +30,14 @@ class Architect:
         return cls(result["validated_registry"], dataflows or [])
 
     def __init__(self, registry: Registry, dataflows: list[ModuleType]):
+        self._registry = registry
         self._driver = driver.Driver(
             {"registry": registry}, *dataflows, adapter=base.DictResult()
         )
+
+    @property
+    def registry(self) -> Registry:
+        return self._registry
 
     def execute(self, final_vars: list[str]) -> dict[str, Any]:
         if not final_vars:
