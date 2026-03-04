@@ -1,4 +1,4 @@
-"""ETLSystem for executing Hamilton DAG dataflows against a Registry."""
+"""Base class for iacs systems."""
 
 from types import ModuleType
 from typing import Any
@@ -8,8 +8,8 @@ from hamilton import driver, base
 from iacs.registry import Registry
 
 
-class ETLSystem:
-    """Executes Hamilton dataflow transforms against a Registry."""
+class Architect:
+    """Base class for iacs systems that operate on infrastructure data."""
 
     def __init__(self, registry: Registry, dataflows: list[ModuleType]):
         self._driver = driver.Driver(
