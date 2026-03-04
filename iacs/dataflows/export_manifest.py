@@ -1,6 +1,6 @@
 """Hamilton DAG for converting component-centered registry data back to entity-centered manifest data."""
 
-import ibis.expr.types as ir
+import pandas as pd
 
 from ..registry import Registry
 
@@ -18,15 +18,20 @@ def components(registry: Registry) -> dict:
     dict
         A dict mapping component type names (including "spine") to ibis Tables.
     """
-    return
+    return registry._components
+
+
+_METADATA_COLS = {"entity_id", "component_index", "modifier"}
 
 
 def entity_first_data(components: dict) -> dict:
     """Reconstruct the entity-centered nested dict from component tables.
 
-    Inverts the transformation performed by ``load_manifest``: given the spine
-    and per-component-type tables, rebuilds the nested ``{entity: [components]}``
-    structure grouped by filepath.
+    For each component type, groups rows by entity_id and serializes each row
+    as a component entry. Tags (empty value, no other fields) become bare
+    strings; scalar components become ``{type: value}``; multi-field components
+    become ``{type: {field: value, ...}}``. Modifiers (e.g. "of") are appended
+    to the component type key (e.g. "solution of").
 
     Parameters
     ----------
@@ -37,10 +42,42 @@ def entity_first_data(components: dict) -> dict:
     Returns
     -------
     dict
-        A dict of the form ``{filepath: {entity_path: [component, ...]}}``
-        mirroring the structure of ``raw_entity_first_data`` in ``load_manifest``.
+        A dict of the form ``{entity_id: [component, ...]}`` where each
+        component is a string (tag) or a single-key dict.
     """
-    return
+    result: dict[str, list] = {}
+
+    for comp_type, table in components.items():
+        if comp_type == "spine":
+            continue
+
+        df = table.execute()
+
+        for _, row in df.iterrows():
+            entity_id = row["entity_id"]
+            modifier = row.get("modifier")
+            key = f"{comp_type} {modifier}" if pd.notna(modifier) and modifier else comp_type
+
+            fields = {
+                k: v for k, v in row.items()
+                if k not in _METADATA_COLS and pd.notna(v)
+            }
+
+            if not fields or (len(fields) == 1 and fields.get("value") == ""):
+                entry = key
+            elif len(fields) == 1 and "value" in fields:
+                entry = {key: fields["value"]}
+            else:
+                entry = {key: fields}
+
+            result.setdefault(entity_id, []).append(
+                (int(row["component_index"]), entry)
+            )
+
+    return {
+        eid: [e for _, e in sorted(entries)]
+        for eid, entries in result.items()
+    }
 
 
 def manifests(entity_first_data: dict) -> dict:
