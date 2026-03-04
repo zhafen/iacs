@@ -18,6 +18,7 @@ from types import ModuleType
 
 import pandas as pd
 import pytest
+import yaml
 from hamilton import driver, base
 
 import iacs.dataflows as dataflows_pkg
@@ -43,6 +44,14 @@ def _get_dataflow_modules() -> list[tuple[str, ModuleType]]:
             module = importlib.import_module(f"iacs.dataflows.{name}")
             result.append((name, module))
     return result
+
+
+def _get_example_dirs_with_manifest() -> list[Path]:
+    """Return sorted example directories that contain a manifest.yaml."""
+    return [
+        d for d in sorted(EXAMPLES_DIR.iterdir())
+        if d.is_dir() and (d / "manifest.yaml").exists()
+    ]
 
 
 def _get_example_dirs_with_expected() -> list[Path]:
@@ -217,3 +226,18 @@ def test_ingestion_dataflows_match_expected(
         if actual is None:
             continue
         _assert_subset(var_name, expected_vars[var_name], actual)
+
+
+@pytest.mark.parametrize("example_dir", _get_example_dirs_with_manifest())
+def test_export_dataflows_match_expected(example_dir: Path) -> None:
+    """Registry exported back to YAML should match the original manifest."""
+    from iacs.dataflows import export_manifest
+
+    registry = _build_registry(example_dir)
+    if registry is None:
+        pytest.skip("registry is None (load_manifest not yet implemented)")
+
+    exported = export_manifest.manifest_data(registry)
+
+    original = yaml.safe_load((example_dir / "manifest.yaml").read_text())
+    assert exported == original
