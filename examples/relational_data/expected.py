@@ -1,6 +1,6 @@
 import pandas as pd
 
-tables = {
+component_tables = {
     "users": pd.DataFrame(
         [
             {"user_id": 1, "name": "Alice Johnson", "email": "alice@example.com", "created_at": "2023-01-15"},

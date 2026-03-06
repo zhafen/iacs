@@ -1,5 +1,7 @@
 """Tests for the load_manifest Hamilton DAG functions."""
 
+from pathlib import Path
+
 import ibis
 import pandas as pd
 import pytest
@@ -422,3 +424,258 @@ class TestComponentTables:
         df = result["description"].to_pandas()
         assert "entity_id" in df.columns
         assert "component_index" in df.columns
+
+
+# ---------------------------------------------------------------------------
+# raw_csv_data
+# ---------------------------------------------------------------------------
+
+class TestRawCsvData:
+
+    def test_loads_csv_from_directory(self, tmp_path):
+        """CSV files in a directory are loaded and keyed by path identifier."""
+        csv_file = tmp_path / "task.csv"
+        csv_file.write_text("name,priority\nalpha,1\nbeta,2\n")
+        result = load_manifest.raw_csv_data([str(tmp_path)])
+        assert isinstance(result, dict)
+        assert len(result) == 1
+        file_id = next(iter(result))
+        assert file_id.endswith("task.csv")
+        df = result[file_id]
+        assert list(df.columns) == ["name", "priority"]
+        assert len(df) == 2
+
+    def test_loads_explicit_csv_file(self, tmp_path):
+        """A CSV file path passed directly is loaded."""
+        csv_file = tmp_path / "req.csv"
+        csv_file.write_text("id,text\n1,Requirement A\n")
+        result = load_manifest.raw_csv_data([str(csv_file)])
+        assert len(result) == 1
+        df = next(iter(result.values()))
+        assert "id" in df.columns
+
+    def test_empty_directory_returns_empty_dict(self, tmp_path):
+        """Directory with no CSV files returns an empty dict."""
+        result = load_manifest.raw_csv_data([str(tmp_path)])
+        assert result == {}
+
+    def test_recursive_subdirectory(self, tmp_path):
+        """CSV files in subdirectories are discovered recursively."""
+        sub = tmp_path / "sub"
+        sub.mkdir()
+        (sub / "infra.csv").write_text("host,port\nserver1,80\n")
+        result = load_manifest.raw_csv_data([str(tmp_path)])
+        assert len(result) == 1
+
+    def test_ignores_yaml_files(self, tmp_path):
+        """YAML files in the directory are not loaded by raw_csv_data."""
+        (tmp_path / "task.yaml").write_text("my_task:\n- description: A task.\n")
+        (tmp_path / "data.csv").write_text("col\nval\n")
+        result = load_manifest.raw_csv_data([str(tmp_path)])
+        assert len(result) == 1
+
+    def test_returns_dataframes(self, tmp_path):
+        """Values are pd.DataFrame instances."""
+        (tmp_path / "comp.csv").write_text("x,y\n1,2\n")
+        result = load_manifest.raw_csv_data([str(tmp_path)])
+        for df in result.values():
+            assert isinstance(df, pd.DataFrame)
+
+
+# ---------------------------------------------------------------------------
+# csv_component_tables
+# ---------------------------------------------------------------------------
+
+class TestCsvComponentTables:
+
+    def _make_raw(self, tmp_path, filename, content):
+        f = tmp_path / filename
+        f.write_text(content)
+        return load_manifest.raw_csv_data([str(f)])
+
+    def test_returns_dict_of_ibis_tables(self, tmp_path):
+        raw = self._make_raw(tmp_path, "task.csv", "name\nalpha\n")
+        result = load_manifest.csv_component_tables(raw)
+        assert isinstance(result, dict)
+        for val in result.values():
+            assert isinstance(val, ibis.Table)
+
+    def test_stem_is_key(self, tmp_path):
+        raw = self._make_raw(tmp_path, "requirement.csv", "text\nReq A\n")
+        result = load_manifest.csv_component_tables(raw)
+        assert "requirement" in result
+
+    def test_entity_id_column_present(self, tmp_path):
+        raw = self._make_raw(tmp_path, "task.csv", "name\nalpha\n")
+        result = load_manifest.csv_component_tables(raw)
+        df = result["task"].to_pandas()
+        assert "entity_id" in df.columns
+
+    def test_entity_id_is_dhash(self, tmp_path):
+        csv_file = tmp_path / "task.csv"
+        csv_file.write_text("name\nalpha\n")
+        file_id = str(csv_file.relative_to(Path.cwd())) if csv_file.is_relative_to(Path.cwd()) else str(csv_file)
+        raw = load_manifest.raw_csv_data([str(csv_file)])
+        result = load_manifest.csv_component_tables(raw)
+        df = result["task"].to_pandas()
+        actual_file_id = next(iter(raw.keys()))
+        expected_id = dhash(actual_file_id + ":0")
+        assert df.iloc[0]["entity_id"] == expected_id
+
+    def test_component_index_is_zero(self, tmp_path):
+        raw = self._make_raw(tmp_path, "task.csv", "name\nalpha\nbeta\n")
+        result = load_manifest.csv_component_tables(raw)
+        df = result["task"].to_pandas()
+        assert (df["component_index"] == 0).all()
+
+    def test_modifier_is_null(self, tmp_path):
+        raw = self._make_raw(tmp_path, "task.csv", "name\nalpha\n")
+        result = load_manifest.csv_component_tables(raw)
+        df = result["task"].to_pandas()
+        assert df["modifier"].isna().all()
+
+    def test_csv_columns_become_fields(self, tmp_path):
+        raw = self._make_raw(tmp_path, "req.csv", "title,priority\nReq A,1\n")
+        result = load_manifest.csv_component_tables(raw)
+        df = result["req"].to_pandas()
+        assert "title" in df.columns
+        assert "priority" in df.columns
+
+    def test_multiple_files_same_stem_unioned(self, tmp_path):
+        f1 = tmp_path / "sub1"
+        f1.mkdir()
+        f2 = tmp_path / "sub2"
+        f2.mkdir()
+        (f1 / "task.csv").write_text("name\nalpha\n")
+        (f2 / "task.csv").write_text("name\nbeta\n")
+        raw = load_manifest.raw_csv_data([str(tmp_path)])
+        result = load_manifest.csv_component_tables(raw)
+        df = result["task"].to_pandas()
+        assert len(df) == 2
+
+
+# ---------------------------------------------------------------------------
+# csv_spine
+# ---------------------------------------------------------------------------
+
+class TestCsvSpine:
+
+    def _make_raw(self, tmp_path, filename, content):
+        f = tmp_path / filename
+        f.write_text(content)
+        return load_manifest.raw_csv_data([str(f)])
+
+    def test_returns_ibis_table(self, tmp_path):
+        raw = self._make_raw(tmp_path, "task.csv", "name\nalpha\n")
+        result = load_manifest.csv_spine(raw)
+        assert isinstance(result, ibis.Table)
+
+    def test_has_required_columns(self, tmp_path):
+        raw = self._make_raw(tmp_path, "task.csv", "name\nalpha\n")
+        result = load_manifest.csv_spine(raw)
+        for col in ["entity_id", "component_index", "entity_key", "component_type",
+                    "modifier", "filepath", "path"]:
+            assert col in result.columns
+
+    def test_one_row_per_csv_row(self, tmp_path):
+        raw = self._make_raw(tmp_path, "req.csv", "text\nA\nB\nC\n")
+        result = load_manifest.csv_spine(raw)
+        assert len(result.to_pandas()) == 3
+
+    def test_entity_id_uses_dhash(self, tmp_path):
+        csv_file = tmp_path / "task.csv"
+        csv_file.write_text("name\nalpha\n")
+        raw = load_manifest.raw_csv_data([str(csv_file)])
+        result = load_manifest.csv_spine(raw)
+        df = result.to_pandas()
+        file_id = next(iter(raw.keys()))
+        expected_id = dhash(file_id + ":0")
+        assert df.iloc[0]["entity_id"] == expected_id
+
+    def test_entity_key_and_component_type_are_stem(self, tmp_path):
+        raw = self._make_raw(tmp_path, "requirement.csv", "text\nReq A\n")
+        result = load_manifest.csv_spine(raw)
+        df = result.to_pandas()
+        assert df.iloc[0]["entity_key"] == "requirement"
+        assert df.iloc[0]["component_type"] == "requirement"
+
+    def test_path_format(self, tmp_path):
+        csv_file = tmp_path / "task.csv"
+        csv_file.write_text("name\nalpha\n")
+        raw = load_manifest.raw_csv_data([str(csv_file)])
+        result = load_manifest.csv_spine(raw)
+        df = result.to_pandas()
+        file_id = next(iter(raw.keys()))
+        expected_path = f"{file_id}:task[0].task"
+        assert df.iloc[0]["path"] == expected_path
+
+    def test_modifier_is_null(self, tmp_path):
+        raw = self._make_raw(tmp_path, "task.csv", "name\nalpha\n")
+        result = load_manifest.csv_spine(raw)
+        df = result.to_pandas()
+        assert df["modifier"].isna().all()
+
+    def test_filepath_is_file_id(self, tmp_path):
+        csv_file = tmp_path / "task.csv"
+        csv_file.write_text("name\nalpha\n")
+        raw = load_manifest.raw_csv_data([str(csv_file)])
+        result = load_manifest.csv_spine(raw)
+        df = result.to_pandas()
+        file_id = next(iter(raw.keys()))
+        assert df.iloc[0]["filepath"] == file_id
+
+
+# ---------------------------------------------------------------------------
+# spine union with csv_spine
+# ---------------------------------------------------------------------------
+
+class TestSpineWithCsvSpine:
+
+    def test_spine_includes_csv_rows(self, tmp_path):
+        """When csv_spine is provided, its rows are unioned into the spine."""
+        csv_file = tmp_path / "task.csv"
+        csv_file.write_text("name\nalpha\n")
+        raw = load_manifest.raw_csv_data([str(csv_file)])
+        csv_sp = load_manifest.csv_spine(raw)
+
+        pairs = [("file.yaml:entity[0].description", "Hi.")]
+        pvp = ibis.memtable(pd.DataFrame(pairs, columns=["path", "value"]))
+        kvs = load_manifest.keyvalue_store(pvp)
+        result = load_manifest.spine(kvs, csv_sp)
+        df = result.to_pandas()
+        assert len(df) == 2  # one YAML row + one CSV row
+
+
+# ---------------------------------------------------------------------------
+# component_tables union with csv_component_tables
+# ---------------------------------------------------------------------------
+
+class TestComponentTablesWithCsv:
+
+    def test_csv_only_type_included(self, tmp_path):
+        """CSV-only component types appear in the result."""
+        csv_file = tmp_path / "task.csv"
+        csv_file.write_text("name\nalpha\n")
+        raw = load_manifest.raw_csv_data([str(csv_file)])
+        csv_ct = load_manifest.csv_component_tables(raw)
+
+        pairs = [("file.yaml:entity[0].description", "Hi.")]
+        pvp = ibis.memtable(pd.DataFrame(pairs, columns=["path", "value"]))
+        kvs = load_manifest.keyvalue_store(pvp)
+        result = load_manifest.component_tables(kvs, csv_ct)
+        assert "description" in result
+        assert "task" in result
+
+    def test_shared_type_rows_merged(self, tmp_path):
+        """When both YAML and CSV have the same component type, rows are concatenated."""
+        csv_file = tmp_path / "description.csv"
+        csv_file.write_text("value\nCSV description\n")
+        raw = load_manifest.raw_csv_data([str(csv_file)])
+        csv_ct = load_manifest.csv_component_tables(raw)
+
+        pairs = [("file.yaml:entity[0].description", "YAML description.")]
+        pvp = ibis.memtable(pd.DataFrame(pairs, columns=["path", "value"]))
+        kvs = load_manifest.keyvalue_store(pvp)
+        result = load_manifest.component_tables(kvs, csv_ct)
+        df = result["description"].to_pandas()
+        assert len(df) == 2
