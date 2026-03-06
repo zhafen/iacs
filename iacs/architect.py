@@ -26,10 +26,8 @@ class Architect:
             manifest = [manifest]
         result = driver.Driver(
             {}, base_etl, adapter=base.DictResult()
-        ).execute(["validated_registry", "loaded_registry"], inputs={"input_dir": manifest})
-        instance = cls(result["validated_registry"], dataflows or [])
-        instance._loaded_registry = result["loaded_registry"]
-        return instance
+        ).execute(["validated_registry"], inputs={"input_dir": manifest})
+        return cls(result["validated_registry"], dataflows or [])
 
     def __init__(self, registry: Registry, dataflows: list[ModuleType]):
         self._registry = registry
@@ -39,7 +37,7 @@ class Architect:
 
     @property
     def registry(self) -> Registry:
-        return getattr(self, "_loaded_registry", self._registry)
+        return self._registry
 
     def execute(self, final_vars: list[str]) -> dict[str, Any]:
         if not final_vars:
