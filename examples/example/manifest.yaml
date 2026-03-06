@@ -87,7 +87,7 @@ cat_food_supply:
     furina:
         - description: "Our supply of furina brand cat food."
         - food:
-            value: "32"
+            value: 32
             brand: furina
             type: dry
     mystery_meat:
