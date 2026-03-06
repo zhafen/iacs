@@ -173,6 +173,8 @@ def manifest_data(registry: Registry) -> dict:
         if comp_type == "spine":
             continue
         df = table.execute()
+        if "component_index" not in df.columns:
+            continue
         for _, row in df.iterrows():
             eid = row["entity_id"]
             if eid not in entity_components:
@@ -189,7 +191,7 @@ def manifest_data(registry: Registry) -> dict:
             entity_components[eid].append((int(row["component_index"]), entry))
 
     for eid in entity_components:
-        entity_components[eid] = [e for _, e in sorted(entity_components[eid])]
+        entity_components[eid] = [e for _, e in sorted(entity_components[eid], key=lambda x: x[0])]
 
     # Determine which manifest paths have children.
     all_manifest_paths = set(entity_path_map.values())
