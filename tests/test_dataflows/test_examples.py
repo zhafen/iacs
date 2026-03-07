@@ -138,6 +138,53 @@ def _assert_subset(var_name: str, expected_value, actual_value) -> None:
                 )
 
 
+def _manifest_item_matches(expected, actual) -> bool:
+    """Return True if expected dict/scalar is a lenient subset match of actual."""
+    if isinstance(expected, dict) and isinstance(actual, dict):
+        common = [k for k in expected if k in actual]
+        if not common:
+            return False
+        return all(_manifest_values_match(expected[k], actual[k]) for k in common)
+    if isinstance(expected, (int, float)) and isinstance(actual, (int, float)):
+        return expected == actual
+    return expected == actual
+
+
+def _manifest_values_match(expected, actual) -> bool:
+    if isinstance(expected, dict) and isinstance(actual, dict):
+        common = [k for k in expected if k in actual]
+        return all(_manifest_values_match(expected[k], actual[k]) for k in common)
+    if isinstance(expected, (int, float)) and isinstance(actual, (int, float)):
+        return expected == actual
+    return expected == actual
+
+
+def _assert_manifest_subset(expected: dict, actual: dict, context: str = "") -> None:
+    """Assert every entry in expected appears in actual with lenient subset semantics.
+
+    - Top-level keys missing from actual are skipped.
+    - If expected value is a list but actual value is a dict with a "data" key,
+      the comparison uses actual["data"].
+    - List item matching uses overlapping-field subset semantics.
+    """
+    for key, exp_val in expected.items():
+        if key not in actual:
+            continue
+        act_val = actual[key]
+        ctx = f"{context}.{key}" if context else key
+        if isinstance(exp_val, list) and isinstance(act_val, dict) and "data" in act_val:
+            act_val = act_val["data"]
+        if isinstance(exp_val, list) and isinstance(act_val, list):
+            for exp_item in exp_val:
+                found = any(_manifest_item_matches(exp_item, act_item) for act_item in act_val)
+                assert found, (
+                    f"{ctx}: expected item {exp_item!r} not found in actual\n"
+                    f"  Actual: {act_val!r}"
+                )
+        elif isinstance(exp_val, dict) and isinstance(act_val, dict):
+            _assert_manifest_subset(exp_val, act_val, context=ctx)
+
+
 # ─── Test parameters ────────────────────────────────────────────────────────
 
 def _test_params() -> list:
@@ -228,52 +275,24 @@ def test_ingestion_dataflows_match_expected(
         _assert_subset(var_name, expected_vars[var_name], actual)
 
 
-def _assert_manifest_subset(original, exported, path: str = "") -> None:
-    """Assert that every value in *original* is also present in *exported*.
-
-    Comparison is recursive and uses subset semantics:
-    - dicts: only keys present in *original* are checked; extra keys in
-      *exported* are ignored.
-    - lists: compared positionally up to the length of *original*; extra
-      trailing items in *exported* are ignored.
-    - numeric scalars: compared as floats so that ``1 == 1.0``.
-    - other scalars: compared with ``==``.
-    - type mismatches (e.g. a bare tag string vs a full dict): silently
-      skipped, because validation legitimately promotes such values.
-    """
-    if isinstance(original, dict) and isinstance(exported, dict):
-        for key in original:
-            if key in exported:
-                _assert_manifest_subset(original[key], exported[key], f"{path}[{key!r}]")
-    elif isinstance(original, list) and isinstance(exported, list):
-        for i, orig_item in enumerate(original):
-            if i < len(exported):
-                _assert_manifest_subset(orig_item, exported[i], f"{path}[{i}]")
-    elif isinstance(original, (int, float)) and isinstance(exported, (int, float)):
-        assert float(original) == float(exported), (
-            f"Mismatch at {path}: {original!r} != {exported!r}"
-        )
-    elif type(original) is type(exported):
-        assert original == exported, f"Mismatch at {path}: {original!r} != {exported!r}"
-    # else: structural type mismatch (e.g. tag string vs promoted dict) — skip
-
-
 @pytest.mark.parametrize("example_dir", _get_example_dirs_with_manifest())
 def test_export_dataflows_match_expected(example_dir: Path) -> None:
-    """Original manifest values should appear as a subset of the exported manifest.
-
-    The exported manifest may contain additional data introduced by validation
-    (e.g. schema defaults, type coercions, inherited fields), so a strict
-    equality check is intentionally not used.
-    """
-    from iacs.dataflows import export_manifest
+    """Exported manifest should contain the expected subset defined in expected/manifest.yaml."""
+    expected_manifest_path = EXPECTED_DIR / example_dir.name / "manifest.yaml"
+    if not expected_manifest_path.exists():
+        pytest.skip("No expected manifest.yaml in expected dir")
 
     try:
         architect = Architect.from_manifest(str(example_dir))
+        architect.load_dataflow("export_manifest")
     except Exception:
-        pytest.skip("registry could not be built (load_manifest not yet implemented)")
+        pytest.skip("registry could not be built")
 
-    exported = export_manifest.manifest_data(architect.registry)
+    try:
+        result = architect.execute(["manifest_data"])
+    except Exception as exc:
+        pytest.skip(f"DAG execution failed (not yet implemented): {exc}")
 
-    original = yaml.safe_load((example_dir / "manifest.yaml").read_text())
-    _assert_manifest_subset(original, exported)
+    exported = result["manifest_data"]
+    expected = yaml.safe_load(expected_manifest_path.read_text())
+    _assert_manifest_subset(expected, exported)

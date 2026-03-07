@@ -174,7 +174,8 @@ def user_spine(registry: Registry) -> pd.DataFrame:
         at minimum ``entity_id``, ``component_index``, ``entity_key``,
         ``component_type``, ``modifier``, ``filepath``, and ``path``.
     """
-    ...
+    df = registry._components["spine"].execute()
+    return df[df["filepath"].notna() & (df["filepath"] != _BUILTIN_FILEPATH)].reset_index(drop=True)
 
 
 def entity_path_map(user_spine: pd.DataFrame) -> dict[str, str]:
@@ -200,7 +201,15 @@ def entity_path_map(user_spine: pd.DataFrame) -> dict[str, str]:
     dict[str, str]
         Mapping of ``entity_id`` strings to manifest-relative path strings.
     """
-    ...
+    result = {}
+    for _, row in user_spine.iterrows():
+        eid = row["entity_id"]
+        if eid not in result:
+            filepath = row.get("filepath") or ""
+            path = _entity_path_from_spine_path(row["path"], filepath)
+            if path:
+                result[eid] = path
+    return result
 
 
 def user_component_tables(
@@ -231,7 +240,18 @@ def user_component_tables(
         Mapping of component type name to the filtered, executed pandas
         DataFrame for that component type.
     """
-    ...
+    user_eids = set(user_spine["entity_id"])
+    result = {}
+    for comp_type, table in registry._components.items():
+        if comp_type == "spine":
+            continue
+        df = table.execute()
+        if "component_index" not in df.columns:
+            continue
+        filtered = df[df["entity_id"].isin(user_eids)]
+        if not filtered.empty:
+            result[comp_type] = filtered.reset_index(drop=True)
+    return result
 
 
 def entity_component_lists(
@@ -271,7 +291,27 @@ def entity_component_lists(
         Mapping of ``entity_id`` to an ordered list of component entries
         (strings or dicts), ready for embedding in the manifest structure.
     """
-    ...
+    result = {}
+    for comp_type, df in user_component_tables.items():
+        for _, row in df.iterrows():
+            eid = row["entity_id"]
+            if eid not in entity_path_map:
+                continue
+            modifier = row.get("modifier")
+            key = f"{comp_type} {modifier}" if pd.notna(modifier) and modifier else comp_type
+            fields = {
+                k: _coerce_value(v) for k, v in row.items()
+                if k not in _METADATA_COLS and pd.notna(v)
+            }
+            if not fields or (len(fields) == 1 and fields.get("value") == ""):
+                entry = key
+            else:
+                entry = {key: fields}
+            result.setdefault(eid, []).append((int(row["component_index"]), entry))
+    return {
+        eid: [e for _, e in sorted(entries, key=lambda x: x[0])]
+        for eid, entries in result.items()
+    }
 
 
 def manifest_data(
@@ -309,4 +349,24 @@ def manifest_data(
         component lists (or dicts with a ``"data"`` sub-key) at each entity
         leaf or parent node.
     """
-    ...
+    all_paths = set(entity_path_map.values())
+    sorted_items = sorted(entity_path_map.items(), key=lambda x: x[1].count("."))
+    root = {}
+    for eid, path in sorted_items:
+        components = entity_component_lists.get(eid, [])
+        has_children = any(p.startswith(path + ".") for p in all_paths if p != path)
+        parts = path.split(".")
+        node = root
+        for part in parts[:-1]:
+            if isinstance(node.get(part), list):
+                node[part] = {"data": node[part]}
+            node = node.setdefault(part, {})
+        key = parts[-1]
+        if has_children:
+            if components:
+                node[key] = {"data": components}
+            else:
+                node[key] = {}
+        else:
+            node[key] = components
+    return root
