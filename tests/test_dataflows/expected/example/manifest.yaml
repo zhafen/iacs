@@ -1,0 +1,13 @@
+make_cats_happy:
+    - description:
+        value: The mission of our cat-happiness device.
+    - requirement:
+        value: functional
+        priority: 1
+
+feed_and_water_cats:
+    - description:
+        value: Obviously.
+    - requirement:
+        value: functional
+        priority: 1
