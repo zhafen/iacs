@@ -23,6 +23,7 @@ from hamilton import driver, base
 from iacs.architect import Architect
 
 EXAMPLES_DIR = Path(__file__).parent.parent.parent / "examples"
+EXPECTED_DIR = Path(__file__).parent / "expected"
 
 DATAFLOW_MODULE_NAMES = [
     "base_etl",
@@ -52,10 +53,10 @@ def _get_example_dirs_with_manifest() -> list[Path]:
 
 
 def _get_example_dirs_with_expected() -> list[Path]:
-    """Return sorted example directories that contain an expected.py."""
+    """Return sorted example directories that have a corresponding expected/expected.py."""
     return [
         d for d in sorted(EXAMPLES_DIR.iterdir())
-        if d.is_dir() and (d / "expected.py").exists()
+        if d.is_dir() and (EXPECTED_DIR / d.name / "expected.py").exists()
     ]
 
 
@@ -64,7 +65,7 @@ def _get_example_dirs_with_expected() -> list[Path]:
 def _load_expected(example_dir: Path) -> ModuleType:
     """Load expected.py from an example directory as a Python module."""
     spec = importlib.util.spec_from_file_location(
-        f"expected_{example_dir.name}", example_dir / "expected.py"
+        f"expected_{example_dir.name}", EXPECTED_DIR / example_dir.name / "expected.py"
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -205,7 +206,8 @@ def test_ingestion_dataflows_match_expected(
             pytest.skip(f"DAG execution failed (not yet implemented): {exc}")
     else:
         try:
-            architect = Architect.from_manifest(str(example_dir), [mod])
+            architect = Architect.from_manifest(str(example_dir))
+            architect.load_dataflow(module_name)
         except Exception:
             pytest.skip(f"{module_name}: registry could not be built")
 
