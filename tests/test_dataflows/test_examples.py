@@ -77,14 +77,17 @@ def _expected_data_vars(expected_module: ModuleType) -> dict:
 
 # ─── Input-building helper ───────────────────────────────────────────────────
 
-def _build_inputs_for(module_name: str, example_dir: Path) -> dict:
+def _build_inputs_for(
+    module_name: str, example_dir: Path, extra_inputs: dict | None = None
+) -> dict:
     """Return the inputs dict for a module by running all preceding modules.
 
     Inspects the current module's external inputs via Hamilton, then executes
     only the necessary outputs from the preceding module chain to satisfy them.
     No dependency information is hardcoded — it is derived from the DAG signatures.
+    ``extra_inputs`` (e.g. ``output_dir``) are merged into the base inputs pool.
     """
-    base_inputs = {"input_dir": [str(example_dir)]}
+    base_inputs = {"input_dir": [str(example_dir)], **(extra_inputs or {})}
 
     preceding_mods = []
     for name in DATAFLOW_MODULE_NAMES:
@@ -102,18 +105,20 @@ def _build_inputs_for(module_name: str, example_dir: Path) -> dict:
         v.name for v in inspect_dr.list_available_variables() if v.is_external_input
     }
 
-    # Run the preceding chain to produce exactly what is needed.
-    chain_dr = driver.Driver(base_inputs, *preceding_mods, adapter=base.DictResult())
-    chain_outputs = {
-        v.name for v in chain_dr.list_available_variables() if not v.is_external_input
-    }
-    to_run = [n for n in needed if n in chain_outputs]
+    # Run preceding modules one at a time, accumulating outputs into the inputs
+    # pool. Sequential execution avoids node-name conflicts between modules
+    # (e.g. both load_manifest and validate_registry define a "spine" node).
+    accumulated = dict(base_inputs)
+    for mod in preceding_mods:
+        mod_dr = driver.Driver(accumulated, mod, adapter=base.DictResult())
+        mod_outputs = {
+            v.name for v in mod_dr.list_available_variables() if not v.is_external_input
+        }
+        to_run = [n for n in needed if n in mod_outputs and n not in accumulated]
+        if to_run:
+            accumulated.update(mod_dr.execute(to_run))
 
-    if not to_run:
-        return base_inputs
-
-    outputs = chain_dr.execute(to_run)
-    return {**base_inputs, **outputs}
+    return accumulated
 
 
 # ─── Comparison helpers ─────────────────────────────────────────────────────
@@ -248,11 +253,22 @@ def _test_params() -> list:
     return params
 
 
+# ─── Fixtures ───────────────────────────────────────────────────────────────
+
+@pytest.fixture(scope="session")
+def tmp_output_dir(tmp_path_factory):
+    """Session-scoped temporary directory for dataflow file output.
+
+    Pytest cleans it up automatically at the end of the test session.
+    """
+    return tmp_path_factory.mktemp("test_examples_output")
+
+
 # ─── Tests ──────────────────────────────────────────────────────────────────
 
 @pytest.mark.parametrize("example_dir,module_name,mod", _test_params())
 def test_dataflows_match_expected(
-    example_dir: Path, module_name: str, mod: ModuleType,
+    example_dir: Path, module_name: str, mod: ModuleType, tmp_output_dir: Path,
 ) -> None:
     """All expected outputs from the per-dataflow expected file appear in the DAG output.
 
@@ -268,8 +284,9 @@ def test_dataflows_match_expected(
     if not expected_vars:
         pytest.skip("No expected variables in expected file")
 
+    extra = {"output_dir": str(tmp_output_dir / example_dir.name)}
     try:
-        inputs = _build_inputs_for(module_name, example_dir)
+        inputs = _build_inputs_for(module_name, example_dir, extra)
     except Exception as exc:
         pytest.skip(f"Could not build inputs for {module_name}: {exc}")
 

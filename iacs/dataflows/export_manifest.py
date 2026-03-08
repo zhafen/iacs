@@ -19,6 +19,9 @@ The components/entity_first_data/manifest branch is a separate, simpler path
 that serializes the registry directly to YAML without path-based nesting.
 """
 
+from pathlib import Path
+
+import yaml
 from hamilton.function_modifiers import extract_fields
 import ibis.expr.types as ir
 import pandas as pd
@@ -117,18 +120,24 @@ def entity_first_data(components: dict, spine: ir.Table) -> dict:
     }
 
 
-def exported_manifest_filepaths(entity_first_data: dict) -> list[str]:
-    """Save entity_first_data to yaml file(s) and return a list of strings
-    with the filepath(s).
+def exported_manifest_filepaths(entity_first_data: dict, output_dir: str) -> list[str]:
+    """Save entity_first_data to a YAML file and return the saved filepath(s).
 
     Parameters
     ----------
     entity_first_data : dict
         The entity-centered structure, as returned by ``entity_first_data``.
+    output_dir : str
+        Directory to write the manifest YAML into.
 
     Returns
     -------
     list[str]
         The saved filepaths.
     """
-    return entity_first_data
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    filepath = out / "manifest.yaml"
+    with open(filepath, "w", encoding="utf-8") as f:
+        yaml.dump(entity_first_data, f, default_flow_style=False, allow_unicode=True)
+    return [str(filepath)]
