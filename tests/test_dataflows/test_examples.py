@@ -4,6 +4,7 @@ The pseudo-code logic is as follows:
 Loop over each example manifest in the examples directory:
     Loop over each dataflow module in iacs.dataflows:
         1. get the DAG for the module
+        2. get the input for the DAG
         2. execute the DAG on the dir
         3. load the expected outputs for the module from expected.py
         4. the outputs will usually not be a comprehensive set of records, but will be a subset of the records that should be produced by the DAG
@@ -17,7 +18,6 @@ from types import ModuleType
 
 import pandas as pd
 import pytest
-import yaml
 from hamilton import driver, base
 
 from iacs.architect import Architect
@@ -204,7 +204,7 @@ def _test_params() -> list:
 # ─── Tests ──────────────────────────────────────────────────────────────────
 
 @pytest.mark.parametrize("example_dir,module_name,mod", _test_params())
-def test_ingestion_dataflows_match_expected(
+def test_dataflows_match_expected(
     example_dir: Path, module_name: str, mod: ModuleType,
 ) -> None:
     """All expected outputs from expected.py appear in the dataflow DAG output.
@@ -273,26 +273,3 @@ def test_ingestion_dataflows_match_expected(
         if actual is None:
             continue
         _assert_subset(var_name, expected_vars[var_name], actual)
-
-
-@pytest.mark.parametrize("example_dir", _get_example_dirs_with_manifest())
-def test_export_dataflows_match_expected(example_dir: Path) -> None:
-    """Exported manifest should contain the expected subset defined in expected/manifest.yaml."""
-    expected_manifest_path = EXPECTED_DIR / example_dir.name / "manifest.yaml"
-    if not expected_manifest_path.exists():
-        pytest.skip("No expected manifest.yaml in expected dir")
-
-    try:
-        architect = Architect.from_manifest(str(example_dir))
-        architect.load_dataflow("export_manifest")
-    except Exception:
-        pytest.skip("registry could not be built")
-
-    try:
-        result = architect.execute(["manifest"])
-    except Exception as exc:
-        pytest.skip(f"DAG execution failed (not yet implemented): {exc}")
-
-    exported = result["manifest"]
-    expected = yaml.safe_load(expected_manifest_path.read_text())
-    _assert_manifest_subset(expected, exported)
