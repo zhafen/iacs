@@ -289,10 +289,10 @@ def test_export_dataflows_match_expected(example_dir: Path) -> None:
         pytest.skip("registry could not be built")
 
     try:
-        result = architect.execute(["manifest_data"])
+        result = architect.execute(["manifest"])
     except Exception as exc:
         pytest.skip(f"DAG execution failed (not yet implemented): {exc}")
 
-    exported = result["manifest_data"]
+    exported = result["manifest"]
     expected = yaml.safe_load(expected_manifest_path.read_text())
     _assert_manifest_subset(expected, exported)

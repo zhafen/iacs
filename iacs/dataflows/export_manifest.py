@@ -19,18 +19,13 @@ The components/entity_first_data/manifest branch is a separate, simpler path
 that serializes the registry directly to YAML without path-based nesting.
 """
 
-import re
-from pathlib import Path
-
 from hamilton.function_modifiers import extract_fields
 import ibis.expr.types as ir
 import pandas as pd
-import yaml
 
 from ..registry import Registry
 
 _BUILTIN_FILEPATH = "builtins.components"
-_SPINE_PATH_PAT = re.compile(r"^(.+)\[\d+\]\.[^[]+$")
 
 @extract_fields({"spine": ir.Table})
 def components(registry: Registry) -> dict:
@@ -57,9 +52,9 @@ def entity_first_data(components: dict, spine: ir.Table) -> dict:
 
     For each component type, groups rows by entity_id and serializes each row
     as a component entry. Tags (empty value, no other fields) become bare
-    strings; scalar components become ``{type: value}``; multi-field components
-    become ``{type: {field: value, ...}}``. Modifiers (e.g. "of") are appended
-    to the component type key (e.g. "solution of").
+    strings; all other components become ``{type: {field: value, ...}}``.
+    Modifiers (e.g. "of") are appended to the component type key
+    (e.g. "solution of"). Builtin entities are excluded.
 
     Parameters
     ----------
@@ -70,9 +65,19 @@ def entity_first_data(components: dict, spine: ir.Table) -> dict:
     Returns
     -------
     dict
-        A dict of the form ``{entity_id: [component, ...]}`` where each
+        A dict of the form ``{entity_key: [component, ...]}`` where each
         component is a string (tag) or a single-key dict.
     """
+    spine_df = spine.execute()
+    id_to_key = (
+        spine_df.drop_duplicates("entity_id")
+        .set_index("entity_id")["entity_key"]
+        .to_dict()
+    )
+    user_entity_ids = set(
+        spine_df[~spine_df["filepath"].str.startswith("builtins")]["entity_id"].unique()
+    )
+
     result: dict[str, list] = {}
 
     for comp_type, table in components.items():
@@ -80,9 +85,15 @@ def entity_first_data(components: dict, spine: ir.Table) -> dict:
             continue
 
         df = table.execute()
+        if "entity_id" not in df.columns or "component_index" not in df.columns:
+            continue
 
         for _, row in df.iterrows():
             entity_id = row["entity_id"]
+            if entity_id not in user_entity_ids:
+                continue
+
+            entity_key = id_to_key.get(entity_id, entity_id)
             modifier = row.get("modifier")
             key = f"{comp_type} {modifier}" if pd.notna(modifier) and modifier else comp_type
 
@@ -93,33 +104,30 @@ def entity_first_data(components: dict, spine: ir.Table) -> dict:
 
             if not fields or (len(fields) == 1 and fields.get("value") == ""):
                 entry = key
-            elif len(fields) == 1 and "value" in fields:
-                entry = {key: fields["value"]}
             else:
                 entry = {key: fields}
 
-            result.setdefault(entity_id, []).append(
+            result.setdefault(entity_key, []).append(
                 (int(row["component_index"]), entry)
             )
 
     return {
-        eid: [e for _, e in sorted(entries)]
-        for eid, entries in result.items()
+        ekey: [e for _, e in sorted(entries, key=lambda x: x[0])]
+        for ekey, entries in result.items()
     }
 
 
-def manifest(entity_first_data: dict, output_path: str) -> None:
-    """Write entity-first data to the filesystem as a YAML file.
+def manifest(entity_first_data: dict):
+    """Return entity-first data as the manifest dict.
 
     Parameters
     ----------
     entity_first_data : dict
-        The entity-centered structure to serialize, as returned by
-        ``entity_first_data``.
-    output_path : str
-        Path to write the YAML file to.
+        The entity-centered structure, as returned by ``entity_first_data``.
+
+    Returns
+    -------
+    dict
+        The entity-centered manifest dict.
     """
-    path = Path(output_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        yaml.dump(entity_first_data, f, default_flow_style=False, allow_unicode=True)
+    return entity_first_data
