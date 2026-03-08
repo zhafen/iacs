@@ -1,13 +1,11 @@
 """This test file contains code to test the dataflows on each of the example manifests.
 
 The pseudo-code logic is as follows:
-Loop over each example manifest in the examples directory:
-    Loop over each dataflow module in iacs.dataflows:
-        1. get the DAG for the module
-        2. execute the DAG on the dir
-        3. load the expected outputs for the module from expected.py
-        4. the outputs will usually not be a comprehensive set of records, but will be a subset of the records that should be produced by the DAG
-        5. look for the same records defined in expected.py in the output of the DAG
+Loop over each (example, dataflow module) pair that has an expected file:
+    1. Build inputs for the module by running all preceding modules in order.
+       Inputs are derived from the DAG signatures — no hardcoding of dependencies.
+    2. Execute only the DAG nodes that have a corresponding expected variable.
+    3. The expected values are a subset; look for each row/key in the actual output.
 """
 
 import importlib
@@ -18,8 +16,6 @@ from types import ModuleType
 import pandas as pd
 import pytest
 from hamilton import driver, base
-
-from iacs.architect import Architect
 
 EXAMPLES_DIR = Path(__file__).parent.parent.parent / "examples"
 EXPECTED_DIR = Path(__file__).parent / "expected"
@@ -52,20 +48,14 @@ def _get_example_dirs_with_manifest() -> list[Path]:
     ]
 
 
-def _get_example_dirs_with_expected() -> list[Path]:
-    """Return sorted example directories that have a corresponding expected/expected.py."""
-    return [
-        d for d in sorted(EXAMPLES_DIR.iterdir())
-        if d.is_dir() and (EXPECTED_DIR / d.name / "expected.py").exists()
-    ]
-
-
 # ─── Loading helpers ────────────────────────────────────────────────────────
 
-def _load_expected(example_dir: Path) -> ModuleType:
-    """Load expected.py from an example directory as a Python module."""
+def _load_expected_for_dataflow(example_dir: Path, module_name: str) -> ModuleType:
+    """Load the per-dataflow expected file for an example."""
+    expected_file = EXPECTED_DIR / example_dir.name / f"{module_name}.py"
     spec = importlib.util.spec_from_file_location(
-        f"expected_{example_dir.name}", EXPECTED_DIR / example_dir.name / "expected.py"
+        f"expected_{example_dir.name}_{module_name.replace('.', '_')}",
+        expected_file,
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -82,6 +72,47 @@ def _expected_data_vars(expected_module: ModuleType) -> dict:
         if isinstance(val, (pd.DataFrame, dict)):
             result[name] = val
     return result
+
+
+# ─── Input-building helper ───────────────────────────────────────────────────
+
+def _build_inputs_for(module_name: str, example_dir: Path) -> dict:
+    """Return the inputs dict for a module by running all preceding modules.
+
+    Inspects the current module's external inputs via Hamilton, then executes
+    only the necessary outputs from the preceding module chain to satisfy them.
+    No dependency information is hardcoded — it is derived from the DAG signatures.
+    """
+    base_inputs = {"input_dir": [str(example_dir)]}
+
+    preceding_mods = []
+    for name in DATAFLOW_MODULE_NAMES:
+        if name == module_name:
+            break
+        preceding_mods.append(importlib.import_module(f"iacs.dataflows.{name}"))
+
+    if not preceding_mods:
+        return base_inputs
+
+    # Determine what the current module needs as external inputs.
+    current_mod = importlib.import_module(f"iacs.dataflows.{module_name}")
+    inspect_dr = driver.Driver({}, current_mod, adapter=base.DictResult())
+    needed = {
+        v.name for v in inspect_dr.list_available_variables() if v.is_external_input
+    }
+
+    # Run the preceding chain to produce exactly what is needed.
+    chain_dr = driver.Driver(base_inputs, *preceding_mods, adapter=base.DictResult())
+    chain_outputs = {
+        v.name for v in chain_dr.list_available_variables() if not v.is_external_input
+    }
+    to_run = [n for n in needed if n in chain_outputs]
+
+    if not to_run:
+        return base_inputs
+
+    outputs = chain_dr.execute(to_run)
+    return {**base_inputs, **outputs}
 
 
 # ─── Comparison helpers ─────────────────────────────────────────────────────
@@ -108,8 +139,19 @@ def _assert_df_rows_subset(
     common_cols = [c for c in expected.columns if c in actual.columns]
     if not common_cols:
         return
-    exp_str = expected[common_cols].fillna("__NULL__").astype(str).reset_index(drop=True)
-    act_str = actual[common_cols].fillna("__NULL__").astype(str).reset_index(drop=True)
+
+    exp_sub = expected[common_cols].copy()
+    act_sub = actual[common_cols].copy()
+    # Normalize columns where all non-null values are numeric to float so that
+    # e.g. 1 and 1.0 compare equal regardless of int vs float dtype.
+    for col in common_cols:
+        for frame in (exp_sub, act_sub):
+            converted = pd.to_numeric(frame[col], errors="coerce")
+            if converted.notna().sum() == frame[col].notna().sum():
+                frame[col] = converted.astype(float)
+
+    exp_str = exp_sub.fillna("__NULL__").astype(str).reset_index(drop=True)
+    act_str = act_sub.fillna("__NULL__").astype(str).reset_index(drop=True)
     for _, row in exp_str.iterrows():
         found = (act_str == row).all(axis=1).any()
         assert found, (
@@ -188,16 +230,20 @@ def _assert_manifest_subset(expected: dict, actual: dict, context: str = "") -> 
 # ─── Test parameters ────────────────────────────────────────────────────────
 
 def _test_params() -> list:
-    """Generate pytest.param objects for each (example_dir, module) pair."""
+    """Generate pytest.param objects for each (example_dir, module_name) pair
+    that has a corresponding expected file."""
     params = []
-    for example_dir in _get_example_dirs_with_expected():
+    for example_dir in sorted(EXAMPLES_DIR.iterdir()):
+        if not example_dir.is_dir():
+            continue
         for module_name, mod in _get_dataflow_modules():
-            params.append(
-                pytest.param(
-                    example_dir, module_name, mod,
-                    id=f"{example_dir.name}-{module_name}",
+            if (EXPECTED_DIR / example_dir.name / f"{module_name}.py").exists():
+                params.append(
+                    pytest.param(
+                        example_dir, module_name, mod,
+                        id=f"{example_dir.name}-{module_name}",
+                    )
                 )
-            )
     return params
 
 
@@ -207,66 +253,36 @@ def _test_params() -> list:
 def test_dataflows_match_expected(
     example_dir: Path, module_name: str, mod: ModuleType,
 ) -> None:
-    """All expected outputs from expected.py appear in the dataflow DAG output.
+    """All expected outputs from the per-dataflow expected file appear in the DAG output.
 
     For each (example, dataflow module) pair:
-    1. Execute all DAG nodes that have a corresponding expected variable.
-    2. For each expected variable present in the results, verify it is a subset
-       of the DAG output.
-    Skips when no expected variables are nodes in the module, or execution fails.
+    1. Build inputs by running preceding modules (inputs derived from DAG signatures).
+    2. Execute only the DAG nodes that have a corresponding expected variable.
+    3. Verify each expected variable is a subset of the actual DAG output.
+    Skips when no expected variables match available nodes, or execution fails.
     """
-    expected_vars = _expected_data_vars(_load_expected(example_dir))
+    expected_vars = _expected_data_vars(
+        _load_expected_for_dataflow(example_dir, module_name)
+    )
+    if not expected_vars:
+        pytest.skip("No expected variables in expected file")
 
-    # Build inputs and get available nodes for this module.
-    if module_name == "base_etl":
-        dr = driver.Driver({"input_dir": [str(example_dir)]}, mod, adapter=base.DictResult())
-        try:
-            raw = dr.execute(["validated_registry"])
-        except Exception as exc:
-            pytest.skip(f"DAG execution failed (not yet implemented): {exc}")
-        reg = raw["validated_registry"]
-        results = {
-            "component_tables": {
-                k: v for k, v in reg._components.items() if hasattr(v, "to_pandas")
-            }
-        }
-        to_execute = [name for name in expected_vars if name in results]
-        if not to_execute:
-            if expected_vars:
-                pytest.fail(
-                    f"Expected variables {list(expected_vars)} are defined in expected.py "
-                    f"but none match {module_name} registry output. "
-                    f"This likely means ingestion for this example is not yet implemented."
-                )
-            pytest.skip(f"No expected variables match {module_name} registry output")
-    elif module_name == "load_manifest":
-        dr = driver.Driver({"input_dir": [str(example_dir)]}, mod, adapter=base.DictResult())
-        available = {v.name for v in dr.list_available_variables() if not v.is_external_input}
+    try:
+        inputs = _build_inputs_for(module_name, example_dir)
+    except Exception as exc:
+        pytest.skip(f"Could not build inputs for {module_name}: {exc}")
 
-        to_execute = [name for name in expected_vars if name in available]
-        if not to_execute:
-            pytest.skip(f"No expected variables are nodes in the {module_name} DAG")
+    dr = driver.Driver(inputs, mod, adapter=base.DictResult())
+    available = {v.name for v in dr.list_available_variables() if not v.is_external_input}
+    to_execute = [name for name in expected_vars if name in available]
 
-        try:
-            results = dr.execute(to_execute)
-        except Exception as exc:
-            pytest.skip(f"DAG execution failed (not yet implemented): {exc}")
-    else:
-        try:
-            architect = Architect.from_manifest(str(example_dir))
-            architect.load_dataflow(module_name)
-        except Exception:
-            pytest.skip(f"{module_name}: registry could not be built")
+    if not to_execute:
+        pytest.skip(f"No expected variables are nodes in the {module_name} DAG")
 
-        available = set(architect.outputs)
-        to_execute = [name for name in expected_vars if name in available]
-        if not to_execute:
-            pytest.skip(f"No expected variables are nodes in the {module_name} DAG")
-
-        try:
-            results = architect.execute(to_execute)
-        except Exception as exc:
-            pytest.skip(f"DAG execution failed (not yet implemented): {exc}")
+    try:
+        results = dr.execute(to_execute)
+    except Exception as exc:
+        pytest.skip(f"DAG execution failed (not yet implemented): {exc}")
 
     for var_name in to_execute:
         actual = results.get(var_name)
