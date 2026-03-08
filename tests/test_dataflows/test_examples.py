@@ -23,6 +23,7 @@ EXPECTED_DIR = Path(__file__).parent / "expected"
 DATAFLOW_MODULE_NAMES = [
     "load_manifest",
     "validate_registry",
+    "export_manifest",
     # "derive_components",
     # "audit.requirement_coverage",
     # "audit.todo",

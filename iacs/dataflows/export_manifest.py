@@ -117,8 +117,9 @@ def entity_first_data(components: dict, spine: ir.Table) -> dict:
     }
 
 
-def manifest(entity_first_data: dict):
-    """Return entity-first data as the manifest dict.
+def exported_manifest_filepaths(entity_first_data: dict) -> list[str]:
+    """Save entity_first_data to yaml file(s) and return a list of strings
+    with the filepath(s).
 
     Parameters
     ----------
@@ -127,7 +128,7 @@ def manifest(entity_first_data: dict):
 
     Returns
     -------
-    dict
-        The entity-centered manifest dict.
+    list[str]
+        The saved filepaths.
     """
     return entity_first_data
