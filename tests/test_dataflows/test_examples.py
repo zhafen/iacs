@@ -4,7 +4,6 @@ The pseudo-code logic is as follows:
 Loop over each example manifest in the examples directory:
     Loop over each dataflow module in iacs.dataflows:
         1. get the DAG for the module
-        2. get the input for the DAG
         2. execute the DAG on the dir
         3. load the expected outputs for the module from expected.py
         4. the outputs will usually not be a comprehensive set of records, but will be a subset of the records that should be produced by the DAG
@@ -26,7 +25,8 @@ EXAMPLES_DIR = Path(__file__).parent.parent.parent / "examples"
 EXPECTED_DIR = Path(__file__).parent / "expected"
 
 DATAFLOW_MODULE_NAMES = [
-    "base_etl",
+    "load_manifest",
+    "validate_registry",
     # "derive_components",
     # "audit.requirement_coverage",
     # "audit.todo",
