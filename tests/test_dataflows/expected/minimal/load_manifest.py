@@ -54,9 +54,6 @@ spine = pd.DataFrame(
     ]
 )
 
-
-updated_parent = pd.DataFrame([], columns=["entity_id", "parent_id"])
-
 component_tables = {
     "description": pd.DataFrame(
         [
