@@ -68,6 +68,10 @@ class Architect:
     def registry(self) -> Registry:
         return self._registry
 
+    @property
+    def view(self):
+        return self._registry.view
+
     def execute(self, final_vars: list[str]) -> dict[str, Any]:
         if not final_vars:
             return {}
