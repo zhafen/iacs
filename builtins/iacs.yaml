@@ -272,9 +272,12 @@ ecs_framework:
                     requirements.
                 - requirement
             describe_entities:
-                - description: >
-                    We need to be able to describe entities as sets of components.
-                - requirement
+                data:
+                    - description: >
+                        We need to be able to describe entities as sets of components.
+                    - requirement
+                have_unique_identifiers:
+                    - description: We need a method to uniquely identify entities.
             describe_hierarchical_systems:
                 - id: describe_hierarchical_systems
                 - description: >
@@ -348,7 +351,10 @@ ecs_framework:
                         - requirement: quality
                 formatting_is_powerful:
                     enable_pointing_to_entities:
-                        - description: This is required for ((relation)) components.
+                        - description: >
+                            This is required for ((relation)) components. The
+                            fundamental ask is that we need a convenient means
+                            to identify another entity.
                         - requirement:
                             value: quality
                             priority: 0.9
@@ -664,10 +670,9 @@ ecs_framework:
                             - requirement: constraint
                         component_index:
                             - description: >
-                                Each ((component_item))
-                                can be uniquely identified by the ((entity_id))
-                                in addition to the ((component_index)) in the
-                                components list. This allows an entity to have
+                                Each ((component_item)) can be uniquely identified by
+                                the ((entity_id)) in addition to the ((component_index))
+                                in the components list. This allows an entity to have
                                 multiple components of the same type.
                             - requirement: constraint
                     child_entities_dictionary:
@@ -678,10 +683,10 @@ ecs_framework:
                             - requirement: constraint
                         parent_entity_components_list:
                             - description: >
-                                If an ((entity_value)) is a ((child_entities_dictionary))
-                                then the item with the key "data" is a special item
-                                reserved to hold the ((components_list)) for the 
-                                entity.
+                                If an ((entity_value)) is a
+                                ((child_entities_dictionary)) then the item with the key
+                                "data" is a special item reserved to hold the
+                                ((components_list)) for the entity.
                             - requirement: constraint
             component_item:
                 data: 
@@ -777,11 +782,51 @@ ecs_framework:
             entity_id:
                 data:
                     - description: >
-                        The unique identity for an entity and its components is stored
-                        in the ((spine)) component. There are a few possible
-                        formulations, each with their own restrictions.
-                entity_path:
-                    - description: The 
+                        The unique identity for an entity has a few possible
+                        formulations.
+                entity_path_formulation:
+                    - description: >
+                        The entity path formulation uses the full path to an entity as
+                        the id, including both the filepath and the path in the yaml.
+                    - pro: Clearly identifies the entity with no additional calculation.
+                    - con: Too long to be readable.
+                    - con: Too long to be convenient for pointing to entities.
+                    - solution of: enable_pointing_to_entities
+                entity_hash_formulation:
+                    - description: >
+                        The entity hash formulation uses a hash of the entity path
+                        as the id.
+                    - pro: Concise.
+                    - con: Not readable.
+                    - con: Difficult to use for pointing to entities.
+                    - solution of: enable_pointing_to_entities
+                entity_key_formulation:
+                    - description: >
+                        The entity key formulation just uses the last part of the path
+                        as the id, i.e. the key in the containing dictionary.
+                    - pro: Concise.
+                    - pro: Readable.
+                    - con: Keys may not be unique.
+                    - con: Not sufficiently informative in some cases.
+                    - solution of: enable_pointing_to_entities
+                entity_key_parent_key_formulation:
+                    - description: >
+                        The entity key+parent key formulation uses the last part of
+                        the path as well as the parent, if it has one.
+                    - pro: Mostly concise.
+                    - pro: Readable.
+                    - con: Rarely, keys may not be unique.
+                    - solution of: enable_pointing_to_entities
+                userprovided_formulation:
+                    - description: >
+                        The user-provided formulation uses a user-provided id, if it
+                        exists, and otherwise falls back to one of the other
+                        formulations.
+                    - pro: Greater control.
+                    - pro: Readable.
+                    - con: Requires the user to define the aliases.
+                    - con: Room for errors creating the alias.
+                    - solution of: enable_pointing_to_entities
             component_table:
                 data:
                     - description: >

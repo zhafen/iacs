@@ -178,9 +178,9 @@ iacs_component:
         - field:
             value: value
             description: >
-                The entity_id. Generated from ((entity_id.entity_path)), but can be
-                overwritten.
+                The entity_id.
             type: str
+        - todo: Determine how we want to calculate the entity_id.
         - field:
             value: path
             description: >
