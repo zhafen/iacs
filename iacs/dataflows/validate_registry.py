@@ -497,7 +497,10 @@ def validated_data(
                 if py_type is not None
                 else ibis.literal(str(default))
             )
-            t = t.mutate(**{fname: t[fname].fill_null(lit)})
+            col = t[fname]
+            if fschema["type"] == "str":
+                col = col.nullif("")
+            t = t.mutate(**{fname: col.fill_null(lit)})
 
         # Pandera type validation
         pa_columns = {

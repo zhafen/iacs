@@ -184,6 +184,7 @@ iacs_component:
                 - functional
                 - quality
                 - constraint
+            default: functional
         - field:
             value: priority
             description: >
