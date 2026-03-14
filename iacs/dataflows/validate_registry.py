@@ -54,7 +54,7 @@ def updated_parent(entity_id: ir.Table, parent: ir.Table) -> ir.Table:
         representing a child→parent relationship as hashed entity IDs.
     """
     df_spine = entity_id.to_pandas()
-    df_spine = df_spine.rename(columns={"hash": "entity_id"})
+    df_spine = df_spine.rename(columns={"value": "entity_id"})
     df_spine["entity_path"] = df_spine["path"]
 
     # ── Part 1: hierarchy-implied parents from entity path nesting ────────
@@ -427,7 +427,7 @@ def validated_data(
 
     key_to_schema_ids: dict[str, list[str]] = {}
     df_spine = entity_id.execute()
-    df_spine = df_spine.rename(columns={"hash": "entity_id"})
+    df_spine = df_spine.rename(columns={"value": "entity_id"})
     if {"entity_id", "entity_key"}.issubset(df_spine.columns):
         for _, row in (
             df_spine[["entity_id", "entity_key"]]

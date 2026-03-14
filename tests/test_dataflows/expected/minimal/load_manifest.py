@@ -28,18 +28,16 @@ pathvalue_pairs = pd.DataFrame(
 entity_id_table = pd.DataFrame(
     [
         {
-            "hash": dhash("examples/minimal/minimal.yaml:my_requirement"),
+            "value": dhash("examples/minimal/minimal.yaml:my_requirement"),
             "path": "examples/minimal/minimal.yaml:my_requirement",
-            "value": "my_requirement",
-            "alias": None,
+            "alias": "my_requirement",
             "entity_key": "my_requirement",
             "filepath": "examples/minimal/minimal.yaml",
         },
         {
-            "hash": dhash("examples/minimal/minimal.yaml:my_infrastructure"),
+            "value": dhash("examples/minimal/minimal.yaml:my_infrastructure"),
             "path": "examples/minimal/minimal.yaml:my_infrastructure",
-            "value": "my_infrastructure",
-            "alias": None,
+            "alias": "my_infrastructure",
             "entity_key": "my_infrastructure",
             "filepath": "examples/minimal/minimal.yaml",
         },

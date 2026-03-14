@@ -73,12 +73,12 @@ def entity_first_data(components: dict, entity_id: ir.Table) -> dict:
     """
     spine_df = entity_id.to_pandas()
     id_to_key = (
-        spine_df.drop_duplicates("hash")
-        .set_index("hash")["entity_key"]
+        spine_df.drop_duplicates("value")
+        .set_index("value")["entity_key"]
         .to_dict()
     )
     user_entity_ids = set(
-        spine_df[~spine_df["filepath"].str.startswith("builtins")]["hash"].unique()
+        spine_df[~spine_df["filepath"].str.startswith("builtins")]["value"].unique()
     )
 
     result: dict[str, list] = {}

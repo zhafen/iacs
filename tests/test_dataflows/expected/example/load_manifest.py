@@ -124,18 +124,16 @@ feed_cats_soln_id = get_id("cat_happiness_device.feeding_system.feed_cats")
 entity_id_table = pd.DataFrame(
     [
         {
-            "hash": main_req_id,
+            "value": main_req_id,
             "path": f"{filepath}:make_cats_happy",
-            "value": "make_cats_happy",
-            "alias": None,
+            "alias": "make_cats_happy",
             "entity_key": "make_cats_happy",
             "filepath": filepath,
         },
         {
-            "hash": feed_cats_req_id,
+            "value": feed_cats_req_id,
             "path": f"{filepath}:make_cats_happy.feed_and_water_cats.feed_cats",
-            "value": "feed_and_water_cats.feed_cats",
-            "alias": "feed_cats",
+            "alias": "feed_and_water_cats.feed_cats",
             "entity_key": "feed_cats",
             "filepath": filepath,
         },

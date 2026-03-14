@@ -369,17 +369,17 @@ def entity_id_table(keyvalue_store: ir.Table, csv_spine: ir.Table = None) -> ir.
     Returns
     -------
     ir.Table
-        Columns: hash, path, value, alias, entity_key, filepath.
-        ``hash`` is the entity_id; ``path`` is the full entity_path;
-        ``value`` is the display ID (last two dot-segments or entity_key for
-        top-level); ``alias`` is from the alias component if present.
+        Columns: value, path, alias, entity_key, filepath.
+        ``value`` is the entity hash (the entity_id); ``path`` is the full
+        entity_path; ``alias`` is the human-readable display ID (last two
+        dot-segments of the entity path, or just entity_key for top-level).
     """
     yaml_entities = keyvalue_store.select(
         "entity_id", "entity_key", "entity_path", "filepath"
     ).distinct().to_pandas()
-    yaml_entities = yaml_entities.rename(columns={"entity_id": "hash", "entity_path": "path"})
+    yaml_entities = yaml_entities.rename(columns={"entity_id": "value", "entity_path": "path"})
 
-    def compute_value(row):
+    def compute_alias(row):
         entity_path = row["path"]
         entity_key = row["entity_key"]
         sep = entity_path.find(":")
@@ -387,35 +387,20 @@ def entity_id_table(keyvalue_store: ir.Table, csv_spine: ir.Table = None) -> ir.
         parts = name_part.split(".")
         return ".".join(parts[-2:]) if len(parts) >= 2 else entity_key
 
-    yaml_entities["value"] = yaml_entities.apply(compute_value, axis=1)
-
-    alias_df = (
-        keyvalue_store
-        .filter(
-            (keyvalue_store["component_type"] == "alias")
-            & (keyvalue_store["field"] == "value")
-        )
-        .select(
-            keyvalue_store["entity_id"].name("hash"),
-            keyvalue_store["value"].name("alias"),
-        )
-        .to_pandas()
-    )
-    df = yaml_entities.merge(alias_df, on="hash", how="left")
+    yaml_entities["alias"] = yaml_entities.apply(compute_alias, axis=1)
+    df = yaml_entities[["value", "path", "alias", "entity_key", "filepath"]]
 
     if csv_spine is not None:
         csv_df = csv_spine.to_pandas()
         csv_entity_df = csv_df[["entity_id", "entity_key", "filepath", "path"]].drop_duplicates()
-        csv_entity_df = csv_entity_df.rename(columns={"entity_id": "hash"})
-        csv_entity_df["value"] = csv_entity_df["entity_key"]
-        csv_entity_df["alias"] = pd.NA
-        csv_entity_df = csv_entity_df[["hash", "path", "value", "alias", "entity_key", "filepath"]]
+        csv_entity_df = csv_entity_df.rename(columns={"entity_id": "value"})
+        csv_entity_df["alias"] = csv_entity_df["entity_key"]
+        csv_entity_df = csv_entity_df[["value", "path", "alias", "entity_key", "filepath"]]
         df = pd.concat([df, csv_entity_df], ignore_index=True)
 
-    df = df[["hash", "path", "value", "alias", "entity_key", "filepath"]]
-    for col in ("hash", "path", "value", "entity_key"):
+    df = df[["value", "path", "alias", "entity_key", "filepath"]]
+    for col in ("value", "path", "alias", "entity_key"):
         df[col] = df[col].astype(pd.StringDtype())
-    df["alias"] = df["alias"].astype(pd.StringDtype())
     df["filepath"] = df["filepath"].astype(pd.StringDtype())
     return ibis.memtable(df)
 

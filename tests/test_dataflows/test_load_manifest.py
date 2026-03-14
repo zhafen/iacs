@@ -109,10 +109,9 @@ class TestRawEntityFirstData:
 
 def _make_entity_id_table():
     df = pd.DataFrame([{
-        "hash": "abc", "path": "test:e", "value": "e",
-        "alias": pd.NA, "entity_key": "e", "filepath": "test",
+        "value": "abc", "path": "test:e", "alias": "e",
+        "entity_key": "e", "filepath": "test",
     }])
-    df["alias"] = df["alias"].astype(pd.StringDtype())
     return ibis.memtable(df)
 
 
