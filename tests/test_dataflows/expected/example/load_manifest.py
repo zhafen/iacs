@@ -117,39 +117,50 @@ keyvalue_store = pd.DataFrame(
         },
     ],
 )
-spine = pd.DataFrame(
+main_req_id = get_id("make_cats_happy")
+feed_cats_req_id = get_id("make_cats_happy.feed_and_water_cats.feed_cats")
+feed_cats_soln_id = get_id("cat_happiness_device.feeding_system.feed_cats")
+
+entity_id_table = pd.DataFrame(
     [
         {
-            "entity_id": (main_req_id := get_id("make_cats_happy")),
-            "component_index": 0,
+            "hash": main_req_id,
+            "path": f"{filepath}:make_cats_happy",
+            "value": "make_cats_happy",
+            "alias": None,
             "entity_key": "make_cats_happy",
+            "filepath": filepath,
+        },
+        {
+            "hash": feed_cats_req_id,
+            "path": f"{filepath}:make_cats_happy.feed_and_water_cats.feed_cats",
+            "value": "feed_and_water_cats.feed_cats",
+            "alias": "feed_cats",
+            "entity_key": "feed_cats",
+            "filepath": filepath,
+        },
+    ]
+)
+
+component_type_table = pd.DataFrame(
+    [
+        {
+            "entity_id": main_req_id,
+            "component_index": 0,
             "component_type": "description",
             "modifier": None,
-            "path": f"{filepath}:make_cats_happy.data[0].description",
         },
         {
-            "entity_id": (
-                feed_cats_req_id := get_id(
-                    "make_cats_happy.feed_and_water_cats.feed_cats"
-                )
-            ),
+            "entity_id": feed_cats_req_id,
             "component_index": 1,
-            "entity_key": "feed_cats",
             "component_type": "alias",
             "modifier": None,
-            "path": f"{filepath}:make_cats_happy.feed_and_water_cats.feed_cats[1].alias",
         },
         {
-            "entity_id": (
-                feed_cats_soln_id := get_id(
-                    "cat_happiness_device.feeding_system.feed_cats"
-                )
-            ),
+            "entity_id": feed_cats_soln_id,
             "component_index": 2,
-            "entity_key": "feed_cats",
             "component_type": "solution",
             "modifier": "of",
-            "path": f"{filepath}:cat_happiness_device.feeding_system.feed_cats[2].solution of",
         },
     ]
 )

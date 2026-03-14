@@ -18,15 +18,15 @@ from ..utils import dhash
 _ENTITY_PATH_PATTERN = re.compile(r"^(.+?)\[\d+\]\..+$")
 
 
-@extract_fields(dict(spine=ir.Table, parent=ir.Table, field=ir.Table))
+@extract_fields(dict(entity_id_table=ir.Table, component_type_table=ir.Table, parent=ir.Table, field=ir.Table))
 def components(registry: Registry) -> dict:
     """Give access to the components in a registry."""
 
     return registry._components
 
 
-def updated_parent(spine: ir.Table, parent: ir.Table) -> ir.Table:
-    """Convert the paths in the spine into parent-child relationships and
+def updated_parent(entity_id_table: ir.Table, parent: ir.Table) -> ir.Table:
+    """Convert the entity paths in entity_id_table into parent-child relationships and
     add them to the parent component.
 
     Produces two kinds of parent-child rows:
@@ -36,13 +36,12 @@ def updated_parent(spine: ir.Table, parent: ir.Table) -> ir.Table:
        path one level up.
     2. **Explicit**: rows in the ``parent`` component table declare a parent
        via a string reference (``value``), which is resolved to an
-       ``entity_id`` by matching against ``entity_key`` in the spine.
+       ``entity_id`` by matching against ``entity_key`` in the entity_id_table.
 
     Parameters
     ----------
-    spine : ir.Table
-        The spine table produced by ``load_manifest.spine``, containing at
-        minimum the columns ``entity_id``, ``entity_key``, and ``path``.
+    entity_id_table : ir.Table
+        One row per entity with columns ``hash``, ``path``, ``entity_key``, ``filepath``.
     parent : ir.Table
         The ``parent`` component table from the registry, containing at
         minimum ``entity_id`` and ``value`` (the string reference to the
@@ -54,16 +53,11 @@ def updated_parent(spine: ir.Table, parent: ir.Table) -> ir.Table:
         A table with columns ``entity_id`` and ``parent_id``, each row
         representing a child→parent relationship as hashed entity IDs.
     """
-    df_spine = spine.to_pandas()
+    df_spine = entity_id_table.to_pandas()
+    df_spine = df_spine.rename(columns={"hash": "entity_id"})
+    df_spine["entity_path"] = df_spine["path"]
 
     # ── Part 1: hierarchy-implied parents from entity path nesting ────────
-    def extract_entity_path(path):
-        m = _ENTITY_PATH_PATTERN.match(path)
-        if not m:
-            return None
-        prefix = m.group(1)
-        return prefix[:-5] if prefix.endswith(".data") else prefix
-
     def has_parent(entity_path):
         sep = entity_path.find(":")
         name_part = entity_path[sep + 1:] if sep != -1 else entity_path
@@ -76,7 +70,6 @@ def updated_parent(spine: ir.Table, parent: ir.Table) -> ir.Table:
             return f"{file_id}:{name_part.rsplit('.', 1)[0]}"
         return entity_path.rsplit(".", 1)[0]
 
-    df_spine["entity_path"] = df_spine["path"].apply(extract_entity_path)
     spine_pairs = df_spine[["entity_id", "entity_path"]].dropna().drop_duplicates()
     nested = spine_pairs[spine_pairs["entity_path"].apply(has_parent)].copy()
 
@@ -398,7 +391,7 @@ def _parse_range(val):
 
 @unpack_fields("validated_components", "invalid_field")
 def validated_data(
-    updated_components: dict, derived_field: ir.Table, spine: ir.Table
+    updated_components: dict, derived_field: ir.Table, entity_id_table: ir.Table
 ) -> tuple[dict, ir.Table]:
     """Use the schemas defined by the ((field)) component to validate and coerce the data in each component.
 
@@ -415,8 +408,9 @@ def validated_data(
         Dict of component_type -> ibis Table (from ``updated_components``).
     derived_field : ir.Table
         Inheritance-resolved field definitions (from ``derived_field``).
-    spine : ir.Table
-        The spine table, used to map entity_key -> entity_id for schema lookup.
+    entity_id_table : ir.Table
+        One row per entity (hash, path, value, alias, entity_key, filepath),
+        used to map entity_key -> entity_id for schema lookup.
 
     Returns
     -------
@@ -432,7 +426,8 @@ def validated_data(
     schema_entity_ids = set(df_derived["entity_id"].dropna().astype(str))
 
     key_to_schema_ids: dict[str, list[str]] = {}
-    df_spine = spine.execute()
+    df_spine = entity_id_table.execute()
+    df_spine = df_spine.rename(columns={"hash": "entity_id"})
     if {"entity_id", "entity_key"}.issubset(df_spine.columns):
         for _, row in (
             df_spine[["entity_id", "entity_key"]]

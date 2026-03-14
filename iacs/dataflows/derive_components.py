@@ -14,15 +14,15 @@ import ibis.expr.types as ir
 from iacs.registry import Registry
 
 
-def global_paths(paths: ir.Column, spine: ir.Table) -> ir.Column:
+def global_paths(paths: ir.Column, component_type_table: ir.Table) -> ir.Column:
     """Check for relative paths and convert them to global paths.
-    This is done 
+    This is done
 
     Parameters
     ----------
     paths : ir.Column
         _description_
-    spine : ir.Table
+    component_type_table : ir.Table
         _description_
 
     Returns
@@ -33,13 +33,15 @@ def global_paths(paths: ir.Column, spine: ir.Table) -> ir.Column:
     return
 
 
-def resolved_paths(paths: ir.Column, spine: ir.Table) -> ir.Column:
+def resolved_paths(paths: ir.Column, component_type_table: ir.Table) -> ir.Column:
     """Convert a column of paths into a column of entity_ids.
 
     Parameters
     ----------
     paths : ir.Column
         _description_
+    component_type_table : ir.Table
+        _description_
 
     Returns
     -------
@@ -49,8 +51,8 @@ def resolved_paths(paths: ir.Column, spine: ir.Table) -> ir.Column:
     return
 
 
-def modified_component(component: ir.Table, spine: ir.Table) -> ir.Table:
-    """Apply the modifiers listed in spine to the component.
+def modified_component(component: ir.Table, component_type_table: ir.Table) -> ir.Table:
+    """Apply the modifiers listed in component_type_table to the component.
     Possible modifiers as of writing:
     - of: Switches target and source.
 
@@ -58,7 +60,7 @@ def modified_component(component: ir.Table, spine: ir.Table) -> ir.Table:
     ----------
     component : ir.Table
         _description_
-    spine : ir.Table
+    component_type_table : ir.Table
         _description_
 
     Returns

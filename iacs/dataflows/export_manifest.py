@@ -30,9 +30,9 @@ from ..registry import Registry
 
 _BUILTIN_FILEPATH = "builtins.components"
 
-@extract_fields({"spine": ir.Table})
+@extract_fields({"entity_id_table": ir.Table})
 def components(registry: Registry) -> dict:
-    """Extract all component tables from the registry, including the spine.
+    """Extract all component tables from the registry, including entity_id_table.
 
     Parameters
     ----------
@@ -42,7 +42,7 @@ def components(registry: Registry) -> dict:
     Returns
     -------
     dict
-        A dict mapping component type names (including "spine") to ibis Tables.
+        A dict mapping component type names (including "entity_id_table") to ibis Tables.
     """
     return registry._components
 
@@ -50,7 +50,7 @@ def components(registry: Registry) -> dict:
 _METADATA_COLS = {"entity_id", "component_index", "modifier"}
 
 
-def entity_first_data(components: dict, spine: ir.Table) -> dict:
+def entity_first_data(components: dict, entity_id_table: ir.Table) -> dict:
     """Reconstruct the entity-centered nested dict from component tables.
 
     For each component type, groups rows by entity_id and serializes each row
@@ -63,7 +63,7 @@ def entity_first_data(components: dict, spine: ir.Table) -> dict:
     ----------
     components : dict
         Dict mapping component type names to ibis Tables, as returned by
-        ``components``. Must include a ``"spine"`` key.
+        ``components``. Must include an ``"entity_id_table"`` key.
 
     Returns
     -------
@@ -71,20 +71,20 @@ def entity_first_data(components: dict, spine: ir.Table) -> dict:
         A dict of the form ``{entity_key: [component, ...]}`` where each
         component is a string (tag) or a single-key dict.
     """
-    spine_df = spine.execute()
+    spine_df = entity_id_table.to_pandas()
     id_to_key = (
-        spine_df.drop_duplicates("entity_id")
-        .set_index("entity_id")["entity_key"]
+        spine_df.drop_duplicates("hash")
+        .set_index("hash")["entity_key"]
         .to_dict()
     )
     user_entity_ids = set(
-        spine_df[~spine_df["filepath"].str.startswith("builtins")]["entity_id"].unique()
+        spine_df[~spine_df["filepath"].str.startswith("builtins")]["hash"].unique()
     )
 
     result: dict[str, list] = {}
 
     for comp_type, table in components.items():
-        if comp_type == "spine":
+        if comp_type in ("entity_id", "component_type"):
             continue
 
         df = table.execute()
