@@ -169,8 +169,15 @@ def _assert_df_rows_subset(
 
 def _assert_subset(var_name: str, expected_value, actual_value) -> None:
     """Assert expected_value is contained within actual_value using subset semantics."""
+    from iacs.registry import Registry
     if isinstance(expected_value, pd.DataFrame):
         _assert_df_rows_subset(expected_value, actual_value, context=var_name)
+    elif isinstance(expected_value, dict) and isinstance(actual_value, Registry):
+        for key, exp_val in expected_value.items():
+            if isinstance(exp_val, pd.DataFrame):
+                _assert_df_rows_subset(
+                    exp_val, actual_value.view(key), context=f"{var_name}.view({key!r})"
+                )
     elif isinstance(expected_value, dict):
         assert isinstance(actual_value, dict), (
             f"'{var_name}': expected dict, got {type(actual_value)}"

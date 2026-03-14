@@ -153,6 +153,23 @@ invalid_field = pd.DataFrame(
     ]
 )
 
+validated_registry = {
+    "requirement": pd.DataFrame([
+        {
+            "entity_id": get_id("make_cats_happy.feed_and_water_cats.water_cats"),
+            "component_index": 0,
+            "value": "functional",
+            "priority": 0.5,
+        },
+        {
+            "entity_id": get_id("make_cats_happy.adore_cats"),
+            "component_index": 1,
+            "value": "functional",
+            "priority": 0.5,
+        },
+    ]),
+}
+
 requirement_coverage = pd.DataFrame([
     {
         "entity_id": get_id("make_cats_happy.feed_and_water_cats.feed_cats"),

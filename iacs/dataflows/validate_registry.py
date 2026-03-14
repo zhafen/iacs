@@ -127,6 +127,18 @@ _IACS_TO_PYTHON_TYPE: dict[str, type] = {
 }
 
 
+def _coerce_default(val, py_type: type):
+    """Coerce a raw default value to the given Python type for use as an ibis literal."""
+    if py_type is bool:
+        if isinstance(val, str):
+            return val.strip().lower() in ("true", "1", "yes")
+        return bool(val)
+    try:
+        return py_type(val)
+    except (ValueError, TypeError):
+        return val
+
+
 def validated_field(field: ir.Table) -> ir.Table:
     """The ((field)) component contains the data for the schema for all components.
     This includes the ((field)) component itself. We will use the ((field)) component
@@ -214,7 +226,7 @@ def validated_field(field: ir.Table) -> ir.Table:
             continue
         col_type = type_map.get(col_name)
         if col_type is not None:
-            lit = ibis.literal(default_val).cast(_IBIS_DTYPE[col_type])
+            lit = ibis.literal(_coerce_default(default_val, col_type)).cast(_IBIS_DTYPE[col_type])
         else:
             lit = ibis.literal(str(default_val))
         result = result.mutate(**{col_name: result[col_name].fill_null(lit)})
@@ -492,11 +504,10 @@ def validated_data(
             if default is None or fname not in existing:
                 continue
             py_type = type_map.get(fname)
-            lit = (
-                ibis.literal(default).cast(_IBIS_DTYPE[py_type])
-                if py_type is not None
-                else ibis.literal(str(default))
-            )
+            if py_type is not None:
+                lit = ibis.literal(_coerce_default(default, py_type)).cast(_IBIS_DTYPE[py_type])
+            else:
+                lit = ibis.literal(str(default))
             col = t[fname]
             if fschema["type"] == "str":
                 col = col.nullif("")
@@ -574,6 +585,11 @@ def validated_registry(validated_components: dict, invalid_field: ir.Table, regi
     Registry
         A new Registry with the validated components and ``invalid_field``.
     """
-    components = dict(validated_components)
-    components["invalid_field"] = invalid_field
-    return Registry(registry._con, components)
+    conn = ibis.duckdb.connect()
+    components = {}
+    for comp_type, table in validated_components.items():
+        conn.create_table(comp_type, table.to_pandas(), overwrite=True)
+        components[comp_type] = conn.table(comp_type)
+    conn.create_table("invalid_field", invalid_field.to_pandas(), overwrite=True)
+    components["invalid_field"] = conn.table("invalid_field")
+    return Registry(conn, components)
