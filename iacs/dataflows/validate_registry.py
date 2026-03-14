@@ -18,14 +18,14 @@ from ..utils import dhash
 _ENTITY_PATH_PATTERN = re.compile(r"^(.+?)\[\d+\]\..+$")
 
 
-@extract_fields(dict(entity_id_table=ir.Table, component_type_table=ir.Table, parent=ir.Table, field=ir.Table))
+@extract_fields(dict(entity_id=ir.Table, component_type=ir.Table, parent=ir.Table, field=ir.Table))
 def components(registry: Registry) -> dict:
     """Give access to the components in a registry."""
 
     return registry._components
 
 
-def updated_parent(entity_id_table: ir.Table, parent: ir.Table) -> ir.Table:
+def updated_parent(entity_id: ir.Table, parent: ir.Table) -> ir.Table:
     """Convert the entity paths in entity_id_table into parent-child relationships and
     add them to the parent component.
 
@@ -40,7 +40,7 @@ def updated_parent(entity_id_table: ir.Table, parent: ir.Table) -> ir.Table:
 
     Parameters
     ----------
-    entity_id_table : ir.Table
+    entity_id : ir.Table
         One row per entity with columns ``hash``, ``path``, ``entity_key``, ``filepath``.
     parent : ir.Table
         The ``parent`` component table from the registry, containing at
@@ -53,7 +53,7 @@ def updated_parent(entity_id_table: ir.Table, parent: ir.Table) -> ir.Table:
         A table with columns ``entity_id`` and ``parent_id``, each row
         representing a child→parent relationship as hashed entity IDs.
     """
-    df_spine = entity_id_table.to_pandas()
+    df_spine = entity_id.to_pandas()
     df_spine = df_spine.rename(columns={"hash": "entity_id"})
     df_spine["entity_path"] = df_spine["path"]
 
@@ -391,7 +391,7 @@ def _parse_range(val):
 
 @unpack_fields("validated_components", "invalid_field")
 def validated_data(
-    updated_components: dict, derived_field: ir.Table, entity_id_table: ir.Table
+    updated_components: dict, derived_field: ir.Table, entity_id: ir.Table
 ) -> tuple[dict, ir.Table]:
     """Use the schemas defined by the ((field)) component to validate and coerce the data in each component.
 
@@ -408,7 +408,7 @@ def validated_data(
         Dict of component_type -> ibis Table (from ``updated_components``).
     derived_field : ir.Table
         Inheritance-resolved field definitions (from ``derived_field``).
-    entity_id_table : ir.Table
+    entity_id : ir.Table
         One row per entity (hash, path, value, alias, entity_key, filepath),
         used to map entity_key -> entity_id for schema lookup.
 
@@ -426,7 +426,7 @@ def validated_data(
     schema_entity_ids = set(df_derived["entity_id"].dropna().astype(str))
 
     key_to_schema_ids: dict[str, list[str]] = {}
-    df_spine = entity_id_table.execute()
+    df_spine = entity_id.execute()
     df_spine = df_spine.rename(columns={"hash": "entity_id"})
     if {"entity_id", "entity_key"}.issubset(df_spine.columns):
         for _, row in (

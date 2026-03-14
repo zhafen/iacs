@@ -118,3 +118,21 @@ class TestLoadDataflow:
         a = Architect(_sample_registry())
         with pytest.raises(ValueError, match="nonexistent"):
             a.load_dataflow("nonexistent")
+
+
+class TestArchitectUX:
+    """This class tests Architect as we expect to use it.
+    """
+
+    def test_setup_and_inspect(self):
+
+        a = Architect.from_manifest("examples/example")
+        a.view("entity_id")
+
+    # def test_export_manifest(self):
+    #     """Sometimes we just want to load and export in yaml formatting.
+    #     """
+
+    #     a = Architect.from_manifest("examples/example")
+    #     a.execute("export_manifest")
+

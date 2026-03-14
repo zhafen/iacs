@@ -30,7 +30,7 @@ from ..registry import Registry
 
 _BUILTIN_FILEPATH = "builtins.components"
 
-@extract_fields({"entity_id_table": ir.Table})
+@extract_fields({"entity_id": ir.Table})
 def components(registry: Registry) -> dict:
     """Extract all component tables from the registry, including entity_id_table.
 
@@ -50,7 +50,7 @@ def components(registry: Registry) -> dict:
 _METADATA_COLS = {"entity_id", "component_index", "modifier"}
 
 
-def entity_first_data(components: dict, entity_id_table: ir.Table) -> dict:
+def entity_first_data(components: dict, entity_id: ir.Table) -> dict:
     """Reconstruct the entity-centered nested dict from component tables.
 
     For each component type, groups rows by entity_id and serializes each row
@@ -63,7 +63,7 @@ def entity_first_data(components: dict, entity_id_table: ir.Table) -> dict:
     ----------
     components : dict
         Dict mapping component type names to ibis Tables, as returned by
-        ``components``. Must include an ``"entity_id_table"`` key.
+        ``components``. Must include an ``"entity_id"`` key.
 
     Returns
     -------
@@ -71,7 +71,7 @@ def entity_first_data(components: dict, entity_id_table: ir.Table) -> dict:
         A dict of the form ``{entity_key: [component, ...]}`` where each
         component is a string (tag) or a single-key dict.
     """
-    spine_df = entity_id_table.to_pandas()
+    spine_df = entity_id.to_pandas()
     id_to_key = (
         spine_df.drop_duplicates("hash")
         .set_index("hash")["entity_key"]
