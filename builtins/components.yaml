@@ -72,7 +72,6 @@ base_data_type:
             - description: Data type for a limited set of categories.
             - todo: Is this redundant with [field.range]?
     timestamp:
-        - alias: categorical
         - description: Timestamp data type.
         - field:
             value: value
@@ -171,6 +170,34 @@ iacs_component:
             description: The descriptive text.
             type: str
 
+    entity_id:
+        - description: >
+            The ((entity_id)) component contains identity information about a given
+            entity.
+        - parent: value
+        - field:
+            value: value
+            description: >
+                The entity_id. Generated from ((entity_id.entity_path)), but can be
+                overwritten.
+            type: str
+        - field:
+            value: path
+            description: >
+                The full path to the entity, in the format {filepath}:{yaml_path}.
+            type: str
+        - field:
+            value: hash
+            description: >
+                Hash of the path, used for ID when brief.
+                TODO: Do we actually need this? It was supposed to be a readable
+                version of the path, but it's far from readable.
+            type: str
+        - field:
+            value: alias
+            description: >
+                A readable version of the entity_id.
+            type: str
     requirement:
         - description: >
             Indicates that an entity represents a requirement that must be satisfied

@@ -339,17 +339,34 @@ ecs_framework:
                     - description: >
                         As defined by the sub-requirements.
                     - requirement: quality
+                have_good_formatting_across_formats:
+                    data:
+                        - requirement: quality
+                    have_good_yaml_formatting:
+                        - requirement: quality
+                    have_good_ecs_formatting:
+                        - requirement: quality
                 formatting_is_powerful:
                     enable_pointing_to_entities:
                         - description: This is required for ((relation)) components.
                         - requirement:
                             value: quality
                             priority: 0.9
+                        - parent: have_good_yaml_formatting
+                    enable_easily_jumping_to_entity_def:
+                        - description: >
+                            We frequently want to edit entity entries in manifests based
+                            on something we see when exploring the ECS-formatted data
+                            so we want to be able to get to it easily.
+                        - requirement:
+                            value: quality
+                        - parent: have_good_ecs_formatting
                 formatting_is_concise:
                     children_inherit_components_of_parents:
                         - requirement:
                             value: quality
                             priority: 0.7
+                        - parent: have_good_yaml_formatting
                 formatting_is_clear:
                     commonly_used_components_have_compressed_format:
                         - description: >
@@ -359,12 +376,20 @@ ecs_framework:
                         - requirement:
                             value: quality
                             priority: 0.6
+                        - parent: have_good_yaml_formatting
+                    entities_associated_with_components_are_easily_identified:
+                        - description: >
+                            A component table without knowing what entities the
+                            components are associated with at a glance is hard to use.
+                        - requirement: quality
+                        - parent: have_good_ecs_formatting
                 formatting_is_flexible:
                     allow_relations_to_be_defined_as_part_of_target_entities:
                         - description: I.e, enable use of "parent of".
                         - requirement:
                             value: quality
                             priority: 0.5
+                        - parent: have_good_yaml_formatting
     core_concepts:
         data:
             - description: >
@@ -749,6 +774,14 @@ ecs_framework:
                     Component-centered data is stored in a registry, which contains
                     one component table per component type.
                 - requirement: constraint
+            entity_id:
+                data:
+                    - description: >
+                        The unique identity for an entity and its components is stored
+                        in the ((spine)) component. There are a few possible
+                        formulations, each with their own restrictions.
+                entity_path:
+                    - description: The 
             component_table:
                 data:
                     - description: >
