@@ -563,7 +563,11 @@ def validated_data(
         for vt in violation_tables[1:]:
             invalid_table = invalid_table.union(vt)
     else:
-        invalid_table = ibis.memtable(pd.DataFrame(columns=_INVALID_COLS))
+        invalid_table = ibis.memtable(
+            pd.DataFrame(columns=_INVALID_COLS).astype(
+                {"entity_id": "str", "component_index": "int64", "component_type": "str", "field": "str", "value": "str", "error_type": "str"}
+            )
+        )
 
     return validated_comps, invalid_table
 
