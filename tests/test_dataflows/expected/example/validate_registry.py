@@ -123,6 +123,14 @@ validated_components = {
             "type": "dry",
         },
     ]),
+    "requirement": pd.DataFrame([
+        {
+            "entity_id": get_id("make_cats_happy.adore_cats"),
+            "component_index": 1,
+            "value": "functional",
+            "priority": 0.5,
+        },
+    ]),
 }
 invalid_field = pd.DataFrame(
     [
