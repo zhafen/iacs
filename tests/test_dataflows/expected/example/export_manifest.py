@@ -15,8 +15,6 @@ feed_and_water_cats:
         priority: 1
 """
 
-entity_first_data = yaml.safe_load(_file_str)
-
-exported_manifest_filepaths = [
-    "../test_data/temp/example/manifest.yaml"
-]
+entity_first_data = {
+    "examples/example/manifest.yaml": yaml.safe_load(_file_str)
+}
