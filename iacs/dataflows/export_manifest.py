@@ -84,7 +84,7 @@ def entity_first_data(components: dict, entity_id: ir.Table) -> dict:
     result: dict[str, list] = {}
 
     for comp_type, table in components.items():
-        if comp_type in ("entity_id", "component_type"):
+        if comp_type in ("entity_id", "component_type", "invalid_field"):
             continue
 
         df = table.execute()

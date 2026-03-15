@@ -1,6 +1,7 @@
 """Tests for the Architect base class."""
 
 import pytest
+import pandas as pd
 import ibis
 
 from tests.conftest import make_registry
@@ -121,18 +122,25 @@ class TestLoadDataflow:
 
 
 class TestArchitectUX:
-    """This class tests Architect as we expect to use it.
-    """
+    """This class tests Architect as we expect to use it."""
 
     def test_setup_and_inspect(self):
 
         a = Architect.from_manifest("examples/example")
         a.view("entity_id")
 
-    # def test_export_manifest(self):
-    #     """Sometimes we just want to load and export in yaml formatting.
-    #     """
+    def test_export_manifest(self, tmp_path):
+        """Sometimes we just want to load and export in yaml formatting."""
+        input_dir = "examples/example"
+        output_dir = str(tmp_path)
 
-    #     a = Architect.from_manifest("examples/example")
-    #     a.execute("export_manifest")
+        # Export
+        a = Architect.from_manifest(input_dir)
+        a.execute("export_manifest", output_dir=output_dir)
 
+        # Reload and check
+        a2 = Architect.from_manifest(output_dir)
+        pd.testing.assert_allclose(
+            a.view("component_type"),
+            a2.view("component_type"),
+        )
