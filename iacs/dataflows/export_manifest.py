@@ -149,7 +149,7 @@ def exported_manifest_filepaths(entity_first_data: dict, output_dir: str) -> lis
     out.mkdir(parents=True, exist_ok=True)
     saved = []
     for source_filepath, entities in entity_first_data.items():
-        dest = out / Path(source_filepath).name
+        dest = out / Path(source_filepath).with_suffix(".yaml").name
         with open(dest, "w", encoding="utf-8") as f:
             yaml.dump(entities, f, default_flow_style=False, allow_unicode=True)
         saved.append(str(dest))
