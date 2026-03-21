@@ -17,7 +17,7 @@ my_infrastructure:
         - description: The overall infrastructure used to complete the core requirement.
     infrastructure_for_first_requirement:
         - description: This solves the first requirement.
-        - solution of: first_subrequirement
+        - solution of: core_requirement.first_subrequirement
     infrastructure_for_second_requirement:
         - description: This solves the second requirement.
-        - solution of: second_subrequirement
+        - solution of: ...core_requirement.second_subrequirement
