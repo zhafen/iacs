@@ -97,6 +97,7 @@ cat_food_supply:
               type: cosmic_horror
 
 cat_food_supply_list_format:
+    - description: Same as cat_food_supply, but written differently.
     - food:
           - 24
           - value: 32
