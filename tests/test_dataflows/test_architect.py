@@ -128,6 +128,7 @@ class TestArchitectUX:
 
         a = Architect.from_manifest("examples/example")
         a.view("entity_id")
+        assert a["entity_id"] == a.registry._components["entity_id"]
 
     def test_export_manifest(self, tmp_path):
         """Sometimes we just want to load and export in yaml formatting."""
