@@ -233,7 +233,19 @@ def _add_component_pairs(
     elif isinstance(component, dict):
         key = next(iter(component))
         value = component[key]
-        if isinstance(value, dict):
+        if isinstance(value, list):
+            # List of component instances: each item is its own component instance.
+            # Items use sequential indices starting from the parent's index.
+            for j, item in enumerate(value):
+                item_prefix = f"{entity_path}[{index + j}]"
+                if isinstance(item, dict):
+                    for sub_key, sub_val in item.items():
+                        str_val = "" if sub_val is None else str(sub_val)
+                        result.append((f"{item_prefix}.{key}.{sub_key}", str_val))
+                else:
+                    str_val = "" if item is None else str(item)
+                    result.append((f"{item_prefix}.{key}", str_val))
+        elif isinstance(value, dict):
             # Component with sub-fields, e.g. {"requirement": {"priority": 1}}.
             for sub_key, sub_val in value.items():
                 str_val = "" if sub_val is None else str(sub_val)

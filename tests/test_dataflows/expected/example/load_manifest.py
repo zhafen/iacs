@@ -253,7 +253,7 @@ component_tables = {
                 "type": "dry",
             },
             {
-                "entity_id": get_id("cat_food_supply.furina"),
+                "entity_id": get_id("cat_food_supply_list_format"),
                 "component_index": 3,
                 "brand": "chellthulu",
                 "type": "cosmic_horror",
