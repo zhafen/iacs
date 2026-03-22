@@ -245,6 +245,18 @@ def _add_component_pairs(
                 else:
                     str_val = "" if item is None else str(item)
                     result.append((f"{item_prefix}.{key}", str_val))
+        elif isinstance(value, dict) and value and all(
+            isinstance(v, dict) for v in value.values()
+        ):
+            # Dict-of-dicts: each key→value pair is a separate component instance.
+            # The outer key becomes the "value" sub-field; the inner dict provides
+            # the remaining sub-fields.
+            for j, (inner_key, inner_dict) in enumerate(value.items()):
+                item_prefix = f"{entity_path}[{index + j}]"
+                result.append((f"{item_prefix}.{key}.value", inner_key))
+                for sub_key, sub_val in inner_dict.items():
+                    str_val = "" if sub_val is None else str(sub_val)
+                    result.append((f"{item_prefix}.{key}.{sub_key}", str_val))
         elif isinstance(value, dict):
             # Component with sub-fields, e.g. {"requirement": {"priority": 1}}.
             for sub_key, sub_val in value.items():
