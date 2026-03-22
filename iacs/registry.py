@@ -53,8 +53,8 @@ class Registry:
         return list(self._component_types)
 
     def get(self, key: str):
-        """Return the Ibis table for the given component type."""
-        return self._con.table(key)
+        """Return the component table for the given component type."""
+        return self._components[key]
 
     def _with_entity_alias(self, result: ibis.Table) -> ibis.Table:
         """Left-join entity_alias from the entity_id table into result.

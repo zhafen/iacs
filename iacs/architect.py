@@ -72,6 +72,10 @@ class Architect:
     def view(self):
         return self._registry.view
 
+    @property
+    def get(self):
+        return self._registry.get
+
     def execute(self, final_vars: str | list[str], **inputs) -> dict[str, Any]:
         """Execute DAG nodes and return their outputs.
 
