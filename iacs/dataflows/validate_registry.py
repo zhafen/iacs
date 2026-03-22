@@ -18,7 +18,7 @@ from ..utils import dhash
 _ENTITY_PATH_PATTERN = re.compile(r"^(.+?)\[\d+\]\..+$")
 
 
-@extract_fields(dict(entity_id=ir.Table, component_type=ir.Table, parent=ir.Table, field=ir.Table))
+@extract_fields(dict(entity_id=ir.Table, parent=ir.Table, field=ir.Table))
 def components(registry: Registry) -> dict:
     """Give access to the components in a registry."""
 
