@@ -6,7 +6,7 @@ from iacs.registry import Registry
 
 
 def description_table(registry: Registry) -> ibis.Table:
-    return registry.table("description")
+    return registry.get("description")
 
 
 def entity_summary(description_table: ibis.Table) -> ibis.Table:

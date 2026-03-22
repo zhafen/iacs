@@ -52,7 +52,7 @@ class Registry:
         """Return the list of component types in the registry."""
         return list(self._component_types)
 
-    def table(self, key: str):
+    def get(self, key: str):
         """Return the Ibis table for the given component type."""
         return self._con.table(key)
 
