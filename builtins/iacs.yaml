@@ -526,109 +526,199 @@ ecs_framework:
                       df [dataframe]: Entity-centered DataFrame.
                       path [str]: Output file path.
                 - todo: Not yet implemented.
-        transform_system:
+        transform_functionality:
             data:
                 - description: >
-                      Transforms ECS data stored in a registry. Provides operations
-                      for querying, filtering, and manipulating component data.
-                      (Not yet implemented.)
+                    Transform ECS data, including transforming to/from different
+                    ECS formats, validating data, and deriving components from other
+                    components.
                 - system
                 - todo: Choose between DAG-based and custom approach and implement.
-            dag_based_approach:
-                data:
-                    - description: >
-                          Use an existing DAG framework (e.g. Hamilton) where each
-                          transform is a Python function whose name is the output
-                          node and whose parameters declare dependencies on other
-                          nodes. The framework handles dependency resolution,
-                          execution ordering, and visualization.
-                pro_mature_ecosystem:
-                    - description: >
-                          DAG frameworks like Hamilton are battle-tested, widely
-                          used, and actively maintained. This means fewer bugs,
-                          better documentation, and community support.
-                    - weight: 0.7
-                pro_built_in_visualization:
-                    - description: >
-                          Hamilton provides DAG visualization out of the box,
-                          making it easy to inspect and debug transform pipelines.
-                    - weight: 0.6
-                pro_familiar_pattern:
-                    - description: >
-                          Functions-as-nodes is a well-known pattern in the data
-                          engineering community. New contributors can understand
-                          the transform system quickly.
-                    - weight: 0.5
-                con_impedance_mismatch:
-                    - description: >
-                          In an ECS framework, joins between component tables are
-                          a core operation handled automatically by Registry.view().
-                          DAG frameworks model linear pipelines of transforms, not
-                          the star-schema joins that are natural in ECS. This means
-                          the DAG nodes end up being thin wrappers around
-                          registry.table() calls, adding boilerplate without adding
-                          value.
-                    - weight: -0.9
-                con_module_level_function_requirement:
-                    - description: >
-                          Hamilton requires dataflow functions to live in a
-                          separate .py module with return type hints on every
-                          function. This makes notebook-based or dynamic
-                          workflows awkward, requiring sys.modules hacks to work.
-                    - weight: -0.7
-                con_result_type_assumptions:
-                    - description: >
-                          Hamilton's default result builder assumes pandas
-                          DataFrames. Using Ibis tables requires overriding the
-                          result builder (e.g. DictResult), and the framework may
-                          not fully support lazy evaluation semantics.
-                    - weight: -0.6
-            custom_approach:
-                data:
-                    - description: >
-                          Build a lightweight transform system tailored to ECS
-                          semantics. Transforms would operate directly on
-                          Registry objects using the existing view() and table()
-                          API, with joins handled naturally by the component model.
-                pro_native_ecs_integration:
-                    - description: >
-                          A custom system can work directly with Registry.view()
-                          and Registry.table(), leveraging the ECS data model
-                          where joins on entity_id are the natural operation.
-                          No impedance mismatch.
-                    - weight: 0.9
-                pro_simplicity:
-                    - description: >
-                          No external dependency required. The transform system
-                          can be exactly as complex as needed and no more,
-                          following the iacs principle of minimizing duplication
-                          and keeping things simple.
-                    - weight: 0.8
-                pro_ibis_native:
-                    - description: >
-                          Can be designed from the start around Ibis lazy
-                          expressions, fully leveraging deferred execution and
-                          backend-agnostic queries without adapter workarounds.
-                    - weight: 0.7
-                con_maintenance_burden:
-                    - description: >
-                          Any features that a DAG framework provides for free
-                          (dependency resolution, cycle detection, visualization,
-                          caching) would need to be built and maintained in-house.
-                    - weight: -0.6
-                con_less_proven:
-                    - description: >
-                          A custom system has no community validation. Edge cases
-                          and design mistakes will only be discovered through use,
-                          whereas established frameworks have already encountered
-                          and resolved many of these issues.
-                    - weight: -0.5
-                con_limited_visualization:
-                    - description: >
-                          DAG visualization would need to be built separately or
-                          omitted entirely, losing a useful debugging and
-                          communication tool.
-                    - weight: -0.4
+            required_functionality:
+                load_data:
+                get_ids_from_path:
+                transform_entity_first_to_component_first:
+                validate_data:
+                    apply_defaults:
+                    coerce:
+                derive_components:
+                    parents_from_path:
+                    schema_from_parent_schema:
+                    absolute_path_from_partial_relative_path:
+                        - solution of: enable_pointing_to_entities
+                audit_components:
+                    audit_requirements:
+                        - depends on: validate_data.coerce
+                    audit_implementation_state:
+            dags:
+                load_registry:
+                validate_registry:
+                    data:
+                        - links:
+                            value: |
+                                registry --> components
+
+                                components --> field
+                                components --> parent
+                                components --> entity_id
+
+                                field --> validated_field
+                                parent --> updated_parent
+                                entity_id --> updated_parent
+
+                                validated_field --> derived_field
+                                updated_parent --> derived_field
+
+                                derived_field --> updated_components
+                                updated_parent --> updated_components
+                                registry --> updated_components
+                                
+                                entity_id --> validated_data
+                                derived_field --> validated_data
+                                updated_components --> validated_data
+
+                                validated_data --> invalid_field
+                                validated_data --> validated_components
+
+                                invalid_field --> validated_registry
+                                validated_components --> validated_registry
+                                registry --> validated_registry
+                            link_type: dependency of
+                    registry:
+                        - description: The main input.
+                    components:
+                        - description: The part of the registry that stores the data.
+                    field:
+                        - description: >
+                            A component table that stores data on the schema definitions
+                            for component tables.
+                    parent:
+                        - description: >
+                            A component table that stores data on inheritance.
+                    entity_id:
+                        - description: >
+                            A component table that stores data on the entity_ids and
+                            the paths that they are derived form.
+                    updated_parent:
+                        - description: >
+                            Parent component including hierarchy from
+                            ((entity_id.path)).
+                    validated_field:
+                        - description: >
+                            The field component, validated according to the schema
+                            for the field component, which is itself defined inside
+                            the field component.
+                    derived_field:
+                        - description: >
+                            The validated_field updated with defaults derived from
+                            parent fields.
+                    updated_components:
+                        - description:
+                            Components updated with updated_parent and derived_field.
+                    validated_data:
+                        - description:
+                            Updated components now validated against the updated field
+                            component.
+                    validated_registry:
+                        - description:
+                            Registry updated with validated data.
+                derive_components:
+            overall_approach:
+                dag_based_approach:
+                    data:
+                        - description: >
+                            Use an existing DAG framework (e.g. Hamilton) where each
+                            transform is a Python function whose name is the output
+                            node and whose parameters declare dependencies on other
+                            nodes. The framework handles dependency resolution,
+                            execution ordering, and visualization.
+                    pro_mature_ecosystem:
+                        - description: >
+                            DAG frameworks like Hamilton are battle-tested, widely
+                            used, and actively maintained. This means fewer bugs,
+                            better documentation, and community support.
+                        - weight: 0.7
+                    pro_built_in_visualization:
+                        - description: >
+                            Hamilton provides DAG visualization out of the box,
+                            making it easy to inspect and debug transform pipelines.
+                        - weight: 0.6
+                    pro_familiar_pattern:
+                        - description: >
+                            Functions-as-nodes is a well-known pattern in the data
+                            engineering community. New contributors can understand
+                            the transform system quickly.
+                        - weight: 0.5
+                    con_impedance_mismatch:
+                        - description: >
+                            In an ECS framework, joins between component tables are
+                            a core operation handled automatically by Registry.view().
+                            DAG frameworks model linear pipelines of transforms, not
+                            the star-schema joins that are natural in ECS. This means
+                            the DAG nodes end up being thin wrappers around
+                            registry.table() calls, adding boilerplate without adding
+                            value.
+                        - weight: -0.9
+                    con_module_level_function_requirement:
+                        - description: >
+                            Hamilton requires dataflow functions to live in a
+                            separate .py module with return type hints on every
+                            function. This makes notebook-based or dynamic
+                            workflows awkward, requiring sys.modules hacks to work.
+                        - weight: -0.7
+                    con_result_type_assumptions:
+                        - description: >
+                            Hamilton's default result builder assumes pandas
+                            DataFrames. Using Ibis tables requires overriding the
+                            result builder (e.g. DictResult), and the framework may
+                            not fully support lazy evaluation semantics.
+                        - weight: -0.6
+                custom_approach:
+                    data:
+                        - description: >
+                            Build a lightweight transform system tailored to ECS
+                            semantics. Transforms would operate directly on
+                            Registry objects using the existing view() and table()
+                            API, with joins handled naturally by the component model.
+                    pro_native_ecs_integration:
+                        - description: >
+                            A custom system can work directly with Registry.view()
+                            and Registry.table(), leveraging the ECS data model
+                            where joins on entity_id are the natural operation.
+                            No impedance mismatch.
+                        - weight: 0.9
+                    pro_simplicity:
+                        - description: >
+                            No external dependency required. The transform system
+                            can be exactly as complex as needed and no more,
+                            following the iacs principle of minimizing duplication
+                            and keeping things simple.
+                        - weight: 0.8
+                    pro_ibis_native:
+                        - description: >
+                            Can be designed from the start around Ibis lazy
+                            expressions, fully leveraging deferred execution and
+                            backend-agnostic queries without adapter workarounds.
+                        - weight: 0.7
+                    con_maintenance_burden:
+                        - description: >
+                            Any features that a DAG framework provides for free
+                            (dependency resolution, cycle detection, visualization,
+                            caching) would need to be built and maintained in-house.
+                        - weight: -0.6
+                    con_less_proven:
+                        - description: >
+                            A custom system has no community validation. Edge cases
+                            and design mistakes will only be discovered through use,
+                            whereas established frameworks have already encountered
+                            and resolved many of these issues.
+                        - weight: -0.5
+                    con_limited_visualization:
+                        - description: >
+                            DAG visualization would need to be built separately or
+                            omitted entirely, losing a useful debugging and
+                            communication tool.
+                        - weight: -0.4
     ecs_data_formats:
         data:
             - description: iacs stores ECS data in a few formats.
