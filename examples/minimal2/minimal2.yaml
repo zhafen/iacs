@@ -20,4 +20,4 @@ my_infrastructure:
         - solution of: core_requirement.first_subrequirement
     infrastructure_for_second_requirement:
         - description: This solves the second requirement.
-        - solution of: ...core_requirement.second_subrequirement
+        - solution of: second_subrequirement

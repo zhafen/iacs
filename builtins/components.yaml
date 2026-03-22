@@ -71,6 +71,12 @@ base_data_type:
             - alias: categorical
             - description: Data type for a limited set of categories.
             - todo: Is this redundant with [field.range]?
+        entity_ref:
+            - alias: entity_ref
+            - description: >
+                A user-provided string that references an entity by providing a
+                partial or full path. Resolved to an entity_id by substring
+                matching against the entity's full path.
     timestamp:
         - description: Timestamp data type.
         - field:
@@ -225,6 +231,10 @@ iacs_component:
             A solution relation is used to show a requirement is fulfilled.
             The ((solution.source)) solves the ((solution)).requirement.
         - parent: directed_relation
+        - field:
+            value: target
+            description: The entity that this solution targets (what is being solved).
+            type: entity_ref
 
     task:
         - description: >

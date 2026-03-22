@@ -623,6 +623,11 @@ ecs_framework:
                         - description:
                             Registry updated with validated data.
                 derive_components:
+                    data:
+                        - links:
+                            value: |
+                                TBD
+                        - link_type: dependency of
             overall_approach:
                 dag_based_approach:
                     data:

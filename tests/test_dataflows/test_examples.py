@@ -24,7 +24,7 @@ DATAFLOW_MODULE_NAMES = [
     "load_manifest",
     "validate_registry",
     "export_manifest",
-    # "derive_components",
+    "derive_components",
     # "audit.requirement_coverage",
     # "audit.todo",
     # "audit.traceability",
@@ -104,6 +104,17 @@ def _build_inputs_for(
     needed = {
         v.name for v in inspect_dr.list_available_variables() if v.is_external_input
     }
+
+    # Expand needed to include external inputs of preceding modules that are
+    # produced by even earlier preceding modules (transitive dependencies).
+    preceding_outputs: set[str] = set()
+    for mod in preceding_mods:
+        temp_dr = driver.Driver({}, mod, adapter=base.DictResult())
+        for v in temp_dr.list_available_variables():
+            if v.is_external_input and v.name in preceding_outputs:
+                needed.add(v.name)
+            elif not v.is_external_input:
+                preceding_outputs.add(v.name)
 
     # Run preceding modules one at a time, accumulating outputs into the inputs
     # pool. Sequential execution avoids node-name conflicts between modules
