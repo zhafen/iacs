@@ -58,27 +58,27 @@ sustenance:
     data:
         - description: An object that contributes to cat happiness.
         - field:
-              value: value
-              description: The quantity of the sustenance.
-              type: float
-              nullable: false
+              value:
+                  description: The quantity of the sustenance.
+                  type: float
+                  nullable: false
     food:
         data:
             - description: Cat food.
             - field:
-                  value: brand
-                  description: The brand of cat food.
-                  type: str
-                  default: shiny_sustenance
-            - field:
-                  value: type
-                  description: The type of cat food.
-                  type: str
-                  range: [wet, dry]
-                  nullable: false
-                  default: wet
+                  brand:
+                      type: str
+                      description: The brand of cat food.
+                      default: shiny_sustenance
+                  type:
+                      type: str
+                      description: The type of cat food.
+                      range: [wet, dry]
+                      nullable: false
+                      default: wet
         gourmet_food:
             - description: Especially good cat food.
+    alternate_food_component:
 
 cat_food_supply:
     shiny_sustenance:
