@@ -36,6 +36,16 @@ iacs:
                             - description: >
                                   Code such as Python also provides clear definitions.
                             - requirement
+                        parse_natural_language:
+                            - id: parse_natural_language
+                            - description: >
+                                  Natural language is the most accessible way for users to
+                                  describe infrastructure, removing the need to learn a
+                                  specific syntax or format. Translating free-form text
+                                  into ECS data requires resolving coreferences, extracting
+                                  atomic facts, and mapping them to canonical entity and
+                                  component representations.
+                            - requirement
                 compatible_with_version_control:
                     - description: >
                           Version control is essential for reliability.
@@ -724,6 +734,89 @@ ecs_framework:
                             omitted entirely, losing a useful debugging and
                             communication tool.
                         - weight: -0.4
+    nlp_system:
+        data:
+            - description: >
+                  The infrastructure responsible for translating natural language
+                  input into ECS data. The core challenges are coreference resolution
+                  (recognizing that "Spot", "the dog", and "it" refer to the same
+                  entity), atomic fact extraction (decomposing compound sentences into
+                  minimal propositions), and canonical form mapping (normalizing
+                  varied phrasings to consistent entity and component representations).
+            - system
+        overall_approach:
+            single_pass_llm:
+                data:
+                    - description: >
+                          Provide the full input text and the ECS schema to a capable
+                          LLM in a single prompt, letting the model resolve coreferences
+                          and extract facts implicitly, returning structured output
+                          (e.g. via Instructor + Pydantic).
+                    - solution of: parse_natural_language
+                pro_simplicity:
+                    - description: No pipeline to maintain; one call handles all steps.
+                    - weight: 0.8
+                pro_handles_ambiguity:
+                    - description: >
+                          LLMs handle varied phrasing and implicit coreference well
+                          for bounded inputs.
+                    - weight: 0.7
+                con_bounded_input_only:
+                    - description: >
+                          Quality degrades as input length and complexity grow.
+                          Not suitable for streaming or open-ended inputs.
+                    - weight: -0.5
+                con_hard_to_debug:
+                    - description: >
+                          When extraction fails it is difficult to identify which
+                          step (coref, extraction, or mapping) was the problem.
+                    - weight: -0.4
+            two_pass_llm:
+                data:
+                    - description: >
+                          First pass extracts canonical entities and atomic facts from
+                          the text (coreference + extraction). Second pass maps those
+                          facts to the ECS schema. Tools like Graphiti or a custom
+                          extraction prompt can handle the first pass.
+                    - solution of: parse_natural_language
+                pro_debuggable:
+                    - description: >
+                          Separating extraction from schema mapping makes it easy to
+                          inspect intermediate results and fix errors at each stage.
+                    - weight: 0.7
+                pro_reusable_extraction:
+                    - description: >
+                          The first-pass fact extraction is schema-agnostic and can
+                          be reused for other purposes.
+                    - weight: 0.5
+                con_two_llm_calls:
+                    - description: Increases latency and cost compared to single-pass.
+                    - weight: -0.4
+            agentic_registry_approach:
+                data:
+                    - description: >
+                          An agent maintains the registry as a running entity store.
+                          For each new fact extracted, the agent checks the registry
+                          for existing matching entities before inserting, resolving
+                          coreferences incrementally. Well-suited for conversational
+                          or multi-document inputs.
+                    - solution of: parse_natural_language
+                pro_natural_fit_with_registry:
+                    - description: >
+                          The iacs registry is already the canonical entity store;
+                          using it for incremental coreference resolution requires
+                          no additional infrastructure.
+                    - weight: 0.9
+                pro_handles_open_ended_input:
+                    - description: >
+                          Works for streaming or multi-turn inputs where the full
+                          text is not available upfront.
+                    - weight: 0.6
+                con_more_complex:
+                    - description: >
+                          Requires an agent loop with registry read/write on each
+                          step, increasing implementation complexity.
+                    - weight: -0.6
     ecs_data_formats:
         data:
             - description: iacs stores ECS data in a few formats.
