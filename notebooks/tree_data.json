@@ -1,0 +1,150 @@
+{
+  "name": "be_a_powerful_tool_for_solutions_architecture",
+  "children": [
+    {
+      "name": "help_improve_the_quality_of_system_designs",
+      "children": [
+        {
+          "name": "improve_complex_solution_architectures",
+          "children": [
+            {
+              "name": "allow_solution_designs_to_be_tested",
+              "children": [
+                {
+                  "name": "provide_tools_to_build_tests_for_system_designs"
+                },
+                {
+                  "name": "provide_default_tests_for_systems",
+                  "children": [
+                    {
+                      "name": "test_for_identifying_requirements_missing_solutions"
+                    },
+                    {
+                      "name": "test_for_completed_todos"
+                    },
+                    {
+                      "name": "trace_every_component_to_a_requirement"
+                    },
+                    {
+                      "name": "test_for_invalid_definitions"
+                    },
+                    {
+                      "name": "test_for_siloed_infrastructure"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "convey_complex_architectures"
+            }
+          ]
+        },
+        {
+          "name": "create_a_procedure_for_designing_systems",
+          "children": [
+            {
+              "name": "requirement_design_process"
+            },
+            {
+              "name": "solution_design_process"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "provide_quality_end_to_end_documentation_of_infrastructure",
+      "children": [
+        {
+          "name": "provide_documentation_in_formats_meeting_all_common_needs",
+          "children": [
+            {
+              "name": "define_infrastructure_using_clear_and_simple_syntax"
+            },
+            {
+              "name": "export_infrastructure_to_wiki"
+            }
+          ]
+        },
+        {
+          "name": "comprehensively_document_infrastructure",
+          "children": [
+            {
+              "name": "compatible_with_any_type_of_infrastructure",
+              "children": [
+                {
+                  "name": "compatible_with_human_executed_infrastructure"
+                },
+                {
+                  "name": "compatible_with_standard_components"
+                },
+                {
+                  "name": "compatible_with_abstract_components"
+                }
+              ]
+            },
+            {
+              "name": "accept_user_defined_infrastructure",
+              "children": [
+                {
+                  "name": "describe_infrastructure_with_ecs_framework"
+                }
+              ]
+            },
+            {
+              "name": "scales_well"
+            }
+          ]
+        },
+        {
+          "name": "provide_a_source_of_truth",
+          "children": [
+            {
+              "name": "minimize_duplication",
+              "children": [
+                {
+                  "name": "parse_infrastructure_in_a_wide_variety_of_formats",
+                  "children": [
+                    {
+                      "name": "parse_code_languages"
+                    },
+                    {
+                      "name": "parse_a_variety_of_IaC_formats"
+                    },
+                    {
+                      "name": "parse_natural_language"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "compatible_with_version_control"
+            },
+            {
+              "name": "aggregate_all_definitions_in_one_location"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "provide_a_launching_point_for_infrastructure_implementation",
+      "children": [
+        {
+          "name": "facilitate_compatibility_with_copilot"
+        },
+        {
+          "name": "facilitate_compatibility_with_terraform"
+        },
+        {
+          "name": "provide_a_guided_process_for_developing_solutions"
+        },
+        {
+          "name": "facilitate_compatibility_with_relational_databases"
+        }
+      ]
+    }
+  ]
+}
