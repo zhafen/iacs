@@ -53,7 +53,6 @@
     .link {
       fill: none;
       stroke: #45475a;
-      stroke-width: 1.5px;
     }
   </style>
 </head>
@@ -93,7 +92,10 @@
 
       // Set NODE_W from the longest label across all nodes, plus circle + padding
       let maxW = 0;
-      root.each(d => { maxW = Math.max(maxW, textWidth(d.data.name)); });
+      root.each(d => {
+        const label = d.data.name + (d.data.priority != null ? ` (${d.data.priority.toFixed(2)})` : "");
+        maxW = Math.max(maxW, textWidth(label));
+      });
       NODE_W = maxW + 40;
 
       // Collapse everything below the first level
@@ -138,11 +140,15 @@
         .style("stroke", "#89b4fa")
         .style("fill", d => d._children ? "#89b4fa" : "#1e1e2e");
 
-      enter.append("text")
+      const textEl = enter.append("text")
         .attr("dy", "0.35em")
         .attr("x", d => d.children || d._children ? -10 : 10)
-        .attr("text-anchor", d => d.children || d._children ? "end" : "start")
-        .text(d => d.data.name);
+        .attr("text-anchor", d => d.children || d._children ? "end" : "start");
+      textEl.append("tspan").text(d => d.data.name);
+      textEl.append("tspan")
+        .attr("fill", "#6c7086")
+        .attr("font-size", "10px")
+        .text(d => d.data.priority != null ? ` (${d.data.priority.toFixed(2)})` : "");
 
       const merged = enter.merge(node);
 
@@ -170,8 +176,11 @@
 
       link.enter().insert("path", "g")
         .attr("class", "link")
+        .style("stroke-width", d => `${Math.max(0.5, d.target.data.priority * 4)}px`)
         .attr("d", () => diagonal({ source: collapsed, target: collapsed }))
-        .merge(link).transition().duration(220).attr("d", diagonal);
+        .merge(link).transition().duration(220)
+        .style("stroke-width", d => `${Math.max(0.5, d.target.data.priority * 4)}px`)
+        .attr("d", diagonal);
 
       link.exit().transition().duration(220)
         .attr("d", () => diagonal({ source: { x: source.x, y: source.y }, target: { x: source.x, y: source.y } }))
