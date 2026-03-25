@@ -83,7 +83,10 @@
     _ctx.font = "12px sans-serif";
     function textWidth(str) { return _ctx.measureText(str).width; }
 
-    d3.json("tree_data.json").then(data => {
+    const params = new URLSearchParams(window.location.search);
+    const key = params.get("ancestor_key") || "";
+    const url = "/api/tree" + (key ? "?ancestor_key=" + encodeURIComponent(key) : "");
+    d3.json(url).then(data => {
       const root = d3.hierarchy(data);
       root.x0 = 0;
       root.y0 = 0;
