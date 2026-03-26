@@ -75,3 +75,7 @@ def components_with_resolved_paths(
             df[f"{field_name}_id"] = df[field_name].apply(resolve)
         result[comp_type] = df
     return result
+
+def derived_registry(registry: Registry, components_with_resolved_paths: dict) -> Registry:
+    registry.update(components_with_resolved_paths)
+    return registry
