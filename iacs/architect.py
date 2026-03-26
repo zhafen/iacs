@@ -1,6 +1,7 @@
 """Base class for iacs systems."""
 
 import importlib
+from pathlib import Path
 from types import ModuleType
 from typing import Any
 
@@ -16,14 +17,16 @@ class Architect:
     """Base class for iacs systems that operate on infrastructure data."""
 
     @classmethod
-    def from_manifest(cls, manifest: str | list[str]) -> "Architect":
+    def from_manifest(cls, manifest: str | Path | list[str | Path]) -> "Architect":
         """Create an Architect with a registry loaded and validated from a manifest.
 
         Args:
             manifest: A directory path (or list of paths) making up the manifest.
         """
-        if isinstance(manifest, str):
-            manifest = [manifest]
+        if isinstance(manifest, (str, Path)):
+            manifest = [str(manifest)]
+        else:
+            manifest = [str(p) for p in manifest]
         result = driver.Driver(
             {}, base_etl, adapter=base.DictResult()
         ).execute(["validated_registry"], inputs={"input_dir": manifest})
