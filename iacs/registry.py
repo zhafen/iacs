@@ -31,6 +31,18 @@ class Registry:
             if k != "schema" and isinstance(v, ibis.Table)
         ]
 
+    def update(self, components: dict) -> None:
+        """Add or overwrite component tables in the registry.
+
+        Args:
+            components: Dict mapping component type names to ibis Tables.
+        """
+        for comp_type, table in components.items():
+            self._con.create_table(comp_type, table, overwrite=True)
+            self._components[comp_type] = self._con.table(comp_type)
+            if comp_type not in self._component_types and comp_type != "schema":
+                self._component_types.append(comp_type)
+
     def close(self) -> None:
         """Close the underlying database connection."""
         self._con.disconnect()

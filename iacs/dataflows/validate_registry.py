@@ -584,11 +584,5 @@ def validated_registry(validated_components: dict, invalid_field: ir.Table, regi
     Registry
         A new Registry with the validated components and ``invalid_field``.
     """
-    conn = ibis.duckdb.connect()
-    components = {}
-    for comp_type, table in validated_components.items():
-        conn.create_table(comp_type, table.to_pandas(), overwrite=True)
-        components[comp_type] = conn.table(comp_type)
-    conn.create_table("invalid_field", invalid_field.to_pandas(), overwrite=True)
-    components["invalid_field"] = conn.table("invalid_field")
-    return Registry(conn, components)
+    registry.update({**validated_components, "invalid_field": invalid_field})
+    return registry
