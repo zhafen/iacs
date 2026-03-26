@@ -123,6 +123,13 @@ iacs:
                           Many solutions are too complex for a simple view, but they still
                           need to be assessed for completeness, accuracy, documentation, etc.
                     - requirement
+                provide_an_interface_for_interactive_development:
+                    - requirement
+                    - description: >
+                        The start of this may be the d3js tree viewer we created.
+                        But that feels like it's potentially starting from scratch.
+                        We need to be careful.
+                        If our focus is code
                 allow_solution_designs_to_be_tested:
                     data:
                         - description: >
@@ -189,7 +196,7 @@ iacs:
                           - categorize requirements
                           - convert functional requirements into systems
                 - requirement: constraint
-            facilitate_compatibility_with_copilot:
+            facilitate_compatibility_with_agents:
                 - requirement: constraint
             facilitate_compatibility_with_terraform:
                 - requirement: constraint

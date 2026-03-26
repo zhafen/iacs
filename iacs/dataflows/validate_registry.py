@@ -205,11 +205,12 @@ def validated_field(field: ir.Table) -> ir.Table:
     # ── Cast typed columns first (raw data is all strings; cast before fill) ─
     # For bool columns from raw data we also convert "" → NULL first; DuckDB
     # raises on CAST('' AS BOOLEAN) but handles NULL cleanly.
+    result_schema = result.schema()
     for col_name, col_type in type_map.items():
         if col_name not in existing:
             continue
         expr = result[col_name]
-        if col_type is bool and col_name in original_existing:
+        if col_type is bool and col_name in original_existing and result_schema[col_name].is_string():
             expr = expr.nullif("")
         result = result.mutate(**{col_name: expr.cast(_IBIS_DTYPE[col_type])})
 
@@ -231,7 +232,7 @@ def validated_field(field: ir.Table) -> ir.Table:
         if col_name in existing
     }
     schema = pa.DataFrameSchema(columns)
-    return schema.validate(result)
+    return ibis.memtable(schema.validate(result).execute())
 
 
 def derived_field(validated_field: ir.Table, updated_parent: ir.Table) -> ir.Table:

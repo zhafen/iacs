@@ -25,21 +25,18 @@ component:
         data:
             - alias: relation
             - description: >
-                A component that describes a relation between two entities. Which is
-                ((relation.source)) and which is ((relation.value)) is arbitrary.
+                A component that describes a relation between two entities: the owner
+                entity and the entity specified by value.
             - field:
-                value: source
-                description: An entity related to the target entity.
-            - field:
-                value: target
-                description: An entity related to the source entity.
+                value:
+                    description: The other end of the relation.
+                    type: entity_ref
         directed_relation:
             data:
                 - alias: directed_relation
-                - description: A relation where direction matters.
-                - schema:
-                    source: The originating entity.
-                    target: The target entity.
+                - description: >
+                    A relation where direction matters. The owner entity is the source
+                    and the entity specified by value is the target.
             parent:
                 - description: The target entity is the parent of the source entity.
 
