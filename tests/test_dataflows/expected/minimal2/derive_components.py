@@ -8,6 +8,15 @@ def get_id(path: str) -> str:
 
     return base_get_id(filepath, path)
 
+entity_depth = pd.DataFrame([
+    {"entity_id": get_id("core_requirement"),                                          "depth": 0},
+    {"entity_id": get_id("my_infrastructure"),                                         "depth": 0},
+    {"entity_id": get_id("core_requirement.first_subrequirement"),                     "depth": 1},
+    {"entity_id": get_id("core_requirement.second_subrequirement"),                    "depth": 1},
+    {"entity_id": get_id("my_infrastructure.infrastructure_for_first_requirement"),    "depth": 1},
+    {"entity_id": get_id("my_infrastructure.infrastructure_for_second_requirement"),   "depth": 1},
+])
+
 components_with_resolved_paths = {
     "solution": pd.DataFrame([
         {

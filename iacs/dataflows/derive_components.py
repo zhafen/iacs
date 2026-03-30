@@ -3,6 +3,7 @@ This is intended to be completed post-validation, so fields need to be derived
 separately as part of validation.
 """
 
+import networkx as nx
 import pandas as pd
 
 from iacs.registry import Registry
@@ -61,6 +62,8 @@ def components_with_resolved_paths(
 
     result: dict[str, pd.DataFrame] = {}
     for comp_type, field_names in field_types_with_entity_ref.items():
+        if comp_type not in validated_registry._components:
+            continue
         df = validated_registry._components[comp_type].to_pandas()
         for field_name in field_names:
             if field_name not in df.columns:
@@ -75,6 +78,37 @@ def components_with_resolved_paths(
             df[f"{field_name}_id"] = df[field_name].apply(resolve)
         result[comp_type] = df
     return result
+
+def entity_depth(validated_registry: Registry) -> pd.DataFrame:
+    """Compute the depth of each entity in the parent hierarchy.
+
+    Depth is the length of the shortest path from any root node (an entity with
+    no parent) to the entity.  Entities that appear only as roots have depth 0.
+
+    Parameters
+    ----------
+    validated_registry : Registry
+        The validated registry.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per entity with columns ``entity_id`` and ``depth``.
+    """
+    parents_df = validated_registry._components["parent"].to_pandas()
+
+    # Directed graph: parent -> child (natural top-down direction)
+    G = nx.DiGraph()
+    G.add_edges_from(zip(parents_df["parent_id"], parents_df["entity_id"]))
+
+    # Roots: nodes that appear only as parents, never as children
+    roots = [n for n in G.nodes if G.in_degree(n) == 0]
+
+    # Multi-source BFS from all roots gives minimum depth for every reachable node
+    depths = nx.multi_source_dijkstra_path_length(G, roots)
+
+    return pd.DataFrame(list(depths.items()), columns=["entity_id", "depth"])
+
 
 def derived_registry(registry: Registry, components_with_resolved_paths: dict) -> Registry:
     registry.update(components_with_resolved_paths)
