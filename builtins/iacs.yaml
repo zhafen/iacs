@@ -107,13 +107,28 @@ iacs:
             provide_documentation_in_formats_meeting_all_common_needs:
                 data:
                     - requirement
-                define_infrastructure_using_clear_and_simple_syntax:
-                    - requirement: quality
-                export_infrastructure_to_wiki:
-                    - description: >
-                          Wikis are a very common and readable way of documenting
-                          knowledge. This would be a good and easy default.
-                    - requirement
+                have_good_formats:
+                    have_human_and_agent_friendly_input_format:
+                        - description: In the ECS framework this is the entity-first format.
+                        - requirement:
+                            priority: 0.9
+                    have_analysis_friendly_ingested_format:
+                        - description: >
+                            In the ECS framework this is the component-first format.
+                        - requirement:
+                            priority: 0.9
+                    export_infrastructure_to_wiki:
+                        - description: >
+                            Wikis are a very common and readable way of documenting
+                            knowledge. This would be a good and easy default.
+                        - requirement
+                transform_between_formats:
+                    data:
+                        - requirement:
+                            priority: 0.9
+                    transform_between_entity_first_and_component_first:
+                        - requirement:
+                            priority: 0.9
         help_improve_the_quality_of_system_designs:
             data:
                 - requirement
@@ -190,12 +205,19 @@ iacs:
             data:
                 - requirement
             provide_a_guided_process_for_developing_solutions:
-                - description: >
-                      Steps considered so far:
-                          - Hierarchical requirements
-                          - categorize requirements
-                          - convert functional requirements into systems
-                - requirement: constraint
+                data:
+                    - description: >
+                        Steps considered so far:
+                            - Hierarchical requirements
+                            - categorize requirements
+                            - convert functional requirements into systems
+                    - requirement: constraint
+                provide_functionality_for_prioritizing:
+                    - description: >
+                        We desperately need this in order to use it on development
+                        and continue making progress.
+                    - requirement:
+                        priority: 1.0
             facilitate_compatibility_with_agents:
                 - requirement: constraint
             facilitate_compatibility_with_terraform:
@@ -1074,6 +1096,40 @@ audit_system:
     builtin_audits:
         data:
             - description: Default audits provided by iacs.
+        prioritization_audit:
+            data:
+                - description: >
+                    Identify the most-impactful structure to work on. May include other
+                    audits as subaudits.
+            generate_effort_priority_matrix:
+                define_metrics:
+                    define_requirements:
+                        define_priority:
+                            raw_priority:
+                                - description: >
+                                    Input priority for a given requirement, with no
+                                    context.
+                            mean_ancestor_priority:
+                                - description: >
+                                    The mean of priority for all ancestors. Try
+                                    geometric mean.
+                            ranked_ancestor_priority:
+                                - description: >
+                                    Walk the solution tree and choose the highest
+                                    priority path each time, and rank based on that.
+                    define_solutions:
+                        make_child_requirements_solutions:
+                        define_effort:
+                            raw_effort:
+                                - description: >
+                                    Input effort for a given solution, with no context.
+                            mean_descendant_effort:
+                                - description: >
+                                    The mean of effort for all descendants.
+                            total_descendant_effort:
+                                - description: >
+                                    The sum of effort for all descendants.
+                calculate_metrics:
         requirement_coverage_audit:
             - description: >
                   Checks that requirements have implementing solutions.
