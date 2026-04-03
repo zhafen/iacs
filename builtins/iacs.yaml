@@ -1117,6 +1117,7 @@ audit_system:
                                 - description: >
                                     Walk the solution tree and choose the highest
                                     priority path each time, and rank based on that.
+                                    This is related to the stack rank in Agile.
                     define_solutions:
                         make_child_requirements_solutions:
                         define_effort:
