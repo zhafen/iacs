@@ -27,6 +27,7 @@ cat_happiness_device:
     data:
         - description: An all-in-one tool to make cats happy.
         - solution of: make_cats_happy
+        - system
     feeding_system:
         data:
             - solution of: 'make_cats_happy.feed_and_water_cats'
@@ -35,10 +36,20 @@ cat_happiness_device:
             - parent: task
             - solution of: 'make_cats_happy.feed_and_water_cats.feed_cats'
             - status: in progress
+            - effort:
+                value: 8
+            - effort:
+                value: 2
+                schedule: weekly
         water_cats:
             - description: The task to water the cats.
             - parent: task
             - solution of: water_cats
+            - effort:
+                value: 5
+            - effort:
+                value: 1
+                schedule: 2 days
     cleaning_system:
         - solution of: make_cats_happy.sift_cat_box
 

@@ -247,6 +247,28 @@ iacs_component:
             description: The entity that this solution targets (what is being solved).
             type: entity_ref
 
+    effort:
+        - description: >
+            Used to quantify the amount of human work for a solution to function.
+        - parent: value
+        - field:
+            value:
+                description: Quantification of work required.
+                type: float
+            unit:
+                description: >
+                    Units for the quantifications. Points refers to story points.
+                type: str
+                range: [points, hours]
+                default: points
+                nullable: false
+            schedule:
+                description: >
+                    How often the effort needs to be put in, i.e. the maintenance
+                    effort. When not provided, assumes a one-time effort (setup effort).
+                type: timedelta
+                default: null
+
     task:
         - description: >
             Indicates that an entity represents a task that needs to be completed,
