@@ -90,6 +90,15 @@ base_data_type:
             type: str
             default: str
             range: [str, epoch_time]
+    timedelta:
+        - description: Data type for differences in time.
+        - field:
+            value:
+                description: The value of the timedelta as a string, float, or int.
+            unit:
+                description: Unit for the timedelta.
+                type: str
+                default: seconds
 
 data_structure:
     data:
@@ -207,21 +216,26 @@ iacs_component:
             by the system design. Requirements should be traced to implementations.
         - parent: value
         - field:
-            value: value
-            description: The type of requirement.
-            type: str
-            range:
-                - functional
-                - quality
-                - constraint
-            default: functional
-        - field:
-            value: priority
-            description: >
-                The priority, with higher values corresponding to higher priority.
-            type: float
-            default: 0.5
-            range: [0, 1]
+            value:
+                description: The type of requirement.
+                type: str
+                range:
+                    - functional
+                    - quality
+                    - constraint
+                default: functional
+            priority:
+                description: >
+                    The priority, with higher values corresponding to higher priority.
+                type: float
+                default: 0.5
+                range: [0, 1]
+            schedule:
+                description: >
+                    How often the requirement needs to be satisfied. If null, the
+                    requirement needs to be satisfied on demand.
+                type: timedelta
+                default: null
 
     solution:
         - description: >
