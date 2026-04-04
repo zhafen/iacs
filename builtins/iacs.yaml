@@ -185,6 +185,9 @@ iacs:
                           Coming up with a series of steps to design infrastructure
                           that one then follows with the help of the code (or even
                           has an agent perform end to end) could be powerful.
+
+                          Our series of steps revolves around requirements and the
+                          systems that solve them.
                     - requirement
                 requirement_design_process:
                     - description: >
@@ -194,7 +197,7 @@ iacs:
                           until reaching atomic requirements, i.e. ones that cannot be
                           further divided.
                     - requirement
-                solution_design_process:
+                system_design_process:
                     - description: >
                           For each entity with a requirement component it must also
                           have a solution component. The requirements are prioritized
@@ -406,6 +409,14 @@ ecs_framework:
                         - requirement:
                               value: quality
                         - parent: have_good_ecs_formatting
+                    concisely_store_subtype_data:
+                        - description: >
+                            Frequently we will have a component type that is a subtype
+                            of the parent. In this case we are left with the choice to
+                            either have a separate table or have a column that
+                            differentiates them. We need to evaluate the pros and cons
+                            of each.
+                        - requirement
                 formatting_is_concise:
                     children_inherit_components_of_parents:
                         - requirement:
