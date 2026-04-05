@@ -168,6 +168,56 @@ def effort_sum(validated_registry: Registry) -> pd.DataFrame:
     return pd.concat(rows, ignore_index=True)
 
 
+def priority_product(validated_registry: Registry) -> pd.DataFrame:
+    """Compute the product of requirement priorities for all ancestor entities.
+
+    For each entity that has at least one ancestor with a requirement component,
+    multiplies the priority values of those ancestor requirements together.
+
+    Parameters
+    ----------
+    validated_registry : Registry
+        The validated registry.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns: entity_id, priority_product.  One row per entity that has
+        at least one ancestor with a requirement component.
+    """
+    if "requirement" not in validated_registry._components:
+        return pd.DataFrame(columns=["entity_id", "priority_product"])
+    if "parent" not in validated_registry._components:
+        return pd.DataFrame(columns=["entity_id", "priority_product"])
+
+    req_df = validated_registry._components["requirement"].to_pandas()
+    parent_df = validated_registry._components["parent"].to_pandas()
+
+    req_priority = req_df.set_index("entity_id")["priority"]
+
+    # Directed graph: parent -> child
+    G = nx.DiGraph()
+    G.add_edges_from(zip(parent_df["parent_id"], parent_df["entity_id"]))
+
+    entity_id_df = validated_registry._components["entity_id"].to_pandas()
+    all_entity_ids = entity_id_df["value"].tolist()
+
+    rows = []
+    for entity_id in all_entity_ids:
+        ancestors = nx.ancestors(G, entity_id) if entity_id in G else set()
+        req_ancestors = [a for a in ancestors if a in req_priority.index]
+        if not req_ancestors:
+            continue
+        product = 1.0
+        for ancestor_id in req_ancestors:
+            priority = req_priority[ancestor_id]
+            if pd.notna(priority):
+                product *= float(priority)
+        rows.append({"entity_id": entity_id, "priority_product": product})
+
+    return pd.DataFrame(rows, columns=["entity_id", "priority_product"])
+
+
 def derived_registry(registry: Registry, components_with_resolved_paths: dict) -> Registry:
     registry.update(components_with_resolved_paths)
     return registry
