@@ -30,9 +30,9 @@ from ..registry import Registry
 
 _BUILTIN_FILEPATH = "builtins.components"
 
-@extract_fields({"spine": ir.Table})
+@extract_fields({"entity_id": ir.Table})
 def components(registry: Registry) -> dict:
-    """Extract all component tables from the registry, including the spine.
+    """Extract all component tables from the registry, including entity_id_table.
 
     Parameters
     ----------
@@ -42,7 +42,7 @@ def components(registry: Registry) -> dict:
     Returns
     -------
     dict
-        A dict mapping component type names (including "spine") to ibis Tables.
+        A dict mapping component type names (including "entity_id_table") to ibis Tables.
     """
     return registry._components
 
@@ -50,7 +50,7 @@ def components(registry: Registry) -> dict:
 _METADATA_COLS = {"entity_id", "component_index", "modifier"}
 
 
-def entity_first_data(components: dict, spine: ir.Table) -> dict:
+def entity_first_data(components: dict, entity_id: ir.Table) -> dict:
     """Reconstruct the entity-centered nested dict from component tables.
 
     For each component type, groups rows by entity_id and serializes each row
@@ -63,7 +63,7 @@ def entity_first_data(components: dict, spine: ir.Table) -> dict:
     ----------
     components : dict
         Dict mapping component type names to ibis Tables, as returned by
-        ``components``. Must include a ``"spine"`` key.
+        ``components``. Must include an ``"entity_id"`` key.
 
     Returns
     -------
@@ -71,20 +71,25 @@ def entity_first_data(components: dict, spine: ir.Table) -> dict:
         A dict of the form ``{entity_key: [component, ...]}`` where each
         component is a string (tag) or a single-key dict.
     """
-    spine_df = spine.execute()
+    spine_df = entity_id.to_pandas()
+    user_rows = spine_df[~spine_df["filepath"].str.startswith("builtins")]
+    user_entity_ids = set(user_rows["value"].unique())
     id_to_key = (
-        spine_df.drop_duplicates("entity_id")
-        .set_index("entity_id")["entity_key"]
+        spine_df.drop_duplicates("value")
+        .set_index("value")["entity_key"]
         .to_dict()
     )
-    user_entity_ids = set(
-        spine_df[~spine_df["filepath"].str.startswith("builtins")]["entity_id"].unique()
+    id_to_filepath = (
+        spine_df.drop_duplicates("value")
+        .set_index("value")["filepath"]
+        .to_dict()
     )
 
-    result: dict[str, list] = {}
+    # {filepath: {entity_key: [(component_index, entry)]}}
+    result: dict[str, dict[str, list]] = {}
 
     for comp_type, table in components.items():
-        if comp_type == "spine":
+        if comp_type in ("entity_id", "component_type", "invalid_field"):
             continue
 
         df = table.execute()
@@ -92,11 +97,12 @@ def entity_first_data(components: dict, spine: ir.Table) -> dict:
             continue
 
         for _, row in df.iterrows():
-            entity_id = row["entity_id"]
-            if entity_id not in user_entity_ids:
+            eid = row["entity_id"]
+            if eid not in user_entity_ids:
                 continue
 
-            entity_key = id_to_key.get(entity_id, entity_id)
+            entity_key = id_to_key.get(eid, eid)
+            filepath = id_to_filepath.get(eid, "manifest.yaml")
             modifier = row.get("modifier")
             key = f"{comp_type} {modifier}" if pd.notna(modifier) and modifier else comp_type
 
@@ -110,34 +116,41 @@ def entity_first_data(components: dict, spine: ir.Table) -> dict:
             else:
                 entry = {key: fields}
 
-            result.setdefault(entity_key, []).append(
+            result.setdefault(filepath, {}).setdefault(entity_key, []).append(
                 (int(row["component_index"]), entry)
             )
 
     return {
-        ekey: [e for _, e in sorted(entries, key=lambda x: x[0])]
-        for ekey, entries in result.items()
+        fp: {
+            ekey: [e for _, e in sorted(entries, key=lambda x: x[0])]
+            for ekey, entries in entities.items()
+        }
+        for fp, entities in result.items()
     }
 
 
 def exported_manifest_filepaths(entity_first_data: dict, output_dir: str) -> list[str]:
-    """Save entity_first_data to a YAML file and return the saved filepath(s).
+    """Save entity_first_data to one YAML file per original source filepath.
 
     Parameters
     ----------
     entity_first_data : dict
-        The entity-centered structure, as returned by ``entity_first_data``.
+        Mapping of original filepath → entity dict, as returned by
+        ``entity_first_data``.
     output_dir : str
-        Directory to write the manifest YAML into.
+        Directory to write the manifest YAML files into.
 
     Returns
     -------
     list[str]
-        The saved filepaths.
+        The saved filepaths, sorted for determinism.
     """
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
-    filepath = out / "manifest.yaml"
-    with open(filepath, "w", encoding="utf-8") as f:
-        yaml.dump(entity_first_data, f, default_flow_style=False, allow_unicode=True)
-    return [str(filepath)]
+    saved = []
+    for source_filepath, entities in entity_first_data.items():
+        dest = out / Path(source_filepath).with_suffix(".yaml").name
+        with open(dest, "w", encoding="utf-8") as f:
+            yaml.dump(entities, f, default_flow_style=False, allow_unicode=True)
+        saved.append(str(dest))
+    return sorted(saved)

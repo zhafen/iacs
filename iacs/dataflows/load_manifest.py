@@ -233,7 +233,31 @@ def _add_component_pairs(
     elif isinstance(component, dict):
         key = next(iter(component))
         value = component[key]
-        if isinstance(value, dict):
+        if isinstance(value, list):
+            # List of component instances: each item is its own component instance.
+            # Items use sequential indices starting from the parent's index.
+            for j, item in enumerate(value):
+                item_prefix = f"{entity_path}[{index + j}]"
+                if isinstance(item, dict):
+                    for sub_key, sub_val in item.items():
+                        str_val = "" if sub_val is None else str(sub_val)
+                        result.append((f"{item_prefix}.{key}.{sub_key}", str_val))
+                else:
+                    str_val = "" if item is None else str(item)
+                    result.append((f"{item_prefix}.{key}", str_val))
+        elif isinstance(value, dict) and value and all(
+            isinstance(v, dict) for v in value.values()
+        ):
+            # Dict-of-dicts: each key→value pair is a separate component instance.
+            # The outer key becomes the "value" sub-field; the inner dict provides
+            # the remaining sub-fields.
+            for j, (inner_key, inner_dict) in enumerate(value.items()):
+                item_prefix = f"{entity_path}[{index + j}]"
+                result.append((f"{item_prefix}.{key}.value", inner_key))
+                for sub_key, sub_val in inner_dict.items():
+                    str_val = "" if sub_val is None else str(sub_val)
+                    result.append((f"{item_prefix}.{key}.{sub_key}", str_val))
+        elif isinstance(value, dict):
             # Component with sub-fields, e.g. {"requirement": {"priority": 1}}.
             for sub_key, sub_val in value.items():
                 str_val = "" if sub_val is None else str(sub_val)
@@ -363,27 +387,63 @@ def keyvalue_store(pathvalue_pairs: ir.Table) -> ir.Table:
     )
 
 
-def spine(keyvalue_store: ir.Table, csv_spine: ir.Table = None) -> ir.Table:
-    """Extract distinct component instances (the spine) from the key-value store,
-    then union with the CSV-sourced spine rows.
-
-    The YAML-derived rows come from ``keyvalue_store``; the CSV-derived rows
-    come from ``csv_spine``. Both sources share the same column schema so they
-    can be unioned directly.
+def entity_id_table(keyvalue_store: ir.Table, csv_spine: ir.Table = None) -> ir.Table:
+    """Build one row per entity from the key-value store and optional CSV spine.
 
     Returns
     -------
     ir.Table
-        Columns: entity_id, component_index, entity_key, component_type,
-        modifier, filepath, path.
+        Columns: value, path, alias, entity_key, filepath.
+        ``value`` is the entity hash (the entity_id); ``path`` is the full
+        entity_path; ``alias`` is the human-readable display ID (last two
+        dot-segments of the entity path, or just entity_key for top-level).
     """
-    yaml_spine = keyvalue_store.select(
-        "entity_id", "component_index", "entity_key", "component_type", "modifier",
-        "filepath", keyvalue_store.spine_path.name("path"),
+    yaml_entities = keyvalue_store.select(
+        "entity_id", "entity_key", "entity_path", "filepath"
+    ).distinct().to_pandas()
+    yaml_entities = yaml_entities.rename(columns={"entity_id": "value", "entity_path": "path"})
+
+    def compute_alias(row):
+        entity_path = row["path"]
+        entity_key = row["entity_key"]
+        sep = entity_path.find(":")
+        name_part = entity_path[sep + 1:] if sep != -1 else entity_path
+        parts = name_part.split(".")
+        return ".".join(parts[-2:]) if len(parts) >= 2 else entity_key
+
+    yaml_entities["alias"] = yaml_entities.apply(compute_alias, axis=1)
+    df = yaml_entities[["value", "path", "alias", "entity_key", "filepath"]]
+
+    if csv_spine is not None:
+        csv_df = csv_spine.to_pandas()
+        csv_entity_df = csv_df[["entity_id", "entity_key", "filepath", "path"]].drop_duplicates()
+        csv_entity_df = csv_entity_df.rename(columns={"entity_id": "value"})
+        csv_entity_df["alias"] = csv_entity_df["entity_key"]
+        csv_entity_df = csv_entity_df[["value", "path", "alias", "entity_key", "filepath"]]
+        df = pd.concat([df, csv_entity_df], ignore_index=True)
+
+    df = df[["value", "path", "alias", "entity_key", "filepath"]]
+    for col in ("value", "path", "alias", "entity_key"):
+        df[col] = df[col].astype(pd.StringDtype())
+    df["filepath"] = df["filepath"].astype(pd.StringDtype())
+    return ibis.memtable(df)
+
+
+def component_type_table(keyvalue_store: ir.Table, csv_spine: ir.Table = None) -> ir.Table:
+    """Build one row per component instance from the key-value store and optional CSV spine.
+
+    Returns
+    -------
+    ir.Table
+        Columns: entity_id, component_index, component_type, modifier.
+    """
+    yaml_ct = keyvalue_store.select(
+        "entity_id", "component_index", "component_type", "modifier"
     ).distinct()
     if csv_spine is None:
-        return yaml_spine
-    return yaml_spine.union(csv_spine)
+        return yaml_ct
+    csv_ct = csv_spine.select("entity_id", "component_index", "component_type", "modifier")
+    return yaml_ct.union(csv_ct)
 
 
 def component_tables(
@@ -440,12 +500,21 @@ def component_tables(
     return result
 
 
-def registry(spine: ir.Table, component_tables: dict[str, ir.Table]) -> Registry:
-    """Load the constituents of a registry into the registry object. The spine is used as the shared index for the registry, and the component tables are attached to it.
+def registry(
+    entity_id_table: ir.Table,
+    component_type_table: ir.Table,
+    component_tables: dict[str, ir.Table],
+) -> Registry:
+    """Load the constituents of a registry into the registry object.
 
     Parameters
     ----------
+    entity_id_table : ir.Table
+        One row per entity (hash, path, value, alias, entity_key, filepath).
+    component_type_table : ir.Table
+        One row per component instance (entity_id, component_index, component_type, modifier).
     component_tables : dict[str, ir.Table]
+        Per-component-type data tables.
 
     Returns
     -------
@@ -453,8 +522,12 @@ def registry(spine: ir.Table, component_tables: dict[str, ir.Table]) -> Registry
         A registry object containing the component tables.
     """
     conn = ibis.duckdb.connect()
-    conn.create_table("spine", spine.to_pandas(), overwrite=True)
-    components = {"spine": conn.table("spine")}
+    conn.create_table("entity_id", entity_id_table.to_pandas(), overwrite=True)
+    conn.create_table("component_type", component_type_table.to_pandas(), overwrite=True)
+    components = {
+        "entity_id": conn.table("entity_id"),
+        "component_type": conn.table("component_type"),
+    }
     for comp_type, table in component_tables.items():
         conn.create_table(comp_type, table.to_pandas(), overwrite=True)
         components[comp_type] = conn.table(comp_type)

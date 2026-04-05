@@ -1,6 +1,7 @@
 """Base class for iacs systems."""
 
 import importlib
+from pathlib import Path
 from types import ModuleType
 from typing import Any
 
@@ -16,14 +17,16 @@ class Architect:
     """Base class for iacs systems that operate on infrastructure data."""
 
     @classmethod
-    def from_manifest(cls, manifest: str | list[str]) -> "Architect":
+    def from_manifest(cls, manifest: str | Path | list[str | Path]) -> "Architect":
         """Create an Architect with a registry loaded and validated from a manifest.
 
         Args:
             manifest: A directory path (or list of paths) making up the manifest.
         """
-        if isinstance(manifest, str):
-            manifest = [manifest]
+        if isinstance(manifest, (str, Path)):
+            manifest = [str(manifest)]
+        else:
+            manifest = [str(p) for p in manifest]
         result = driver.Driver(
             {}, base_etl, adapter=base.DictResult()
         ).execute(["validated_registry"], inputs={"input_dir": manifest})
@@ -72,10 +75,37 @@ class Architect:
     def view(self):
         return self._registry.view
 
-    def execute(self, final_vars: list[str]) -> dict[str, Any]:
+    @property
+    def get(self):
+        return self._registry.get
+
+    def execute(self, final_vars: str | list[str], **inputs) -> dict[str, Any]:
+        """Execute DAG nodes and return their outputs.
+
+        Args:
+            final_vars: A node name, list of node names, or dataflow module
+                name (e.g. ``"export_manifest"``). When a dataflow name is
+                given the module is auto-loaded and all its outputs are run.
+            **inputs: Additional inputs forwarded to the Hamilton driver (e.g.
+                ``output_dir="..."``) to satisfy external-input nodes.
+        """
+        if isinstance(final_vars, str):
+            full_name = f"{_DATAFLOW_BASE_PACKAGE}.{final_vars}"
+            try:
+                module = importlib.import_module(full_name)
+                if module not in self._dataflows:
+                    self._dataflows.append(module)
+                    self._rebuild_driver()
+                final_vars = [
+                    v.name for v in self._driver.list_available_variables()
+                    if not v.is_external_input
+                ]
+            except ImportError:
+                final_vars = [final_vars]
+
         if not final_vars:
             return {}
-        return self._driver.execute(final_vars)
+        return self._driver.execute(final_vars, inputs=inputs or None)
 
     @property
     def outputs(self) -> list[str]:

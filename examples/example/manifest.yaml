@@ -2,15 +2,15 @@ make_cats_happy:
     data:
         - description: The mission of our cat-happiness device.
         - requirement:
-            priority: 1
+              priority: 1
     feed_and_water_cats:
         data:
             - description: Obviously.
             - requirement:
-                priority: 1
+                  priority: 1
         feed_cats:
             - requirement:
-                priority: 0.9
+                  priority: 0.9
             - alias: feed_cats
         water_cats:
             - requirement
@@ -18,7 +18,7 @@ make_cats_happy:
     sift_cat_box:
         - description: Unfortunately.
         - requirement:
-            priority: 0.8
+              priority: 0.8
     adore_cats:
         - description: Of course.
         - requirement
@@ -27,74 +27,98 @@ cat_happiness_device:
     data:
         - description: An all-in-one tool to make cats happy.
         - solution of: make_cats_happy
+        - system
     feeding_system:
         data:
-            - solution of: "make_cats_happy.feed_and_water_cats"
+            - description: >
+                The effort component at the top level accounts for a base level of
+                effort to put together the system.
+            - solution of: 'make_cats_happy.feed_and_water_cats'
+            - effort:
+                value: 2
         feed_cats:
             - description: The task to feed the cats.
             - parent: task
-            - solution of: "make_cats_happy.feed_and_water_cats.feed_cats"
+            - solution of: 'make_cats_happy.feed_and_water_cats.feed_cats'
             - status: in progress
+            - effort:
+                value: 8
+            - effort:
+                value: 2
+                schedule: weekly
         water_cats:
             - description: The task to water the cats.
             - parent: task
             - solution of: water_cats
+            - effort:
+                value: 5
+            - effort:
+                value: 1
+                schedule: 2 days
     cleaning_system:
         - solution of: make_cats_happy.sift_cat_box
 
 cat:
     - description: A data representation of a cat.
     - field:
-        value: name
-        description: The cat's name.
-        type: str
-        unique: True
+          value: name
+          description: The cat's name.
+          type: str
+          unique: True
     - field:
-        value: breed
-        description: The breed of the cat, e.g. orange.
-        type: str
+          value: breed
+          description: The breed of the cat, e.g. orange.
+          type: str
 
 sustenance:
     data:
         - description: An object that contributes to cat happiness.
         - field:
-            value: value
-            description: The quantity of the sustenance.
-            type: float
-            nullable: false
+              value:
+                  description: The quantity of the sustenance.
+                  type: float
+                  nullable: false
     food:
         data:
             - description: Cat food.
             - field:
-                value: brand
-                description: The brand of cat food.
-                type: str
-                default: shiny_sustenance
-            - field:
-                value: type
-                description: The type of cat food.
-                type: str
-                range: [wet, dry]
-                nullable: false
-                default: wet
+                  brand:
+                      type: str
+                      description: The brand of cat food.
+                      default: shiny_sustenance
+                  type:
+                      type: str
+                      description: The type of cat food.
+                      range: [wet, dry]
+                      nullable: false
+                      default: wet
         gourmet_food:
             - description: Especially good cat food.
+    alternate_food_component:
 
 cat_food_supply:
     shiny_sustenance:
-        - description: "Our supply of shiny sustenance brand cat food."
+        - description: 'Our supply of shiny sustenance brand cat food.'
         - food: 24
     furina:
-        - description: "Our supply of furina brand cat food."
+        - description: 'Our supply of furina brand cat food.'
         - food:
-            value: 32
+              value: 32
+              brand: furina
+              type: dry
+    mystery_meat:
+        - description: 'Our supply of eldritch cat food.'
+        - food:
+              brand: chellthulu
+              type: cosmic_horror
+
+cat_food_supply_list_format:
+    - description: Same as cat_food_supply, but written differently.
+    - food:
+          - 24
+          - value: 32
             brand: furina
             type: dry
-    mystery_meat:
-        - description: "Our supply of eldritch cat food."
-        - food:
-            brand: chellthulu
+          - brand: chellthulu
             type: cosmic_horror
-
-
-
+    - transformation of: cat_food_supply

@@ -25,31 +25,44 @@ pathvalue_pairs = pd.DataFrame(
     columns=["path", "value"],
 )
 
-spine = pd.DataFrame(
+entity_id_table = pd.DataFrame(
+    [
+        {
+            "value": dhash("examples/minimal/minimal.yaml:my_requirement"),
+            "path": "examples/minimal/minimal.yaml:my_requirement",
+            "alias": "my_requirement",
+            "entity_key": "my_requirement",
+            "filepath": "examples/minimal/minimal.yaml",
+        },
+        {
+            "value": dhash("examples/minimal/minimal.yaml:my_infrastructure"),
+            "path": "examples/minimal/minimal.yaml:my_infrastructure",
+            "alias": "my_infrastructure",
+            "entity_key": "my_infrastructure",
+            "filepath": "examples/minimal/minimal.yaml",
+        },
+    ]
+)
+
+component_type_table = pd.DataFrame(
     [
         {
             "entity_id": dhash("examples/minimal/minimal.yaml:my_requirement"),
             "component_index": 0,
-            "entity_key": "my_requirement",
             "component_type": "description",
             "modifier": None,
-            "path": "examples/minimal/minimal.yaml:my_requirement[0].description",
         },
         {
             "entity_id": dhash("examples/minimal/minimal.yaml:my_requirement"),
             "component_index": 2,
-            "entity_key": "my_requirement",
             "component_type": "solution",
             "modifier": None,
-            "path": "examples/minimal/minimal.yaml:my_requirement[2].solution",
         },
         {
             "entity_id": dhash("examples/minimal/minimal.yaml:my_infrastructure"),
             "component_index": 0,
-            "entity_key": "my_infrastructure",
             "component_type": "description",
             "modifier": None,
-            "path": "examples/minimal/minimal.yaml:my_infrastructure[0].description",
         },
     ]
 )

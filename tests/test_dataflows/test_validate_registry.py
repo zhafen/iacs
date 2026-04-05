@@ -265,3 +265,49 @@ class TestUpdatedComponents:
         validate_registry.updated_components(up, df, reg)
         after = reg._components["parent"].execute()
         pd.testing.assert_frame_equal(original_parent, after)
+
+
+# ---------------------------------------------------------------------------
+# validated_registry
+# ---------------------------------------------------------------------------
+
+_INVALID_COLS = ["entity_id", "component_index", "component_type", "field", "value", "error_type"]
+_INVALID_DTYPES = {
+    "entity_id": "str", "component_index": "int64", "component_type": "str",
+    "field": "str", "value": "str", "error_type": "str",
+}
+
+
+class TestValidatedRegistry:
+
+    def _empty_invalid_field(self):
+        return ibis.memtable(pd.DataFrame(columns=_INVALID_COLS).astype(_INVALID_DTYPES))
+
+    def test_no_violations_does_not_raise(self):
+        """Regression test: validated_registry must not raise when invalid_field is empty.
+
+        Previously, an empty ibis memtable created from a bare DataFrame (no dtypes)
+        caused DuckDB to see NULL-typed columns and raise IbisTypeError.
+        """
+        reg = make_registry({"description": [{"entity_id": "e1", "value": "hello"}]})
+        validated_comps = {"description": reg._components["description"]}
+        invalid_field = self._empty_invalid_field()
+        result = validate_registry.validated_registry(validated_comps, invalid_field, reg)
+        assert isinstance(result, Registry)
+
+    def test_no_violations_invalid_field_is_empty(self):
+        reg = make_registry({"description": [{"entity_id": "e1", "value": "hello"}]})
+        validated_comps = {"description": reg._components["description"]}
+        result = validate_registry.validated_registry(
+            validated_comps, self._empty_invalid_field(), reg
+        )
+        assert result._components["invalid_field"].execute().empty
+
+    def test_validated_components_are_stored(self):
+        reg = make_registry({"description": [{"entity_id": "e1", "value": "hello"}]})
+        validated_comps = {"description": reg._components["description"]}
+        result = validate_registry.validated_registry(
+            validated_comps, self._empty_invalid_field(), reg
+        )
+        df = result._components["description"].execute()
+        assert df.iloc[0]["entity_id"] == "e1"

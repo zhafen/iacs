@@ -117,39 +117,48 @@ keyvalue_store = pd.DataFrame(
         },
     ],
 )
-spine = pd.DataFrame(
+main_req_id = get_id("make_cats_happy")
+feed_cats_req_id = get_id("make_cats_happy.feed_and_water_cats.feed_cats")
+feed_cats_soln_id = get_id("cat_happiness_device.feeding_system.feed_cats")
+
+entity_id_table = pd.DataFrame(
     [
         {
-            "entity_id": (main_req_id := get_id("make_cats_happy")),
-            "component_index": 0,
+            "value": main_req_id,
+            "path": f"{filepath}:make_cats_happy",
+            "alias": "make_cats_happy",
             "entity_key": "make_cats_happy",
+            "filepath": filepath,
+        },
+        {
+            "value": feed_cats_req_id,
+            "path": f"{filepath}:make_cats_happy.feed_and_water_cats.feed_cats",
+            "alias": "feed_and_water_cats.feed_cats",
+            "entity_key": "feed_cats",
+            "filepath": filepath,
+        },
+    ]
+)
+
+component_type_table = pd.DataFrame(
+    [
+        {
+            "entity_id": main_req_id,
+            "component_index": 0,
             "component_type": "description",
             "modifier": None,
-            "path": f"{filepath}:make_cats_happy.data[0].description",
         },
         {
-            "entity_id": (
-                feed_cats_req_id := get_id(
-                    "make_cats_happy.feed_and_water_cats.feed_cats"
-                )
-            ),
+            "entity_id": feed_cats_req_id,
             "component_index": 1,
-            "entity_key": "feed_cats",
             "component_type": "alias",
             "modifier": None,
-            "path": f"{filepath}:make_cats_happy.feed_and_water_cats.feed_cats[1].alias",
         },
         {
-            "entity_id": (
-                feed_cats_soln_id := get_id(
-                    "cat_happiness_device.feeding_system.feed_cats"
-                )
-            ),
+            "entity_id": feed_cats_soln_id,
             "component_index": 2,
-            "entity_key": "feed_cats",
             "component_type": "solution",
             "modifier": "of",
-            "path": f"{filepath}:cat_happiness_device.feeding_system.feed_cats[2].solution of",
         },
     ]
 )
@@ -208,6 +217,46 @@ component_tables = {
                 "value": "breed",
                 "description": "The breed of the cat, e.g. orange.",
                 "type": "str",
+            },
+        ]
+    ),
+    "food": pd.DataFrame(
+        [
+            {
+                "entity_id": get_id("cat_food_supply.shiny_sustenance"),
+                "component_index": 1,
+                "value": 24.0,
+            },
+            {
+                "entity_id": get_id("cat_food_supply.furina"),
+                "component_index": 1,
+                "value": 32.0,
+                "brand": "furina",
+                "type": "dry",
+            },
+            {
+                "entity_id": get_id("cat_food_supply.mystery_meat"),
+                "component_index": 1,
+                "brand": "chellthulu",
+                "type": "cosmic_horror",
+            },
+            {
+                "entity_id": get_id("cat_food_supply_list_format"),
+                "component_index": 1,
+                "value": 24.0,
+            },
+            {
+                "entity_id": get_id("cat_food_supply_list_format"),
+                "component_index": 2,
+                "value": 32.0,
+                "brand": "furina",
+                "type": "dry",
+            },
+            {
+                "entity_id": get_id("cat_food_supply_list_format"),
+                "component_index": 3,
+                "brand": "chellthulu",
+                "type": "cosmic_horror",
             },
         ]
     ),

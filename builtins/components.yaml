@@ -25,21 +25,18 @@ component:
         data:
             - alias: relation
             - description: >
-                A component that describes a relation between two entities. Which is
-                ((relation.source)) and which is ((relation.value)) is arbitrary.
+                A component that describes a relation between two entities: the owner
+                entity and the entity specified by value.
             - field:
-                value: source
-                description: An entity related to the target entity.
-            - field:
-                value: target
-                description: An entity related to the source entity.
+                value:
+                    description: The other end of the relation.
+                    type: entity_ref
         directed_relation:
             data:
                 - alias: directed_relation
-                - description: A relation where direction matters.
-                - schema:
-                    source: The originating entity.
-                    target: The target entity.
+                - description: >
+                    A relation where direction matters. The owner entity is the source
+                    and the entity specified by value is the target.
             parent:
                 - description: The target entity is the parent of the source entity.
 
@@ -71,6 +68,12 @@ base_data_type:
             - alias: categorical
             - description: Data type for a limited set of categories.
             - todo: Is this redundant with [field.range]?
+        entity_ref:
+            - alias: entity_ref
+            - description: >
+                A user-provided string that references an entity by providing a
+                partial or full path. Resolved to an entity_id by substring
+                matching against the entity's full path.
     timestamp:
         - description: Timestamp data type.
         - field:
@@ -87,6 +90,15 @@ base_data_type:
             type: str
             default: str
             range: [str, epoch_time]
+    timedelta:
+        - description: Data type for differences in time.
+        - field:
+            value:
+                description: The value of the timedelta as a string, float, or int.
+            unit:
+                description: Unit for the timedelta.
+                type: str
+                default: seconds
 
 data_structure:
     data:
@@ -178,9 +190,9 @@ iacs_component:
         - field:
             value: value
             description: >
-                The entity_id. Generated from ((entity_id.entity_path)), but can be
-                overwritten.
+                The entity_id.
             type: str
+        - todo: Determine how we want to calculate the entity_id.
         - field:
             value: path
             description: >
@@ -204,27 +216,58 @@ iacs_component:
             by the system design. Requirements should be traced to implementations.
         - parent: value
         - field:
-            value: value
-            description: The type of requirement.
-            type: str
-            range:
-                - functional
-                - quality
-                - constraint
-            default: functional
-        - field:
-            value: priority
-            description: >
-                The priority, with higher values corresponding to higher priority.
-            type: float
-            default: 0.5
-            range: [0, 1]
+            value:
+                description: The type of requirement.
+                type: str
+                range:
+                    - functional
+                    - quality
+                    - constraint
+                default: functional
+            priority:
+                description: >
+                    The priority, with higher values corresponding to higher priority.
+                type: float
+                default: 0.5
+                range: [0, 1]
+            schedule:
+                description: >
+                    How often the requirement needs to be satisfied. If null, the
+                    requirement needs to be satisfied on demand.
+                type: timedelta
+                default: null
 
     solution:
         - description: >
             A solution relation is used to show a requirement is fulfilled.
             The ((solution.source)) solves the ((solution)).requirement.
         - parent: directed_relation
+        - field:
+            value: target
+            description: The entity that this solution targets (what is being solved).
+            type: entity_ref
+
+    effort:
+        - description: >
+            Used to quantify the amount of human work for a solution to function.
+        - parent: value
+        - field:
+            value:
+                description: Quantification of work required.
+                type: float
+            unit:
+                description: >
+                    Units for the quantifications. Points refers to story points.
+                type: str
+                range: [points, hours]
+                default: points
+                nullable: false
+            schedule:
+                description: >
+                    How often the effort needs to be put in, i.e. the maintenance
+                    effort. When not provided, assumes a one-time effort (setup effort).
+                type: timedelta
+                default: null
 
     task:
         - description: >

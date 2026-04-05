@@ -107,21 +107,40 @@ class TestRawEntityFirstData:
 # registry
 # ---------------------------------------------------------------------------
 
+def _make_entity_id_table():
+    df = pd.DataFrame([{
+        "value": "abc", "path": "test:e", "alias": "e",
+        "entity_key": "e", "filepath": "test",
+    }])
+    return ibis.memtable(df)
+
+
+def _make_component_type_table():
+    df = pd.DataFrame([{
+        "entity_id": "abc", "component_index": 0,
+        "component_type": "description", "modifier": pd.NA,
+    }])
+    df["modifier"] = df["modifier"].astype(pd.StringDtype())
+    return ibis.memtable(df)
+
+
 class TestRegistry:
 
     def test_returns_registry_instance(self):
-        spine = ibis.memtable(pd.DataFrame([{"entity_id": 1}]))
+        eid = _make_entity_id_table()
+        ct = _make_component_type_table()
         comps = {"description": ibis.memtable(pd.DataFrame([{"entity_id": "e1", "value": "Hello"}]))}
-        result = load_manifest.registry(spine, comps)
+        result = load_manifest.registry(eid, ct, comps)
         assert isinstance(result, Registry)
 
     def test_registry_has_component_types(self):
-        spine = ibis.memtable(pd.DataFrame([{"entity_id": 1}]))
+        eid = _make_entity_id_table()
+        ct = _make_component_type_table()
         comps = {
             "description": ibis.memtable(pd.DataFrame([{"entity_id": "e1", "value": "Hello"}])),
             "task": ibis.memtable(pd.DataFrame([{"entity_id": "e1"}])),
         }
-        result = load_manifest.registry(spine, comps)
+        result = load_manifest.registry(eid, ct, comps)
         assert "description" in result.component_types
         assert "task" in result.component_types
 
@@ -244,103 +263,12 @@ class TestPathvaluePairs:
 
 
 # ---------------------------------------------------------------------------
-# spine
+# entity_id_table and component_type_table
 # ---------------------------------------------------------------------------
 
 def _pvp(pairs: list[tuple[str, str]]) -> ibis.Table:
     """Create a pathvalue_pairs ibis Table from (path, value) tuples."""
     return ibis.memtable(pd.DataFrame(pairs, columns=["path", "value"]))
-
-
-class TestSpine:
-
-    def _call(self, pairs):
-        kvs = load_manifest.keyvalue_store(_pvp(pairs))
-        return load_manifest.spine(kvs)
-
-    def test_returns_ibis_table(self):
-        result = self._call([("my_task[0].description", "A task.")])
-        assert isinstance(result, ibis.Table)
-
-    def test_has_required_columns(self):
-        result = self._call([("my_task[0].description", "A task.")])
-        for col in [
-            "entity_id", "component_index", "entity_key",
-            "component_type", "modifier", "filepath", "path",
-        ]:
-            assert col in result.columns
-
-    def test_flat_entity_spine_row(self):
-        """Flat entity path produces correct spine row."""
-        spine = self._call([("my_task[0].description", "A task.")])
-        df = spine.to_pandas()
-        row = df[df["path"] == "my_task[0].description"].iloc[0]
-        assert row["entity_id"] == dhash("my_task")
-        assert row["component_index"] == 0
-        assert row["entity_key"] == "my_task"
-        assert row["component_type"] == "description"
-        assert row["modifier"] is None or pd.isna(row["modifier"])
-
-    def test_tag_component(self):
-        """Bare-string tag produces a spine row with the tag name as component_type."""
-        spine = self._call([("my_task[0].requirement", "")])
-        df = spine.to_pandas()
-        assert "my_task[0].requirement" in df["path"].values
-        row = df[df["path"] == "my_task[0].requirement"].iloc[0]
-        assert row["component_type"] == "requirement"
-
-    def test_modifier_extracted(self):
-        """'solution of' produces component_type='solution', modifier='of'."""
-        spine = self._call([("entity[0].solution of", "other")])
-        df = spine.to_pandas()
-        row = df[df["path"] == "entity[0].solution of"].iloc[0]
-        assert row["component_type"] == "solution"
-        assert row["modifier"] == "of"
-
-    def test_deduplication_multi_field(self):
-        """Multiple paths with the same entity/index/type produce one spine row."""
-        pairs = [
-            ("cat[0].field.name", "whiskers"),
-            ("cat[0].field.value", "The cat's name."),
-            ("cat[0].field.type", "str"),
-        ]
-        spine = self._call(pairs)
-        df = spine.to_pandas()
-        field_rows = df[df["component_type"] == "field"]
-        assert len(field_rows) == 1
-        assert field_rows.iloc[0]["path"] == "cat[0].field"
-
-    def test_entity_key_is_last_path_segment(self):
-        """entity_key is the last dot-separated segment of the entity path."""
-        spine = self._call([("outer.inner[0].description", "Hi.")])
-        df = spine.to_pandas()
-        row = df.iloc[0]
-        assert row["entity_key"] == "inner"
-        assert row["entity_id"] == dhash("outer.inner")
-
-    def test_nested_entity_strips_data_suffix(self):
-        """entity.data[N].key → entity_path='entity', entity_key='entity'."""
-        spine = self._call([("parent.data[0].description", "A parent.")])
-        df = spine.to_pandas()
-        row = df.iloc[0]
-        assert row["entity_id"] == dhash("parent")
-        assert row["entity_key"] == "parent"
-
-    def test_file_prefixed_path(self):
-        """File-prefixed paths produce entity_ids that include the file prefix."""
-        spine = self._call([("file.yaml:my_entity[0].description", "Hi.")])
-        df = spine.to_pandas()
-        row = df.iloc[0]
-        assert row["entity_id"] == dhash("file.yaml:my_entity")
-        assert row["entity_key"] == "my_entity"
-        assert row["filepath"] == "file.yaml"
-
-    def test_filepath_null_without_prefix(self):
-        """Paths without a file prefix produce a NULL filepath."""
-        spine = self._call([("my_entity[0].description", "Hi.")])
-        df = spine.to_pandas()
-        row = df.iloc[0]
-        assert row["filepath"] is None or pd.isna(row["filepath"])
 
 
 # ---------------------------------------------------------------------------
@@ -623,27 +551,6 @@ class TestCsvSpine:
         df = result.to_pandas()
         file_id = next(iter(raw.keys()))
         assert df.iloc[0]["filepath"] == file_id
-
-
-# ---------------------------------------------------------------------------
-# spine union with csv_spine
-# ---------------------------------------------------------------------------
-
-class TestSpineWithCsvSpine:
-
-    def test_spine_includes_csv_rows(self, tmp_path):
-        """When csv_spine is provided, its rows are unioned into the spine."""
-        csv_file = tmp_path / "task.csv"
-        csv_file.write_text("name\nalpha\n")
-        raw = load_manifest.raw_csv_data([str(csv_file)])
-        csv_sp = load_manifest.csv_spine(raw)
-
-        pairs = [("file.yaml:entity[0].description", "Hi.")]
-        pvp = ibis.memtable(pd.DataFrame(pairs, columns=["path", "value"]))
-        kvs = load_manifest.keyvalue_store(pvp)
-        result = load_manifest.spine(kvs, csv_sp)
-        df = result.to_pandas()
-        assert len(df) == 2  # one YAML row + one CSV row
 
 
 # ---------------------------------------------------------------------------
