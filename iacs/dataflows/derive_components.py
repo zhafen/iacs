@@ -110,6 +110,64 @@ def entity_depth(validated_registry: Registry) -> pd.DataFrame:
     return pd.DataFrame(list(depths.items()), columns=["entity_id", "depth"])
 
 
+def effort_sum(validated_registry: Registry) -> pd.DataFrame:
+    """Sum effort for each entity and all its descendants, grouped by schedule and unit.
+
+    For each entity that either has effort itself or is an ancestor of one that
+    does, sums all effort values across the subtree rooted at that entity.
+    Results are grouped by (schedule, unit).
+
+    Parameters
+    ----------
+    validated_registry : Registry
+        The validated registry.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns: entity_id, schedule, unit, value.  One row per
+        (entity_id, schedule, unit) combination.
+    """
+    if "effort" not in validated_registry._components:
+        return pd.DataFrame(columns=["entity_id", "schedule", "unit", "value"])
+
+    effort_df = validated_registry._components["effort"].to_pandas()
+    effort_df["schedule"] = effort_df["schedule"].replace("", pd.NA)
+    parent_df = validated_registry._components["parent"].to_pandas()
+
+    # Directed graph: parent -> child
+    G = nx.DiGraph()
+    G.add_edges_from(zip(parent_df["parent_id"], parent_df["entity_id"]))
+
+    entities_with_effort = set(effort_df["entity_id"])
+    # Only compute for entities that have effort somewhere in their subtree
+    candidate_entities = {
+        ancestor
+        for eid in entities_with_effort
+        for ancestor in (nx.ancestors(G, eid) if eid in G else set())
+    } | entities_with_effort
+
+    rows = []
+    for entity_id in candidate_entities:
+        subtree = (nx.descendants(G, entity_id) if entity_id in G else set()) | {entity_id}
+        sub_effort = effort_df[effort_df["entity_id"].isin(subtree)]
+        if sub_effort.empty:
+            continue
+        grouped = (
+            sub_effort
+            .groupby(["schedule", "unit"], dropna=False)["value"]
+            .sum()
+            .reset_index()
+        )
+        grouped.insert(0, "entity_id", entity_id)
+        rows.append(grouped)
+
+    if not rows:
+        return pd.DataFrame(columns=["entity_id", "schedule", "unit", "value"])
+
+    return pd.concat(rows, ignore_index=True)
+
+
 def derived_registry(registry: Registry, components_with_resolved_paths: dict) -> Registry:
     registry.update(components_with_resolved_paths)
     return registry

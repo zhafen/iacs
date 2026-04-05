@@ -30,7 +30,12 @@ cat_happiness_device:
         - system
     feeding_system:
         data:
+            - description: >
+                The effort component at the top level accounts for a base level of
+                effort to put together the system.
             - solution of: 'make_cats_happy.feed_and_water_cats'
+            - effort:
+                value: 2
         feed_cats:
             - description: The task to feed the cats.
             - parent: task
