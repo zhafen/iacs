@@ -10,8 +10,8 @@ def get_id(path: str) -> str:
 
 priority_product = pd.DataFrame([
     {"entity_id": get_id("make_cats_happy.feed_and_water_cats"),            "priority_product": 1.0},
-    {"entity_id": get_id("make_cats_happy.feed_and_water_cats.feed_cats"),  "priority_product": 1.0},
-    {"entity_id": get_id("make_cats_happy.sift_cat_box"),                   "priority_product": 1.0},
+    {"entity_id": get_id("make_cats_happy.feed_and_water_cats.feed_cats"),  "priority_product": 0.9},
+    {"entity_id": get_id("make_cats_happy.sift_cat_box"),                   "priority_product": 0.8},
 ])
 
 effort_sum = pd.DataFrame([

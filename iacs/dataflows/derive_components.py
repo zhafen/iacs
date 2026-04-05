@@ -169,10 +169,11 @@ def effort_sum(validated_registry: Registry) -> pd.DataFrame:
 
 
 def priority_product(validated_registry: Registry) -> pd.DataFrame:
-    """Compute the product of requirement priorities for all ancestor entities.
+    """Compute the product of requirement priorities for an entity and its ancestors.
 
-    For each entity that has at least one ancestor with a requirement component,
-    multiplies the priority values of those ancestor requirements together.
+    For each entity that has a requirement component itself or has at least one
+    ancestor with a requirement component, multiplies together the priority values
+    of the entity and all its requirement ancestors.
 
     Parameters
     ----------
@@ -183,7 +184,7 @@ def priority_product(validated_registry: Registry) -> pd.DataFrame:
     -------
     pd.DataFrame
         Columns: entity_id, priority_product.  One row per entity that has
-        at least one ancestor with a requirement component.
+        a requirement component or at least one ancestor with a requirement component.
     """
     if "requirement" not in validated_registry._components:
         return pd.DataFrame(columns=["entity_id", "priority_product"])
@@ -205,12 +206,14 @@ def priority_product(validated_registry: Registry) -> pd.DataFrame:
     rows = []
     for entity_id in all_entity_ids:
         ancestors = nx.ancestors(G, entity_id) if entity_id in G else set()
-        req_ancestors = [a for a in ancestors if a in req_priority.index]
-        if not req_ancestors:
+        req_nodes = [a for a in ancestors if a in req_priority.index]
+        if entity_id in req_priority.index:
+            req_nodes.append(entity_id)
+        if not req_nodes:
             continue
         product = 1.0
-        for ancestor_id in req_ancestors:
-            priority = req_priority[ancestor_id]
+        for req_id in req_nodes:
+            priority = req_priority[req_id]
             if pd.notna(priority):
                 product *= float(priority)
         rows.append({"entity_id": entity_id, "priority_product": product})
