@@ -1,0 +1,3 @@
+# architect
+
+::: iacs.architect
