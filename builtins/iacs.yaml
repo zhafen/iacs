@@ -759,7 +759,7 @@ ecs_framework:
                                 - description: >
                                     The exception to the above rule about
                                     ((dictionary_component_value)) is when
-                                    ((component_type)) has ((schema)) as an ancestore.
+                                    ((component_type)) has ((schema)) as an ancestor.
                                     In such a case, the dictionary defines the schema,
                                     with a key per column.
         component_first:
@@ -781,7 +781,10 @@ ecs_framework:
                         in the ((spine)) component. There are a few possible
                         formulations, each with their own restrictions.
                 entity_path:
-                    - description: The 
+                    - description: >
+                        The entity ID formed by joining ancestor entity keys
+                        with dots to produce a unique, path-like identifier,
+                        e.g. "parent.child.grandchild".
             component_table:
                 data:
                     - description: >
