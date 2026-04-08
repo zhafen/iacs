@@ -32,10 +32,16 @@ iacs:
                                   We don't want to duplicate other IaC code if
                                   possible.
                             - requirement
+                            - effort:
+                                value: 13
+                                unit: points
                         parse_code_languages:
                             - description: >
                                   Code such as Python also provides clear definitions.
                             - requirement
+                            - effort:
+                                value: 8
+                                unit: points
                         parse_natural_language:
                             - id: parse_natural_language
                             - description: >
@@ -46,6 +52,9 @@ iacs:
                                   atomic facts, and mapping them to canonical entity and
                                   component representations.
                             - requirement
+                            - effort:
+                                value: 21
+                                unit: points
                 compatible_with_version_control:
                     - description: >
                           Version control is essential for reliability.
@@ -122,6 +131,9 @@ iacs:
                             Wikis are a very common and readable way of documenting
                             knowledge. This would be a good and easy default.
                         - requirement
+                        - effort:
+                            value: 5
+                            unit: points
                 transform_between_formats:
                     data:
                         - requirement:
@@ -129,6 +141,9 @@ iacs:
                     transform_between_entity_first_and_component_first:
                         - requirement:
                             priority: 0.9
+                        - effort:
+                            value: 8
+                            unit: points
         help_improve_the_quality_of_system_designs:
             data:
                 - requirement
@@ -221,12 +236,24 @@ iacs:
                         and continue making progress.
                     - requirement:
                         priority: 1.0
+                    - effort:
+                        value: 8
+                        unit: points
             facilitate_compatibility_with_agents:
                 - requirement: constraint
+                - effort:
+                    value: 8
+                    unit: points
             facilitate_compatibility_with_terraform:
                 - requirement: constraint
+                - effort:
+                    value: 13
+                    unit: points
             facilitate_compatibility_with_relational_databases:
                 - requirement: constraint
+                - effort:
+                    value: 8
+                    unit: points
 
     iacs_meta_discussion:
         data:
@@ -499,6 +526,9 @@ ecs_framework:
                       type has its own table (DataFrame) with a multi-index of
                       (entity_id, component_index).
                 - system
+                - effort:
+                    value: 5
+                    unit: points
             init:
                 - description: Initialize from a dict of component DataFrames.
                 - input:
@@ -533,6 +563,9 @@ ecs_framework:
                       Converts between entity-first format (for human editing)
                       and component-first format (Registry, for querying).
                 - system
+                - effort:
+                    value: 8
+                    unit: points
             read_entity_first:
                 - description: >
                       Parse entity-first data (dict) into a flat DataFrame with
@@ -584,6 +617,9 @@ ecs_framework:
                     components.
                 - system
                 - todo: Choose between DAG-based and custom approach and implement.
+                - effort:
+                    value: 13
+                    unit: points
             required_functionality:
                 load_data:
                 get_ids_from_path:
@@ -793,6 +829,9 @@ ecs_framework:
                           and extract facts implicitly, returning structured output
                           (e.g. via Instructor + Pydantic).
                     - solution of: parse_natural_language
+                    - effort:
+                        value: 5
+                        unit: points
                 pro_simplicity:
                     - description: No pipeline to maintain; one call handles all steps.
                     - weight: 0.8
@@ -819,6 +858,9 @@ ecs_framework:
                           facts to the ECS schema. Tools like Graphiti or a custom
                           extraction prompt can handle the first pass.
                     - solution of: parse_natural_language
+                    - effort:
+                        value: 8
+                        unit: points
                 pro_debuggable:
                     - description: >
                           Separating extraction from schema mapping makes it easy to
@@ -841,6 +883,9 @@ ecs_framework:
                           coreferences incrementally. Well-suited for conversational
                           or multi-document inputs.
                     - solution of: parse_natural_language
+                    - effort:
+                        value: 13
+                        unit: points
                 pro_natural_fit_with_registry:
                     - description: >
                           The iacs registry is already the canonical entity store;
@@ -1112,6 +1157,9 @@ audit_system:
                 - description: >
                     Identify the most-impactful structure to work on. May include other
                     audits as subaudits.
+                - effort:
+                    value: 8
+                    unit: points
             generate_effort_priority_matrix:
                 define_metrics:
                     define_requirements:
@@ -1146,19 +1194,34 @@ audit_system:
             - description: >
                   Checks that requirements have implementing solutions.
                   Flags requirements missing implementations.
+            - effort:
+                value: 3
+                unit: points
         traceability_audit:
             - description: >
                   Checks that components trace back to requirements.
                   Flags orphan infrastructure with no motivating requirement.
+            - effort:
+                value: 3
+                unit: points
         definition_audit:
             - description: >
                   Validates that component instances conform to their schemas.
                   Flags invalid or malformed definitions.
+            - effort:
+                value: 5
+                unit: points
         connectivity_audit:
             - description: >
                   Checks that all infrastructure is connected to the main
                   solution. Flags siloed or disconnected components.
+            - effort:
+                value: 5
+                unit: points
         todo_audit:
             - description: >
                   Reports on outstanding todos. Can flag incomplete items
                   or items past a deadline.
+            - effort:
+                value: 2
+                unit: points
