@@ -121,6 +121,27 @@ class TestLoadDataflow:
             a.load_dataflow("nonexistent")
 
 
+class TestFromManifestRunsDeriveComponents:
+    def test_derive_components_runs_on_from_manifest(self):
+        """derive_components should run automatically during from_manifest."""
+        from unittest.mock import patch
+        from hamilton import driver as hamilton_driver
+
+        executed_vars = []
+        original_execute = hamilton_driver.Driver.execute
+
+        def capture_execute(self, final_vars, **kwargs):
+            executed_vars.extend(final_vars)
+            return original_execute(self, final_vars, **kwargs)
+
+        with patch.object(hamilton_driver.Driver, "execute", capture_execute):
+            Architect.from_manifest("examples/example")
+
+        assert "derived_registry" in executed_vars, (
+            "derive_components.derived_registry was not executed during from_manifest"
+        )
+
+
 class TestArchitectUX:
     """This class tests Architect as we expect to use it."""
 

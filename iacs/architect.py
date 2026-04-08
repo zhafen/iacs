@@ -29,8 +29,8 @@ class Architect:
             manifest = [str(p) for p in manifest]
         result = driver.Driver(
             {}, base_etl, adapter=base.DictResult()
-        ).execute(["validated_registry"], inputs={"input_dir": manifest})
-        return cls(result["validated_registry"])
+        ).execute(["derived_registry"], inputs={"input_dir": manifest})
+        return cls(result["derived_registry"])
 
     def __init__(self, registry: Registry):
         self._registry = registry
