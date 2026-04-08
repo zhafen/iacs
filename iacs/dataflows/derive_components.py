@@ -168,6 +168,58 @@ def effort_sum(validated_registry: Registry) -> pd.DataFrame:
     return pd.concat(rows, ignore_index=True)
 
 
+def effort_total(effort_sum: pd.DataFrame, effort_time_period: str = "28 days") -> pd.DataFrame:
+    """Convert effort_sum into a single total effort value per entity for a given time period.
+
+    One-time efforts (no schedule) are counted once. Recurring efforts are
+    multiplied by how many times they occur within ``effort_time_period``.
+    All values are summed across schedules and units into a single number per entity.
+
+    Parameters
+    ----------
+    effort_sum : pd.DataFrame
+        Output of :func:`effort_sum`: columns entity_id, schedule, unit, value.
+    effort_time_period : str
+        Duration string for the time window accepted by ``pd.Timedelta``,
+        e.g. ``"28 days"`` or ``"90 days"``. Defaults to ``"28 days"`` (4 weeks).
+        Common schedule aliases ("weekly", "daily", "monthly") are also accepted
+        as schedule values inside ``effort_sum``.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns: entity_id, value. One row per entity with total effort over the period.
+    """
+    if effort_sum.empty:
+        return pd.DataFrame(columns=["entity_id", "value"])
+
+    time_period = pd.Timedelta(effort_time_period)
+
+    _SCHEDULE_ALIASES = {"weekly": "7 days", "daily": "1 day", "monthly": "30 days"}
+
+    def _parse_schedule(schedule):
+        if pd.isna(schedule):
+            return None
+        s = str(schedule).strip().lower()
+        s = _SCHEDULE_ALIASES.get(s, s)
+        return pd.Timedelta(s)
+
+    df = effort_sum.copy()
+    df["_period"] = df["schedule"].apply(_parse_schedule)
+    df["_multiplier"] = df["_period"].apply(
+        lambda p: (time_period / p) if not pd.isna(p) else 1.0
+    )
+    df["_weighted"] = df["value"] * df["_multiplier"]
+
+    result = (
+        df.groupby("entity_id")["_weighted"]
+        .sum()
+        .reset_index()
+        .rename(columns={"_weighted": "value"})
+    )
+    return result
+
+
 def priority_product(validated_registry: Registry) -> pd.DataFrame:
     """Compute the product of requirement priorities for an entity and its ancestors.
 

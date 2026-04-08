@@ -14,6 +14,13 @@ priority_product = pd.DataFrame([
     {"entity_id": get_id("make_cats_happy.sift_cat_box"),                   "priority_product": 0.8},
 ])
 
+effort_total = pd.DataFrame([
+    {"entity_id": get_id("cat_happiness_device.feeding_system.feed_cats"),  "value": 16.0},
+    {"entity_id": get_id("cat_happiness_device.feeding_system.water_cats"), "value": 19.0},
+    {"entity_id": get_id("cat_happiness_device.feeding_system"),            "value": 37.0},
+    {"entity_id": get_id("cat_happiness_device"),                           "value": 37.0},
+])
+
 effort_sum = pd.DataFrame([
     {"entity_id": get_id("cat_happiness_device.feeding_system.feed_cats"), "value": 8.0},
     {"entity_id": get_id("cat_happiness_device.feeding_system.feed_cats"), "value": 2.0, "schedule": "weekly"},
