@@ -91,14 +91,17 @@ base_data_type:
             default: str
             range: [str, epoch_time]
     timedelta:
-        - description: Data type for differences in time.
+        - description: >
+            Data type for differences in time. I
         - field:
             value:
-                description: The value of the timedelta as a string, float, or int.
+                description: >
+                    The value of the timedelta as a string, float, or int. If a string
+                    such as "2 days" then the timedelta is unresolved, and must be
+                    converted prior to usage in calculations.
             unit:
                 description: Unit for the timedelta.
                 type: str
-                default: seconds
 
 data_structure:
     data:
