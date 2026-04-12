@@ -810,6 +810,67 @@ ecs_framework:
                             omitted entirely, losing a useful debugging and
                             communication tool.
                         - weight: -0.4
+            sqlmesh_approach:
+                data:
+                    - description: >
+                        Replace ibis + Hamilton with SQLMesh, a SQL-first transformation
+                        and orchestration framework backed by DuckDB. SQL models handle
+                        table transformations; Python models handle graph algorithms and
+                        other logic that cannot be expressed in SQL.
+                pro_eliminates_unnecessary_pandas_escapes:
+                    - description: >
+                        SQLMesh SQL models (backed by DuckDB) keep transformations
+                        lazy by default, removing the unnecessary .to_pandas() and
+                        .execute() round-trips that currently appear throughout
+                        validate_registry.py and load_manifest.py.
+                    - weight: 0.7
+                pro_python_models_cover_remaining_logic:
+                    - description: >
+                        SQLMesh Python models are first-class citizens that integrate
+                        into the same DAG as SQL models with shared lineage tracking.
+                        BFS schema inheritance and NetworkX graph traversal in
+                        derive_components.py can live in Python models without
+                        significant rewriting.
+                    - weight: 0.6
+                pro_duckdb_backend_shared:
+                    - description: >
+                        SQLMesh uses DuckDB natively, so the in-process execution
+                        model stays unchanged and no backend migration is required.
+                    - weight: 0.5
+                pro_audit_concept_maps_well:
+                    - description: >
+                        SQLMesh has built-in AUDIT assertions on model outputs,
+                        semantically similar to RequirementCoverageAudit, TodoAudit,
+                        and TraceabilityAudit. The gap is narrower than it appears.
+                    - weight: 0.5
+                con_dynamic_plugin_architecture_incompatible:
+                    - description: >
+                        Architect.load_dataflow() attaches audit/export modules at
+                        runtime. SQLMesh requires all models to be statically declared
+                        at project initialization. This architectural pattern would
+                        need a fundamental redesign.
+                    - weight: -0.9
+                con_loses_hamilton_function_granularity:
+                    - description: >
+                        Hamilton nodes like raw_entity_first_data → csv_component_tables
+                        → keyvalue_store → component_tables → registry are 10+
+                        fine-grained steps. SQLMesh would express these as 2-3 models,
+                        losing intermediate node introspection and reusability.
+                    - weight: -0.7
+                con_sql_ward_achievable_within_current_stack:
+                    - description: >
+                        The unnecessary pandas escapes in validate_registry.py and
+                        load_manifest.py are ibis code that didn't stay lazy, not a
+                        framework limitation. Fixing them incrementally in the current
+                        stack is days of work vs. weeks for a full SQLMesh migration.
+                    - weight: -0.6
+                con_warehouse_features_irrelevant:
+                    - description: >
+                        SQLMesh's primary strengths--incremental materialization,
+                        state management, virtual dev/prod environments, CI/CD
+                        plan/apply--solve problems that don't exist for a local
+                        metadata processing tool parsing YAML files.
+                    - weight: -0.5
     nlp_system:
         data:
             - description: >
