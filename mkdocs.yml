@@ -47,3 +47,4 @@ nav:
     - views:
       - requirement_tree: api/views/requirement_tree.md
   - Dataflow DAGs: dataflows/index.md
+  - Visualizations: visualizations.md
