@@ -1,5 +1,6 @@
 site_name: iacs
 site_description: Infrastructure as Code Sketch
+site_url: https://zhafen.github.io/iacs/
 repo_url: https://github.com/zhafen/iacs
 
 theme:
