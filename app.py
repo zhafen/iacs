@@ -1,64 +1,67 @@
-import atexit
+from contextlib import asynccontextmanager
 from pathlib import Path
 
-from pydantic import BaseModel
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from iacs.architect import Architect
+from iacs.views.requirement_tree import build_requirement_tree
 
-ROOT_DIR = Path(__file__).parent
-COMPONENTS_DIR = ROOT_DIR / "builtins"
-STATIC_DIR = ROOT_DIR / "static"
-
-class Item(BaseModel):
-    name: str
-    description: str | None = None
-    price: float
-    tax: float | None = None
+BASE_DIR = Path(__file__).parent
+BUILTINS_DIR = BASE_DIR / "builtins"
+STATIC_DIR = BASE_DIR / "static"
+DEFAULT_ANCESTOR = "be_a_powerful_tool_for_solutions_architecture"
 
 
-class ComponentViewArgs(BaseModel):
-    component_type: str | list[str]
+@asynccontextmanager
+async def lifespan(app):
+    app.state.architect = Architect.from_manifest(str(BUILTINS_DIR))
+    yield
 
 
-app = FastAPI()
-
-a: Architect = Architect.from_manifest(COMPONENTS_DIR)
-
-# We really want to ensure the registry closes out at exit
-atexit.register(a.registry.close)
+app = FastAPI(lifespan=lifespan)
 
 
-@app.get("/")
-def root():
-    return {"message": f"Architect for {COMPONENTS_DIR}"}
+@app.get("/api/tree")
+def get_tree(ancestor_key: str = Query(default=DEFAULT_ANCESTOR)):
+    try:
+        return build_requirement_tree(app.state.architect, ancestor_key)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
 
-@app.get("/components/{component_name}")
-def get_component(component_name: str):
+@app.get("/api/files")
+def list_files():
+    return [str(p.relative_to(BUILTINS_DIR)) for p in BUILTINS_DIR.rglob("*.yaml")]
 
-    return {"output": a.get(component_name).__str__()}
+
+@app.get("/api/files/{filepath:path}")
+def get_file(filepath: str):
+    target = (BUILTINS_DIR / filepath).resolve()
+    if not str(target).startswith(str(BUILTINS_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="Invalid path")
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    return PlainTextResponse(target.read_text())
 
 
-@app.get("/view/{component_type}")
-def view(component_type: str = None):
+@app.put("/api/files/{filepath:path}")
+async def put_file(filepath: str, request):
+    import yaml
+    target = (BUILTINS_DIR / filepath).resolve()
+    if not str(target).startswith(str(BUILTINS_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="Invalid path")
+    body = await request.body()
+    text = body.decode()
+    try:
+        yaml.safe_load(text)
+    except yaml.YAMLError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    target.write_text(text)
+    app.state.architect = Architect.from_manifest(str(BUILTINS_DIR))
+    return {"status": "ok"}
 
-    return {
-        "component_type": component_type,
-        "view": str(a.view(component_type))
-    }
 
-@app.post("/view/{component_type}")
-def view_with_args(component_type: str, component_view_args: ComponentViewArgs):
-
-    if component_type is None:
-        component_type = component_view_args.component_type
-
-    return {
-        "component_type": component_type,
-        "view": str(a.view(component_type))
-    }
-
-# Mount the html files
-app.mount("/viz/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
+if STATIC_DIR.exists():
+    app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
