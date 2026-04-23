@@ -1,6 +1,7 @@
 """MCP server exposing iacs registry tools."""
 
 import os
+from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
@@ -8,20 +9,30 @@ from iacs.architect import Architect
 
 server = FastMCP("iacs")
 
+_BUILTIN_MANIFEST = Path(__file__).parent.parent / "examples" / "example"
+
 _architect: Architect | None = None
 
 
 def _get_architect() -> Architect:
     global _architect
     if _architect is None:
-        manifest = os.environ.get("IACS_MANIFEST")
-        if not manifest:
-            raise RuntimeError(
-                "IACS_MANIFEST environment variable is not set. "
-                "Set it to the path of your manifest directory."
-            )
+        manifest = os.environ.get("IACS_MANIFEST", str(_BUILTIN_MANIFEST))
         _architect = Architect.from_manifest(manifest)
     return _architect
+
+
+@server.tool()
+def load_manifest(manifest_path: str) -> str:
+    """Load an iacs manifest from a directory path, replacing the current registry.
+
+    Args:
+        manifest_path: Path to the manifest directory.
+    """
+    global _architect
+    _architect = Architect.from_manifest(manifest_path)
+    types = _architect.registry.component_types
+    return f"Loaded manifest from {manifest_path!r}. Component types: {types}"
 
 
 @server.tool()
