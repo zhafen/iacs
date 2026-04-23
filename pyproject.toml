@@ -19,6 +19,7 @@ dependencies = [
     "pyyaml>=6.0",
     "sf-hamilton[sdk,ui]>=1.88.0",
     "mcp>=1.27.0",
+    "tabulate>=0.10.0",
 ]
 
 [project.optional-dependencies]

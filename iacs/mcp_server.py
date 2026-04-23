@@ -42,14 +42,18 @@ def list_component_types() -> list[str]:
 
 
 @server.tool()
-def view_component(component_type: str) -> str:
-    """Return all data for a component type as CSV.
+def view_component(component_type: str, format: str = "csv") -> str:
+    """Return all data for a component type.
 
     Args:
         component_type: The name of the component type to view.
+        format: Output format — "csv" (default) or "markdown" for a
+            human-readable table.
     """
     arch = _get_architect()
     df = arch.registry.view_df(component_type).reset_index()
+    if format == "markdown":
+        return df.to_markdown(index=False)
     return df.to_csv(index=False)
 
 
