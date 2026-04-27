@@ -1,24 +1,39 @@
-# IACS minimal Flask app
+# iacs
 
-This repo now serves a small Flask app that reads `examples/minimal.yaml` and displays the resources plus any `solution of` relationships.
+Infrastructure-as-Code Sketch — an ECS-based system for documenting and designing infrastructure.
 
-## Setup
-
-Using uv (recommended):
-```bash
-uv venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-uv pip install -e .
-```
-
-## Run
+## Install
 
 ```bash
-python app.py
+pip install iacs
 ```
-Then open http://localhost:8000/ to see the visualization.
 
-## How it works
+Or with [uv](https://github.com/astral-sh/uv):
 
-- `app.py` loads `examples/minimal.yaml`, extracts top-level resources, and builds edges from any `solution of` fields.
-- The data is rendered by `templates/index.html` with minimal styling in `static/style.css`.
+```bash
+uv add iacs
+```
+
+## Usage
+
+Define infrastructure entities in YAML:
+
+```yaml
+my_service:
+  description: A web service
+  requirement: Must handle 1000 req/s
+
+my_deployment:
+  description: Kubernetes deployment for my_service
+  solution of: my_service
+```
+
+Run audits to evaluate your design:
+
+```python
+import iacs
+
+registry = iacs.load("infrastructure.yaml")
+audit = iacs.RequirementCoverageAudit(registry)
+print(audit.report())
+```
