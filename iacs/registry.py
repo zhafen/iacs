@@ -118,27 +118,53 @@ class Registry:
                 raise KeyError(component_type)
             return self._with_entity_alias(self._con.table(component_type))
 
-        # Multiple component types: inner join by entity_id
-        component_types = component_type
-        result = None
-
-        for i, comp_type in enumerate(component_types):
-            if comp_type not in self._con.list_tables():
-                raise KeyError(comp_type)
-            table = self._con.table(comp_type)
-
-            if result is None:
-                result = table
+        # Parse entries: "table" or "table.field"
+        parsed = []
+        for ct in component_type:
+            if "." in ct:
+                table_name, field = ct.split(".", 1)
+                parsed.append((table_name, field))
             else:
-                if i == 1:
-                    lname = f"{component_types[0]}.{{name}}"
-                    rname = f"{comp_type}.{{name}}"
+                parsed.append((ct, None))
+
+        has_specific_fields = any(field is not None for _, field in parsed)
+
+        if has_specific_fields:
+            # Pre-select and rename each field to "table.field", then join
+            tables_to_join = []
+            for table_name, field in parsed:
+                if table_name not in self._con.list_tables():
+                    raise KeyError(table_name)
+                t = self._con.table(table_name)
+                if field is not None:
+                    t = t.select(["entity_id", t[field].name(f"{table_name}.{field}")])
+                tables_to_join.append(t)
+
+            result = tables_to_join[0]
+            for t in tables_to_join[1:]:
+                result = result.inner_join(t, "entity_id")
+        else:
+            # Multiple whole-component join by entity_id
+            component_types = component_type
+            result = None
+
+            for i, comp_type in enumerate(component_types):
+                if comp_type not in self._con.list_tables():
+                    raise KeyError(comp_type)
+                table = self._con.table(comp_type)
+
+                if result is None:
+                    result = table
                 else:
-                    lname = "{name}"
-                    rname = f"{comp_type}.{{name}}"
-                result = result.inner_join(
-                    table, "entity_id", lname=lname, rname=rname
-                )
+                    if i == 1:
+                        lname = f"{component_types[0]}.{{name}}"
+                        rname = f"{comp_type}.{{name}}"
+                    else:
+                        lname = "{name}"
+                        rname = f"{comp_type}.{{name}}"
+                    result = result.inner_join(
+                        table, "entity_id", lname=lname, rname=rname
+                    )
 
         return self._with_entity_alias(result)
 
