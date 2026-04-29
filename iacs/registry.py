@@ -5,6 +5,8 @@ import pandas as pd
 
 ibis.options.interactive = True
 
+_TABLE_META_COLS = {"entity_id", "component_index", "modifier"}
+
 
 class Registry:
     """A registry that stores ECS component data as ibis tables.
@@ -73,10 +75,9 @@ class Registry:
 
         Args:
             component_type: A component type name, a dotted "table.field"
-                string, or a list of either. Lists are inner-joined by
-                entity_id with dotted entries producing prefixed column names.
-                ``entity_id.alias`` is prepended automatically when the
-                entity_id table is present and not already requested.
+                string, or a list of either. All results are inner-joined by
+                entity_id with columns named "table.field". ``entity_id.alias``
+                is prepended automatically unless already requested.
 
         Raises:
             KeyError: If a component type doesn't exist in the registry.
@@ -87,62 +88,37 @@ class Registry:
         if (
             "entity_id.alias" not in component_type
             and "entity_id" not in component_type
-            # CLAUDE: entity_id should 100% of the time be in list_tables. If not it points to a deeper problem. Remove this last condition.
-            and "entity_id" in self._con.list_tables()
         ):
             component_type = ["entity_id.alias"] + list(component_type)
 
-        # Parse entries: "table" or "table.field"
-        parsed = []
+        # Expand plain table names to "table.field" dotted entries
+        expanded = []
         for ct in component_type:
-            if "." in ct:
-                table_name, field = ct.split(".", 1)
-                parsed.append((table_name, field))
+            if "." not in ct:
+                if ct not in self._con.list_tables():
+                    raise KeyError(ct)
+                t = self._con.table(ct)
+                skip = _TABLE_META_COLS | ({"value"} if ct == "entity_id" else set())
+                expanded.extend(f"{ct}.{f}" for f in t.columns if f not in skip)
             else:
-                parsed.append((ct, None))
+                expanded.append(ct)
 
-        has_specific_fields = any(field is not None for _, field in parsed)
+        # Build one sub-table per dotted entry and inner-join on entity_id
+        tables_to_join = []
+        for ct in expanded:
+            table_name, field = ct.split(".", 1)
+            if table_name not in self._con.list_tables():
+                raise KeyError(table_name)
+            t = self._con.table(table_name)
+            if table_name == "entity_id":
+                t = t.select([t["value"].name("entity_id"), t[field].name(ct)])
+            else:
+                t = t.select(["entity_id", t[field].name(ct)])
+            tables_to_join.append(t)
 
-        if has_specific_fields:
-            # Pre-select and rename each field to "table.field", then join
-            tables_to_join = []
-            for table_name, field in parsed:
-                if table_name not in self._con.list_tables():
-                    raise KeyError(table_name)
-                t = self._con.table(table_name)
-                if field is not None:
-                    if table_name == "entity_id":
-                        # entity_id table stores the hash in "value", not "entity_id"
-                        t = t.select([t["value"].name("entity_id"), t[field].name(f"{table_name}.{field}")])
-                    else:
-                        t = t.select(["entity_id", t[field].name(f"{table_name}.{field}")])
-                tables_to_join.append(t)
-
-            result = tables_to_join[0]
-            for t in tables_to_join[1:]:
-                result = result.inner_join(t, "entity_id")
-        else:
-            # Multiple whole-component join by entity_id
-            component_types = component_type
-            result = None
-
-            for i, comp_type in enumerate(component_types):
-                if comp_type not in self._con.list_tables():
-                    raise KeyError(comp_type)
-                table = self._con.table(comp_type)
-
-                if result is None:
-                    result = table
-                else:
-                    if i == 1:
-                        lname = f"{component_types[0]}.{{name}}"
-                        rname = f"{comp_type}.{{name}}"
-                    else:
-                        lname = "{name}"
-                        rname = f"{comp_type}.{{name}}"
-                    result = result.inner_join(
-                        table, "entity_id", lname=lname, rname=rname
-                    )
+        result = tables_to_join[0]
+        for t in tables_to_join[1:]:
+            result = result.inner_join(t, "entity_id")
 
         return result
 

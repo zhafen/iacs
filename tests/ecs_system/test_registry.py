@@ -93,6 +93,12 @@ class TestRegistryView:
         """Create a registry with sample data for testing."""
         conn = ibis.duckdb.connect()
         conn.create_table(
+            "entity_id",
+            {"value": ["iacs", "registry"], "alias": ["iacs", "registry"],
+             "path": ["test:iacs", "test:registry"], "entity_key": ["iacs", "registry"],
+             "filepath": ["test", "test"]},
+        )
+        conn.create_table(
             "description",
             {"entity_id": ["iacs", "registry"], "value": ["A tool for architects", "Stores ECS data"]},
         )
@@ -101,6 +107,7 @@ class TestRegistryView:
             {"entity_id": ["iacs", "iacs"], "value": ["functional", "quality"], "priority": [1.0, 0.5]},
         )
         components = {
+            "entity_id": conn.table("entity_id"),
             "description": conn.table("description"),
             "requirement": conn.table("requirement"),
         }
@@ -115,8 +122,8 @@ class TestRegistryView:
         """view() returns the correct data for the component."""
         result = sample_registry.view_df("requirement")
 
-        assert "value" in result.columns
-        assert "priority" in result.columns
+        assert "requirement.value" in result.columns
+        assert "requirement.priority" in result.columns
 
     def test_view_nonexistent_component_raises_keyerror(self, sample_registry):
         """view() raises KeyError for a component type that doesn't exist."""
@@ -126,10 +133,10 @@ class TestRegistryView:
     def test_view_returns_copy_not_reference(self, sample_registry):
         """view_df() returns a copy to prevent accidental modification."""
         result = sample_registry.view_df("description")
-        result.loc["iacs", "value"] = "Modified"
+        result.loc["iacs", "description.value"] = "Modified"
 
         original = sample_registry.view_df("description")
-        assert original.loc["iacs", "value"] == "A tool for architects"
+        assert original.loc["iacs", "description.value"] == "A tool for architects"
 
 
 class TestRegistryViewMultipleComponents:
@@ -140,6 +147,12 @@ class TestRegistryViewMultipleComponents:
         """Create a registry with entities having multiple component types."""
         conn = ibis.duckdb.connect()
         conn.create_table(
+            "entity_id",
+            {"value": ["a", "b", "c"], "alias": ["a", "b", "c"],
+             "path": ["test:a", "test:b", "test:c"], "entity_key": ["a", "b", "c"],
+             "filepath": ["test", "test", "test"]},
+        )
+        conn.create_table(
             "description",
             {"entity_id": ["a", "b", "c"], "value": ["Desc A", "Desc B", "Desc C"]},
         )
@@ -148,6 +161,7 @@ class TestRegistryViewMultipleComponents:
             {"entity_id": ["a", "b"], "priority": [1.0, 0.0]},
         )
         components = {
+            "entity_id": conn.table("entity_id"),
             "description": conn.table("description"),
             "requirement": conn.table("requirement"),
         }
@@ -178,4 +192,4 @@ class TestRegistryViewMultipleComponents:
         """view() with single-element list works like single string."""
         result = multi_component_registry.view_df(["description"])
         assert isinstance(result, pd.DataFrame)
-        assert "value" in result.columns
+        assert "description.value" in result.columns
