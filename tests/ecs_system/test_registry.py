@@ -145,7 +145,7 @@ class TestRegistryViewMultipleComponents:
         )
         conn.create_table(
             "requirement",
-            {"entity_id": ["a", "b"]},
+            {"entity_id": ["a", "b"], "priority": [1.0, 0.0]},
         )
         components = {
             "description": conn.table("description"),
@@ -167,6 +167,12 @@ class TestRegistryViewMultipleComponents:
         assert "a" in entity_ids
         assert "b" in entity_ids
         assert "c" not in entity_ids
+
+    def test_view_specific_fields(self, multi_component_registry):
+
+        result = multi_component_registry.view_df(["description.value", "requirement.priority"])
+        assert result.loc["b", "description.value"] == "Desc B"
+        assert result.loc["b", "requirement.priority"] == 0.0
 
     def test_view_single_component_as_list_works(self, multi_component_registry):
         """view() with single-element list works like single string."""
