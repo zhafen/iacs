@@ -68,55 +68,29 @@ class Registry:
         """Return the component table for the given component type."""
         return self._components[key]
 
-    def _with_entity_alias(self, result: ibis.Table) -> ibis.Table:
-        """Left-join entity_alias from the entity_id table into result.
-
-        Adds an ``entity_alias`` column immediately after any ``entity_id`` or
-        ``component_index`` columns. Skipped when result has no ``entity_id``
-        column or when the entity_id table is not in the registry.
-        """
-        if "entity_id" not in result.columns:
-            return result
-        if "entity_id" not in self._con.list_tables():
-            return result
-
-        eid_t = self._con.table("entity_id")
-        eid = eid_t.select(
-            eid_t["value"].name("entity_id"),
-            eid_t["alias"].name("entity_alias"),
-        )
-        result = result.left_join(eid, "entity_id")
-
-        # Place entity_alias immediately after the last entity_id/component_index col
-        cols = [c for c in result.columns if c != "entity_alias"]
-        insert_pos = 0
-        for i, col in enumerate(cols):
-            if col in ("entity_id", "component_index"):
-                insert_pos = i + 1
-        cols.insert(insert_pos, "entity_alias")
-        return result.select(cols)
-
-    def view(self, component_type: str | list[str]) -> pd.DataFrame:
+    def view(self, component_type: str | list[str]) -> ibis.Table:
         """Return a copy of the dataframe for the given component type(s).
 
         Args:
-            component_type: The name of the component type to view, or a list
-                of component types to inner join by entity_id.
-
-        Returns:
-            A copy of the component's dataframe. When multiple component types
-            are provided, returns an inner join by entity_id with columns
-            prefixed by component type (e.g., "description.value").
-            An ``entity_alias`` column is always included immediately after any
-            ``entity_id`` or ``component_index`` columns.
+            component_type: A component type name, a dotted "table.field"
+                string, or a list of either. Lists are inner-joined by
+                entity_id with dotted entries producing prefixed column names.
+                ``entity_id.alias`` is prepended automatically when the
+                entity_id table is present and not already requested.
 
         Raises:
             KeyError: If a component type doesn't exist in the registry.
         """
         if isinstance(component_type, str):
-            if component_type not in self._con.list_tables():
-                raise KeyError(component_type)
-            return self._with_entity_alias(self._con.table(component_type))
+            component_type = [component_type]
+
+        if (
+            "entity_id.alias" not in component_type
+            and "entity_id" not in component_type
+            # CLAUDE: entity_id should 100% of the time be in list_tables. If not it points to a deeper problem. Remove this last condition.
+            and "entity_id" in self._con.list_tables()
+        ):
+            component_type = ["entity_id.alias"] + list(component_type)
 
         # Parse entries: "table" or "table.field"
         parsed = []
@@ -137,7 +111,11 @@ class Registry:
                     raise KeyError(table_name)
                 t = self._con.table(table_name)
                 if field is not None:
-                    t = t.select(["entity_id", t[field].name(f"{table_name}.{field}")])
+                    if table_name == "entity_id":
+                        # entity_id table stores the hash in "value", not "entity_id"
+                        t = t.select([t["value"].name("entity_id"), t[field].name(f"{table_name}.{field}")])
+                    else:
+                        t = t.select(["entity_id", t[field].name(f"{table_name}.{field}")])
                 tables_to_join.append(t)
 
             result = tables_to_join[0]
@@ -166,7 +144,7 @@ class Registry:
                         table, "entity_id", lname=lname, rname=rname
                     )
 
-        return self._with_entity_alias(result)
+        return result
 
     def view_df(self, component_type: str | list[str]) -> pd.DataFrame:
         """Convenience method to return the view as a DataFrame."""

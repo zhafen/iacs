@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import json
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -21,7 +23,8 @@ async def lifespan(app):
 
 app = FastAPI(lifespan=lifespan)
 
+
 @app.get("/api/view/{component_type}")
 def view_component(component_type: str):
     df = app.state.architect.view(component_type).execute()
-    return df.to_dict()
+    return json.loads(df.to_json(orient="records"))
