@@ -290,6 +290,43 @@ iacs:
                   Notation for functions and classes.
             - todo: >
                   Notation for a component that is at the intersection of two subsets.
+        infrastructure_as_data_discussion:
+            data:
+                - description: >
+                      Discussion on reframing iacs from "infrastructure as code" to
+                      "infrastructure as data". The distinction matters for storage and
+                      tooling choices: code implies files and text editors, while data
+                      implies databases, queries, and structured exports.
+            primary_storage:
+                - description: >
+                      If infrastructure is data, databases are the more natural primary
+                      storage medium rather than YAML files on disk. This would make
+                      querying, diffing, and auditing infrastructure more tractable.
+                - todo: >
+                      Evaluate database backends as primary storage for iacs, with YAML
+                      serving only as an ingestion and interchange format. See also:
+                      facilitate_compatibility_with_relational_databases.
+            yaml_as_ingestion_format:
+                - description: >
+                      Even with a database backend, YAML remains valuable as the human-
+                      authored input format. Users write YAML, iacs ingests it into the
+                      database. The round-trip direction — exporting arbitrary slices of
+                      the infrastructure back to YAML for viewing and editing — is a
+                      strong candidate for the primary editing workflow.
+                - todo: >
+                      Design the YAML round-trip: exporting a subgraph of the database
+                      back to entity-first YAML, letting the user modify it, and
+                      re-ingesting the result cleanly.
+            viewing_and_editing:
+                - description: >
+                      Open question: how do users view and edit infrastructure once it
+                      lives in a database? Two candidate approaches are (1) exposing
+                      arbitrary subsets as editable YAML files, and (2) a generated wiki
+                      or documentation site. Both may be needed simultaneously.
+                - todo: >
+                      Decide on the primary interface for browsing and editing persisted
+                      infrastructure. Evaluate editable YAML exports vs. a generated
+                      wiki. See also: export_infrastructure_to_wiki.
 
 ecs_framework:
     data:
