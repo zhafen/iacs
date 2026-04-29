@@ -22,6 +22,10 @@ async def lifespan(app):
 
 app = FastAPI(lifespan=lifespan)
 
+@app.get("/api/view/{component_type}")
+def view_component(component_type: str):
+    df = app.state.architect.view(component_type).execute()
+    return df.to_dict()
 
 @app.get("/api/tree")
 def get_tree(ancestor_key: str = Query(default=DEFAULT_ANCESTOR)):
