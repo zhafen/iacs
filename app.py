@@ -24,7 +24,8 @@ async def lifespan(app):
 app = FastAPI(lifespan=lifespan)
 
 
-@app.get("/api/view/{component_type}")
-def view_component(component_type: str):
-    df = app.state.architect.view(component_type).execute()
+@app.get("/api/view/{component_types}")
+def view_component(component_types: str):
+    types = [t.strip() for t in component_types.split(",")]
+    df = app.state.architect.view(types).execute()
     return json.loads(df.to_json(orient="records"))

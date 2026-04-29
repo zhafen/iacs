@@ -30,3 +30,15 @@ def test_view_requirement(client):
 
         assert record["requirement.value"] == "functional"
         assert record["requirement.priority"] == 0.5
+
+
+def test_view_multiple_component_types(client):
+    """Test that comma-separated component types are inner-joined by entity_id."""
+    resp = client.get("/api/view/description,requirement")
+    assert resp.status_code == 200
+    data = resp.json()
+
+    assert len(data) > 0
+    record = data[0]
+    assert "description.value" in record
+    assert "requirement.value" in record
