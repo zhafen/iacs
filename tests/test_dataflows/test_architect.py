@@ -166,3 +166,33 @@ class TestArchitectUX:
             a.view("component_type"),
             a2.view("component_type"),
         )
+
+
+class TestLoadManifest:
+    def test_load_each_yaml_matches_directory(self, tmp_path):
+        """Loading YAML files one at a time should match loading the directory."""
+        (tmp_path / "requirements.yaml").write_text(
+            "req_a:\n- description: Requirement A\n- requirement\n"
+        )
+        (tmp_path / "solutions.yaml").write_text(
+            "sol_a:\n- description: Solution A\n"
+        )
+
+        a_all = Architect.from_manifest(str(tmp_path))
+
+        a_inc = Architect()
+        for yaml_file in sorted(tmp_path.rglob("*.yaml")):
+            a_inc.load_manifest(str(yaml_file))
+
+        assert set(a_all.registry.component_types) == set(a_inc.registry.component_types)
+
+        for comp_type in a_all.registry.component_types:
+            df_all = a_all.registry.get(comp_type).execute()
+            df_inc = a_inc.registry.get(comp_type).execute()
+            # "value" is the hash column in entity_id table; other tables use entity_id + component_index
+            sort_by = [c for c in ["value", "entity_id", "component_index"] if c in df_all.columns]
+            pd.testing.assert_frame_equal(
+                df_all.sort_values(sort_by).reset_index(drop=True),
+                df_inc.sort_values(sort_by).reset_index(drop=True),
+                check_dtype=False,
+            )
