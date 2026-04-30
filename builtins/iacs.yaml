@@ -1323,3 +1323,108 @@ audit_system:
             - effort:
                 value: 2
                 unit: points
+deduplication_system:
+    data:
+        - description: >
+              The iacs system responsible for identifying and merging duplicate
+              entities across the registry. Deduplication is a two-phase process:
+              first deduplicate component types (since component types are
+              themselves stored as records in the ((component_type)) component),
+              then sweep through all component tables and deduplicate the entities
+              within each.
+        - parent: iacs
+        - system
+    approach:
+        data:
+            - description: >
+                  The two phases are ordered because phase one changes the table
+                  structure of the registry (consolidating tables), and phase two
+                  operates on that stable structure.
+        phase_one_component_type_deduplication:
+            data:
+                - description: >
+                      Apply entity deduplication to the ((component_type)) component.
+                      Because component types are records in that table, the same
+                      machinery used for general entity deduplication applies here.
+                      The output is a string-to-string rename map
+                      {deprecated_type → canonical_type}. Tables for deprecated
+                      types are merged into their canonical counterparts and phase
+                      two entity deduplication is then run on any newly merged
+                      tables.
+        phase_two_entity_deduplication:
+            data:
+                - description: >
+                      With a clean set of component types, loop through every
+                      component table in the registry and apply entity
+                      deduplication. For each table, identify candidate duplicate
+                      pairs, build a merge map, and rewrite all cross-references
+                      (entity_ref fields resolved via field_types_with_entity_ref)
+                      to point to canonical entity IDs.
+    entity_deduplication:
+        data:
+            - description: >
+                  The core reusable primitive. Given a component table, produces
+                  a merge map {deprecated_entity_id → canonical_entity_id} and
+                  applies it across the registry.
+        candidate_pair_generation:
+            data:
+                - description: >
+                      Identify pairs of entities within a component table that are
+                      likely duplicates. Two complementary strategies are used.
+            key_match:
+                - description: >
+                      Entities with the same entity_key but different entity_ids
+                      are strong candidates. This is the common case when the same
+                      concept is defined independently in multiple YAML files.
+            side_by_side_view:
+                - description: >
+                      The most reliable identification method is to display all
+                      components of two candidate entities side by side and make a
+                      human judgement call. This is qualitatively different from
+                      algorithmic similarity metrics such as the dot product between
+                      two records or the cosine similarity between two
+                      description.value fields: those metrics operate on individual
+                      fields in isolation and miss the holistic picture of what an
+                      entity is. A component-by-component side-by-side view of two
+                      candidate entities surfaces differences and similarities
+                      across all component types simultaneously.
+        merge_map_construction:
+            - description: >
+                  Given candidate pairs, select a canonical entity for each group
+                  of duplicates. Prefer the entity with more populated fields;
+                  break ties by preferring the shorter entity path (less nesting
+                  implies more authoritative definition); break remaining ties
+                  deterministically by entity_id. Transitive duplicates
+                  (A=B, B=C → A=C) are resolved with union-find before the map is
+                  finalized.
+        cross_reference_rewriting:
+            - description: >
+                  After the merge map is built, all entity_ref fields across the
+                  registry are rewritten to replace deprecated entity IDs with
+                  their canonical equivalents. Deprecated rows are then dropped
+                  from their component table.
+        manual_override:
+            - description: >
+                  A ((duplicate_of)) component allows users to declare canonical
+                  duplicates explicitly in YAML. These declarations are ingested
+                  first and take precedence over any algorithmically generated
+                  candidates.
+        idempotency:
+            - description: >
+                  The merge map is serializable to YAML alongside the manifests.
+                  Re-running deduplication reads the existing map first, extends
+                  it with any new candidates, and re-applies, so the process is
+                  safe to run repeatedly without accumulating drift.
+    avoided_approaches:
+        component_record_deduplication:
+            - description: >
+                  Deduplicating records within a component (i.e. asserting that
+                  two rows in the same component table are the same component
+                  instance) is deliberately avoided. A component instance is
+                  uniquely identified by (entity_id, component_index), so merging
+                  two instances would require either collapsing component_index
+                  values (losing information) or introducing a bridge table that
+                  makes the entity_id-to-component relation many-to-many instead
+                  of many-to-one. This added complexity is not worth it except for
+                  highly degenerate components, so component record deduplication
+                  is out of scope for now.
