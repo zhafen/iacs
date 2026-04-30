@@ -213,6 +213,40 @@ iacs_component:
             description: >
                 A readable version of the entity_id.
             type: str
+    impact:
+        data:
+            - description: >
+                Quantifies the positive impact or benefit associated with an entity.
+                Serves as the common ancestor for impact-related scoring components,
+                suited for agile prioritization frameworks (e.g. RICE, ICE, WSJF).
+                The name "value" was considered for this role but avoided because
+                "value" has a specific existing meaning in iacs as the single-field
+                base component type.
+            - parent: value
+            - field:
+                value:
+                    description: >
+                        Impact score, with higher values corresponding to greater impact.
+                    type: float
+                    default: 0.5
+                    range: [0, 1]
+        discovery:
+            - description: >
+                Represents the inherent value attached to experiencing or learning
+                something new.
+            - parent: impact
+        enjoyment:
+            - description: >
+                Represents a positive emotion or pleasurable feeling associated
+                with an entity.
+            - parent: impact
+        motivation:
+            - description: >
+                Represents a desire or impulse to do or avoid something. Higher
+                values indicate stronger desire to pursue; lower values indicate
+                impulse to avoid.
+            - parent: impact
+
     requirement:
         - description: >
             Indicates that an entity represents a requirement that must be satisfied
