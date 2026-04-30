@@ -6,7 +6,6 @@ from types import ModuleType
 from typing import Any
 
 import ibis
-import pandas as pd
 from hamilton import driver, base
 
 from iacs.dataflows import base_etl
@@ -53,16 +52,7 @@ class Architect:
             {}, base_etl, adapter=base.DictResult()
         ).execute(["derived_registry"], inputs={"input_dir": manifest})
         new_registry = result["derived_registry"]
-
-        for comp_type in new_registry.component_types:
-            new_df = new_registry.get(comp_type).execute()
-            if comp_type in self._registry.component_types:
-                existing_df = self._registry.get(comp_type).execute()
-                merged_df = pd.concat([existing_df, new_df]).drop_duplicates()
-                self._registry.update({comp_type: merged_df})
-            else:
-                self._registry.update({comp_type: new_df})
-
+        self._registry.merge(new_registry)
         new_registry.close()
 
     def _rebuild_driver(self) -> None:

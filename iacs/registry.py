@@ -45,6 +45,24 @@ class Registry:
             if comp_type not in self._component_types and comp_type != "schema":
                 self._component_types.append(comp_type)
 
+    def merge(self, other: "Registry") -> None:
+        """Union all component tables from another registry into this one.
+
+        Existing component types are unioned and deduplicated; new component
+        types are added directly.
+
+        Args:
+            other: Registry whose component tables are merged in.
+        """
+        import pandas as pd
+
+        for comp_type in other.component_types:
+            new_df = other.get(comp_type).execute()
+            if comp_type in self._component_types:
+                existing_df = self.get(comp_type).execute()
+                new_df = pd.concat([existing_df, new_df]).drop_duplicates()
+            self.update({comp_type: new_df})
+
     def close(self) -> None:
         """Close the underlying database connection."""
         self._con.disconnect()
