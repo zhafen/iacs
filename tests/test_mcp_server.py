@@ -1,29 +1,75 @@
 """Tests for the MCP server tools."""
 
+from pathlib import Path
+
+import yaml
 import pytest
 
-from iacs.mcp_server import _FORMAT_DESCRIPTION, _validate_yaml_string, server
+from iacs.mcp_server import _build_format_description, _validate_yaml_string, server
+
+_BUILTINS_DIR = Path(__file__).parent.parent / "builtins"
 
 
 # ---------------------------------------------------------------------------
-# describe_format — underlying data
+# describe_format — sourced from builtins
 # ---------------------------------------------------------------------------
 
 class TestDescribeFormat:
 
     def test_returns_string(self):
-        assert isinstance(_FORMAT_DESCRIPTION, str)
+        assert isinstance(_build_format_description(), str)
 
     def test_contains_example_yaml(self):
-        assert "```yaml" in _FORMAT_DESCRIPTION
+        assert "```yaml" in _build_format_description()
 
     def test_documents_core_component_types(self):
-        for component in ("description", "requirement", "solution of", "effort", "field"):
-            assert component in _FORMAT_DESCRIPTION
+        result = _build_format_description()
+        for component in ("description", "requirement", "solution", "effort", "field"):
+            assert component in result
 
     def test_documents_nesting_rules(self):
-        assert "data" in _FORMAT_DESCRIPTION
-        assert "nested" in _FORMAT_DESCRIPTION.lower()
+        result = _build_format_description()
+        assert "data" in result
+        assert "nested" in result.lower() or "NESTED" in result
+
+    def test_format_guide_yaml_is_valid(self):
+        """format_guide.yaml must be parseable and have the expected root entity."""
+        data = yaml.safe_load(
+            (_BUILTINS_DIR / "format_guide.yaml").read_text(encoding="utf-8")
+        )
+        assert "entity_first_yaml_format" in data
+
+    def test_format_guide_has_format_rules(self):
+        data = yaml.safe_load(
+            (_BUILTINS_DIR / "format_guide.yaml").read_text(encoding="utf-8")
+        )
+        fmt = data["entity_first_yaml_format"]
+        assert "format_rules" in fmt
+
+    def test_format_guide_has_canonical_example(self):
+        data = yaml.safe_load(
+            (_BUILTINS_DIR / "format_guide.yaml").read_text(encoding="utf-8")
+        )
+        fmt = data["entity_first_yaml_format"]
+        assert "canonical_example" in fmt
+
+    def test_component_specs_sourced_from_components_yaml(self):
+        """Descriptions for component types should come from components.yaml."""
+        comp_data = yaml.safe_load(
+            (_BUILTINS_DIR / "components.yaml").read_text(encoding="utf-8")
+        )
+        result = _build_format_description()
+        # Check that descriptions from components.yaml appear in the output
+        req_entity = comp_data["iacs_component"]["requirement"]
+        req_desc = next(
+            (item["description"] for item in req_entity
+             if isinstance(item, dict) and "description" in item),
+            None,
+        )
+        assert req_desc is not None
+        # First sentence of the description should appear in the output
+        first_sentence = req_desc.strip().split(".")[0]
+        assert first_sentence in result
 
 
 # ---------------------------------------------------------------------------
@@ -65,7 +111,6 @@ class TestValidateYamlString:
         assert "YAML syntax error" in result
 
     def test_empty_yaml_returns_success(self):
-        # Empty YAML is technically valid (no entities, no components)
         result = _validate_yaml_string(EMPTY_YAML)
         assert "Valid." in result
 

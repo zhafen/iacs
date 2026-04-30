@@ -1,0 +1,93 @@
+entity_first_yaml_format:
+    data:
+        - description: >
+              The entity-first YAML format is the human-authored input format for iacs.
+              It organizes data around entities, with each entity defined by a set of
+              component instances. This format is optimized for human readability and
+              ease of manual authoring.
+
+    format_rules:
+        - description: |
+              ## Entity structure
+
+              Entities are YAML keys. An entity's value is one of:
+
+              FLAT entity (list value) — own components only:
+                  entity_name:
+                      - component_item_1
+                      - component_item_2
+
+              NESTED entity (dict value) — owns sub-entities:
+                  entity_name:
+                      sub_entity:
+                          - component_item
+                      data:                # "data" key holds the parent's own components
+                          - component_item
+
+              Nested entity IDs follow the pattern "parent.child".
+
+              ## Component item forms
+
+              Bare string — tag component with no value:
+                  - system
+
+              Scalar mapping — sets the "value" field of the component:
+                  - description: Some text here
+                  - status: in progress
+
+              Structured mapping — sets named sub-fields:
+                  - requirement:
+                        priority: 0.9
+                        value: functional
+
+              ## The "of" directed-relation syntax
+
+              For directed_relation components the "of" form flips source and target.
+              Writing "solution of" (note the space) means this entity solves the
+              referenced requirement. The value is a dot-separated entity path resolved
+              by substring matching:
+                  - solution of: my_requirement.sub_requirement
+
+              ## Multiple component instances
+
+              An entity may have multiple instances of the same component type.
+              Each list entry is a separate instance (distinguished by component_index):
+                  - effort:
+                        value: 8
+                  - effort:
+                        value: 2
+                        schedule: weekly
+
+    canonical_example:
+        - description: |
+              ```yaml
+              make_cats_happy:
+                  data:
+                      - description: The mission of our cat-happiness device.
+                      - requirement:
+                            priority: 1
+                  feed_cats:
+                      - requirement:
+                            priority: 0.9
+                      - alias: feed_cats
+                  sift_cat_box:
+                      - description: Unfortunately.
+                      - requirement:
+                            priority: 0.8
+
+              cat_happiness_device:
+                  data:
+                      - description: An all-in-one tool to make cats happy.
+                      - solution of: make_cats_happy
+                      - system
+                  feeding_system:
+                      - description: The task to feed the cats.
+                      - solution of: make_cats_happy.feed_cats
+                      - effort:
+                            value: 8
+                      - effort:
+                            value: 2
+                            schedule: weekly
+                  cleaning_system:
+                      - solution of: make_cats_happy.sift_cat_box
+              ```
