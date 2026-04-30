@@ -22,7 +22,9 @@ def test_view_requirement(client):
     data = resp.json()
 
     # Check that the foundational requirement for iacs is in the requirements view
-    test_entity_id = get_id("builtins/iacs.yaml", "iacs.be_a_powerful_tool_for_solutions_architecture")
+    filepath = "builtins/iacs.yaml"
+    path = "iacs.be_a_powerful_tool_for_solutions_architecture"
+    test_entity_id = get_id(filepath, path)
     for record in data:
 
         if record["entity_id"] != test_entity_id:
@@ -33,8 +35,8 @@ def test_view_requirement(client):
 
 
 def test_view_multiple_component_types(client):
-    """Test that comma-separated component types are inner-joined by entity_id."""
-    resp = client.get("/api/view/description,requirement")
+    """Test that slash-separated component types are inner-joined by entity_id."""
+    resp = client.get("/api/view/description/requirement")
     assert resp.status_code == 200
     data = resp.json()
 
@@ -42,3 +44,21 @@ def test_view_multiple_component_types(client):
     record = data[0]
     assert "description.value" in record
     assert "requirement.value" in record
+
+
+def test_view_specific_field(client):
+    """Test that individual dotted fields can be requested via the API."""
+    resp = client.get("/api/view/requirement.priority")
+    assert resp.status_code == 200
+    data = resp.json()
+
+    filepath = "builtins/iacs.yaml"
+    path = "iacs.be_a_powerful_tool_for_solutions_architecture"
+    test_entity_id = get_id(filepath, path)
+    for record in data:
+
+        if record["entity_id"] != test_entity_id:
+            continue
+
+        assert record["requirement.priority"] == 0.5
+        assert "requirement.value" not in record
