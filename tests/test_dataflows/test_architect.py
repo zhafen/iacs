@@ -189,10 +189,9 @@ class TestLoadManifest:
         for comp_type in a_all.registry.component_types:
             df_all = a_all.registry.get(comp_type).execute()
             df_inc = a_inc.registry.get(comp_type).execute()
-            # "value" is the hash column in entity_id table; other tables use entity_id + component_index
-            sort_by = [c for c in ["value", "entity_id", "component_index"] if c in df_all.columns]
+            sort_by = sorted(df_all.columns)
             pd.testing.assert_frame_equal(
-                df_all.sort_values(sort_by).reset_index(drop=True),
-                df_inc.sort_values(sort_by).reset_index(drop=True),
+                df_all.sort_values(sort_by, na_position="last").reset_index(drop=True),
+                df_inc.sort_values(sort_by, na_position="last").reset_index(drop=True),
                 check_dtype=False,
             )

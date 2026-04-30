@@ -54,14 +54,16 @@ class Registry:
         Args:
             other: Registry whose component tables are merged in.
         """
-        import pandas as pd
-
         for comp_type in other.component_types:
-            new_df = other.get(comp_type).execute()
+            arrow_data = other.get(comp_type).to_pyarrow()
             if comp_type in self._component_types:
-                existing_df = self.get(comp_type).execute()
-                new_df = pd.concat([existing_df, new_df]).drop_duplicates()
-            self.update({comp_type: new_df})
+                tmp = f"_merge_{comp_type}"
+                self._con.create_table(tmp, arrow_data, overwrite=True)
+                merged = self.get(comp_type).union(self._con.table(tmp), distinct=True)
+                self.update({comp_type: merged})
+                self._con.drop_table(tmp)
+            else:
+                self.update({comp_type: arrow_data})
 
     def close(self) -> None:
         """Close the underlying database connection."""
