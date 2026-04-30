@@ -1314,6 +1314,8 @@ dataflow_system:
               into a registry. They cover extracting raw data from source formats
               (e.g. YAML manifests, CSV files), transforming it into component
               tables, and loading the result into the registry.
+        - requirement:
+              priority: 1.0
     validation:
         - description: >
               Validation dataflows are operations that can be run routinely on a
@@ -1321,6 +1323,8 @@ dataflow_system:
               verify that component data conforms to schema constraints, that
               relationships between entities are consistent, and that derived
               components are up to date.
+        - requirement:
+              priority: 0.8
     audit:
         - description: >
               Audit dataflows are operations that audit the infrastructure defined
@@ -1328,3 +1332,5 @@ dataflow_system:
               audits evaluate the quality and completeness of the design itself—for
               example checking requirement coverage, traceability, and outstanding
               todos.
+        - requirement:
+              priority: 0.6
