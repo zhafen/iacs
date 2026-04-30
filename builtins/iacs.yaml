@@ -1300,3 +1300,31 @@ deduplication_system:
                   of many-to-one. This added complexity is not worth it except for
                   highly degenerate components, so component record deduplication
                   is out of scope for now.
+
+dataflow_system:
+    data:
+        - description: >
+              The iacs system responsible for defining and executing dataflows
+              against a registry. Dataflows are divided into three categories:
+              ETL, validation, and audit.
+        - parent: iacs
+    etl:
+        - description: >
+              ETL (Extract, Transform, Load) dataflows are performed to load data
+              into a registry. They cover extracting raw data from source formats
+              (e.g. YAML manifests, CSV files), transforming it into component
+              tables, and loading the result into the registry.
+    validation:
+        - description: >
+              Validation dataflows are operations that can be run routinely on a
+              registry to check its health and repair it when applicable. They
+              verify that component data conforms to schema constraints, that
+              relationships between entities are consistent, and that derived
+              components are up to date.
+    audit:
+        - description: >
+              Audit dataflows are operations that audit the infrastructure defined
+              by the registry. Unlike validation, which checks internal consistency,
+              audits evaluate the quality and completeness of the design itself—for
+              example checking requirement coverage, traceability, and outstanding
+              todos.
