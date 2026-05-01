@@ -1588,7 +1588,7 @@ wheels = [
 [[package]]
 name = "iacs"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "duckdb" },
     { name = "fastapi", extra = ["standard"] },
@@ -1596,7 +1596,6 @@ dependencies = [
     { name = "ibis-framework", extra = ["duckdb"] },
     { name = "jupyterlab" },
     { name = "matplotlib" },
-    { name = "mcp" },
     { name = "networkx", version = "3.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "networkx", version = "3.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -1606,7 +1605,6 @@ dependencies = [
     { name = "pytest" },
     { name = "pyyaml" },
     { name = "sf-hamilton", extra = ["sdk", "ui"] },
-    { name = "tabulate" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -1614,6 +1612,10 @@ dependencies = [
 dev = [
     { name = "httpx" },
     { name = "pytest" },
+]
+mcp = [
+    { name = "mcp" },
+    { name = "tabulate" },
 ]
 
 [package.dev-dependencies]
@@ -1632,7 +1634,7 @@ requires-dist = [
     { name = "ibis-framework", extras = ["duckdb"], specifier = ">=2.0.0" },
     { name = "jupyterlab", specifier = ">=4.5.5" },
     { name = "matplotlib", specifier = ">=3.10.8" },
-    { name = "mcp", specifier = ">=1.27.0" },
+    { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.27.0" },
     { name = "networkx", specifier = ">=3.4.2" },
     { name = "pandas", specifier = ">=2.0.0" },
     { name = "pandera", extras = ["ibis"], specifier = ">=0.25.0" },
@@ -1641,10 +1643,10 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "sf-hamilton", extras = ["sdk", "ui"], specifier = ">=1.88.0" },
-    { name = "tabulate", specifier = ">=0.10.0" },
+    { name = "tabulate", marker = "extra == 'mcp'", specifier = ">=0.10.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.29.0" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["mcp", "dev"]
 
 [package.metadata.requires-dev]
 dev = [
