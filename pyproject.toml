@@ -39,7 +39,10 @@ iacs-mcp = "iacs.mcp_server:main"
 
 [tool.setuptools]
 py-modules = ["app"]
-packages = ["iacs"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["iacs*"]
 
 [dependency-groups]
 dev = [
