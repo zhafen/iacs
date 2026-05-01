@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
 [project]
 name = "iacs"
 version = "0.1.0"
@@ -18,15 +22,20 @@ dependencies = [
     "pytest>=9.0.2",
     "pyyaml>=6.0",
     "sf-hamilton[sdk,ui]>=1.88.0",
-    "mcp>=1.27.0",
-    "tabulate>=0.10.0",
 ]
 
 [project.optional-dependencies]
+mcp = [
+    "mcp>=1.27.0",
+    "tabulate>=0.10.0",
+]
 dev = [
     "pytest>=7.0.0",
     "httpx>=0.27.0",
 ]
+
+[project.scripts]
+iacs-mcp = "iacs.mcp_server:main"
 
 [tool.setuptools]
 py-modules = ["app"]
