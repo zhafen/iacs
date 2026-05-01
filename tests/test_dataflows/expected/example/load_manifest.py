@@ -178,14 +178,17 @@ component_tables = {
             {
                 "entity_id": main_req_id,
                 "component_index": 1,
+                "value": 1.0,
             },
             {
                 "entity_id": feed_cats_req_id,
                 "component_index": 0,
+                "value": 0.9,
             },
             {
                 "entity_id": get_id("make_cats_happy.sift_cat_box"),
                 "component_index": 1,
+                "value": 0.8,
             },
         ]
     ),

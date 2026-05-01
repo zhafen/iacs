@@ -128,6 +128,7 @@ validated_components = {
             "entity_id": get_id("make_cats_happy.adore_cats"),
             "component_index": 1,
             "type": "functional",
+            "value": 0.5,
         },
     ]),
 }
@@ -158,11 +159,13 @@ validated_registry = {
             "entity_id": get_id("make_cats_happy.feed_and_water_cats.water_cats"),
             "component_index": 0,
             "type": "functional",
+            "value": 0.5,
         },
         {
             "entity_id": get_id("make_cats_happy.adore_cats"),
             "component_index": 1,
             "type": "functional",
+            "value": 0.5,
         },
     ]),
 }
