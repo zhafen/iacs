@@ -28,7 +28,7 @@ def build_requirement_tree(architect: Architect, ancestor_key: str) -> dict:
     req_ids = set(reqs_pd["entity_id"].unique())
 
     # Use max priority per entity (an entity may have multiple requirement rows)
-    id_to_priority = reqs_pd.groupby("entity_id")["priority"].max().to_dict()
+    id_to_priority = reqs_pd.groupby("entity_id")["value"].max().to_dict()
 
     ancestor_rows = entity_ids_pd[entity_ids_pd["entity_key"] == ancestor_key]
     if ancestor_rows.empty:

@@ -117,6 +117,7 @@ _IACS_TO_PYTHON_TYPE: dict[str, type] = {
     "bool": bool,
     "int": int,
     "float": float,
+    "rating": float,
 }
 
 
@@ -203,16 +204,18 @@ def validated_field(field: ir.Table) -> ir.Table:
             existing.add(col_name)
 
     # ── Cast typed columns first (raw data is all strings; cast before fill) ─
-    # For bool columns from raw data we also convert "" → NULL first; DuckDB
-    # raises on CAST('' AS BOOLEAN) but handles NULL cleanly.
+    # Use try_cast for numeric/bool types so that unconvertible values (e.g.
+    # empty strings stored for missing fields) silently become NULL instead of
+    # raising a DuckDB ConversionException.
     result_schema = result.schema()
     for col_name, col_type in type_map.items():
         if col_name not in existing:
             continue
         expr = result[col_name]
-        if col_type is bool and col_name in original_existing and result_schema[col_name].is_string():
-            expr = expr.nullif("")
-        result = result.mutate(**{col_name: expr.cast(_IBIS_DTYPE[col_type])})
+        if col_type in (bool, float, int) and col_name in original_existing and result_schema[col_name].is_string():
+            result = result.mutate(**{col_name: expr.try_cast(_IBIS_DTYPE[col_type])})
+        else:
+            result = result.mutate(**{col_name: expr.cast(_IBIS_DTYPE[col_type])})
 
     # ── Fill in schema defaults for null values (after casting so types match) ─
     for col_name, default_val in default_map.items():
@@ -486,13 +489,15 @@ def validated_data(
                 t = t.mutate(**{fname: ibis.null().cast(_IBIS_DTYPE[py_type])})
                 existing.add(fname)
 
-        # Cast typed columns (bool: nullif "" only for original string columns)
+        # Cast typed columns; use try_cast for numeric/bool string columns so
+        # that empty strings (stored for missing fields) become NULL silently.
         t_schema = t.schema()
         for fname, py_type in type_map.items():
             expr = t[fname]
-            if py_type is bool and fname in original_existing and t_schema[fname].is_string():
-                expr = expr.nullif("")
-            t = t.mutate(**{fname: expr.cast(_IBIS_DTYPE[py_type])})
+            if py_type in (bool, float, int) and fname in original_existing and t_schema[fname].is_string():
+                t = t.mutate(**{fname: expr.try_cast(_IBIS_DTYPE[py_type])})
+            else:
+                t = t.mutate(**{fname: expr.cast(_IBIS_DTYPE[py_type])})
 
         # Apply defaults after casting so literal types match
         for fname, fschema in schema.items():

@@ -60,7 +60,7 @@ class TestDescribeFormat:
         )
         result = _build_format_description()
         # Check that descriptions from components.yaml appear in the output
-        req_entity = comp_data["iacs_component"]["requirement"]
+        req_entity = comp_data["iacs_component"]["impact"]["requirement"]
         req_desc = next(
             (item["description"] for item in req_entity
              if isinstance(item, dict) and "description" in item),
@@ -80,7 +80,7 @@ VALID_YAML = """\
 my_requirement:
     - description: Something that must be done.
     - requirement:
-          priority: 0.8
+          value: 0.8
 
 my_solution:
     - description: The implementation.
@@ -120,11 +120,11 @@ parent_req:
     data:
         - description: A parent requirement.
         - requirement:
-              priority: 1
+              value: 1
     child_req:
         - description: A child requirement.
         - requirement:
-              priority: 0.5
+              value: 0.5
 """
         result = _validate_yaml_string(nested)
         assert result.startswith("Valid.")
@@ -133,7 +133,7 @@ parent_req:
         yaml_str = """\
 req:
     - requirement:
-          priority: 1
+          value: 1
 
 sol:
     - solution of: req

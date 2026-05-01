@@ -127,8 +127,8 @@ validated_components = {
         {
             "entity_id": get_id("make_cats_happy.adore_cats"),
             "component_index": 1,
-            "value": "functional",
-            "priority": 0.5,
+            "type": "functional",
+            "value": 0.5,
         },
     ]),
 }
@@ -158,14 +158,14 @@ validated_registry = {
         {
             "entity_id": get_id("make_cats_happy.feed_and_water_cats.water_cats"),
             "component_index": 0,
-            "value": "functional",
-            "priority": 0.5,
+            "type": "functional",
+            "value": 0.5,
         },
         {
             "entity_id": get_id("make_cats_happy.adore_cats"),
             "component_index": 1,
-            "value": "functional",
-            "priority": 0.5,
+            "type": "functional",
+            "value": 0.5,
         },
     ]),
 }
@@ -175,7 +175,7 @@ requirement_coverage = pd.DataFrame([
         "entity_id": get_id("make_cats_happy.feed_and_water_cats.feed_cats"),
         "component_index": 1,
         "type": "functional",
-        "priority": 0.9,
+        "value": 0.9,
         "solution": get_id("cat_happiness_device.feeding_system.feed_cats"),
         "solution_status": "in progress",
     },
@@ -183,7 +183,7 @@ requirement_coverage = pd.DataFrame([
         "entity_id": get_id("make_cats_happy.adore_cats"),
         "component_index": 1,
         "type": "functional",
-        "priority": 0.5,
+        "value": 0.5,
         "solution": None,
         "solution_status": None,
     },

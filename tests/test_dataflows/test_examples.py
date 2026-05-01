@@ -161,12 +161,15 @@ def _assert_df_rows_subset(
 
     exp_sub = expected[common_cols].copy()
     act_sub = actual[common_cols].copy()
-    # Normalize columns where all non-null values are numeric to float so that
-    # e.g. 1 and 1.0 compare equal regardless of int vs float dtype.
+    # Normalize columns where all non-null/non-empty values are numeric to float
+    # so that e.g. 1 and 1.0 compare equal regardless of int vs float dtype.
+    # Empty strings are treated as missing for this check because bare tag
+    # components store "" in sub-field columns that only exist on other rows.
     for col in common_cols:
         for frame in (exp_sub, act_sub):
-            converted = pd.to_numeric(frame[col], errors="coerce")
-            if converted.notna().sum() == frame[col].notna().sum():
+            as_nullable = frame[col].replace("", pd.NA)
+            converted = pd.to_numeric(as_nullable, errors="coerce")
+            if converted.notna().sum() == as_nullable.notna().sum():
                 frame[col] = converted.astype(float)
 
     exp_str = exp_sub.fillna("__NULL__").astype(str).reset_index(drop=True)
