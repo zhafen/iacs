@@ -59,7 +59,28 @@ class Registry:
             if comp_type in self._component_types:
                 tmp = f"_merge_{comp_type}"
                 self._con.create_table(tmp, arrow_data, overwrite=True)
-                merged = self.get(comp_type).union(self._con.table(tmp), distinct=True)
+                existing = self.get(comp_type)
+                incoming = self._con.table(tmp)
+
+                # Add NULL columns for any fields present in one table but not the other
+                # so that ibis union can operate on matching schemas.
+                existing_cols = set(existing.columns)
+                incoming_cols = set(incoming.columns)
+                existing_schema = existing.schema()
+                incoming_schema = incoming.schema()
+                for col in incoming_cols - existing_cols:
+                    existing = existing.mutate(
+                        ibis.null().cast(incoming_schema[col]).name(col)
+                    )
+                for col in existing_cols - incoming_cols:
+                    incoming = incoming.mutate(
+                        ibis.null().cast(existing_schema[col]).name(col)
+                    )
+
+                all_cols = sorted(existing.columns)
+                merged = existing.select(all_cols).union(
+                    incoming.select(all_cols), distinct=True
+                )
                 self.update({comp_type: merged})
                 self._con.drop_table(tmp)
             else:

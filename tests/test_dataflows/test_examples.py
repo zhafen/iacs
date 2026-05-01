@@ -17,6 +17,8 @@ import pandas as pd
 import pytest
 from hamilton import driver, base
 
+from iacs.architect import Architect
+
 EXAMPLES_DIR = Path(__file__).parent.parent.parent / "examples"
 EXPECTED_DIR = Path(__file__).parent / "expected"
 
@@ -325,3 +327,33 @@ def test_dataflows_match_expected(
         if actual is None:
             continue
         _assert_subset(var_name, expected_vars[var_name], actual)
+
+
+def _get_example_dirs_with_yaml() -> list[Path]:
+    """Return sorted example directories that contain at least one YAML file."""
+    return [
+        d for d in sorted(EXAMPLES_DIR.iterdir())
+        if d.is_dir() and any(d.rglob("*.yaml"))
+    ]
+
+
+@pytest.mark.parametrize("example_dir", _get_example_dirs_with_yaml(), ids=lambda d: d.name)
+def test_incremental_load_matches_directory(example_dir: Path) -> None:
+    """Loading each YAML file one at a time must produce the same registry as loading the directory."""
+    a_all = Architect.from_manifest(str(example_dir))
+
+    a_inc = Architect()
+    for yaml_file in sorted(example_dir.rglob("*.yaml")):
+        a_inc.load_manifest(str(yaml_file))
+
+    assert set(a_all.registry.component_types) == set(a_inc.registry.component_types)
+
+    for comp_type in a_all.registry.component_types:
+        df_all = a_all.registry.get(comp_type).execute()
+        df_inc = a_inc.registry.get(comp_type).execute()
+        sort_by = sorted(df_all.columns)
+        pd.testing.assert_frame_equal(
+            df_all.sort_values(sort_by, na_position="last").reset_index(drop=True),
+            df_inc.reindex(columns=df_all.columns).sort_values(sort_by, na_position="last").reset_index(drop=True),
+            check_dtype=False,
+        )

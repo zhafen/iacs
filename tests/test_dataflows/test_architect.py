@@ -192,6 +192,6 @@ class TestLoadManifest:
             sort_by = sorted(df_all.columns)
             pd.testing.assert_frame_equal(
                 df_all.sort_values(sort_by, na_position="last").reset_index(drop=True),
-                df_inc.sort_values(sort_by, na_position="last").reset_index(drop=True),
+                df_inc.reindex(columns=df_all.columns).sort_values(sort_by, na_position="last").reset_index(drop=True),
                 check_dtype=False,
             )
