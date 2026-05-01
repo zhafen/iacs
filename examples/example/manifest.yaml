@@ -2,15 +2,15 @@ make_cats_happy:
     data:
         - description: The mission of our cat-happiness device.
         - requirement:
-              priority: 1
+              value: 1
     feed_and_water_cats:
         data:
             - description: Obviously.
             - requirement:
-                  priority: 1
+                  value: 1
         feed_cats:
             - requirement:
-                  priority: 0.9
+                  value: 0.9
             - alias: feed_cats
         water_cats:
             - requirement
@@ -18,7 +18,7 @@ make_cats_happy:
     sift_cat_box:
         - description: Unfortunately.
         - requirement:
-              priority: 0.8
+              value: 0.8
     adore_cats:
         - description: Of course.
         - requirement

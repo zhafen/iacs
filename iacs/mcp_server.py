@@ -114,11 +114,19 @@ def _build_format_description() -> str:
 
     iacs_comp = comp_data.get("iacs_component", {})
     comp_sections = []
-    for comp_name, comp_val in iacs_comp.items():
-        if comp_name == "data":
-            continue
-        if isinstance(comp_val, list):
-            comp_sections.append(_extract_component_spec(comp_name, comp_val))
+
+    def _collect_specs(mapping: dict) -> None:
+        for comp_name, comp_val in mapping.items():
+            if comp_name == "data":
+                continue
+            if isinstance(comp_val, list):
+                comp_sections.append(_extract_component_spec(comp_name, comp_val))
+            elif isinstance(comp_val, dict):
+                if "data" in comp_val and isinstance(comp_val["data"], list):
+                    comp_sections.append(_extract_component_spec(comp_name, comp_val["data"]))
+                _collect_specs({k: v for k, v in comp_val.items() if k != "data"})
+
+    _collect_specs(iacs_comp)
 
     ds = comp_data.get("data_structure", {})
     if isinstance(ds.get("field"), list):

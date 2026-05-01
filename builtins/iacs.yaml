@@ -13,13 +13,13 @@ iacs:
                       Provide a means to comprehensively and accurately document
                       infrastructure.
                 - requirement:
-                      priority: 1.0
+                      value: 1.0
             provide_a_source_of_truth:
                 data:
                     - requirement
                 minimize_duplication:
                     data:
-                        - requirement: quality
+                        - requirement: {type: quality}
                     parse_infrastructure_in_a_wide_variety_of_formats:
                         data:
                             - description: >
@@ -58,7 +58,7 @@ iacs:
                 compatible_with_version_control:
                     - description: >
                           Version control is essential for reliability.
-                    - requirement: constraint
+                    - requirement: {type: constraint}
                 aggregate_all_definitions_in_one_location:
                     - description: >
                           A source of truth is not *a* source of truth if it is
@@ -71,7 +71,7 @@ iacs:
                           modeling tools do not--the ability to define and model
                           every type of infrastructure conceivable.
                     - requirement:
-                          priority: 1.0
+                          value: 1.0
                 accept_user_defined_infrastructure:
                     data:
                         - description: >
@@ -86,24 +86,24 @@ iacs:
                         - requirement
                 compatible_with_any_type_of_infrastructure:
                     data:
-                        - requirement: constraint
+                        - requirement: {type: constraint}
                     compatible_with_standard_components:
                         - description: >
                               We need to be able to define standard parts of solutions
                               architecture, e.g. users.
-                        - requirement: constraint
+                        - requirement: {type: constraint}
                     compatible_with_human_executed_infrastructure:
                         - description: >
                               Human-executed infrastructure is infrastructure that is
                               not yet (or cannot be) automated. Bureaucracies have a lot
                               of this.
-                        - requirement: constraint
+                        - requirement: {type: constraint}
                     compatible_with_abstract_components:
                         - description: >
                               Abstract components of infrastructure include
                               poorly-defined components and abstract concepts,
                               e.g. requirements.
-                        - requirement: constraint
+                        - requirement: {type: constraint}
                 scales_well:
                     - description: >
                           We of course want the data format to be compatible with
@@ -111,8 +111,8 @@ iacs:
                           priority since we don't expect large volumes of data
                           in the course of planning.
                     - requirement:
-                          value: quality
-                          priority: 0.1
+                          type: quality
+                          value: 0.1
             provide_documentation_in_formats_meeting_all_common_needs:
                 data:
                     - requirement
@@ -120,12 +120,12 @@ iacs:
                     have_human_and_agent_friendly_input_format:
                         - description: In the ECS framework this is the entity-first format.
                         - requirement:
-                            priority: 0.9
+                            value: 0.9
                     have_analysis_friendly_ingested_format:
                         - description: >
                             In the ECS framework this is the component-first format.
                         - requirement:
-                            priority: 0.9
+                            value: 0.9
                     export_infrastructure_to_wiki:
                         - description: >
                             Wikis are a very common and readable way of documenting
@@ -137,10 +137,10 @@ iacs:
                 transform_between_formats:
                     data:
                         - requirement:
-                            priority: 0.9
+                            value: 0.9
                     transform_between_entity_first_and_component_first:
                         - requirement:
-                            priority: 0.9
+                            value: 0.9
                         - effort:
                             value: 8
                             unit: points
@@ -229,28 +229,28 @@ iacs:
                             - Hierarchical requirements
                             - categorize requirements
                             - convert functional requirements into systems
-                    - requirement: constraint
+                    - requirement: {type: constraint}
                 provide_functionality_for_prioritizing:
                     - description: >
                         We desperately need this in order to use it on development
                         and continue making progress.
                     - requirement:
-                        priority: 1.0
+                        value: 1.0
                     - effort:
                         value: 8
                         unit: points
             facilitate_compatibility_with_agents:
-                - requirement: constraint
+                - requirement: {type: constraint}
                 - effort:
                     value: 8
                     unit: points
             facilitate_compatibility_with_terraform:
-                - requirement: constraint
+                - requirement: {type: constraint}
                 - effort:
                     value: 13
                     unit: points
             facilitate_compatibility_with_relational_databases:
-                - requirement: constraint
+                - requirement: {type: constraint}
                 - effort:
                     value: 8
                     unit: points
@@ -433,28 +433,28 @@ ecs_framework:
                     - description: >
                           It can be much easier to describe hierarchical systems if
                           the nesting of entities reflects a parent-child relation.
-                    - requirement: quality
+                    - requirement: {type: quality}
             enable_inherited_components:
                 - description: >
                       When children share something in common with their parents
                       (e.g. they are all requirements) repeating a "requirement"
                       component can be verbose and exhausting.
-                - requirement: quality
+                - requirement: {type: quality}
         be_easy_to_use:
             data:
-                - requirement: quality
+                - requirement: {type: quality}
             have_good_formatting:
                 data:
                     - description: >
                           As defined by the sub-requirements.
-                    - requirement: quality
+                    - requirement: {type: quality}
                 have_good_formatting_across_formats:
                     data:
-                        - requirement: quality
+                        - requirement: {type: quality}
                     have_good_yaml_formatting:
-                        - requirement: quality
+                        - requirement: {type: quality}
                     have_good_ecs_formatting:
-                        - requirement: quality
+                        - requirement: {type: quality}
                 formatting_is_powerful:
                     enable_pointing_to_entities:
                         - description: >
@@ -462,8 +462,8 @@ ecs_framework:
                               fundamental ask is that we need a convenient means
                               to identify another entity.
                         - requirement:
-                              value: quality
-                              priority: 0.9
+                              type: quality
+                              value: 0.9
                         - parent: have_good_yaml_formatting
                     enable_easily_jumping_to_entity_def:
                         - description: >
@@ -471,7 +471,7 @@ ecs_framework:
                               on something we see when exploring the ECS-formatted data
                               so we want to be able to get to it easily.
                         - requirement:
-                              value: quality
+                              type: quality
                         - parent: have_good_ecs_formatting
                     concisely_store_subtype_data:
                         - description: >
@@ -484,8 +484,8 @@ ecs_framework:
                 formatting_is_concise:
                     children_inherit_components_of_parents:
                         - requirement:
-                              value: quality
-                              priority: 0.7
+                              type: quality
+                              value: 0.7
                         - parent: have_good_yaml_formatting
                 formatting_is_clear:
                     commonly_used_components_have_compressed_format:
@@ -494,21 +494,21 @@ ecs_framework:
                               field with something like "my_field[str] = 'default': a
                               description of my field".
                         - requirement:
-                              value: quality
-                              priority: 0.6
+                              type: quality
+                              value: 0.6
                         - parent: have_good_yaml_formatting
                     entities_associated_with_components_are_easily_identified:
                         - description: >
                               A component table without knowing what entities the
                               components are associated with at a glance is hard to use.
-                        - requirement: quality
+                        - requirement: {type: quality}
                         - parent: have_good_ecs_formatting
                 formatting_is_flexible:
                     allow_relations_to_be_defined_as_part_of_target_entities:
                         - description: I.e, enable use of "parent of".
                         - requirement:
-                              value: quality
-                              priority: 0.5
+                              type: quality
+                              value: 0.5
                         - parent: have_good_yaml_formatting
     core_concepts:
         data:
@@ -1016,12 +1016,12 @@ ecs_framework:
                       The component-first ECS format organizes the data around
                       component types, grouping together component instances of the
                       same type. This format is best for querying and analysis.
-                - requirement: constraint
+                - requirement: {type: constraint}
             registry:
                 - description: >
                       Component-centered data is stored in a registry, which contains
                       one component table per component type.
-                - requirement: constraint
+                - requirement: {type: constraint}
             entity_id:
                 data:
                     - description: >
@@ -1075,7 +1075,7 @@ ecs_framework:
                     - description: >
                           Each component table stores all component instances for a
                           given component type, with one row per component instance.
-                    - requirement: constraint
+                    - requirement: {type: constraint}
                 table_index:
                     - description: >
                           The index for a component table is a multi-index consisting
@@ -1088,19 +1088,19 @@ ecs_framework:
                           - Load data via functions, defined in their own specific module.
                           - Take that loaded data, and transform/ensure indexes match the output you want to create.
                           - Continue with transformations.
-                    - requirement: constraint
+                    - requirement: {type: constraint}
                 subtype_column:
                     - description: >
                           Components of different subtypes (i.e. components that are
                           subsets of the same component and share the same schema)
                           can reside in the same table. A "component_type" column
                           distinguishes them.
-                    - requirement: constraint
+                    - requirement: {type: constraint}
                 schema_columns:
                     - description: >
                           The remaining columns in a component table are the columns
                           defined by the component schema.
-                    - requirement: constraint
+                    - requirement: {type: constraint}
 
 audit_system:
     data:
@@ -1315,7 +1315,7 @@ dataflow_system:
               (e.g. YAML manifests, CSV files), transforming it into component
               tables, and loading the result into the registry.
         - requirement:
-              priority: 1.0
+              value: 1.0
     validation:
         - description: >
               Validation dataflows are operations that can be run routinely on a
@@ -1324,7 +1324,7 @@ dataflow_system:
               relationships between entities are consistent, and that derived
               components are up to date.
         - requirement:
-              priority: 0.8
+              value: 0.8
     audit:
         - description: >
               Audit dataflows are operations that audit the infrastructure defined
@@ -1333,4 +1333,4 @@ dataflow_system:
               example checking requirement coverage, traceability, and outstanding
               todos.
         - requirement:
-              priority: 0.6
+              value: 0.6

@@ -14,12 +14,12 @@ raw_entity_first_data = {
         "make_cats_happy": {
             "data": [
                 {"description": "The mission of our cat-happiness device."},
-                {"requirement": {"priority": 1}},
+                {"requirement": {"value": 1}},
             ],
             "feed_and_water_cats": {
                 "data": [
                     {"description": "Obviously."},
-                    {"requirement": {"priority": 1}},
+                    {"requirement": {"value": 1}},
                 ],
                 "feed_cats": [
                     "requirement",
@@ -32,7 +32,7 @@ raw_entity_first_data = {
             },
             "sift_cat_box": [
                 {"description": "Unfortunately."},
-                {"requirement": {"priority": 0.8}},
+                {"requirement": {"value": 0.8}},
             ],
             "adore_cats": [
                 {"description": "Of course."},
@@ -178,17 +178,14 @@ component_tables = {
             {
                 "entity_id": main_req_id,
                 "component_index": 1,
-                "priority": 1.0,
             },
             {
                 "entity_id": feed_cats_req_id,
                 "component_index": 0,
-                "priority": 0.9,
             },
             {
                 "entity_id": get_id("make_cats_happy.sift_cat_box"),
                 "component_index": 1,
-                "priority": 0.8,
             },
         ]
     ),

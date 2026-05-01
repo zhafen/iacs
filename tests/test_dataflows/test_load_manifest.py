@@ -203,10 +203,10 @@ class TestPathvaluePairs:
 
     def test_dict_valued_component(self):
         """A component whose value is a dict produces one row per sub-field."""
-        data = _wrap({"entity": [{"requirement": {"priority": 1}}]})
+        data = _wrap({"entity": [{"requirement": {"value": 1}}]})
         result = load_manifest.pathvalue_pairs(data)
         df = result.to_pandas()
-        expected_path = _path("entity[0].requirement.priority")
+        expected_path = _path("entity[0].requirement.value")
         assert expected_path in df["path"].values
         assert df[df["path"] == expected_path]["value"].iloc[0] == "1"
 

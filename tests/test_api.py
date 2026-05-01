@@ -30,8 +30,8 @@ def test_view_requirement(client):
         if record["entity_id"] != test_entity_id:
             continue
 
-        assert record["requirement.value"] == "functional"
-        assert record["requirement.priority"] == 0.5
+        assert record["requirement.type"] == "functional"
+        assert record["requirement.value"] == 0.5
 
 
 def test_view_multiple_component_types(client):
@@ -48,7 +48,7 @@ def test_view_multiple_component_types(client):
 
 def test_view_specific_field(client):
     """Test that individual dotted fields can be requested via the API."""
-    resp = client.get("/api/view/requirement.priority")
+    resp = client.get("/api/view/requirement.value")
     assert resp.status_code == 200
     data = resp.json()
 
@@ -60,5 +60,5 @@ def test_view_specific_field(client):
         if record["entity_id"] != test_entity_id:
             continue
 
-        assert record["requirement.priority"] == 0.5
-        assert "requirement.value" not in record
+        assert record["requirement.value"] == 0.5
+        assert "requirement.type" not in record

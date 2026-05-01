@@ -244,9 +244,8 @@ iacs_component:
                 value:
                     description: >
                         Impact score, with higher values corresponding to greater impact.
-                    type: float
+                    type: rating
                     default: 0.5
-                    range: [0, 1]
         discovery:
             - description: >
                 Represents the inherent value attached to experiencing or learning
@@ -264,33 +263,32 @@ iacs_component:
                 values indicate stronger desire to pursue; lower values indicate
                 impulse to avoid.
             - parent: impact
-
-    requirement:
-        - description: >
-            Indicates that an entity represents a requirement that must be satisfied
-            by the system design. Requirements should be traced to implementations.
-        - parent: value
-        - field:
-            value:
-                description: The type of requirement.
-                type: str
-                range:
-                    - functional
-                    - quality
-                    - constraint
-                default: functional
-            priority:
-                description: >
-                    The priority, with higher values corresponding to higher priority.
-                type: float
-                default: 0.5
-                range: [0, 1]
-            schedule:
-                description: >
-                    How often the requirement needs to be satisfied. If null, the
-                    requirement needs to be satisfied on demand.
-                type: timedelta
-                default: null
+        requirement:
+            - description: >
+                Indicates that an entity represents a requirement that must be satisfied
+                by the system design. Requirements should be traced to implementations.
+            - parent: impact
+            - field:
+                type:
+                    description: The type of requirement.
+                    type: str
+                    range:
+                        - functional
+                        - quality
+                        - constraint
+                    default: functional
+                value:
+                    description: >
+                        The priority/impact score for the requirement, with higher
+                        values corresponding to higher priority.
+                    type: rating
+                    default: 0.5
+                schedule:
+                    description: >
+                        How often the requirement needs to be satisfied. If null, the
+                        requirement needs to be satisfied on demand.
+                    type: timedelta
+                    default: null
 
     solution:
         - description: >

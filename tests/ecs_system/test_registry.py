@@ -31,7 +31,7 @@ class TestRegistryInitialization:
         )
         conn.create_table(
             "requirement",
-            {"entity_id": ["iacs"], "value": ["functional"], "priority": [1.0]},
+            {"entity_id": ["iacs"], "type": ["functional"], "value": [1.0]},
         )
         components = {
             "description": conn.table("description"),
@@ -104,7 +104,7 @@ class TestRegistryView:
         )
         conn.create_table(
             "requirement",
-            {"entity_id": ["iacs", "iacs"], "value": ["functional", "quality"], "priority": [1.0, 0.5]},
+            {"entity_id": ["iacs", "iacs"], "type": ["functional", "quality"], "value": [1.0, 0.5]},
         )
         components = {
             "entity_id": conn.table("entity_id"),
@@ -123,7 +123,7 @@ class TestRegistryView:
         result = sample_registry.view_df("requirement")
 
         assert "requirement.value" in result.columns
-        assert "requirement.priority" in result.columns
+        assert "requirement.type" in result.columns
 
     def test_view_nonexistent_component_raises_keyerror(self, sample_registry):
         """view() raises KeyError for a component type that doesn't exist."""
@@ -158,7 +158,7 @@ class TestRegistryViewMultipleComponents:
         )
         conn.create_table(
             "requirement",
-            {"entity_id": ["a", "b"], "priority": [1.0, 0.0]},
+            {"entity_id": ["a", "b"], "value": [1.0, 0.0]},
         )
         components = {
             "entity_id": conn.table("entity_id"),
@@ -184,9 +184,9 @@ class TestRegistryViewMultipleComponents:
 
     def test_view_specific_fields(self, multi_component_registry):
 
-        result = multi_component_registry.view_df(["description.value", "requirement.priority"])
+        result = multi_component_registry.view_df(["description.value", "requirement.value"])
         assert result.loc["b", "description.value"] == "Desc B"
-        assert result.loc["b", "requirement.priority"] == 0.0
+        assert result.loc["b", "requirement.value"] == 0.0
 
     def test_view_single_component_as_list_works(self, multi_component_registry):
         """view() with single-element list works like single string."""

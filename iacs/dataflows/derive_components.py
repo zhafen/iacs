@@ -246,7 +246,7 @@ def priority_product(validated_registry: Registry) -> pd.DataFrame:
     req_df = validated_registry._components["requirement"].to_pandas()
     parent_df = validated_registry._components["parent"].to_pandas()
 
-    req_priority = req_df.set_index("entity_id")["priority"]
+    req_priority = req_df.set_index("entity_id")["value"]
 
     # Directed graph: parent -> child
     G = nx.DiGraph()
