@@ -5,6 +5,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
+import ibis
 from hamilton import driver, base
 
 from iacs.dataflows import base_etl
@@ -23,6 +24,26 @@ class Architect:
         Args:
             manifest: A directory path (or list of paths) making up the manifest.
         """
+        a = cls()
+        a.load_manifest(manifest)
+        return a
+
+    def __init__(self, registry: Registry = None):
+        if registry is None:
+            registry = Registry(ibis.duckdb.connect(), {})
+        self._registry = registry
+        self._dataflows: list[ModuleType] = []
+        self._rebuild_driver()
+
+    def load_manifest(self, manifest: str | Path | list[str | Path]) -> None:
+        """Load a manifest and merge it into the current registry.
+
+        Runs the full ETL pipeline (load, validate, derive) on the given paths
+        and unions the resulting component tables with any existing data.
+
+        Args:
+            manifest: A file path, directory path, or list of either.
+        """
         if isinstance(manifest, (str, Path)):
             manifest = [str(manifest)]
         else:
@@ -30,12 +51,9 @@ class Architect:
         result = driver.Driver(
             {}, base_etl, adapter=base.DictResult()
         ).execute(["derived_registry"], inputs={"input_dir": manifest})
-        return cls(result["derived_registry"])
-
-    def __init__(self, registry: Registry):
-        self._registry = registry
-        self._dataflows: list[ModuleType] = []
-        self._rebuild_driver()
+        new_registry = result["derived_registry"]
+        self._registry.merge(new_registry)
+        new_registry.close()
 
     def _rebuild_driver(self) -> None:
         self._driver = driver.Driver(
