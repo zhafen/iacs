@@ -116,6 +116,16 @@ def _build_format_description() -> str:
     comp_sections = []
 
     def _collect_specs(mapping: dict) -> None:
+        """Recursively collect component specs from a nested component mapping.
+
+        Leaf components (list values) are extracted directly. Parent components
+        (dict values with a "data" key) have their own spec extracted from
+        "data", then their children are visited recursively. The "data" key
+        itself is skipped as a component name since it holds the parent's own
+        component list, not a child component.
+
+        Results are appended to the outer ``comp_sections`` list.
+        """
         for comp_name, comp_val in mapping.items():
             if comp_name == "data":
                 continue
