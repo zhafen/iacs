@@ -13,7 +13,7 @@ from iacs.architect import Architect
 server = FastMCP("iacs")
 
 _BUILTIN_MANIFEST = Path(__file__).parent.parent / "examples" / "example"
-_BUILTINS_DIR = Path(__file__).parent.parent / "builtins"
+_BUILTINS_DIR = Path(__file__).parent / "builtins"
 
 _architect: Architect | None = None
 

@@ -12,7 +12,7 @@ from ..registry import Registry
 from ..utils import dhash
 
 
-_BUILTIN_COMPONENTS = Path(__file__).parent.parent.parent / "builtins" / "components.yaml"
+_BUILTIN_COMPONENTS = Path(__file__).parent.parent / "builtins" / "components.yaml"
 _BUILTIN_ID = "builtins.components"
 
 
