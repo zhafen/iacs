@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "iacs": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["--from", "iacs[mcp]", "iacs-mcp"],
+      "env": {}
+    }
+  }
+}
