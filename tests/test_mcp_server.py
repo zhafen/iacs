@@ -5,10 +5,13 @@ import pytest
 
 from iacs.mcp_server import (
     _BUILTINS_DIR,
+    _BUILTIN_MANIFEST,
     _build_format_description,
     _validate_yaml_string,
+    _get_architect,
     server,
 )
+from iacs import mcp_server
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +144,29 @@ sol:
 """
         result = _validate_yaml_string(yaml_str)
         assert result.startswith("Valid.")
+
+
+# ---------------------------------------------------------------------------
+# Builtins always loaded
+# ---------------------------------------------------------------------------
+
+class TestBuiltinsAlwaysLoaded:
+    """Builtins must be present regardless of which manifest is active."""
+
+    def setup_method(self):
+        mcp_server._architect = None
+
+    def teardown_method(self):
+        mcp_server._architect = None
+
+    def test_default_architect_includes_effort(self):
+        arch = _get_architect()
+        assert "effort" in arch.registry.component_types
+
+    def test_load_manifest_tool_includes_effort(self, tmp_path):
+        (tmp_path / "minimal.yaml").write_text("my_req:\n    - requirement\n")
+        mcp_server.load_manifest(str(tmp_path))
+        assert "effort" in mcp_server._architect.registry.component_types
 
 
 # ---------------------------------------------------------------------------
