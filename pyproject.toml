@@ -44,6 +44,9 @@ py-modules = ["app"]
 where = ["."]
 include = ["iacs*"]
 
+[tool.setuptools.package-data]
+iacs = ["builtins/*.yaml"]
+
 [dependency-groups]
 dev = [
     "mkdocs>=1.6.1",

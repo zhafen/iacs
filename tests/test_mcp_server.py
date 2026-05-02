@@ -1,13 +1,14 @@
 """Tests for the MCP server tools."""
 
-from pathlib import Path
-
 import yaml
 import pytest
 
-from iacs.mcp_server import _build_format_description, _validate_yaml_string, server
-
-_BUILTINS_DIR = Path(__file__).parent.parent / "builtins"
+from iacs.mcp_server import (
+    _BUILTINS_DIR,
+    _build_format_description,
+    _validate_yaml_string,
+    server,
+)
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,1336 @@
+iacs:
+    be_a_powerful_tool_for_solutions_architecture:
+        data:
+            - description: >
+                  iacs (short for Infrastructure-as-Code Sketch) is software designed to help
+                  technical architects design arbitrary infrastructure in a code-first format
+                  without worrying about the precise details of the implementation or the
+                  system-specific syntax.
+            - requirement
+        provide_quality_end_to_end_documentation_of_infrastructure:
+            data:
+                - description: >
+                      Provide a means to comprehensively and accurately document
+                      infrastructure.
+                - requirement:
+                      value: 1.0
+            provide_a_source_of_truth:
+                data:
+                    - requirement
+                minimize_duplication:
+                    data:
+                        - requirement: {type: quality}
+                    parse_infrastructure_in_a_wide_variety_of_formats:
+                        data:
+                            - description: >
+                                  If infrastructure is defined elsewhere in an
+                                  existing format, we don't want to duplicate it and
+                                  therefore introduce a source of uncertainty.
+                            - requirement
+                        parse_a_variety_of_IaC_formats:
+                            - description: >
+                                  We don't want to duplicate other IaC code if
+                                  possible.
+                            - requirement
+                            - effort:
+                                value: 13
+                                unit: points
+                        parse_code_languages:
+                            - description: >
+                                  Code such as Python also provides clear definitions.
+                            - requirement
+                            - effort:
+                                value: 8
+                                unit: points
+                        parse_natural_language:
+                            - id: parse_natural_language
+                            - description: >
+                                  Natural language is the most accessible way for users to
+                                  describe infrastructure, removing the need to learn a
+                                  specific syntax or format. Translating free-form text
+                                  into ECS data requires resolving coreferences, extracting
+                                  atomic facts, and mapping them to canonical entity and
+                                  component representations.
+                            - requirement
+                            - effort:
+                                value: 21
+                                unit: points
+                compatible_with_version_control:
+                    - description: >
+                          Version control is essential for reliability.
+                    - requirement: {type: constraint}
+                aggregate_all_definitions_in_one_location:
+                    - description: >
+                          A source of truth is not *a* source of truth if it is
+                          distributed.
+                    - requirement
+            comprehensively_document_infrastructure:
+                data:
+                    - description: >
+                          This is one of the key features iacs provides that other
+                          modeling tools do not--the ability to define and model
+                          every type of infrastructure conceivable.
+                    - requirement:
+                          value: 1.0
+                accept_user_defined_infrastructure:
+                    data:
+                        - description: >
+                              Users need to be able to describe the infrastructure they
+                              want to build.
+                        - requirement
+                    describe_infrastructure_with_ecs_framework:
+                        - id: ecs_framework_base_requirement
+                        - description: >
+                              One potential solution for allowing users to define
+                              infrastructure is via an ECS framework.
+                        - requirement
+                compatible_with_any_type_of_infrastructure:
+                    data:
+                        - requirement: {type: constraint}
+                    compatible_with_standard_components:
+                        - description: >
+                              We need to be able to define standard parts of solutions
+                              architecture, e.g. users.
+                        - requirement: {type: constraint}
+                    compatible_with_human_executed_infrastructure:
+                        - description: >
+                              Human-executed infrastructure is infrastructure that is
+                              not yet (or cannot be) automated. Bureaucracies have a lot
+                              of this.
+                        - requirement: {type: constraint}
+                    compatible_with_abstract_components:
+                        - description: >
+                              Abstract components of infrastructure include
+                              poorly-defined components and abstract concepts,
+                              e.g. requirements.
+                        - requirement: {type: constraint}
+                scales_well:
+                    - description: >
+                          We of course want the data format to be compatible with
+                          expensive calculations, but this is definitely a lower
+                          priority since we don't expect large volumes of data
+                          in the course of planning.
+                    - requirement:
+                          type: quality
+                          value: 0.1
+            provide_documentation_in_formats_meeting_all_common_needs:
+                data:
+                    - requirement
+                have_good_formats:
+                    have_human_and_agent_friendly_input_format:
+                        - description: In the ECS framework this is the entity-first format.
+                        - requirement:
+                            value: 0.9
+                    have_analysis_friendly_ingested_format:
+                        - description: >
+                            In the ECS framework this is the component-first format.
+                        - requirement:
+                            value: 0.9
+                    export_infrastructure_to_wiki:
+                        - description: >
+                            Wikis are a very common and readable way of documenting
+                            knowledge. This would be a good and easy default.
+                        - requirement
+                        - effort:
+                            value: 5
+                            unit: points
+                transform_between_formats:
+                    data:
+                        - requirement:
+                            value: 0.9
+                    transform_between_entity_first_and_component_first:
+                        - requirement:
+                            value: 0.9
+                        - effort:
+                            value: 8
+                            unit: points
+        help_improve_the_quality_of_system_designs:
+            data:
+                - requirement
+            improve_complex_solution_architectures:
+                data:
+                    - description: >
+                          Many solutions are too complex for a simple view, but they still
+                          need to be assessed for completeness, accuracy, documentation, etc.
+                    - requirement
+                provide_an_interface_for_interactive_development:
+                    - requirement
+                    - description: >
+                        The start of this may be the d3js tree viewer we created.
+                        But that feels like it's potentially starting from scratch.
+                        We need to be careful.
+                        If our focus is code
+                allow_solution_designs_to_be_tested:
+                    data:
+                        - description: >
+                              Requiring solutions to pass well-defined tests sets a
+                              baseline minimum quality.
+                        - requirement
+                    provide_tools_to_build_tests_for_system_designs:
+                        - requirement
+                    provide_default_tests_for_systems:
+                        data:
+                            - requirement
+                        test_for_identifying_requirements_missing_solutions:
+                            - description: >
+                                  Tests for both requirements without solutions and
+                                  requirements without adequate/implemented solutions.
+                            - requirement
+                        trace_every_component_to_a_requirement:
+                            - description: >
+                                  There should be a motivation for every piece of
+                                  infrastructure.
+                            - requirement
+                        test_for_invalid_definitions:
+                            - requirement
+                        test_for_siloed_infrastructure:
+                            - description: >
+                                  Everything should be part of one big solution.
+                            - requirement
+                        test_for_completed_todos:
+                            - requirement
+                convey_complex_architectures:
+                    - description: >
+                          Part of validation is also understanding how an architecture
+                          works, for which we need views into the architecture.
+                    - requirement
+            create_a_procedure_for_designing_systems:
+                data:
+                    - description: >
+                          Coming up with a series of steps to design infrastructure
+                          that one then follows with the help of the code (or even
+                          has an agent perform end to end) could be powerful.
+
+                          Our series of steps revolves around requirements and the
+                          systems that solve them.
+                    - requirement
+                requirement_design_process:
+                    - description: >
+                          First step of the process is to identify the big picture
+                          requirements of the system. Then the user splits each big
+                          picture requirement down into smaller ones recursively,
+                          until reaching atomic requirements, i.e. ones that cannot be
+                          further divided.
+                    - requirement
+                system_design_process:
+                    - description: >
+                          For each entity with a requirement component it must also
+                          have a solution component. The requirements are prioritized
+                          by priority at each level and addressed, even if only the
+                          skeleton at first.
+                    - requirement
+        provide_a_launching_point_for_infrastructure_implementation:
+            data:
+                - requirement
+            provide_a_guided_process_for_developing_solutions:
+                data:
+                    - description: >
+                        Steps considered so far:
+                            - Hierarchical requirements
+                            - categorize requirements
+                            - convert functional requirements into systems
+                    - requirement: {type: constraint}
+                provide_functionality_for_prioritizing:
+                    - description: >
+                        We desperately need this in order to use it on development
+                        and continue making progress.
+                    - requirement:
+                        value: 1.0
+                    - effort:
+                        value: 8
+                        unit: points
+            facilitate_compatibility_with_agents:
+                - requirement: {type: constraint}
+                - effort:
+                    value: 8
+                    unit: points
+            facilitate_compatibility_with_terraform:
+                - requirement: {type: constraint}
+                - effort:
+                    value: 13
+                    unit: points
+            facilitate_compatibility_with_relational_databases:
+                - requirement: {type: constraint}
+                - effort:
+                    value: 8
+                    unit: points
+
+    iacs_meta_discussion:
+        data:
+            - description: >
+                  Ongoing design discussions and open questions about the syntax and
+                  capabilities of the iacs system itself.
+        syntax_challenges:
+            - todo: >
+                  Have files be the topmost entities.
+            - todo: >
+                  Notation for multiple components of the same type. Maybe "component_type s"?
+            - todo: >
+                  Binary relationship notation going both ways.
+                  Maybe "component_type of:" and "component_type:"?
+            - todo: >
+                  Notation for indicating that a component is a row-wise subset of another
+                  component, i.e. that it has the same fields but additional constraints.
+                  Maybe "subset of:" and "subset s", i.e. we use a "subset" relation?
+            - todo: >
+                  Notation for defining an entity in-line vs linking to an existing entity.
+                  Maybe "(entity_name)"?
+            - todo: >
+                  Notation for indicating that a component must be joined with another component
+                  to be interpreted correctly. Maybe: "required:"?
+            - todo: >
+                  Notation for working with a component that would be a subset of another
+                  component, except it has additional required associated components or is
+                  an extension of that component. Maybe we allow "inheritance" where the child
+                  component is a subset of the parent component that also has required components
+                  defined for the purpose of extending the component.
+            - todo: >
+                  Notation for subsets with constant values for one or more fields.
+            - todo: >
+                  Notation for functions and classes.
+            - todo: >
+                  Notation for a component that is at the intersection of two subsets.
+        infrastructure_as_data_discussion:
+            data:
+                - description: >
+                      Discussion on reframing iacs from "infrastructure as code" to
+                      "infrastructure as data". The distinction matters for storage and
+                      tooling choices: code implies files and text editors, while data
+                      implies databases, queries, and structured exports.
+            primary_storage:
+                - description: >
+                      If infrastructure is data, databases are the more natural primary
+                      storage medium rather than YAML files on disk. This would make
+                      querying, diffing, and auditing infrastructure more tractable.
+                - todo: >
+                      Evaluate database backends as primary storage for iacs, with YAML
+                      serving only as an ingestion and interchange format. See also:
+                      facilitate_compatibility_with_relational_databases.
+            yaml_as_ingestion_format:
+                - description: >
+                      Even with a database backend, YAML remains valuable as the human-
+                      authored input format. Users write YAML, iacs ingests it into the
+                      database. The round-trip direction — exporting arbitrary slices of
+                      the infrastructure back to YAML for viewing and editing — is a
+                      strong candidate for the primary editing workflow.
+                - todo: >
+                      Design the YAML round-trip: exporting a subgraph of the database
+                      back to entity-first YAML, letting the user modify it, and
+                      re-ingesting the result cleanly.
+            viewing_and_editing:
+                - description: >
+                      Open question: how do users view and edit infrastructure once it
+                      lives in a database? Two candidate approaches are (1) exposing
+                      arbitrary subsets as editable YAML files, and (2) a generated wiki
+                      or documentation site. Both may be needed simultaneously.
+                - todo: >
+                      Decide on the primary interface for browsing and editing persisted
+                      infrastructure. Evaluate editable YAML exports vs. a generated
+                      wiki. See also: export_infrastructure_to_wiki.
+
+ecs_framework:
+    data:
+        - description: >
+              iacs stores and manipulates infrastructure data following an
+              entity-component-system (ECS) framework. This framework makes it easy
+              to describe complicated infrastructure in a simple manner, and because
+              there is a strong relationship between ECS frameworks and relational
+              database design, the resultant infrastructure is already prepped to be
+              compatible with common databases.
+        - parent: iacs
+    requirements:
+        data:
+            - id: ecs_framework_requirements
+            - description: The requirements specifically for our ECS framework.
+            - requirement
+        describe_requirements:
+            data:
+                - description: >
+                      Our approach to solution design centers on requirements, so we
+                      better be able to document them.
+                - requirement
+            describe_hierarchical_requirements:
+                data:
+                    - id: describe_hierarchical_requirements
+                    - description: >
+                          Our specific approach to requirements is to start with the
+                          fundamental requirements and break them into subrequirements.
+                          Child requirements are requirements that need to be
+                          satisfied for the parent requirement to be satisfied.
+                    - requirement
+                enable_multiple_inheritance_for_requirements:
+                    - id: enable_multiple_inheritance_for_requirements
+                    - description: >
+                          Any requirement depending on another requirement has a parent
+                          relationship to that requirement. When multiple requirements
+                          depend on a single requirement, that subsequently implies
+                          multiple inheritance.
+                    - requirement
+            handle_complex_requirement_structure:
+                - description: >
+                      In advanced systems, the motivations for any one solution
+                      can be manifold and complex. We need a way to make sense of it.
+                - requirement
+        describe_systems:
+            data:
+                - description: >
+                      We need to be able to describe systems built to fulfill
+                      requirements.
+                - requirement
+            describe_entities:
+                data:
+                    - description: >
+                          We need to be able to describe entities as sets of components.
+                    - requirement
+                have_unique_identifiers:
+                    - description: We need a method to uniquely identify entities.
+            describe_hierarchical_systems:
+                - id: describe_hierarchical_systems
+                - description: >
+                      Many system designs are hierarchical in nature.
+        describe_hierarchical_structure:
+            data:
+                - id: ecs_hierarchical_requirement
+                - description: >
+                      A generalized requirement of several other requirements is the ability
+                      to describe hierarchical structure.
+                - requirement
+                - parent: describe_hierarchical_requirements
+                - parent: describe_hierarchical_systems
+            define_entity_ids_by_hierarchy:
+                data:
+                    - description: >
+                          To ensure IDs are both unique and readable, a powerful solution
+                          is to define entities according to their hierarchy.
+                          This prevents common terms from each acting like an entity
+                          ID accidentally.
+
+                          This is also consistent with path-like
+                          syntax, e.g. for Python modules, classes, and functions and
+                          for filepaths.
+                    - requirement
+                handle_multiple_inheritance_for_entity_ids_defined_by_hierarchy:
+                    data:
+                        - description: >
+                              When there are multiple parents we need a way to uniquely
+                              define the entity ID.
+                        - parent: enable_multiple_inheritance
+                        - requirement
+                    require_id_override_for_multiparent_entities:
+                        - description: >
+                              One solution is to just force define a new ID.
+                        - requirement
+            enable_multiple_inheritance:
+                - parent: enable_multiple_inheritance_for_requirements
+                - requirement
+            enable_flexible_syntax:
+                enable_per_entity_format:
+                    - description: >
+                          A guaranteed format to describe any entity is only
+                          describing one entity at a time.
+                    - requirement
+                enable_nested_format:
+                    - description: >
+                          It can be much easier to describe hierarchical systems if
+                          the nesting of entities reflects a parent-child relation.
+                    - requirement: {type: quality}
+            enable_inherited_components:
+                - description: >
+                      When children share something in common with their parents
+                      (e.g. they are all requirements) repeating a "requirement"
+                      component can be verbose and exhausting.
+                - requirement: {type: quality}
+        be_easy_to_use:
+            data:
+                - requirement: {type: quality}
+            have_good_formatting:
+                data:
+                    - description: >
+                          As defined by the sub-requirements.
+                    - requirement: {type: quality}
+                have_good_formatting_across_formats:
+                    data:
+                        - requirement: {type: quality}
+                    have_good_yaml_formatting:
+                        - requirement: {type: quality}
+                    have_good_ecs_formatting:
+                        - requirement: {type: quality}
+                formatting_is_powerful:
+                    enable_pointing_to_entities:
+                        - description: >
+                              This is required for ((relation)) components. The
+                              fundamental ask is that we need a convenient means
+                              to identify another entity.
+                        - requirement:
+                              type: quality
+                              value: 0.9
+                        - parent: have_good_yaml_formatting
+                    enable_easily_jumping_to_entity_def:
+                        - description: >
+                              We frequently want to edit entity entries in manifests based
+                              on something we see when exploring the ECS-formatted data
+                              so we want to be able to get to it easily.
+                        - requirement:
+                              type: quality
+                        - parent: have_good_ecs_formatting
+                    concisely_store_subtype_data:
+                        - description: >
+                            Frequently we will have a component type that is a subtype
+                            of the parent. In this case we are left with the choice to
+                            either have a separate table or have a column that
+                            differentiates them. We need to evaluate the pros and cons
+                            of each.
+                        - requirement
+                formatting_is_concise:
+                    children_inherit_components_of_parents:
+                        - requirement:
+                              type: quality
+                              value: 0.7
+                        - parent: have_good_yaml_formatting
+                formatting_is_clear:
+                    commonly_used_components_have_compressed_format:
+                        - description: >
+                              For example, it would be nice to concisely define a
+                              field with something like "my_field[str] = 'default': a
+                              description of my field".
+                        - requirement:
+                              type: quality
+                              value: 0.6
+                        - parent: have_good_yaml_formatting
+                    entities_associated_with_components_are_easily_identified:
+                        - description: >
+                              A component table without knowing what entities the
+                              components are associated with at a glance is hard to use.
+                        - requirement: {type: quality}
+                        - parent: have_good_ecs_formatting
+                formatting_is_flexible:
+                    allow_relations_to_be_defined_as_part_of_target_entities:
+                        - description: I.e, enable use of "parent of".
+                        - requirement:
+                              type: quality
+                              value: 0.5
+                        - parent: have_good_yaml_formatting
+    core_concepts:
+        data:
+            - description: >
+                  There are three core concepts for the ECS system: entities,
+                  components, and systems.
+        entity:
+            - description: >
+                  An entity is a representation of an object or concept. Entities are
+                  collections of components labeled with a unique identifier, the
+                  entity id.  All data for an entity is stored as components.
+        component:
+            - description: >
+                  A component is a dictionary of data belonging to one or more
+                  entities. Components of the same type share a component schema, and
+                  can be aggregated into the same table or dataframe. Not all
+                  entities have components of all component types. For example, the
+                  vast majority of entities will have a ((description)) component that
+                  contains data describing what the entity is, while only a subset
+                  might have a ((todo)) component that contains data describing
+                  something about the entity that needs to be addressed.
+
+                  Components are intended to be consistent with set theory,
+                  specifically in relation to classes. A class is a collection of
+                  mathematical objects (often sets) that can be unambiguously defined
+                  by a property that all its members share. A component dataframe is a
+                  collection of mathematical objects that are a subset of a class. All
+                  objects in the set share the same property, but not all objects in
+                  the class are part of the component dataframe. The shared property
+                  is referred to as the component schema.
+
+                  In documentation, components will be indicated by double
+                  parenthesis, e.g. ((schema)).
+        system:
+            - description: >
+                  One of the core parts of an ECS framework. Whereas entities and
+                  components record data, systems record logic to work with entities
+                  and components. Each system has one or more ((task)) components it
+                  is responsible for completing.
+    ecs_system:
+        data:
+            - description: >
+                  The infrastructure that supports the ECS framework. The system
+                  consists of a Registry for component-first data storage,
+                  an IOSystem for file I/O and format conversion, and a
+                  TransformSystem for data manipulation.
+            - system
+        registry:
+            data:
+                - description: >
+                      Stores ECS data in component-first format. Each component
+                      type has its own table (DataFrame) with a multi-index of
+                      (entity_id, component_index).
+                - system
+                - effort:
+                    value: 5
+                    unit: points
+            init:
+                - description: Initialize from a dict of component DataFrames.
+                - input:
+                      components [dict[str, dataframe]]: >
+                          Mapping of component type names to DataFrames.
+            component_types:
+                - description: Returns list of component types in the registry.
+                - output:
+                      component_types [list[str]]: List of component type names.
+            view:
+                - description: >
+                      Returns a copy of the DataFrame for a given component type.
+                - input:
+                      component_type [str]: The component type to view.
+                - output:
+                      table [dataframe]: Copy of the component table.
+            from_entity_first:
+                - description: >
+                      Class method that constructs a Registry from entity-first
+                      data. Groups components by type into separate tables.
+                - input:
+                      entity_first [dataframe]: >
+                          Entity-centered DataFrame with columns: entity_id,
+                          component_index, component_type, component_value.
+                - output:
+                      registry [registry]: >
+                          Registry with one table per component type.
+        io_system:
+            data:
+                - description: >
+                      Handles file I/O and format conversion for ECS data.
+                      Converts between entity-first format (for human editing)
+                      and component-first format (Registry, for querying).
+                - system
+                - effort:
+                    value: 8
+                    unit: points
+            read_entity_first:
+                - description: >
+                      Parse entity-first data (dict) into a flat DataFrame with
+                      one row per component.
+                - input:
+                      data [dict]: Entity-centered data structure.
+                - output:
+                      df [dataframe]: >
+                          DataFrame with columns: entity_id, component_index,
+                          component_type, component_value.
+            read_entity_first_file:
+                - description: >
+                      Read entity-first data from a YAML file.
+                - input:
+                      path [str]: Path to the YAML file.
+                - output:
+                      df [dataframe]: Parsed entity-first DataFrame.
+            to_entity_first:
+                - description: >
+                      Convert component-first Registry to entity-first
+                      DataFrame. (Not yet implemented.)
+                - input:
+                      registry [registry]: Component-centered Registry.
+                - output:
+                      df [dataframe]: Entity-centered DataFrame.
+                - todo: Not yet implemented.
+            write_entity_first:
+                - description: >
+                      Convert entity-first DataFrame to dict for serialization.
+                      (Not yet implemented.)
+                - input:
+                      df [dataframe]: Entity-centered DataFrame.
+                - output:
+                      data [dict]: Entity-centered data structure.
+                - todo: Not yet implemented.
+            write_entity_first_file:
+                - description: >
+                      Write entity-first data to a YAML file.
+                      (Not yet implemented.)
+                - input:
+                      df [dataframe]: Entity-centered DataFrame.
+                      path [str]: Output file path.
+                - todo: Not yet implemented.
+        transform_functionality:
+            data:
+                - description: >
+                    Transform ECS data, including transforming to/from different
+                    ECS formats, validating data, and deriving components from other
+                    components.
+                - system
+                - todo: Choose between DAG-based and custom approach and implement.
+                - effort:
+                    value: 13
+                    unit: points
+            required_functionality:
+                load_data:
+                get_ids_from_path:
+                transform_entity_first_to_component_first:
+                validate_data:
+                    apply_defaults:
+                    coerce:
+                derive_components:
+                    parents_from_path:
+                    schema_from_parent_schema:
+                    absolute_path_from_partial_relative_path:
+                        - solution of: enable_pointing_to_entities
+                audit_components:
+                    audit_requirements:
+                        - depends on: validate_data.coerce
+                    audit_implementation_state:
+            dags:
+                load_registry:
+                validate_registry:
+                    data:
+                        - links:
+                            value: |
+                                registry --> components
+
+                                components --> field
+                                components --> parent
+                                components --> entity_id
+
+                                field --> validated_field
+                                parent --> updated_parent
+                                entity_id --> updated_parent
+
+                                validated_field --> derived_field
+                                updated_parent --> derived_field
+
+                                derived_field --> updated_components
+                                updated_parent --> updated_components
+                                registry --> updated_components
+                                
+                                entity_id --> validated_data
+                                derived_field --> validated_data
+                                updated_components --> validated_data
+
+                                validated_data --> invalid_field
+                                validated_data --> validated_components
+
+                                invalid_field --> validated_registry
+                                validated_components --> validated_registry
+                                registry --> validated_registry
+                            link_type: dependency of
+                    registry:
+                        - description: The main input.
+                    components:
+                        - description: The part of the registry that stores the data.
+                    field:
+                        - description: >
+                            A component table that stores data on the schema definitions
+                            for component tables.
+                    parent:
+                        - description: >
+                            A component table that stores data on inheritance.
+                    entity_id:
+                        - description: >
+                            A component table that stores data on the entity_ids and
+                            the paths that they are derived form.
+                    updated_parent:
+                        - description: >
+                            Parent component including hierarchy from
+                            ((entity_id.path)).
+                    validated_field:
+                        - description: >
+                            The field component, validated according to the schema
+                            for the field component, which is itself defined inside
+                            the field component.
+                    derived_field:
+                        - description: >
+                            The validated_field updated with defaults derived from
+                            parent fields.
+                    updated_components:
+                        - description:
+                            Components updated with updated_parent and derived_field.
+                    validated_data:
+                        - description:
+                            Updated components now validated against the updated field
+                            component.
+                    validated_registry:
+                        - description:
+                            Registry updated with validated data.
+                derive_components:
+                    data:
+                        - links:
+                            value: |
+                                TBD
+                        - link_type: dependency of
+            overall_approach:
+                dag_based_approach:
+                    data:
+                        - description: >
+                            Use an existing DAG framework (e.g. Hamilton) where each
+                            transform is a Python function whose name is the output
+                            node and whose parameters declare dependencies on other
+                            nodes. The framework handles dependency resolution,
+                            execution ordering, and visualization.
+                    pro_mature_ecosystem:
+                        - description: >
+                            DAG frameworks like Hamilton are battle-tested, widely
+                            used, and actively maintained. This means fewer bugs,
+                            better documentation, and community support.
+                        - weight: 0.7
+                    pro_built_in_visualization:
+                        - description: >
+                            Hamilton provides DAG visualization out of the box,
+                            making it easy to inspect and debug transform pipelines.
+                        - weight: 0.6
+                    pro_familiar_pattern:
+                        - description: >
+                            Functions-as-nodes is a well-known pattern in the data
+                            engineering community. New contributors can understand
+                            the transform system quickly.
+                        - weight: 0.5
+                    con_impedance_mismatch:
+                        - description: >
+                            In an ECS framework, joins between component tables are
+                            a core operation handled automatically by Registry.view().
+                            DAG frameworks model linear pipelines of transforms, not
+                            the star-schema joins that are natural in ECS. This means
+                            the DAG nodes end up being thin wrappers around
+                            registry.table() calls, adding boilerplate without adding
+                            value.
+                        - weight: -0.9
+                    con_module_level_function_requirement:
+                        - description: >
+                            Hamilton requires dataflow functions to live in a
+                            separate .py module with return type hints on every
+                            function. This makes notebook-based or dynamic
+                            workflows awkward, requiring sys.modules hacks to work.
+                        - weight: -0.7
+                    con_result_type_assumptions:
+                        - description: >
+                            Hamilton's default result builder assumes pandas
+                            DataFrames. Using Ibis tables requires overriding the
+                            result builder (e.g. DictResult), and the framework may
+                            not fully support lazy evaluation semantics.
+                        - weight: -0.6
+                custom_approach:
+                    data:
+                        - description: >
+                            Build a lightweight transform system tailored to ECS
+                            semantics. Transforms would operate directly on
+                            Registry objects using the existing view() and table()
+                            API, with joins handled naturally by the component model.
+                    pro_native_ecs_integration:
+                        - description: >
+                            A custom system can work directly with Registry.view()
+                            and Registry.table(), leveraging the ECS data model
+                            where joins on entity_id are the natural operation.
+                            No impedance mismatch.
+                        - weight: 0.9
+                    pro_simplicity:
+                        - description: >
+                            No external dependency required. The transform system
+                            can be exactly as complex as needed and no more,
+                            following the iacs principle of minimizing duplication
+                            and keeping things simple.
+                        - weight: 0.8
+                    pro_ibis_native:
+                        - description: >
+                            Can be designed from the start around Ibis lazy
+                            expressions, fully leveraging deferred execution and
+                            backend-agnostic queries without adapter workarounds.
+                        - weight: 0.7
+                    con_maintenance_burden:
+                        - description: >
+                            Any features that a DAG framework provides for free
+                            (dependency resolution, cycle detection, visualization,
+                            caching) would need to be built and maintained in-house.
+                        - weight: -0.6
+                    con_less_proven:
+                        - description: >
+                            A custom system has no community validation. Edge cases
+                            and design mistakes will only be discovered through use,
+                            whereas established frameworks have already encountered
+                            and resolved many of these issues.
+                        - weight: -0.5
+                    con_limited_visualization:
+                        - description: >
+                            DAG visualization would need to be built separately or
+                            omitted entirely, losing a useful debugging and
+                            communication tool.
+                        - weight: -0.4
+            sqlmesh_approach:
+                data:
+                    - description: >
+                        Replace ibis + Hamilton with SQLMesh, a SQL-first transformation
+                        and orchestration framework backed by DuckDB. SQL models handle
+                        table transformations; Python models handle graph algorithms and
+                        other logic that cannot be expressed in SQL.
+                pro_eliminates_unnecessary_pandas_escapes:
+                    - description: >
+                        SQLMesh SQL models (backed by DuckDB) keep transformations
+                        lazy by default, removing the unnecessary .to_pandas() and
+                        .execute() round-trips that currently appear throughout
+                        validate_registry.py and load_manifest.py.
+                    - weight: 0.7
+                pro_python_models_cover_remaining_logic:
+                    - description: >
+                        SQLMesh Python models are first-class citizens that integrate
+                        into the same DAG as SQL models with shared lineage tracking.
+                        BFS schema inheritance and NetworkX graph traversal in
+                        derive_components.py can live in Python models without
+                        significant rewriting.
+                    - weight: 0.6
+                pro_duckdb_backend_shared:
+                    - description: >
+                        SQLMesh uses DuckDB natively, so the in-process execution
+                        model stays unchanged and no backend migration is required.
+                    - weight: 0.5
+                pro_audit_concept_maps_well:
+                    - description: >
+                        SQLMesh has built-in AUDIT assertions on model outputs,
+                        semantically similar to RequirementCoverageAudit, TodoAudit,
+                        and TraceabilityAudit. The gap is narrower than it appears.
+                    - weight: 0.5
+                con_dynamic_plugin_architecture_incompatible:
+                    - description: >
+                        Architect.load_dataflow() attaches audit/export modules at
+                        runtime. SQLMesh requires all models to be statically declared
+                        at project initialization. This architectural pattern would
+                        need a fundamental redesign.
+                    - weight: -0.9
+                con_loses_hamilton_function_granularity:
+                    - description: >
+                        Hamilton nodes like raw_entity_first_data → csv_component_tables
+                        → keyvalue_store → component_tables → registry are 10+
+                        fine-grained steps. SQLMesh would express these as 2-3 models,
+                        losing intermediate node introspection and reusability.
+                    - weight: -0.7
+                con_sql_ward_achievable_within_current_stack:
+                    - description: >
+                        The unnecessary pandas escapes in validate_registry.py and
+                        load_manifest.py are ibis code that didn't stay lazy, not a
+                        framework limitation. Fixing them incrementally in the current
+                        stack is days of work vs. weeks for a full SQLMesh migration.
+                    - weight: -0.6
+                con_warehouse_features_irrelevant:
+                    - description: >
+                        SQLMesh's primary strengths--incremental materialization,
+                        state management, virtual dev/prod environments, CI/CD
+                        plan/apply--solve problems that don't exist for a local
+                        metadata processing tool parsing YAML files.
+                    - weight: -0.5
+    nlp_system:
+        data:
+            - description: >
+                  The infrastructure responsible for translating natural language
+                  input into ECS data. The core challenges are coreference resolution
+                  (recognizing that "Spot", "the dog", and "it" refer to the same
+                  entity), atomic fact extraction (decomposing compound sentences into
+                  minimal propositions), and canonical form mapping (normalizing
+                  varied phrasings to consistent entity and component representations).
+            - system
+        overall_approach:
+            single_pass_llm:
+                data:
+                    - description: >
+                          Provide the full input text and the ECS schema to a capable
+                          LLM in a single prompt, letting the model resolve coreferences
+                          and extract facts implicitly, returning structured output
+                          (e.g. via Instructor + Pydantic).
+                    - solution of: parse_natural_language
+                    - effort:
+                        value: 5
+                        unit: points
+                pro_simplicity:
+                    - description: No pipeline to maintain; one call handles all steps.
+                    - weight: 0.8
+                pro_handles_ambiguity:
+                    - description: >
+                          LLMs handle varied phrasing and implicit coreference well
+                          for bounded inputs.
+                    - weight: 0.7
+                con_bounded_input_only:
+                    - description: >
+                          Quality degrades as input length and complexity grow.
+                          Not suitable for streaming or open-ended inputs.
+                    - weight: -0.5
+                con_hard_to_debug:
+                    - description: >
+                          When extraction fails it is difficult to identify which
+                          step (coref, extraction, or mapping) was the problem.
+                    - weight: -0.4
+            two_pass_llm:
+                data:
+                    - description: >
+                          First pass extracts canonical entities and atomic facts from
+                          the text (coreference + extraction). Second pass maps those
+                          facts to the ECS schema. Tools like Graphiti or a custom
+                          extraction prompt can handle the first pass.
+                    - solution of: parse_natural_language
+                    - effort:
+                        value: 8
+                        unit: points
+                pro_debuggable:
+                    - description: >
+                          Separating extraction from schema mapping makes it easy to
+                          inspect intermediate results and fix errors at each stage.
+                    - weight: 0.7
+                pro_reusable_extraction:
+                    - description: >
+                          The first-pass fact extraction is schema-agnostic and can
+                          be reused for other purposes.
+                    - weight: 0.5
+                con_two_llm_calls:
+                    - description: Increases latency and cost compared to single-pass.
+                    - weight: -0.4
+            agentic_registry_approach:
+                data:
+                    - description: >
+                          An agent maintains the registry as a running entity store.
+                          For each new fact extracted, the agent checks the registry
+                          for existing matching entities before inserting, resolving
+                          coreferences incrementally. Well-suited for conversational
+                          or multi-document inputs.
+                    - solution of: parse_natural_language
+                    - effort:
+                        value: 13
+                        unit: points
+                pro_natural_fit_with_registry:
+                    - description: >
+                          The iacs registry is already the canonical entity store;
+                          using it for incremental coreference resolution requires
+                          no additional infrastructure.
+                    - weight: 0.9
+                pro_handles_open_ended_input:
+                    - description: >
+                          Works for streaming or multi-turn inputs where the full
+                          text is not available upfront.
+                    - weight: 0.6
+                con_more_complex:
+                    - description: >
+                          Requires an agent loop with registry read/write on each
+                          step, increasing implementation complexity.
+                    - weight: -0.6
+    ecs_data_formats:
+        data:
+            - description: iacs stores ECS data in a few formats.
+        entity_first:
+            - description: >
+                  The entity-first ECS format organizes the data around entities,
+                  grouping together components associated with an entity.
+                  This format is best for inspecting a single entity, and is
+                  typically best for manual data input, often via yaml.
+                  See builtins/format_guide.yaml for the full format specification.
+        component_first:
+            data:
+                - description: >
+                      The component-first ECS format organizes the data around
+                      component types, grouping together component instances of the
+                      same type. This format is best for querying and analysis.
+                - requirement: {type: constraint}
+            registry:
+                - description: >
+                      Component-centered data is stored in a registry, which contains
+                      one component table per component type.
+                - requirement: {type: constraint}
+            entity_id:
+                data:
+                    - description: >
+                          The unique identity for an entity has a few possible
+                          formulations.
+                entity_path_formulation:
+                    - description: >
+                          The entity path formulation uses the full path to an entity as
+                          the id, including both the filepath and the path in the yaml.
+                    - pro: Clearly identifies the entity with no additional calculation.
+                    - con: Too long to be readable.
+                    - con: Too long to be convenient for pointing to entities.
+                    - solution of: enable_pointing_to_entities
+                entity_hash_formulation:
+                    - description: >
+                          The entity hash formulation uses a hash of the entity path
+                          as the id.
+                    - pro: Concise.
+                    - con: Not readable.
+                    - con: Difficult to use for pointing to entities.
+                    - solution of: enable_pointing_to_entities
+                entity_key_formulation:
+                    - description: >
+                          The entity key formulation just uses the last part of the path
+                          as the id, i.e. the key in the containing dictionary.
+                    - pro: Concise.
+                    - pro: Readable.
+                    - con: Keys may not be unique.
+                    - con: Not sufficiently informative in some cases.
+                    - solution of: enable_pointing_to_entities
+                entity_key_parent_key_formulation:
+                    - description: >
+                          The entity key+parent key formulation uses the last part of
+                          the path as well as the parent, if it has one.
+                    - pro: Mostly concise.
+                    - pro: Readable.
+                    - con: Rarely, keys may not be unique.
+                    - solution of: enable_pointing_to_entities
+                userprovided_formulation:
+                    - description: >
+                          The user-provided formulation uses a user-provided id, if it
+                          exists, and otherwise falls back to one of the other
+                          formulations.
+                    - pro: Greater control.
+                    - pro: Readable.
+                    - con: Requires the user to define the aliases.
+                    - con: Room for errors creating the alias.
+                    - solution of: enable_pointing_to_entities
+            component_table:
+                data:
+                    - description: >
+                          Each component table stores all component instances for a
+                          given component type, with one row per component instance.
+                    - requirement: {type: constraint}
+                table_index:
+                    - description: >
+                          The index for a component table is a multi-index consisting
+                          of the entity_id and the component_index. This is true for 
+                          all tables, so all tables have shared indices (spines).
+                          Shared-spine data has a number of benefits, and to take full
+                          advantage of those benefits the authors of Hamilton recommend
+                          the below approach.
+
+                          - Load data via functions, defined in their own specific module.
+                          - Take that loaded data, and transform/ensure indexes match the output you want to create.
+                          - Continue with transformations.
+                    - requirement: {type: constraint}
+                subtype_column:
+                    - description: >
+                          Components of different subtypes (i.e. components that are
+                          subsets of the same component and share the same schema)
+                          can reside in the same table. A "component_type" column
+                          distinguishes them.
+                    - requirement: {type: constraint}
+                schema_columns:
+                    - description: >
+                          The remaining columns in a component table are the columns
+                          defined by the component schema.
+                    - requirement: {type: constraint}
+
+audit_system:
+    data:
+        - description: >
+              The iacs system responsible for evaluating solution quality.
+        - parent: iacs
+    audit:
+        - description: >
+              A single check that evaluates some aspect of a solution design.
+              Returns a pass/fail result with optional diagnostic messages.
+    audit_result:
+        - description: >
+              The outcome of running an audit. Contains pass/fail status,
+              the entities examined, and any diagnostic messages.
+    audit_runner:
+        - description: >
+              Executes one or more audits against a Registry and collects
+              results. Provides summary reporting.
+    builtin_audits:
+        data:
+            - description: Default audits provided by iacs.
+        prioritization_audit:
+            data:
+                - description: >
+                    Identify the most-impactful structure to work on. May include other
+                    audits as subaudits.
+                - effort:
+                    value: 8
+                    unit: points
+            generate_effort_priority_matrix:
+                define_metrics:
+                    define_requirements:
+                        define_priority:
+                            raw_priority:
+                                - description: >
+                                    Input priority for a given requirement, with no
+                                    context.
+                            mean_ancestor_priority:
+                                - description: >
+                                    The mean of priority for all ancestors. Try
+                                    geometric mean.
+                            ranked_ancestor_priority:
+                                - description: >
+                                    Walk the solution tree and choose the highest
+                                    priority path each time, and rank based on that.
+                                    This is related to the stack rank in Agile.
+                    define_solutions:
+                        make_child_requirements_solutions:
+                        define_effort:
+                            raw_effort:
+                                - description: >
+                                    Input effort for a given solution, with no context.
+                            mean_descendant_effort:
+                                - description: >
+                                    The mean of effort for all descendants.
+                            total_descendant_effort:
+                                - description: >
+                                    The sum of effort for all descendants.
+                calculate_metrics:
+        requirement_coverage_audit:
+            - description: >
+                  Checks that requirements have implementing solutions.
+                  Flags requirements missing implementations.
+            - effort:
+                value: 3
+                unit: points
+        traceability_audit:
+            - description: >
+                  Checks that components trace back to requirements.
+                  Flags orphan infrastructure with no motivating requirement.
+            - effort:
+                value: 3
+                unit: points
+        definition_audit:
+            - description: >
+                  Validates that component instances conform to their schemas.
+                  Flags invalid or malformed definitions.
+            - effort:
+                value: 5
+                unit: points
+        connectivity_audit:
+            - description: >
+                  Checks that all infrastructure is connected to the main
+                  solution. Flags siloed or disconnected components.
+            - effort:
+                value: 5
+                unit: points
+        todo_audit:
+            - description: >
+                  Reports on outstanding todos. Can flag incomplete items
+                  or items past a deadline.
+            - effort:
+                value: 2
+                unit: points
+deduplication_system:
+    data:
+        - description: >
+              The iacs system responsible for identifying and merging duplicate
+              entities across the registry. Deduplication is a two-phase process:
+              first deduplicate component types (since component types are
+              themselves stored as records in the ((component_type)) component),
+              then sweep through all component tables and deduplicate the entities
+              within each.
+        - parent: iacs
+        - system
+    approach:
+        data:
+            - description: >
+                  The two phases are ordered because phase one changes the table
+                  structure of the registry (consolidating tables), and phase two
+                  operates on that stable structure.
+        phase_one_component_type_deduplication:
+            data:
+                - description: >
+                      Apply entity deduplication to the ((component_type)) component.
+                      Because component types are records in that table, the same
+                      machinery used for general entity deduplication applies here.
+                      The output is a string-to-string rename map
+                      {deprecated_type → canonical_type}. Tables for deprecated
+                      types are merged into their canonical counterparts and phase
+                      two entity deduplication is then run on any newly merged
+                      tables.
+        phase_two_entity_deduplication:
+            data:
+                - description: >
+                      With a clean set of component types, loop through every
+                      component table in the registry and apply entity
+                      deduplication. For each table, identify candidate duplicate
+                      pairs, build a merge map, and rewrite all cross-references
+                      (entity_ref fields resolved via field_types_with_entity_ref)
+                      to point to canonical entity IDs.
+    entity_deduplication:
+        data:
+            - description: >
+                  The core reusable primitive. Given a component table, produces
+                  a merge map {deprecated_entity_id → canonical_entity_id} and
+                  applies it across the registry.
+        candidate_pair_generation:
+            data:
+                - description: >
+                      Identify pairs of entities within a component table that are
+                      likely duplicates. Two complementary strategies are used.
+            key_match:
+                - description: >
+                      Entities with the same entity_key but different entity_ids
+                      are strong candidates. This is the common case when the same
+                      concept is defined independently in multiple YAML files.
+            side_by_side_view:
+                - description: >
+                      The most reliable identification method is to display all
+                      components of two candidate entities side by side and make a
+                      human judgement call. This is qualitatively different from
+                      algorithmic similarity metrics such as the dot product between
+                      two records or the cosine similarity between two
+                      description.value fields: those metrics operate on individual
+                      fields in isolation and miss the holistic picture of what an
+                      entity is. A component-by-component side-by-side view of two
+                      candidate entities surfaces differences and similarities
+                      across all component types simultaneously.
+        merge_map_construction:
+            - description: >
+                  Given candidate pairs, select a canonical entity for each group
+                  of duplicates. Prefer the entity with more populated fields;
+                  break ties by preferring the shorter entity path (less nesting
+                  implies more authoritative definition); break remaining ties
+                  deterministically by entity_id. Transitive duplicates
+                  (A=B, B=C → A=C) are resolved with union-find before the map is
+                  finalized.
+        cross_reference_rewriting:
+            - description: >
+                  After the merge map is built, all entity_ref fields across the
+                  registry are rewritten to replace deprecated entity IDs with
+                  their canonical equivalents. Deprecated rows are then dropped
+                  from their component table.
+        manual_override:
+            - description: >
+                  A ((duplicate_of)) component allows users to declare canonical
+                  duplicates explicitly in YAML. These declarations are ingested
+                  first and take precedence over any algorithmically generated
+                  candidates.
+        idempotency:
+            - description: >
+                  The merge map is serializable to YAML alongside the manifests.
+                  Re-running deduplication reads the existing map first, extends
+                  it with any new candidates, and re-applies, so the process is
+                  safe to run repeatedly without accumulating drift.
+    avoided_approaches:
+        component_record_deduplication:
+            - description: >
+                  Deduplicating records within a component (i.e. asserting that
+                  two rows in the same component table are the same component
+                  instance) is deliberately avoided. A component instance is
+                  uniquely identified by (entity_id, component_index), so merging
+                  two instances would require either collapsing component_index
+                  values (losing information) or introducing a bridge table that
+                  makes the entity_id-to-component relation many-to-many instead
+                  of many-to-one. This added complexity is not worth it except for
+                  highly degenerate components, so component record deduplication
+                  is out of scope for now.
+
+dataflow_system:
+    data:
+        - description: >
+              The iacs system responsible for defining and executing dataflows
+              against a registry. Dataflows are divided into three categories:
+              ETL, validation, and audit.
+        - parent: iacs
+    etl:
+        - description: >
+              ETL (Extract, Transform, Load) dataflows are performed to load data
+              into a registry. They cover extracting raw data from source formats
+              (e.g. YAML manifests, CSV files), transforming it into component
+              tables, and loading the result into the registry.
+        - requirement:
+              value: 1.0
+    validation:
+        - description: >
+              Validation dataflows are operations that can be run routinely on a
+              registry to check its health and repair it when applicable. They
+              verify that component data conforms to schema constraints, that
+              relationships between entities are consistent, and that derived
+              components are up to date.
+        - requirement:
+              value: 0.8
+    audit:
+        - description: >
+              Audit dataflows are operations that audit the infrastructure defined
+              by the registry. Unlike validation, which checks internal consistency,
+              audits evaluate the quality and completeness of the design itself—for
+              example checking requirement coverage, traceability, and outstanding
+              todos.
+        - requirement:
+              value: 0.6
