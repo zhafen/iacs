@@ -50,6 +50,8 @@ iacs = ["builtins/*.yaml"]
 [dependency-groups]
 dev = [
     "mkdocs>=1.6.1",
+    "mkdocs-gen-files>=0.6.1",
+    "mkdocs-literate-nav>=0.6.3",
     "mkdocs-material>=9.7.6",
     "mkdocstrings[python]>=1.0.3",
 ]

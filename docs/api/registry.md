@@ -1,3 +1,0 @@
-# registry
-
-::: iacs.registry
