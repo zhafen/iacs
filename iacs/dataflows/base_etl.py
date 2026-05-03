@@ -1,6 +1,7 @@
 from hamilton.function_modifiers import subdag, source
 
 from . import load_manifest, validate_registry, derive_components
+from .audit import traceability as audit_traceability, todo as audit_todo
 from ..registry import Registry
 
 @subdag(
@@ -26,3 +27,19 @@ def validated_registry(validated_registry: Registry) -> Registry:
 )
 def derived_registry(derived_registry: Registry) -> Registry:
     return derived_registry
+
+@subdag(
+    audit_traceability,
+    inputs={"registry": source("derived_registry")},
+    config={}
+)
+def traceability_registry(updated_registry: Registry) -> Registry:
+    return updated_registry
+
+@subdag(
+    audit_todo,
+    inputs={"registry": source("traceability_registry")},
+    config={}
+)
+def todo_registry(updated_registry: Registry) -> Registry:
+    return updated_registry

@@ -137,8 +137,8 @@ class TestFromManifestRunsDeriveComponents:
         with patch.object(hamilton_driver.Driver, "execute", capture_execute):
             Architect.from_manifest("examples/example")
 
-        assert "derived_registry" in executed_vars, (
-            "derive_components.derived_registry was not executed during from_manifest"
+        assert "todo_registry" in executed_vars, (
+            "audits were not executed during from_manifest"
         )
 
 
