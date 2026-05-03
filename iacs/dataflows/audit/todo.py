@@ -33,5 +33,6 @@ def todo(todo_table: ibis.expr.types.Table | None) -> ibis.expr.types.Table:
 
 
 def updated_registry(registry: Registry, todo: ibis.expr.types.Table) -> Registry:
-    """Pass-through: todo audit produces no new components."""
+    """Store the todo audit result as a component in the registry."""
+    registry.update({"todo": todo})
     return registry

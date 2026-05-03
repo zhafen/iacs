@@ -58,5 +58,6 @@ def traceability(orphan_entities: ibis.expr.types.Table) -> ibis.expr.types.Tabl
 
 
 def updated_registry(registry: Registry, traceability: ibis.expr.types.Table) -> Registry:
-    """Pass-through: traceability audit produces no new components."""
+    """Store the traceability audit result as a component in the registry."""
+    registry.update({"traceability": traceability})
     return registry
