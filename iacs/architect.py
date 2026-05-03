@@ -57,7 +57,8 @@ class Architect:
 
     def _rebuild_driver(self) -> None:
         self._driver = driver.Driver(
-            {"registry": self._registry}, *self._dataflows, adapter=base.DictResult()
+            {"registry": self._registry}, *self._dataflows, adapter=base.DictResult(),
+            allow_module_overrides=True,
         )
 
     def load_dataflow(self, name: str) -> None:

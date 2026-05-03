@@ -5,28 +5,34 @@ import ibis
 from iacs.registry import Registry
 
 
-def all_entities(registry: Registry) -> ibis.expr.types.Table | None:
+def components(registry: Registry) -> dict:
+    """Give access to the components dict from the registry."""
+    return registry._components
+
+
+def all_entities(components: dict) -> ibis.expr.types.Table | None:
     """Collect all unique entity IDs across all component types."""
-    if not registry.component_types:
-        return None
     tables = [
-        registry.view(ct).select("entity_id").distinct()
-        for ct in registry.component_types
+        components[ct].select("entity_id").distinct()
+        for ct in components
+        if isinstance(components[ct], ibis.Table)
     ]
+    if not tables:
+        return None
     return ibis.union(*tables).distinct()
 
 
-def req_entities(registry: Registry) -> ibis.expr.types.Table:
+def req_entities(components: dict) -> ibis.expr.types.Table:
     """Get entities with requirement components."""
-    if "requirement" in registry.component_types:
-        return registry.view("requirement").select("entity_id").distinct()
+    if "requirement" in components:
+        return components["requirement"].select("entity_id").distinct()
     return ibis.memtable({"entity_id": []}, schema={"entity_id": "string"})
 
 
-def solution_entities(registry: Registry) -> ibis.expr.types.Table:
+def solution_entities(components: dict) -> ibis.expr.types.Table:
     """Get entities with solution of components."""
-    if "solution of" in registry.component_types:
-        return registry.view("solution of").select("entity_id").distinct()
+    if "solution of" in components:
+        return components["solution of"].select("entity_id").distinct()
     return ibis.memtable({"entity_id": []}, schema={"entity_id": "string"})
 
 
@@ -49,3 +55,9 @@ def traceability(orphan_entities: ibis.expr.types.Table) -> ibis.expr.types.Tabl
     return orphan_entities.mutate(
         message=("Entity '" + orphan_entities.entity_id + "' does not trace to any requirement.")
     )
+
+
+def updated_registry(registry: Registry, traceability: ibis.expr.types.Table) -> Registry:
+    """Store the traceability audit result as a component in the registry."""
+    registry.update({"traceability": traceability})
+    return registry
