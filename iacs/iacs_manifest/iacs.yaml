@@ -261,6 +261,11 @@ iacs:
                   Ongoing design discussions and open questions about the syntax and
                   capabilities of the iacs system itself.
         syntax_challenges:
+            - todo: "Is this redundant with [field.range]? (re: categorical data type)"
+            - todo: >
+                  Should we use "domain" instead of "range" for the field component?
+                  Is there a better other term?
+            - todo: Determine how we want to calculate the entity_id.
             - todo: >
                   Have files be the topmost entities.
             - todo: >

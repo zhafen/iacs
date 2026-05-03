@@ -27,9 +27,9 @@ DATAFLOW_MODULE_NAMES = [
     "validate_registry",
     "export_manifest",
     "derive_components",
-    # "audit.requirement_coverage",
-    # "audit.todo",
-    # "audit.traceability",
+    "audit.todo",
+    "audit.traceability",
+    "audit.requirement_coverage",
 ]
 
 
@@ -323,7 +323,7 @@ def test_dataflows_match_expected(
     try:
         results = dr.execute(to_execute)
     except Exception as exc:
-        pytest.skip(f"DAG execution failed (not yet implemented): {exc}")
+        pytest.fail(f"DAG execution failed: {exc}")
 
     for var_name in to_execute:
         actual = results.get(var_name)

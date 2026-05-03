@@ -67,7 +67,6 @@ base_data_type:
         categorical:
             - alias: categorical
             - description: Data type for a limited set of categories.
-            - todo: Is this redundant with [field.range]?
         entity_ref:
             - alias: entity_ref
             - description: >
@@ -162,8 +161,6 @@ data_structure:
             description: >
                 A data structure specifying the allowed values for the field. If a
                 list, then the type should be categorical or a child of that type.
-        - todo: >
-            Should we use "domain" instead of "range"? Is there a better other term?
     schema:
         - description: >
             A list of ((field)) components that defines the columns in a component
@@ -212,7 +209,6 @@ iacs_component:
             description: >
                 The entity_id.
             type: str
-        - todo: Determine how we want to calculate the entity_id.
         - field:
             value: path
             description: >
