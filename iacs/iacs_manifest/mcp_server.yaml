@@ -1,0 +1,13 @@
+mcp_server:
+    data:
+        - description: The iacs MCP server exposing registry tools to AI assistants.
+    load_manifest_at_runtime:
+        - description: >
+            Allow users to reload or switch manifests after the MCP server has
+            already started, so that changes made to a manifest on disk are
+            reflected without restarting the server.
+        - todo: >
+            Add a reload_manifest tool (or extend load_manifest) that re-reads
+            the manifest directory from disk. This is useful when a manifest is
+            updated in progress and the user wants to reflect those changes in
+            the running server without a restart.

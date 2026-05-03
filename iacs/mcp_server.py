@@ -10,7 +10,16 @@ from mcp.server.fastmcp import FastMCP
 
 from iacs.architect import Architect
 
-server = FastMCP("iacs")
+_MANIFEST_ENV_VAR = "IACS_MANIFEST"
+
+server = FastMCP(
+    "iacs",
+    instructions=(
+        f"Set the {_MANIFEST_ENV_VAR} environment variable to the path of your "
+        "manifest directory so it loads automatically on startup. "
+        "Call `get_manifest_path` to confirm which manifest is currently loaded."
+    ),
+)
 
 _BUILTIN_MANIFEST = Path(__file__).parent.parent / "examples" / "example"
 _BUILTINS_DIR = Path(__file__).parent / "builtins"
@@ -22,7 +31,7 @@ _architect: Architect | None = None
 def _get_architect() -> Architect:
     global _architect
     if _architect is None:
-        manifest = os.environ.get("IACS_MANIFEST", str(_BUILTIN_MANIFEST))
+        manifest = os.environ.get(_MANIFEST_ENV_VAR, str(_BUILTIN_MANIFEST))
         _architect = Architect.from_manifest(manifest)
     return _architect
 
@@ -184,6 +193,22 @@ def _validate_yaml_string(yaml_string: str) -> str:
 # ---------------------------------------------------------------------------
 # MCP tools
 # ---------------------------------------------------------------------------
+
+@server.tool()
+def get_manifest_path() -> str:
+    """Return the path of the currently loaded manifest.
+
+    Also shows the environment variable name used to configure a default
+    manifest path at startup.
+    """
+    manifest = os.environ.get(_MANIFEST_ENV_VAR)
+    if manifest:
+        source = f"from {_MANIFEST_ENV_VAR} environment variable"
+    else:
+        manifest = str(_BUILTIN_MANIFEST)
+        source = f"built-in default (set {_MANIFEST_ENV_VAR} to override)"
+    return f"Manifest path: {manifest!r} ({source})"
+
 
 @server.tool()
 def load_manifest(manifest_path: str) -> str:
