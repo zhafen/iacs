@@ -5,26 +5,36 @@ separately as part of validation.
 
 import networkx as nx
 import pandas as pd
+from hamilton.function_modifiers import extract_fields
+import ibis.expr.types as ir
 
 from iacs.registry import Registry
 from iacs.utils import candidate_entity_ids
 
 
-def field_types_with_entity_ref(validated_registry: Registry) -> dict[str, list[str]]:
+@extract_fields(dict(field=ir.Table, entity_id=ir.Table, parent=ir.Table))
+def components(validated_registry: Registry) -> dict:
+    """Give access to the components in the validated registry."""
+    return validated_registry._components
+
+
+def field_types_with_entity_ref(field: ir.Table, entity_id: ir.Table) -> dict[str, list[str]]:
     """Return a mapping of component_type -> [field_names] for entity_ref fields.
 
     Parameters
     ----------
-    validated_registry : Registry
-        The validated registry.
+    field : ir.Table
+        The field component table from the registry.
+    entity_id : ir.Table
+        The entity_id component table from the registry.
 
     Returns
     -------
     dict[str, list[str]]
         E.g. ``{"solution": ["target"]}``
     """
-    field_df = validated_registry._components["field"].to_pandas()
-    entity_id_df = validated_registry._components["entity_id"].to_pandas()
+    field_df = field.to_pandas()
+    entity_id_df = entity_id.to_pandas()
 
     entity_ref_fields = field_df[field_df["type"] == "entity_ref"]
     id_to_key = entity_id_df.set_index("value")["entity_key"]
@@ -38,7 +48,8 @@ def field_types_with_entity_ref(validated_registry: Registry) -> dict[str, list[
 
 
 def components_with_resolved_paths(
-    validated_registry: Registry,
+    entity_id: ir.Table,
+    components: dict,
     field_types_with_entity_ref: dict[str, list[str]],
 ) -> dict[str, pd.DataFrame]:
     """Resolve entity_ref fields in each component to entity IDs.
@@ -48,8 +59,10 @@ def components_with_resolved_paths(
 
     Parameters
     ----------
-    validated_registry : Registry
-        The validated registry.
+    entity_id : ir.Table
+        The entity_id component table from the registry.
+    components : dict
+        The full components dict from the registry.
     field_types_with_entity_ref : dict[str, list[str]]
         Mapping of component_type -> list of field names with entity_ref type.
 
@@ -58,13 +71,13 @@ def components_with_resolved_paths(
     dict[str, pd.DataFrame]
         Mapping of component_type -> DataFrame with resolved ``{field}_id`` columns.
     """
-    entity_id_df = validated_registry._components["entity_id"].to_pandas()
+    entity_id_df = entity_id.to_pandas()
 
     result: dict[str, pd.DataFrame] = {}
     for comp_type, field_names in field_types_with_entity_ref.items():
-        if comp_type not in validated_registry._components:
+        if comp_type not in components:
             continue
-        df = validated_registry._components[comp_type].to_pandas()
+        df = components[comp_type].to_pandas()
         for field_name in field_names:
             if field_name not in df.columns:
                 continue
@@ -79,7 +92,8 @@ def components_with_resolved_paths(
         result[comp_type] = df
     return result
 
-def entity_depth(validated_registry: Registry) -> pd.DataFrame:
+
+def entity_depth(parent: ir.Table) -> pd.DataFrame:
     """Compute the depth of each entity in the parent hierarchy.
 
     Depth is the length of the shortest path from any root node (an entity with
@@ -87,15 +101,15 @@ def entity_depth(validated_registry: Registry) -> pd.DataFrame:
 
     Parameters
     ----------
-    validated_registry : Registry
-        The validated registry.
+    parent : ir.Table
+        The parent component table from the registry.
 
     Returns
     -------
     pd.DataFrame
         One row per entity with columns ``entity_id`` and ``depth``.
     """
-    parents_df = validated_registry._components["parent"].to_pandas()
+    parents_df = parent.to_pandas()
 
     # Directed graph: parent -> child (natural top-down direction)
     G = nx.DiGraph()
@@ -110,7 +124,7 @@ def entity_depth(validated_registry: Registry) -> pd.DataFrame:
     return pd.DataFrame(list(depths.items()), columns=["entity_id", "depth"])
 
 
-def effort_sum(validated_registry: Registry) -> pd.DataFrame:
+def effort_sum(parent: ir.Table, components: dict) -> pd.DataFrame:
     """Sum effort for each entity and all its descendants, grouped by schedule and unit.
 
     For each entity that either has effort itself or is an ancestor of one that
@@ -119,8 +133,10 @@ def effort_sum(validated_registry: Registry) -> pd.DataFrame:
 
     Parameters
     ----------
-    validated_registry : Registry
-        The validated registry.
+    parent : ir.Table
+        The parent component table from the registry.
+    components : dict
+        The full components dict from the registry.
 
     Returns
     -------
@@ -128,12 +144,15 @@ def effort_sum(validated_registry: Registry) -> pd.DataFrame:
         Columns: entity_id, schedule, unit, value.  One row per
         (entity_id, schedule, unit) combination.
     """
-    if "effort" not in validated_registry._components:
+    if "effort" not in components:
         return pd.DataFrame(columns=["entity_id", "schedule", "unit", "value"])
 
-    effort_df = validated_registry._components["effort"].to_pandas()
+    effort_df = components["effort"].to_pandas()
+    required_cols = {"entity_id", "schedule", "unit", "value"}
+    if not required_cols.issubset(effort_df.columns):
+        return pd.DataFrame(columns=["entity_id", "schedule", "unit", "value"])
     effort_df["schedule"] = effort_df["schedule"].replace("", pd.NA)
-    parent_df = validated_registry._components["parent"].to_pandas()
+    parent_df = parent.to_pandas()
 
     # Directed graph: parent -> child
     G = nx.DiGraph()
@@ -220,7 +239,7 @@ def effort_total(effort_sum: pd.DataFrame, effort_time_period: str = "28 days") 
     return result
 
 
-def priority_product(validated_registry: Registry) -> pd.DataFrame:
+def priority_product(parent: ir.Table, entity_id: ir.Table, components: dict) -> pd.DataFrame:
     """Compute the product of requirement priorities for an entity and its ancestors.
 
     For each entity that has a requirement component itself or has at least one
@@ -229,8 +248,12 @@ def priority_product(validated_registry: Registry) -> pd.DataFrame:
 
     Parameters
     ----------
-    validated_registry : Registry
-        The validated registry.
+    parent : ir.Table
+        The parent component table from the registry.
+    entity_id : ir.Table
+        The entity_id component table from the registry.
+    components : dict
+        The full components dict from the registry.
 
     Returns
     -------
@@ -238,13 +261,11 @@ def priority_product(validated_registry: Registry) -> pd.DataFrame:
         Columns: entity_id, priority_product.  One row per entity that has
         a requirement component or at least one ancestor with a requirement component.
     """
-    if "requirement" not in validated_registry._components:
-        return pd.DataFrame(columns=["entity_id", "priority_product"])
-    if "parent" not in validated_registry._components:
+    if "requirement" not in components:
         return pd.DataFrame(columns=["entity_id", "priority_product"])
 
-    req_df = validated_registry._components["requirement"].to_pandas()
-    parent_df = validated_registry._components["parent"].to_pandas()
+    req_df = components["requirement"].to_pandas()
+    parent_df = parent.to_pandas()
 
     req_priority = req_df.set_index("entity_id")["value"]
 
@@ -252,15 +273,15 @@ def priority_product(validated_registry: Registry) -> pd.DataFrame:
     G = nx.DiGraph()
     G.add_edges_from(zip(parent_df["parent_id"], parent_df["entity_id"]))
 
-    entity_id_df = validated_registry._components["entity_id"].to_pandas()
+    entity_id_df = entity_id.to_pandas()
     all_entity_ids = entity_id_df["value"].tolist()
 
     rows = []
-    for entity_id in all_entity_ids:
-        ancestors = nx.ancestors(G, entity_id) if entity_id in G else set()
+    for eid in all_entity_ids:
+        ancestors = nx.ancestors(G, eid) if eid in G else set()
         req_nodes = [a for a in ancestors if a in req_priority.index]
-        if entity_id in req_priority.index:
-            req_nodes.append(entity_id)
+        if eid in req_priority.index:
+            req_nodes.append(eid)
         if not req_nodes:
             continue
         product = 1.0
@@ -268,11 +289,43 @@ def priority_product(validated_registry: Registry) -> pd.DataFrame:
             priority = req_priority[req_id]
             if pd.notna(priority):
                 product *= float(priority)
-        rows.append({"entity_id": entity_id, "priority_product": product})
+        rows.append({"entity_id": eid, "priority_product": product})
 
     return pd.DataFrame(rows, columns=["entity_id", "priority_product"])
 
 
-def derived_registry(registry: Registry, components_with_resolved_paths: dict) -> Registry:
-    registry.update(components_with_resolved_paths)
-    return registry
+def derived_registry(
+    validated_registry: Registry,
+    components_with_resolved_paths: dict,
+    entity_depth: pd.DataFrame,
+    effort_total: pd.DataFrame,
+    priority_product: pd.DataFrame,
+) -> Registry:
+    """Store all derived components back to the registry.
+
+    Parameters
+    ----------
+    validated_registry : Registry
+        The validated registry to update.
+    components_with_resolved_paths : dict
+        Updated component tables with resolved entity_ref fields.
+    entity_depth : pd.DataFrame
+        Entity depth in the parent hierarchy.
+    effort_total : pd.DataFrame
+        Total effort per entity over the configured time period.
+    priority_product : pd.DataFrame
+        Product of requirement priorities for each entity.
+
+    Returns
+    -------
+    Registry
+        The updated registry with all derived components stored.
+    """
+    validated_registry.update(components_with_resolved_paths)
+    derived = {
+        "entity_depth": entity_depth,
+        "effort_total": effort_total,
+        "priority_product": priority_product,
+    }
+    validated_registry.update({k: v for k, v in derived.items() if not v.empty})
+    return validated_registry

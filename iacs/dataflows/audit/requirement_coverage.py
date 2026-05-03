@@ -19,3 +19,7 @@ def solution_with_state(solution: ir.Table, work_state: ir.Table) -> ir.Table:
 
 def requirement_coverage(requirement: ir.Table, solution_with_state: ir.Table) -> ir.Table:
     return
+
+def updated_registry(registry: Registry, requirement_coverage: ir.Table) -> Registry:
+    """Pass-through: requirement coverage audit produces no new components."""
+    return registry

@@ -21,7 +21,7 @@ def validated_registry(validated_registry: Registry) -> Registry:
 
 @subdag(
     derive_components,
-    inputs={"registry": source("validated_registry")},
+    inputs={"validated_registry": source("validated_registry")},
    config={}
 )
 def derived_registry(derived_registry: Registry) -> Registry:
