@@ -35,6 +35,7 @@ nav:
     - registry: api/registry.md
     - architect: api/architect.md
     - utils: api/utils.md
+    - mcp_server: api/mcp_server.md
     - dataflows:
       - load_manifest: api/dataflows/load_manifest.md
       - derive_components: api/dataflows/derive_components.md
