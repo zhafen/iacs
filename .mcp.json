@@ -2,8 +2,8 @@
   "mcpServers": {
     "iacs": {
       "type": "stdio",
-      "command": "uvx",
-      "args": ["--from", "iacs[mcp]", "iacs-mcp"],
+      "command": "/home/user/iacs/.venv/bin/iacs-mcp",
+      "args": [],
       "env": {}
     }
   }
