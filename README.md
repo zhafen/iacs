@@ -37,3 +37,29 @@ registry = iacs.load("infrastructure.yaml")
 audit = iacs.RequirementCoverageAudit(registry)
 print(audit.report())
 ```
+
+## Development
+
+### Setup
+
+```bash
+git clone https://github.com/zhafen/iacs
+cd iacs
+uv sync
+```
+
+Run the tests:
+
+```bash
+uv run pytest
+```
+
+### Docs
+
+Generate and serve the docs locally:
+
+```bash
+uv run mkdocs serve
+```
+
+Then open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
