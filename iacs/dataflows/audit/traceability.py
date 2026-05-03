@@ -15,7 +15,7 @@ def all_entities(components: dict) -> ibis.expr.types.Table | None:
     tables = [
         components[ct].select("entity_id").distinct()
         for ct in components
-        if isinstance(components[ct], ibis.Table)
+        if isinstance(components[ct], ibis.Table) and "entity_id" in components[ct].columns
     ]
     if not tables:
         return None
