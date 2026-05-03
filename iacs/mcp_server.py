@@ -14,7 +14,7 @@ from mcp.server.fastmcp import Context, FastMCP
 from iacs.architect import Architect
 
 _MANIFEST_ENV_VAR = "IACS_MANIFEST"
-_BUILTIN_MANIFEST = Path(__file__).parent.parent / "examples" / "example"
+_EXAMPLE_MANIFEST = Path(__file__).parent.parent / "examples" / "example"
 _BUILTINS_DIR = Path(__file__).parent / "builtins"
 _IACS_MANIFEST_DIR = Path(__file__).parent / "iacs_manifest"
 
@@ -24,14 +24,14 @@ _architects: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 def _get_architect(ctx: Context) -> Architect:
     session = ctx.request_context.session
     if session not in _architects:
-        manifest = os.environ.get(_MANIFEST_ENV_VAR, str(_BUILTIN_MANIFEST))
+        manifest = os.environ.get(_MANIFEST_ENV_VAR, str(_EXAMPLE_MANIFEST))
         _architects[session] = Architect.from_manifest(manifest)
     return _architects[session]
 
 
 @asynccontextmanager
 async def _lifespan(mcp_server):
-    manifest = os.environ.get(_MANIFEST_ENV_VAR, str(_BUILTIN_MANIFEST))
+    manifest = os.environ.get(_MANIFEST_ENV_VAR, str(_EXAMPLE_MANIFEST))
     arch = Architect.from_manifest(manifest)
     df = arch.registry.get("invalid_field").execute()
     print(f"invalid_field component:\n{df.to_string()}", file=sys.stderr)
@@ -218,7 +218,7 @@ def get_manifest_path() -> str:
     if manifest:
         source = f"from {_MANIFEST_ENV_VAR} environment variable"
     else:
-        manifest = str(_BUILTIN_MANIFEST)
+        manifest = str(_EXAMPLE_MANIFEST)
         source = f"built-in default (set {_MANIFEST_ENV_VAR} to override)"
     return f"Manifest path: {manifest!r} ({source})"
 
