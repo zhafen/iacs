@@ -1160,6 +1160,147 @@ audit_system:
                                 - description: >
                                     The sum of effort for all descendants.
                 calculate_metrics:
+                    normalize_impacts_and_costs:
+                        data:
+                            - description: >
+                                  Before computing the impact-cost matrix, impact
+                                  (priority) values and cost (effort) values must be
+                                  placed on a common scale. Raw values may use
+                                  incompatible units or ranges, so normalization is
+                                  required for meaningful comparison.
+                            - requirement
+                        store_normalized_data:
+                            data:
+                                - description: >
+                                      Once normalized values are computed, they must
+                                      be persisted somewhere in the registry. Several
+                                      strategies exist for where and how to store them.
+                                - requirement
+                            overwrite_original_column:
+                                data:
+                                    - description: >
+                                          Replace the original impact or cost column
+                                          in-place with the normalized value. The
+                                          component table is mutated so the column
+                                          holds normalized data directly.
+                                pro_simple_schema:
+                                    - description: >
+                                          No schema changes required; the column
+                                          already exists and simply receives new values.
+                                    - weight: 0.6
+                                pro_no_join_required:
+                                    - description: >
+                                          Downstream consumers read the same column
+                                          they always have, with no join or additional
+                                          lookup needed.
+                                    - weight: 0.5
+                                con_destroys_raw_data:
+                                    - description: >
+                                          The original unnormalized value is lost unless
+                                          separately preserved, making it impossible to
+                                          re-normalize with different parameters without
+                                          re-ingesting source data.
+                                    - weight: -0.9
+                                con_conflates_raw_and_normalized:
+                                    - description: >
+                                          A reader of the table cannot tell whether
+                                          values are raw inputs or normalized outputs
+                                          without external metadata.
+                                    - weight: -0.7
+                            add_normalized_component:
+                                data:
+                                    - description: >
+                                          Introduce a new component type (e.g.
+                                          normalized_priority, normalized_effort) whose
+                                          table mirrors the original but holds normalized
+                                          values. The two tables share the same entity_id
+                                          index and can be joined when needed.
+                                pro_preserves_raw_data:
+                                    - description: >
+                                          The original component is untouched;
+                                          normalization can be re-run with different
+                                          parameters at any time.
+                                    - weight: 0.9
+                                pro_clean_separation:
+                                    - description: >
+                                          Raw inputs and derived outputs live in separate
+                                          tables, making data lineage explicit and
+                                          matching the ECS convention that each component
+                                          type has a distinct meaning.
+                                    - weight: 0.8
+                                con_requires_join:
+                                    - description: >
+                                          Consumers needing both raw and normalized values
+                                          must join two tables, adding a step that is easy
+                                          to forget.
+                                    - weight: -0.5
+                                con_schema_proliferation:
+                                    - description: >
+                                          A new table per normalized metric can make
+                                          the registry unwieldy if many metrics are
+                                          normalized.
+                                    - weight: -0.4
+                            add_normalized_column:
+                                data:
+                                    - description: >
+                                          Extend the existing component table with an
+                                          additional column (e.g. normalized_value)
+                                          alongside the original value column. Both
+                                          raw and normalized data live in the same row.
+                                pro_co_located:
+                                    - description: >
+                                          Raw and normalized values are on the same row,
+                                          easy to inspect together with no join needed.
+                                    - weight: 0.7
+                                pro_preserves_raw_data:
+                                    - description: >
+                                          The original value column is retained;
+                                          adding the normalized column is purely additive.
+                                    - weight: 0.6
+                                con_wider_schema:
+                                    - description: >
+                                          Each normalization step widens the component
+                                          schema, and multiple normalization schemes
+                                          accumulate many columns over time.
+                                    - weight: -0.6
+                                con_nullable_before_normalization:
+                                    - description: >
+                                          The normalized column is null until normalization
+                                          runs, requiring special handling or placeholder
+                                          values in downstream code.
+                                    - weight: -0.5
+                            compute_normalized_on_the_fly:
+                                data:
+                                    - description: >
+                                          Do not store normalized values at all. Instead,
+                                          compute normalization as a derived expression
+                                          each time the matrix is requested (e.g. as an
+                                          Ibis column expression or SQL window function).
+                                          The registry holds only raw data.
+                                pro_no_storage_overhead:
+                                    - description: >
+                                          No additional columns or tables needed; the
+                                          registry schema stays minimal.
+                                    - weight: 0.7
+                                pro_always_consistent:
+                                    - description: >
+                                          Normalized values are always recomputed from
+                                          current raw data, so there is no risk of stale
+                                          values after raw data changes.
+                                    - weight: 0.8
+                                con_recomputed_every_query:
+                                    - description: >
+                                          Normalization must be re-executed on every
+                                          query, which may be costly for large registries
+                                          or expensive normalization functions.
+                                    - weight: -0.5
+                                con_logic_duplication_risk:
+                                    - description: >
+                                          Each caller must invoke the normalization
+                                          function; without a single stored result,
+                                          inconsistencies can emerge if implementations
+                                          diverge across the codebase.
+                                    - weight: -0.6
         requirement_coverage_audit:
             - description: >
                   Checks that requirements have implementing solutions.
