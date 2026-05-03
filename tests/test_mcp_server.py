@@ -5,6 +5,7 @@ import pytest
 
 from iacs.mcp_server import (
     _BUILTINS_DIR,
+    _IACS_MANIFEST_DIR,
     _build_format_description,
     _validate_yaml_string,
     server,
@@ -36,20 +37,20 @@ class TestDescribeFormat:
     def test_format_guide_yaml_is_valid(self):
         """format_guide.yaml must be parseable and have the expected root entity."""
         data = yaml.safe_load(
-            (_BUILTINS_DIR / "format_guide.yaml").read_text(encoding="utf-8")
+            (_IACS_MANIFEST_DIR / "format_guide.yaml").read_text(encoding="utf-8")
         )
         assert "entity_first_yaml_format" in data
 
     def test_format_guide_has_format_rules(self):
         data = yaml.safe_load(
-            (_BUILTINS_DIR / "format_guide.yaml").read_text(encoding="utf-8")
+            (_IACS_MANIFEST_DIR / "format_guide.yaml").read_text(encoding="utf-8")
         )
         fmt = data["entity_first_yaml_format"]
         assert "format_rules" in fmt
 
     def test_format_guide_has_canonical_example(self):
         data = yaml.safe_load(
-            (_BUILTINS_DIR / "format_guide.yaml").read_text(encoding="utf-8")
+            (_IACS_MANIFEST_DIR / "format_guide.yaml").read_text(encoding="utf-8")
         )
         fmt = data["entity_first_yaml_format"]
         assert "canonical_example" in fmt

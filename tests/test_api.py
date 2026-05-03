@@ -22,7 +22,7 @@ def test_view_requirement(client):
     data = resp.json()
 
     # Check that the foundational requirement for iacs is in the requirements view
-    filepath = "builtins/iacs.yaml"
+    filepath = "iacs/iacs_manifest/iacs.yaml"
     path = "iacs.be_a_powerful_tool_for_solutions_architecture"
     test_entity_id = get_id(filepath, path)
     for record in data:
@@ -52,7 +52,7 @@ def test_view_specific_field(client):
     assert resp.status_code == 200
     data = resp.json()
 
-    filepath = "builtins/iacs.yaml"
+    filepath = "iacs/iacs_manifest/iacs.yaml"
     path = "iacs.be_a_powerful_tool_for_solutions_architecture"
     test_entity_id = get_id(filepath, path)
     for record in data:
