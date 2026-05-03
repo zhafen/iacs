@@ -154,8 +154,3 @@ def exported_manifest_filepaths(entity_first_data: dict, output_dir: str) -> lis
             yaml.dump(entities, f, default_flow_style=False, allow_unicode=True)
         saved.append(str(dest))
     return sorted(saved)
-
-
-def updated_registry(registry: Registry, exported_manifest_filepaths: list[str]) -> Registry:
-    """Pass-through: export_manifest produces no new components, so registry is returned unchanged."""
-    return registry
