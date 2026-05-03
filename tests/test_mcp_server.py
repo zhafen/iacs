@@ -1,14 +1,17 @@
 """Tests for the MCP server tools."""
 
+import asyncio
+
 import yaml
 import pytest
 
 from iacs.mcp_server import (
-    _BUILTIN_MANIFEST,
+    _EXAMPLE_MANIFEST,
     _BUILTINS_DIR,
     _IACS_MANIFEST_DIR,
     _MANIFEST_ENV_VAR,
     _build_format_description,
+    _lifespan,
     _validate_yaml_string,
     get_manifest_path,
     server,
@@ -156,7 +159,7 @@ class TestGetManifestPath:
     def test_returns_builtin_path_when_env_unset(self, monkeypatch):
         monkeypatch.delenv(_MANIFEST_ENV_VAR, raising=False)
         result = get_manifest_path()
-        assert str(_BUILTIN_MANIFEST) in result
+        assert str(_EXAMPLE_MANIFEST) in result
         assert "built-in default" in result
 
     def test_returns_env_path_when_set(self, monkeypatch, tmp_path):
@@ -195,3 +198,26 @@ class TestMcpToolRegistration:
         tools = {t.name: t for t in server._tool_manager.list_tools()}
         params = tools["describe_format"].parameters
         assert params.get("required", []) == []
+
+
+# ---------------------------------------------------------------------------
+# Lifespan — startup prints invalid_field to stderr
+# ---------------------------------------------------------------------------
+
+class TestLifespan:
+
+    def _run_lifespan(self):
+        async def run():
+            async with _lifespan(server):
+                pass
+        asyncio.run(run())
+
+    def test_lifespan_prints_invalid_field_header(self, capsys):
+        self._run_lifespan()
+        assert "invalid_field component:" in capsys.readouterr().err
+
+    def test_lifespan_output_contains_column_names(self, capsys):
+        self._run_lifespan()
+        err = capsys.readouterr().err
+        for col in ("entity_id", "component_type", "field", "error_type"):
+            assert col in err
