@@ -1009,7 +1009,7 @@ ecs_framework:
                   grouping together components associated with an entity.
                   This format is best for inspecting a single entity, and is
                   typically best for manual data input, often via yaml.
-                  See builtins/format_guide.yaml for the full format specification.
+                  See iacs_manifest/format_guide.yaml for the full format specification.
         component_first:
             data:
                 - description: >
