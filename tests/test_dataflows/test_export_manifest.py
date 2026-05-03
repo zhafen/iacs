@@ -13,7 +13,7 @@ class TestExportManifestSplitsByFile:
         output_dir = str(tmp_path)
 
         a = Architect.from_manifest(input_dir)
-        a.execute("export_manifest", output_dir=output_dir)
+        a.execute("etl.export_manifest", output_dir=output_dir)
 
         # One file per original source (builtins excluded)
         output_files = sorted(f.name for f in tmp_path.glob("*.yaml"))

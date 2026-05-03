@@ -92,8 +92,8 @@ class TestArchitectOutputs:
 class TestLoadDataflow:
     def test_load_top_level_dataflow(self):
         a = Architect(_sample_registry())
-        a.load_dataflow("export_manifest")
-        assert any(m.__name__ == "iacs.dataflows.export_manifest" for m in a._dataflows)
+        a.load_dataflow("etl.export_manifest")
+        assert any(m.__name__ == "iacs.dataflows.etl.export_manifest" for m in a._dataflows)
 
     def test_load_subpackage_dataflow(self):
         a = Architect(_sample_registry())
@@ -137,8 +137,8 @@ class TestFromManifestRunsDeriveComponents:
         with patch.object(hamilton_driver.Driver, "execute", capture_execute):
             Architect.from_manifest("examples/example")
 
-        assert "todo_registry" in executed_vars, (
-            "audits were not executed during from_manifest"
+        assert "derived_registry" in executed_vars, (
+            "derive_components was not executed during from_manifest"
         )
 
 
@@ -158,7 +158,7 @@ class TestArchitectUX:
 
         # Export
         a = Architect.from_manifest(input_dir)
-        a.execute("export_manifest", output_dir=output_dir)
+        a.execute("etl.export_manifest", output_dir=output_dir)
 
         # Reload and check
         a2 = Architect.from_manifest(output_dir)
