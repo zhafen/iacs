@@ -1,23 +1,29 @@
 """Hamilton DAG for the todo audit."""
 
+from hamilton.function_modifiers import extract_fields
 import ibis
+import ibis.expr.types as ir
 
 from iacs.registry import Registry
 
 
+@extract_fields({"todo": ir.Table})
 def components(registry: Registry) -> dict:
     """Give access to the components dict from the registry."""
-    return registry._components
+    comps = dict(registry._components)
+    if "todo" not in comps:
+        comps["todo"] = ibis.memtable(
+            {"entity_id": [], "value": []},
+            schema={"entity_id": "string", "value": "string"},
+        )
+    return comps
 
 
-def todo_table(components: dict) -> ibis.expr.types.Table | None:
+def todo_table(todo: ir.Table) -> ibis.expr.types.Table | None:
     """Get the todo component table, or None if no todos exist."""
-    if "todo" not in components:
+    if todo.count().execute() == 0:
         return None
-    table = components["todo"]
-    if table.count().execute() == 0:
-        return None
-    return table
+    return todo
 
 
 def todo(todo_table: ibis.expr.types.Table | None) -> ibis.expr.types.Table:

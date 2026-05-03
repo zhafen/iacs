@@ -1,39 +1,45 @@
 """Hamilton DAG for the traceability audit."""
 
+from hamilton.function_modifiers import extract_fields
 import ibis
+import ibis.expr.types as ir
 
 from iacs.registry import Registry
 
 
+@extract_fields({"requirement": ir.Table, "solution_of": ir.Table})
 def components(registry: Registry) -> dict:
     """Give access to the components dict from the registry."""
-    return registry._components
+    comps = dict(registry._components)
+    if "requirement" not in comps:
+        comps["requirement"] = ibis.memtable({"entity_id": []}, schema={"entity_id": "string"})
+    comps["solution_of"] = comps.pop(
+        "solution of",
+        ibis.memtable({"entity_id": []}, schema={"entity_id": "string"}),
+    )
+    return comps
 
 
-def all_entities(components: dict) -> ibis.expr.types.Table | None:
+def all_entities(registry: Registry) -> ibis.expr.types.Table | None:
     """Collect all unique entity IDs across all component types."""
     tables = [
-        components[ct].select("entity_id").distinct()
-        for ct in components
-        if isinstance(components[ct], ibis.Table) and "entity_id" in components[ct].columns
+        registry._components[ct].select("entity_id").distinct()
+        for ct in registry._components
+        if isinstance(registry._components[ct], ibis.Table) and "entity_id" in registry._components[ct].columns
     ]
     if not tables:
         return None
     return ibis.union(*tables).distinct()
 
 
-def req_entities(components: dict) -> ibis.expr.types.Table:
+def req_entities(requirement: ir.Table) -> ibis.expr.types.Table:
     """Get entities with requirement components."""
-    if "requirement" in components:
-        return components["requirement"].select("entity_id").distinct()
-    return ibis.memtable({"entity_id": []}, schema={"entity_id": "string"})
+    return requirement.select("entity_id").distinct()
 
 
-def solution_entities(components: dict) -> ibis.expr.types.Table:
+def solution_entities(solution_of: ir.Table) -> ibis.expr.types.Table:
     """Get entities with solution of components."""
-    if "solution of" in components:
-        return components["solution of"].select("entity_id").distinct()
-    return ibis.memtable({"entity_id": []}, schema={"entity_id": "string"})
+    return solution_of.select("entity_id").distinct()
 
 
 def orphan_entities(
