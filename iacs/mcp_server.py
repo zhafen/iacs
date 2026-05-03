@@ -1,8 +1,10 @@
 """MCP server exposing iacs registry tools."""
 
 import os
+import sys
 import tempfile
 import traceback
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import yaml
@@ -11,16 +13,6 @@ from mcp.server.fastmcp import FastMCP
 from iacs.architect import Architect
 
 _MANIFEST_ENV_VAR = "IACS_MANIFEST"
-
-server = FastMCP(
-    "iacs",
-    instructions=(
-        f"Set the {_MANIFEST_ENV_VAR} environment variable to the path of your "
-        "manifest directory so it loads automatically on startup. "
-        "Call `get_manifest_path` to confirm which manifest is currently loaded."
-    ),
-)
-
 _BUILTIN_MANIFEST = Path(__file__).parent.parent / "examples" / "example"
 _BUILTINS_DIR = Path(__file__).parent / "builtins"
 _IACS_MANIFEST_DIR = Path(__file__).parent / "iacs_manifest"
@@ -34,6 +26,25 @@ def _get_architect() -> Architect:
         manifest = os.environ.get(_MANIFEST_ENV_VAR, str(_BUILTIN_MANIFEST))
         _architect = Architect.from_manifest(manifest)
     return _architect
+
+
+@asynccontextmanager
+async def _lifespan(mcp_server):
+    arch = _get_architect()
+    df = arch.registry.get("invalid_field").execute()
+    print(f"invalid_field component:\n{df.to_string()}", file=sys.stderr)
+    yield
+
+
+server = FastMCP(
+    "iacs",
+    instructions=(
+        f"Set the {_MANIFEST_ENV_VAR} environment variable to the path of your "
+        "manifest directory so it loads automatically on startup. "
+        "Call `get_manifest_path` to confirm which manifest is currently loaded."
+    ),
+    lifespan=_lifespan,
+)
 
 
 # ---------------------------------------------------------------------------
