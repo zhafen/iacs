@@ -5,7 +5,9 @@ Regenerate images with: `uv run python docs/gen_dag_images.py`
 
 ---
 
-## load_manifest
+## ETL
+
+### load_manifest
 
 Converts entity-centered YAML data into the component-centered Registry format.
 
@@ -13,7 +15,7 @@ Converts entity-centered YAML data into the component-centered Registry format.
 
 ---
 
-## derive_components
+### derive_components
 
 Derives additional components from the base input (e.g. resolving entity references).
 
@@ -21,15 +23,7 @@ Derives additional components from the base input (e.g. resolving entity referen
 
 ---
 
-## validate_registry
-
-Validates the registry against schemas and constraints.
-
-![validate_registry DAG](img/validate_registry.png)
-
----
-
-## export_manifest
+### export_manifest
 
 Exports the registry back to entity-centered YAML format.
 
@@ -37,15 +31,17 @@ Exports the registry back to entity-centered YAML format.
 
 ---
 
-## base_etl
+## Validation
 
-Base ETL utilities shared across dataflows.
+### validate_registry
 
-![base_etl DAG](img/base_etl.png)
+Validates the registry against schemas and constraints.
+
+![validate_registry DAG](img/validate_registry.png)
 
 ---
 
-## Audits
+## Audit
 
 ### requirement_coverage
 
@@ -68,3 +64,13 @@ Checks that all solutions can be traced back to a requirement.
 Checks for unresolved TODO items in the solution.
 
 ![audit_todo DAG](img/audit_todo.png)
+
+---
+
+## Base
+
+### base_etl
+
+Base ETL utilities shared across dataflows.
+
+![base_etl DAG](img/base_etl.png)
