@@ -4,11 +4,12 @@ import os
 import sys
 import tempfile
 import traceback
+import weakref
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import yaml
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
 
 from iacs.architect import Architect
 
@@ -17,20 +18,21 @@ _BUILTIN_MANIFEST = Path(__file__).parent.parent / "examples" / "example"
 _BUILTINS_DIR = Path(__file__).parent / "builtins"
 _IACS_MANIFEST_DIR = Path(__file__).parent / "iacs_manifest"
 
-_architect: Architect | None = None
+_architects: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 
 
-def _get_architect() -> Architect:
-    global _architect
-    if _architect is None:
+def _get_architect(ctx: Context) -> Architect:
+    session = ctx.request_context.session
+    if session not in _architects:
         manifest = os.environ.get(_MANIFEST_ENV_VAR, str(_BUILTIN_MANIFEST))
-        _architect = Architect.from_manifest(manifest)
-    return _architect
+        _architects[session] = Architect.from_manifest(manifest)
+    return _architects[session]
 
 
 @asynccontextmanager
 async def _lifespan(mcp_server):
-    arch = _get_architect()
+    manifest = os.environ.get(_MANIFEST_ENV_VAR, str(_BUILTIN_MANIFEST))
+    arch = Architect.from_manifest(manifest)
     df = arch.registry.get("invalid_field").execute()
     print(f"invalid_field component:\n{df.to_string()}", file=sys.stderr)
     yield
@@ -222,26 +224,25 @@ def get_manifest_path() -> str:
 
 
 @server.tool()
-def load_manifest(manifest_path: str) -> str:
+def load_manifest(manifest_path: str, ctx: Context) -> str:
     """Load an iacs manifest from a directory path, replacing the current registry.
 
     Args:
         manifest_path: Path to the manifest directory.
     """
-    global _architect
-    _architect = Architect.from_manifest(manifest_path)
-    types = _architect.registry.component_types
-    return f"Loaded manifest from {manifest_path!r}. Component types: {types}"
+    arch = Architect.from_manifest(manifest_path)
+    _architects[ctx.request_context.session] = arch
+    return f"Loaded manifest from {manifest_path!r}. Component types: {arch.registry.component_types}"
 
 
 @server.tool()
-def list_component_types() -> list[str]:
+def list_component_types(ctx: Context) -> list[str]:
     """List all component types available in the iacs registry."""
-    return _get_architect().registry.component_types
+    return _get_architect(ctx).registry.component_types
 
 
 @server.tool()
-def view_component(component_type: str, format: str = "csv") -> str:
+def view_component(component_type: str, ctx: Context, format: str = "csv") -> str:
     """Return all data for a component type.
 
     Args:
@@ -249,7 +250,7 @@ def view_component(component_type: str, format: str = "csv") -> str:
         format: Output format — "csv" (default) or "markdown" for a
             human-readable table.
     """
-    arch = _get_architect()
+    arch = _get_architect(ctx)
     df = arch.registry.view_df(component_type).reset_index()
     if format == "markdown":
         return df.to_markdown(index=False)
