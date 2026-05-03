@@ -7,23 +7,25 @@ import ibis.expr.types as ir
 from iacs.registry import Registry
 
 
-@extract_fields({"todo": ir.Table})
+@extract_fields({"todo_component": ir.Table})
 def components(registry: Registry) -> dict:
     """Give access to the components dict from the registry."""
     comps = dict(registry._components)
-    if "todo" not in comps:
-        comps["todo"] = ibis.memtable(
+    comps["todo_component"] = comps.get(
+        "todo",
+        ibis.memtable(
             {"entity_id": [], "value": []},
             schema={"entity_id": "string", "value": "string"},
-        )
+        ),
+    )
     return comps
 
 
-def todo_table(todo: ir.Table) -> ibis.expr.types.Table | None:
+def todo_table(todo_component: ir.Table) -> ibis.expr.types.Table | None:
     """Get the todo component table, or None if no todos exist."""
-    if todo.count().execute() == 0:
+    if todo_component.count().execute() == 0:
         return None
-    return todo
+    return todo_component
 
 
 def todo(todo_table: ibis.expr.types.Table | None) -> ibis.expr.types.Table:
