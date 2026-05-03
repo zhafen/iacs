@@ -50,8 +50,8 @@ class Architect:
             manifest = [str(p) for p in manifest]
         result = driver.Driver(
             {}, base_etl, adapter=base.DictResult()
-        ).execute(["todo_registry"], inputs={"input_dir": manifest})
-        new_registry = result["todo_registry"]
+        ).execute(["derived_registry"], inputs={"input_dir": manifest})
+        new_registry = result["derived_registry"]
         self._registry.merge(new_registry)
         new_registry.close()
 

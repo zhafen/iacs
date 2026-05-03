@@ -11,8 +11,8 @@ from hamilton.function_modifiers import extract_fields, unpack_fields
 import ibis
 import ibis.expr.types as ir
 
-from ..registry import Registry
-from ..utils import dhash
+from ...registry import Registry
+from ...utils import dhash
 
 
 _ENTITY_PATH_PATTERN = re.compile(r"^(.+?)\[\d+\]\..+$")

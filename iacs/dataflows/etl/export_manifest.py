@@ -26,7 +26,7 @@ from hamilton.function_modifiers import extract_fields
 import ibis.expr.types as ir
 import pandas as pd
 
-from ..registry import Registry
+from ...registry import Registry
 
 _BUILTIN_FILEPATH = "builtins.components"
 
