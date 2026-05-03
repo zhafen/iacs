@@ -4,7 +4,7 @@ import ibis
 import pandas as pd
 import pytest
 
-import iacs.dataflows.validate_registry as validate_registry
+import iacs.dataflows.validation.validate_registry as validate_registry
 from iacs.registry import Registry
 from iacs.utils import dhash
 from tests.conftest import make_registry

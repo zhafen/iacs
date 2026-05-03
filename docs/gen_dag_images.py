@@ -18,10 +18,10 @@ OUTPUT_DIR = Path(__file__).parent / "dataflows" / "img"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 DATAFLOWS = [
-    ("iacs.dataflows.load_manifest", "load_manifest"),
-    ("iacs.dataflows.derive_components", "derive_components"),
-    ("iacs.dataflows.validate_registry", "validate_registry"),
-    ("iacs.dataflows.export_manifest", "export_manifest"),
+    ("iacs.dataflows.etl.load_manifest", "load_manifest"),
+    ("iacs.dataflows.etl.derive_components", "derive_components"),
+    ("iacs.dataflows.etl.export_manifest", "export_manifest"),
+    ("iacs.dataflows.validation.validate_registry", "validate_registry"),
     ("iacs.dataflows.base_etl", "base_etl"),
     ("iacs.dataflows.audit.requirement_coverage", "audit_requirement_coverage"),
     ("iacs.dataflows.audit.traceability", "audit_traceability"),

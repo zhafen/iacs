@@ -8,11 +8,11 @@ import ibis.expr.types as ir
 import pandas as pd
 import yaml
 
-from ..registry import Registry
-from ..utils import dhash
+from ...registry import Registry
+from ...utils import dhash
 
 
-_BUILTINS_DIR = Path(__file__).parent.parent / "builtins"
+_BUILTINS_DIR = Path(__file__).parent.parent.parent / "builtins"
 
 
 def raw_csv_data(input_dir: list[str]) -> dict[str, pd.DataFrame]:
