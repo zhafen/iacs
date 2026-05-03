@@ -4,10 +4,13 @@ import yaml
 import pytest
 
 from iacs.mcp_server import (
+    _BUILTIN_MANIFEST,
     _BUILTINS_DIR,
     _IACS_MANIFEST_DIR,
+    _MANIFEST_ENV_VAR,
     _build_format_description,
     _validate_yaml_string,
+    get_manifest_path,
     server,
 )
 
@@ -142,6 +145,30 @@ sol:
 """
         result = _validate_yaml_string(yaml_str)
         assert result.startswith("Valid.")
+
+
+# ---------------------------------------------------------------------------
+# get_manifest_path
+# ---------------------------------------------------------------------------
+
+class TestGetManifestPath:
+
+    def test_returns_builtin_path_when_env_unset(self, monkeypatch):
+        monkeypatch.delenv(_MANIFEST_ENV_VAR, raising=False)
+        result = get_manifest_path()
+        assert str(_BUILTIN_MANIFEST) in result
+        assert "built-in default" in result
+
+    def test_returns_env_path_when_set(self, monkeypatch, tmp_path):
+        monkeypatch.setenv(_MANIFEST_ENV_VAR, str(tmp_path))
+        result = get_manifest_path()
+        assert str(tmp_path) in result
+        assert _MANIFEST_ENV_VAR in result
+
+    def test_mentions_env_var_name(self, monkeypatch):
+        monkeypatch.delenv(_MANIFEST_ENV_VAR, raising=False)
+        result = get_manifest_path()
+        assert _MANIFEST_ENV_VAR in result
 
 
 # ---------------------------------------------------------------------------
