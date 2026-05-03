@@ -29,6 +29,20 @@ import pandas as pd
 from ..registry import Registry
 
 _BUILTIN_FILEPATH = "builtins.components"
+_BUILTINS_DIR = (Path(__file__).parent.parent / "builtins").resolve()
+
+
+def _is_builtin_filepath(filepath: str) -> bool:
+    """Return True for filepaths that belong to the iacs builtins directory."""
+    if pd.isna(filepath) or not filepath:
+        return False
+    if str(filepath).startswith("builtins"):
+        return True
+    try:
+        abs_fp = (Path.cwd() / filepath).resolve()
+        return _BUILTINS_DIR in abs_fp.parents
+    except Exception:
+        return False
 
 @extract_fields({"entity_id": ir.Table})
 def components(registry: Registry) -> dict:
@@ -72,7 +86,7 @@ def entity_first_data(components: dict, entity_id: ir.Table) -> dict:
         component is a string (tag) or a single-key dict.
     """
     spine_df = entity_id.to_pandas()
-    user_rows = spine_df[~spine_df["filepath"].str.startswith("builtins")]
+    user_rows = spine_df[~spine_df["filepath"].apply(_is_builtin_filepath)]
     user_entity_ids = set(user_rows["value"].unique())
     id_to_key = (
         spine_df.drop_duplicates("value")

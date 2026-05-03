@@ -22,7 +22,7 @@ def _get_architect() -> Architect:
     global _architect
     if _architect is None:
         manifest = os.environ.get("IACS_MANIFEST", str(_BUILTIN_MANIFEST))
-        _architect = Architect.from_manifest([str(_BUILTINS_DIR), manifest])
+        _architect = Architect.from_manifest(manifest)
     return _architect
 
 
@@ -192,7 +192,7 @@ def load_manifest(manifest_path: str) -> str:
         manifest_path: Path to the manifest directory.
     """
     global _architect
-    _architect = Architect.from_manifest([str(_BUILTINS_DIR), manifest_path])
+    _architect = Architect.from_manifest(manifest_path)
     types = _architect.registry.component_types
     return f"Loaded manifest from {manifest_path!r}. Component types: {types}"
 

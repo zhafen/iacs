@@ -17,7 +17,7 @@ import pandas as pd
 import pytest
 from hamilton import driver, base
 
-from iacs.architect import Architect
+from iacs.architect import Architect, _BUILTIN_MANIFEST_FILES
 
 EXAMPLES_DIR = Path(__file__).parent.parent.parent / "examples"
 EXPECTED_DIR = Path(__file__).parent / "expected"
@@ -347,7 +347,7 @@ def test_incremental_load_matches_directory(example_dir: Path) -> None:
 
     a_inc = Architect()
     for yaml_file in sorted(example_dir.rglob("*.yaml")):
-        a_inc.load_manifest(str(yaml_file))
+        a_inc.load_manifest([str(p) for p in _BUILTIN_MANIFEST_FILES] + [str(yaml_file)])
 
     assert set(a_all.registry.component_types) == set(a_inc.registry.component_types)
 

@@ -12,6 +12,13 @@ from iacs.dataflows import base_etl
 from iacs.registry import Registry
 
 _DATAFLOW_BASE_PACKAGE = "iacs.dataflows"
+_BUILTINS_DIR = Path(__file__).parent / "builtins"
+# components.yaml is always injected by raw_entity_first_data, so we only
+# include the remaining builtin files here to avoid loading it twice.
+_BUILTIN_MANIFEST_FILES = [
+    _BUILTINS_DIR / "iacs.yaml",
+    _BUILTINS_DIR / "format_guide.yaml",
+]
 
 
 class Architect:
@@ -21,9 +28,16 @@ class Architect:
     def from_manifest(cls, manifest: str | Path | list[str | Path]) -> "Architect":
         """Create an Architect with a registry loaded and validated from a manifest.
 
+        Builtins are always loaded alongside the given manifest.
+
         Args:
             manifest: A directory path (or list of paths) making up the manifest.
         """
+        builtin_paths = [str(p) for p in _BUILTIN_MANIFEST_FILES]
+        if isinstance(manifest, (str, Path)):
+            manifest = builtin_paths + [str(manifest)]
+        else:
+            manifest = builtin_paths + [str(p) for p in manifest]
         a = cls()
         a.load_manifest(manifest)
         return a

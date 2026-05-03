@@ -6,7 +6,7 @@ import ibis
 
 from tests.conftest import make_registry
 from tests.test_dataflows.dags import dataflow, dataflow_b
-from iacs.architect import Architect
+from iacs.architect import Architect, _BUILTIN_MANIFEST_FILES
 
 
 def _sample_registry():
@@ -26,6 +26,20 @@ def _architect_with_test_dataflow():
     a._dataflows = [dataflow]
     a._rebuild_driver()
     return a
+
+
+class TestBuiltinsAlwaysLoaded:
+    """Builtins must be present for any Architect created via from_manifest."""
+
+    def test_from_manifest_includes_effort(self, tmp_path):
+        (tmp_path / "minimal.yaml").write_text("my_req:\n    - requirement\n")
+        a = Architect.from_manifest(str(tmp_path))
+        assert "effort" in a.registry.component_types
+
+    def test_from_manifest_list_includes_effort(self, tmp_path):
+        (tmp_path / "minimal.yaml").write_text("my_req:\n    - requirement\n")
+        a = Architect.from_manifest([str(tmp_path)])
+        assert "effort" in a.registry.component_types
 
 
 class TestArchitectConstruction:
@@ -182,7 +196,7 @@ class TestLoadManifest:
 
         a_inc = Architect()
         for yaml_file in sorted(tmp_path.rglob("*.yaml")):
-            a_inc.load_manifest(str(yaml_file))
+            a_inc.load_manifest([str(p) for p in _BUILTIN_MANIFEST_FILES] + [str(yaml_file)])
 
         assert set(a_all.registry.component_types) == set(a_inc.registry.component_types)
 
