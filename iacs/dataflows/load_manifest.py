@@ -12,8 +12,7 @@ from ..registry import Registry
 from ..utils import dhash
 
 
-_BUILTIN_COMPONENTS = Path(__file__).parent.parent / "builtins" / "components.yaml"
-_BUILTIN_ID = "builtins.components"
+_BUILTINS_DIR = Path(__file__).parent.parent / "builtins"
 
 
 def raw_csv_data(input_dir: list[str]) -> dict[str, pd.DataFrame]:
@@ -163,9 +162,9 @@ def csv_spine(raw_csv_data: dict[str, pd.DataFrame]) -> ir.Table:
 def raw_entity_first_data(input_dir: list[str]) -> dict:
     """Load yaml files from a list of files or directories.
 
-    Always includes builtins/components.yaml (identified as "builtins.components").
-    User-provided files are identified by their path relative to the current
-    working directory.
+    Always includes all yaml files from the builtins directory, each identified
+    as "builtins.<stem>". User-provided files are identified by their path
+    relative to the current working directory.
 
     Parameters
     ----------
@@ -199,7 +198,10 @@ def raw_entity_first_data(input_dir: list[str]) -> dict:
                         file_id = str(f)
                     all_files.append((f, file_id))
 
-    all_files.append((_BUILTIN_COMPONENTS, _BUILTIN_ID))
+    for f in sorted(_BUILTINS_DIR.rglob("*.y*ml")):
+        if f.suffix in (".yaml", ".yml"):
+            builtin_id = f"builtins.{f.stem}"
+            all_files.append((f, builtin_id))
 
     result = {}
     for file_path, file_id in all_files:

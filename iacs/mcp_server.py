@@ -14,6 +14,7 @@ server = FastMCP("iacs")
 
 _BUILTIN_MANIFEST = Path(__file__).parent.parent / "examples" / "example"
 _BUILTINS_DIR = Path(__file__).parent / "builtins"
+_IACS_MANIFEST_DIR = Path(__file__).parent / "iacs_manifest"
 
 _architect: Architect | None = None
 
@@ -101,7 +102,7 @@ def _build_format_description() -> str:
     sections of components.yaml.
     """
     guide_data = yaml.safe_load(
-        (_BUILTINS_DIR / "format_guide.yaml").read_text(encoding="utf-8")
+        (_IACS_MANIFEST_DIR / "format_guide.yaml").read_text(encoding="utf-8")
     )
     comp_data = yaml.safe_load(
         (_BUILTINS_DIR / "components.yaml").read_text(encoding="utf-8")
