@@ -11,7 +11,7 @@ from iacs.architect import Architect
 from iacs.views.requirement_tree import build_requirement_tree
 
 BASE_DIR = Path(__file__).parent
-BUILTINS_DIR = BASE_DIR / "iacs" / "builtins"
+BUILTINS_DIR = BASE_DIR / "iacs" / "iacs_manifest"
 STATIC_DIR = BASE_DIR / "static"
 DEFAULT_ANCESTOR = "be_a_powerful_tool_for_solutions_architecture"
 
