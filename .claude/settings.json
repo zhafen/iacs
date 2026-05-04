@@ -3,5 +3,19 @@
     "allow": [
       "mcp__iacs__*"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && bash setup.sh",
+            "timeout": 120,
+            "statusMessage": "Installing iacs from local repo..."
+          }
+        ]
+      }
+    ]
   }
 }
