@@ -2,7 +2,7 @@
   "mcpServers": {
     "iacs": {
       "type": "stdio",
-      "command": "/home/user/iacs/.venv/bin/iacs-mcp",
+      "command": ".venv/bin/iacs-mcp",
       "args": [],
       "env": {}
     }
