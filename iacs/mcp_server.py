@@ -1,8 +1,6 @@
 """Bare-bones stdio MCP server for incremental debugging."""
 
 import os
-import sys
-from contextlib import asynccontextmanager
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -12,17 +10,18 @@ from iacs.architect import Architect
 _MANIFEST_ENV_VAR = "IACS_MANIFEST"
 _EXAMPLE_MANIFEST = Path(__file__).parent.parent / "examples" / "example"
 
-
-@asynccontextmanager
-async def _lifespan(mcp_server):
-    manifest = os.environ.get(_MANIFEST_ENV_VAR, str(_EXAMPLE_MANIFEST))
-    arch = Architect.from_manifest(manifest)
-    print(f"Loaded manifest: {manifest}", file=sys.stderr)
-    print(f"Component types: {arch.registry.component_types}", file=sys.stderr)
-    yield
+_manifest_path: str = ""
+_architect: Architect | None = None
 
 
-server = FastMCP("iacs", lifespan=_lifespan)
+def _get_architect() -> Architect:
+    global _architect
+    if _architect is None:
+        _architect = Architect.from_manifest(_manifest_path)
+    return _architect
+
+
+server = FastMCP("iacs")
 
 
 @server.tool()
@@ -32,17 +31,14 @@ def ping() -> str:
 
 
 @server.tool()
-def list_component_types(manifest_path: str) -> list[str]:
-    """Load a manifest and return its component types.
-
-    Args:
-        manifest_path: Path to the manifest directory.
-    """
-    arch = Architect.from_manifest(manifest_path)
-    return arch.registry.component_types
+def list_component_types() -> list[str]:
+    """List all component types in the loaded manifest."""
+    return _get_architect().registry.component_types
 
 
 def main() -> None:
+    global _manifest_path
+    _manifest_path = os.environ.get(_MANIFEST_ENV_VAR, str(_EXAMPLE_MANIFEST))
     server.run(transport="stdio")
 
 
