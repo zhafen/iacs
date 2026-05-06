@@ -375,12 +375,17 @@ def keyvalue_store(pathvalue_pairs: ir.Table) -> ir.Table:
         filepath=t.entity_path.re_extract(r"^([^:]+):", 1).nullif(""),
     )
     # field: sub-field name after the spine_path, or "value" for scalar components.
+    # Tags whose text ends with "." produce an empty field after the trailing dot
+    # is consumed as a separator — treat those as "value" too.
     t = t.mutate(
         field=ibis.ifelse(
             t["path"] == t["spine_path"],
             ibis.literal("value"),
             t["path"].substr(t["spine_path"].length() + 1),
         )
+    )
+    t = t.mutate(
+        field=ibis.ifelse(t["field"] == "", ibis.literal("value"), t["field"])
     )
     return t.select(
         "entity_id", "entity_key", "entity_path", "filepath",
