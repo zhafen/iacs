@@ -54,12 +54,11 @@ entity_first_yaml_format:
               ## Multiple component instances
 
               An entity may have multiple instances of the same component type.
-              Each list entry is a separate instance (distinguished by component_index):
+              Use the condensed format with a list value:
                   - effort:
-                        value: 8
-                  - effort:
-                        value: 2
-                        schedule: weekly
+                        - 8
+                        - value: 2
+                          schedule: weekly
 
     canonical_example:
         - description: |
@@ -67,16 +66,13 @@ entity_first_yaml_format:
               make_cats_happy:
                   data:
                       - description: The mission of our cat-happiness device.
-                      - requirement:
-                            value: 1
+                      - requirement: 1
                   feed_cats:
-                      - requirement:
-                            value: 0.9
+                      - requirement: 0.9
                       - alias: feed_cats
                   sift_cat_box:
                       - description: Unfortunately.
-                      - requirement:
-                            value: 0.8
+                      - requirement: 0.8
 
               cat_happiness_device:
                   data:
@@ -87,10 +83,9 @@ entity_first_yaml_format:
                       - description: The task to feed the cats.
                       - solution of: make_cats_happy.feed_cats
                       - effort:
-                            value: 8
-                      - effort:
-                            value: 2
-                            schedule: weekly
+                            - 8
+                            - value: 2
+                              schedule: weekly
                   cleaning_system:
                       - solution of: make_cats_happy.sift_cat_box
               ```
