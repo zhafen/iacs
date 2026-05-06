@@ -1,15 +1,13 @@
 """Base class for iacs systems."""
+from __future__ import annotations
 
 import importlib
 from pathlib import Path
 from types import ModuleType
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import ibis
-from hamilton import driver, base
-
-from iacs.dataflows import base_etl
-from iacs.registry import Registry
+if TYPE_CHECKING:
+    from iacs.registry import Registry
 
 _DATAFLOW_BASE_PACKAGE = "iacs.dataflows"
 
@@ -18,7 +16,7 @@ class Architect:
     """Base class for iacs systems that operate on infrastructure data."""
 
     @classmethod
-    def from_manifest(cls, manifest: str | Path | list[str | Path]) -> "Architect":
+    def from_manifest(cls, manifest: str | Path | list[str | Path]) -> Architect:
         """Create an Architect with a registry loaded and validated from a manifest.
 
         Args:
@@ -28,8 +26,10 @@ class Architect:
         a.load_manifest(manifest)
         return a
 
-    def __init__(self, registry: Registry = None):
+    def __init__(self, registry: Registry | None = None):
         if registry is None:
+            import ibis
+            from iacs.registry import Registry
             registry = Registry(ibis.duckdb.connect(), {})
         self._registry = registry
         self._dataflows: list[ModuleType] = []
@@ -44,6 +44,9 @@ class Architect:
         Args:
             manifest: A file path, directory path, or list of either.
         """
+        from hamilton import driver, base
+        from iacs.dataflows import base_etl
+
         if isinstance(manifest, (str, Path)):
             manifest = [str(manifest)]
         else:
@@ -56,6 +59,7 @@ class Architect:
         new_registry.close()
 
     def _rebuild_driver(self) -> None:
+        from hamilton import driver, base
         self._driver = driver.Driver(
             {"registry": self._registry}, *self._dataflows, adapter=base.DictResult(),
             allow_module_overrides=True,

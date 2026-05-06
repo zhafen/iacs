@@ -3,8 +3,6 @@
 import ibis
 import pandas as pd
 
-ibis.options.interactive = True
-
 _TABLE_META_COLS = {"entity_id", "component_index", "modifier"}
 
 
@@ -26,6 +24,7 @@ class Registry:
         Metadata:
         - todo: We likely want to store the schema with the other component types and/or just have a filter on type.
         """
+        ibis.options.interactive = True
         self._con = conn
         self._components = components
         self._component_types = [
