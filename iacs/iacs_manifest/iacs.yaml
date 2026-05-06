@@ -906,13 +906,31 @@ ecs_framework:
                         framework limitation. Fixing them incrementally in the current
                         stack is days of work vs. weeks for a full SQLMesh migration.
                     - weight: -0.6
-                con_warehouse_features_irrelevant:
+                pro_incremental_materialization_now_relevant:
                     - description: >
-                        SQLMesh's primary strengths--incremental materialization,
-                        state management, virtual dev/prod environments, CI/CD
-                        plan/apply--solve problems that don't exist for a local
-                        metadata processing tool parsing YAML files.
+                        Incremental updates to one or more source tables (e.g. a
+                        YAML file modified) require downstream records to be
+                        recalculated. SQLMesh handles this declaratively via
+                        INCREMENTAL_BY_UNIQUE_KEY model kinds with automatic
+                        lineage-aware invalidation, removing the need for custom
+                        change-detection logic.
+                    - weight: 0.6
+                con_incremental_achievable_in_current_stack:
+                    - description: >
+                        Hamilton supports partial DAG re-execution natively via
+                        inputs and overrides. Detecting changed YAML files (mtime
+                        or content hash) and re-running only the affected downstream
+                        nodes is achievable in days without a framework migration,
+                        at the cost of more explicit bookkeeping compared to
+                        SQLMesh's declarative approach.
                     - weight: -0.5
+                con_other_warehouse_features_still_irrelevant:
+                    - description: >
+                        SQLMesh strengths beyond incremental materialization--virtual
+                        dev/prod environments, CI/CD plan/apply, state management
+                        across environments--still solve problems that don't exist
+                        for a local metadata processing tool parsing YAML files.
+                    - weight: -0.3
     nlp_system:
         data:
             - description: >
