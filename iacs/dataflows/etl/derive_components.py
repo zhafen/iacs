@@ -88,7 +88,7 @@ def components_with_resolved_paths(
                 candidates = candidate_entity_ids(str(val), _df)
                 return candidates[0] if len(candidates) == 1 else None
 
-            df[f"{field_name}_id"] = df[field_name].apply(resolve)
+            df[f"{field_name}_id"] = df[field_name].apply(resolve).astype("string")
         result[comp_type] = df
     return result
 

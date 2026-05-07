@@ -11,37 +11,31 @@ from ...registry import Registry
     "requirement": ir.Table,
     "solution": ir.Table,
     "work_state": ir.Table,
-    "entity_id_table": ir.Table,
 })
-def components(registry: Registry) -> dict:
-    comps = dict(registry._components)
+def components(derived_registry: Registry) -> dict:
+    comps = dict(derived_registry._components)
     if "requirement" not in comps:
         comps["requirement"] = ibis.memtable({"entity_id": []}, schema={"entity_id": "string"})
     if "solution" not in comps:
-        comps["solution"] = ibis.memtable({"entity_id": []}, schema={"entity_id": "string"})
+        comps["solution"] = ibis.memtable(
+            {"entity_id": [], "value_id": []},
+            schema={"entity_id": "string", "value_id": "string"},
+        )
     comps["work_state"] = comps.get(
-        "status",
-        ibis.memtable({"entity_id": [], "value": []}, schema={"entity_id": "string", "value": "string"}),
-    )
-    comps["entity_id_table"] = comps.get(
-        "entity_id",
-        ibis.memtable({"value": [], "path": []}, schema={"value": "string", "path": "string"}),
+        "work_state",
+        comps.get(
+            "status",
+            ibis.memtable({"entity_id": [], "value": []}, schema={"entity_id": "string", "value": "string"}),
+        ),
     )
     return comps
 
 
-def solution_with_state(solution: ir.Table, work_state: ir.Table, entity_id_table: ir.Table) -> ir.Table:
+def solution_with_state(solution: ir.Table, work_state: ir.Table) -> ir.Table:
     """Join solutions with their resolved requirement entity IDs and work state."""
-    eid = entity_id_table.mutate(
-        entity_path=entity_id_table.path.split(":")[1]
-    ).select(
-        entity_id_table.value.name("req_entity_id"),
-        ibis._.entity_path,
-    )
-
-    sol_resolved = solution.left_join(eid, solution.value == eid.entity_path).select(
+    sol = solution.select(
         solution.entity_id.name("solution_entity_id"),
-        eid.req_entity_id,
+        solution.value_id.name("req_entity_id"),
     )
 
     status = work_state.select(
@@ -49,9 +43,9 @@ def solution_with_state(solution: ir.Table, work_state: ir.Table, entity_id_tabl
         work_state.value.name("status_value"),
     )
 
-    return sol_resolved.left_join(
-        status, sol_resolved.solution_entity_id == status.sol_entity_id
-    ).select("solution_entity_id", "req_entity_id", "status_value")
+    return sol.left_join(status, sol.solution_entity_id == status.sol_entity_id).select(
+        "solution_entity_id", "req_entity_id", "status_value"
+    )
 
 
 def requirement_coverage(requirement: ir.Table, solution_with_state: ir.Table) -> ir.Table:
@@ -71,7 +65,7 @@ def requirement_coverage(requirement: ir.Table, solution_with_state: ir.Table) -
     )
 
 
-def updated_registry(registry: Registry, requirement_coverage: ir.Table) -> Registry:
+def updated_registry(derived_registry: Registry, requirement_coverage: ir.Table) -> Registry:
     """Store the requirement coverage audit result as a component in the registry."""
-    registry.update({"requirement_coverage": requirement_coverage})
-    return registry
+    derived_registry.update({"requirement_coverage": requirement_coverage})
+    return derived_registry
