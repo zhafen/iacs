@@ -18,8 +18,8 @@ def components(derived_registry: Registry) -> dict:
         comps["requirement"] = ibis.memtable({"entity_id": []}, schema={"entity_id": "string"})
     if "solution" not in comps:
         comps["solution"] = ibis.memtable(
-            {"entity_id": [], "value_id": []},
-            schema={"entity_id": "string", "value_id": "string"},
+            {"entity_id": [], "value_entity_id": []},
+            schema={"entity_id": "string", "value_entity_id": "string"},
         )
     if "status" not in comps:
         comps["status"] = ibis.memtable(
@@ -32,7 +32,7 @@ def components(derived_registry: Registry) -> dict:
 def solution_with_state(solution: ir.Table, status: ir.Table) -> ir.Table:
     """Join solutions with their resolved requirement entity IDs and work state.
 
-    solution.value_id is populated by derive_components based on the entity_ref
+    solution.value_entity_id is populated by derive_components based on the entity_ref
     field declared for the solution component in builtins/components.yaml.
     """
     return (
@@ -40,7 +40,7 @@ def solution_with_state(solution: ir.Table, status: ir.Table) -> ir.Table:
         .left_join(status, solution.entity_id == status.entity_id)
         .select(
             solution.entity_id.name("solution"),
-            solution.value_id.name("entity_id"),
+            solution.value_entity_id.name("entity_id"),
             status.value.name("solution_status"),
         )
     )
