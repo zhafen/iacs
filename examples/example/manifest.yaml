@@ -54,13 +54,13 @@ cat_happiness_device:
 cat:
     - description: A data representation of a cat.
     - field:
-        - value: name
-          description: The cat's name.
-          type: str
-          unique: True
-        - value: breed
-          description: The breed of the cat, e.g. orange.
-          type: str
+        name:
+            description: The cat's name.
+            type: str
+            unique: True
+        breed:
+            description: The breed of the cat, e.g. orange.
+            type: str
 
 sustenance:
     data:
