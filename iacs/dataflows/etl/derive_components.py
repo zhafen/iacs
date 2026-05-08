@@ -54,7 +54,7 @@ def components_with_resolved_paths(
 ) -> dict[str, pd.DataFrame]:
     """Resolve entity_ref fields in each component to entity IDs.
 
-    For each (component_type, field_names) pair, adds a ``{field}_entity_id`` column
+    For each (component_type, field_names) pair, adds a ``{field}_eid`` column
     containing the resolved entity ID (or ``None`` if 0 or 2+ candidates match).
 
     Parameters
@@ -88,7 +88,7 @@ def components_with_resolved_paths(
                 candidates = candidate_entity_ids(str(val), _df)
                 return candidates[0] if len(candidates) == 1 else None
 
-            df[f"{field_name}_entity_id"] = df[field_name].apply(resolve).astype("string")
+            df[f"{field_name}_eid"] = df[field_name].apply(resolve).astype("string")
         result[comp_type] = df
     return result
 

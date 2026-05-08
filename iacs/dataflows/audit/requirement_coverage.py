@@ -18,8 +18,8 @@ def components(derived_registry: Registry) -> dict:
         comps["requirement"] = ibis.memtable({"entity_id": []}, schema={"entity_id": "string"})
     if "solution" not in comps:
         comps["solution"] = ibis.memtable(
-            {"entity_id": [], "value_entity_id": []},
-            schema={"entity_id": "string", "value_entity_id": "string"},
+            {"entity_id": [], "value_eid": []},
+            schema={"entity_id": "string", "value_eid": "string"},
         )
     if "status" not in comps:
         comps["status"] = ibis.memtable(
@@ -32,16 +32,17 @@ def components(derived_registry: Registry) -> dict:
 def solution_with_state(solution: ir.Table, status: ir.Table) -> ir.Table:
     """Join solutions with their resolved requirement entity IDs and work state.
 
-    solution.value_entity_id is populated by derive_components based on the entity_ref
+    solution.value_eid is populated by derive_components based on the entity_ref
     field declared for the solution component in builtins/components.yaml.
     """
+    status_for_join = status.rename({"status_eid": "entity_id", "solution_status": "value"})
     return (
         solution
-        .left_join(status, solution.entity_id == status.entity_id)
+        .left_join(status_for_join, solution.entity_id == status_for_join.status_eid)
         .select(
-            solution.entity_id.name("solution"),
-            solution.value_entity_id.name("entity_id"),
-            status.value.name("solution_status"),
+            ibis._.entity_id.name("solution_eid"),
+            ibis._.value_eid.name("entity_id"),
+            ibis._.solution_status,
         )
     )
 
@@ -49,12 +50,10 @@ def solution_with_state(solution: ir.Table, status: ir.Table) -> ir.Table:
 def requirement_coverage(requirement: ir.Table, solution_with_state: ir.Table) -> ir.Table:
     """For each requirement, show which solution covers it and its status."""
     req = requirement.select("entity_id").distinct()
-    return req.left_join(
-        solution_with_state, req.entity_id == solution_with_state.entity_id
-    ).select(
-        req.entity_id,
-        solution_with_state.solution,
-        solution_with_state.solution_status,
+    return req.left_join(solution_with_state, "entity_id").select(
+        ibis._.entity_id,
+        ibis._.solution_eid,
+        ibis._.solution_status,
     )
 
 
