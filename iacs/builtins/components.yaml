@@ -19,8 +19,8 @@ component:
         - description: >
             A component that is a single value of arbitrary type.
         - field:
-            value: value
-            description: The value itself.
+            value:
+                description: The value itself.
     relation:
         data:
             - alias: relation
@@ -76,19 +76,17 @@ base_data_type:
     timestamp:
         - description: Timestamp data type.
         - field:
-            value: value
-            description: The value of the timestamp as a string, float, or int.
-        - field:
-            value: timezone
-            description: The timezone.
-            type: str
-            default: UTC
-        - field:
-            value: format
-            description: How to interpret the value.
-            type: str
-            default: str
-            range: [str, epoch_time]
+            value:
+                description: The value of the timestamp as a string, float, or int.
+            timezone:
+                description: The timezone.
+                type: str
+                default: UTC
+            format:
+                description: How to interpret the value.
+                type: str
+                default: str
+                range: [str, epoch_time]
     timedelta:
         - description: >
             Data type for differences in time. I
@@ -107,17 +105,16 @@ base_data_type:
             Integers are assumed to be 0_to_10, floats 0_to_1, and strings
             low_med_high when type is inferred.
         - field:
-            value: value
-            description: The rating value; an integer, float, or string.
-        - field:
-            value: type
-            description: >
-                The rating scale. "0_to_10" is an integer 0–10 scale, "0_to_1"
-                is a float 0–1 scale, "low_med_high" is a categorical scale, and
-                "inferred" derives the scale from the value's Python type.
-            type: str
-            range: [0_to_10, 0_to_1, low_med_high, inferred]
-            default: inferred
+            value:
+                description: The rating value; an integer, float, or string.
+            type:
+                description: >
+                    The rating scale. "0_to_10" is an integer 0–10 scale, "0_to_1"
+                    is a float 0–1 scale, "low_med_high" is a categorical scale, and
+                    "inferred" derives the scale from the value's Python type.
+                type: str
+                range: [0_to_10, 0_to_1, low_med_high, inferred]
+                default: inferred
 
 data_structure:
     data:
@@ -132,44 +129,38 @@ data_structure:
             the schema for components.
         - parent: dict
         - field:
-            value: value
-            description: The name of the field.
-            type: str
-        - field:
-            value: description
-            description: A text description of the field.
-            type: str
-        - field:
-            value: type
-            description: The type of the field.
-            type: str
-        - field:
-            value: nullable
-            description: Whether or not nulls can exist in the field.
-            type: bool
-            default: true
-        - field:
-            value: unique
-            description: Whether or not there should be only unique values.
-            type: bool
-            default: false
-        - field:
-            value: default
-            description: The default value for the field.
-        - field:
-            value: range
-            description: >
-                A data structure specifying the allowed values for the field. If a
-                list, then the type should be categorical or a child of that type.
+            value:
+                description: The name of the field.
+                type: str
+            description:
+                description: A text description of the field.
+                type: str
+            type:
+                description: The type of the field.
+                type: str
+            nullable:
+                description: Whether or not nulls can exist in the field.
+                type: bool
+                default: true
+            unique:
+                description: Whether or not there should be only unique values.
+                type: bool
+                default: false
+            default:
+                description: The default value for the field.
+            range:
+                description: >
+                    A data structure specifying the allowed values for the field. If a
+                    list, then the type should be categorical or a child of that type.
     schema:
         - description: >
             A list of ((field)) components that defines the columns in a component
             table.
         - parent: list
         - field:
-            value: value
-            description: A list of ((field)) components.
-            type: list[field]
+            value:
+                description: A list of ((field)) components.
+                type: list[field]
     table:
         - description: >
             Tabular data type. From a row-first perspective tables are lists of
@@ -177,12 +168,11 @@ data_structure:
             dictionaries of lists of fields.
         - parent: dict
         - field:
-            value: value
-            description: The data itself.
-        - field:
-            value: schema
-            description: The ordered fields for the table columns.
-            type: schema
+            value:
+                description: The data itself.
+            schema:
+                description: The ordered fields for the table columns.
+                type: schema
 
 iacs_component:
     data:
@@ -195,9 +185,9 @@ iacs_component:
             the most common components as nearly every entity should have a description.
         - parent: value
         - field:
-            value: value
-            description: The descriptive text.
-            type: str
+            value:
+                description: The descriptive text.
+                type: str
 
     entity_id:
         - description: >
@@ -205,27 +195,24 @@ iacs_component:
             entity.
         - parent: value
         - field:
-            value: value
-            description: >
-                The entity_id.
-            type: str
-        - field:
-            value: path
-            description: >
-                The full path to the entity, in the format {filepath}:{yaml_path}.
-            type: str
-        - field:
-            value: hash
-            description: >
-                Hash of the path, used for ID when brief.
-                TODO: Do we actually need this? It was supposed to be a readable
-                version of the path, but it's far from readable.
-            type: str
-        - field:
-            value: alias
-            description: >
-                A readable version of the entity_id.
-            type: str
+            value:
+                description: >
+                    The entity_id.
+                type: str
+            path:
+                description: >
+                    The full path to the entity, in the format {filepath}:{yaml_path}.
+                type: str
+            hash:
+                description: >
+                    Hash of the path, used for ID when brief.
+                    TODO: Do we actually need this? It was supposed to be a readable
+                    version of the path, but it's far from readable.
+                type: str
+            alias:
+                description: >
+                    A readable version of the entity_id.
+                type: str
     impact:
         data:
             - description: >
@@ -292,9 +279,9 @@ iacs_component:
             The ((solution.source)) solves the ((solution)).requirement.
         - parent: directed_relation
         - field:
-            value: value
-            description: The entity that this solution targets (what is being solved).
-            type: entity_ref
+            value:
+                description: The entity that this solution targets (what is being solved).
+                type: entity_ref
 
     cost:
         data:
@@ -340,51 +327,47 @@ iacs_component:
             etc., add a component instance of ((task)) to an entity.
         - parent: value
         - field:
-            value: start
-            description: Time the task was started at.
-            type: timestamp
-        - field:
-            value: end
-            description: Time the task ended.
-            type: timestamp
-        - field:
-            value: execution_state
-            description: State of the task in execution.
-            default: not started
-            type: str
-            range:
-                - not started
-                - in progress
-                - complete
-        - field:
-            value: result_state
-            description: Outcome state of the task.
-            type: str
-            range:
-                - success
-                - failure
-                - interrupted
-        - field:
-            value: executor
-            description: The entity responsible for executing the task.
-            type: entity_id
+            start:
+                description: Time the task was started at.
+                type: timestamp
+            end:
+                description: Time the task ended.
+                type: timestamp
+            execution_state:
+                description: State of the task in execution.
+                default: not started
+                type: str
+                range:
+                    - not started
+                    - in progress
+                    - complete
+            result_state:
+                description: Outcome state of the task.
+                type: str
+                range:
+                    - success
+                    - failure
+                    - interrupted
+            executor:
+                description: The entity responsible for executing the task.
+                type: entity_id
 
     work_state:
         - description: >
             The status of an entity, in terms of implementation.
         - parent: value
         - field:
-            value: value
-            description: A string indicating the status of the entity.
-            type: str
-            range:
-                - new
-                - in progress
-                - in review
-                - blocked
-                - done
-                - removed
-            nullable: false
+            value:
+                description: A string indicating the status of the entity.
+                type: str
+                range:
+                    - new
+                    - in progress
+                    - in review
+                    - blocked
+                    - done
+                    - removed
+                nullable: false
 
     todo:
         - description: >
@@ -392,13 +375,12 @@ iacs_component:
             Used to track pending work items.
         - parent: value
         - field:
-            value: value
-            description: Description of what needs to be done.
-            type: str
-        - field:
-            value: priority
-            description: >
-                The priority, with higher values corresponding to higher priority.
-            type: float
-            default: 0.5
-            range: [0, 1]
+            value:
+                description: Description of what needs to be done.
+                type: str
+            priority:
+                description: >
+                    The priority, with higher values corresponding to higher priority.
+                type: float
+                default: 0.5
+                range: [0, 1]

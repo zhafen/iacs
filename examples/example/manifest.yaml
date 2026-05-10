@@ -30,41 +30,37 @@ cat_happiness_device:
                 The effort component at the top level accounts for a base level of
                 effort to put together the system.
             - solution of: 'make_cats_happy.feed_and_water_cats'
-            - effort:
-                value: 2
+            - effort: 2
         feed_cats:
             - description: The task to feed the cats.
             - parent: task
             - solution of: 'make_cats_happy.feed_and_water_cats.feed_cats'
             - status: in progress
             - effort:
-                value: 8
-            - effort:
-                value: 2
-                schedule: weekly
+                - 8
+                - value: 2
+                  schedule: weekly
         water_cats:
             - description: The task to water the cats.
             - parent: task
             - solution of: water_cats
             - effort:
-                value: 5
-            - effort:
-                value: 1
-                schedule: 2 days
+                - 5
+                - value: 1
+                  schedule: 2 days
     cleaning_system:
         - solution of: make_cats_happy.sift_cat_box
 
 cat:
     - description: A data representation of a cat.
     - field:
-          value: name
-          description: The cat's name.
-          type: str
-          unique: True
-    - field:
-          value: breed
-          description: The breed of the cat, e.g. orange.
-          type: str
+        name:
+            description: The cat's name.
+            type: str
+            unique: True
+        breed:
+            description: The breed of the cat, e.g. orange.
+            type: str
 
 sustenance:
     data:

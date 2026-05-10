@@ -42,8 +42,7 @@ def generate_dag_image(module_path: str, name: str) -> Path | None:
         return None
 
 
-if __name__ == "__main__":
-    print("Generating Hamilton DAG images...")
-    for module_path, name in DATAFLOWS:
-        generate_dag_image(module_path, name)
-    print("Done.")
+print("Generating Hamilton DAG images...")
+for module_path, name in DATAFLOWS:
+    generate_dag_image(module_path, name)
+print("Done.")

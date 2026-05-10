@@ -12,8 +12,7 @@ iacs:
                 - description: >
                       Provide a means to comprehensively and accurately document
                       infrastructure.
-                - requirement:
-                      value: 1.0
+                - requirement: 1.0
             provide_a_source_of_truth:
                 data:
                     - requirement
@@ -70,8 +69,7 @@ iacs:
                           This is one of the key features iacs provides that other
                           modeling tools do not--the ability to define and model
                           every type of infrastructure conceivable.
-                    - requirement:
-                          value: 1.0
+                    - requirement: 1.0
                 accept_user_defined_infrastructure:
                     data:
                         - description: >
@@ -119,13 +117,11 @@ iacs:
                 have_good_formats:
                     have_human_and_agent_friendly_input_format:
                         - description: In the ECS framework this is the entity-first format.
-                        - requirement:
-                            value: 0.9
+                        - requirement: 0.9
                     have_analysis_friendly_ingested_format:
                         - description: >
                             In the ECS framework this is the component-first format.
-                        - requirement:
-                            value: 0.9
+                        - requirement: 0.9
                     export_infrastructure_to_wiki:
                         - description: >
                             Wikis are a very common and readable way of documenting
@@ -136,11 +132,9 @@ iacs:
                             unit: points
                 transform_between_formats:
                     data:
-                        - requirement:
-                            value: 0.9
+                        - requirement: 0.9
                     transform_between_entity_first_and_component_first:
-                        - requirement:
-                            value: 0.9
+                        - requirement: 0.9
                         - effort:
                             value: 8
                             unit: points
@@ -234,8 +228,7 @@ iacs:
                     - description: >
                         We desperately need this in order to use it on development
                         and continue making progress.
-                    - requirement:
-                        value: 1.0
+                    - requirement: 1.0
                     - effort:
                         value: 8
                         unit: points
@@ -261,39 +254,40 @@ iacs:
                   Ongoing design discussions and open questions about the syntax and
                   capabilities of the iacs system itself.
         syntax_challenges:
-            - todo: "Is this redundant with [field.range]? (re: categorical data type)"
-            - todo: >
+            - todo:
+                - "Is this redundant with [field.range]? (re: categorical data type)"
+                - >
                   Should we use "domain" instead of "range" for the field component?
                   Is there a better other term?
-            - todo: Determine how we want to calculate the entity_id.
-            - todo: >
+                - Determine how we want to calculate the entity_id.
+                - >
                   Have files be the topmost entities.
-            - todo: >
+                - >
                   Notation for multiple components of the same type. Maybe "component_type s"?
-            - todo: >
+                - >
                   Binary relationship notation going both ways.
                   Maybe "component_type of:" and "component_type:"?
-            - todo: >
+                - >
                   Notation for indicating that a component is a row-wise subset of another
                   component, i.e. that it has the same fields but additional constraints.
                   Maybe "subset of:" and "subset s", i.e. we use a "subset" relation?
-            - todo: >
+                - >
                   Notation for defining an entity in-line vs linking to an existing entity.
                   Maybe "(entity_name)"?
-            - todo: >
+                - >
                   Notation for indicating that a component must be joined with another component
                   to be interpreted correctly. Maybe: "required:"?
-            - todo: >
+                - >
                   Notation for working with a component that would be a subset of another
                   component, except it has additional required associated components or is
                   an extension of that component. Maybe we allow "inheritance" where the child
                   component is a subset of the parent component that also has required components
                   defined for the purpose of extending the component.
-            - todo: >
+                - >
                   Notation for subsets with constant values for one or more fields.
-            - todo: >
+                - >
                   Notation for functions and classes.
-            - todo: >
+                - >
                   Notation for a component that is at the intersection of two subsets.
         infrastructure_as_data_discussion:
             data:
@@ -400,8 +394,9 @@ ecs_framework:
                       A generalized requirement of several other requirements is the ability
                       to describe hierarchical structure.
                 - requirement
-                - parent: describe_hierarchical_requirements
-                - parent: describe_hierarchical_systems
+                - parent:
+                    - describe_hierarchical_requirements
+                    - describe_hierarchical_systems
             define_entity_ids_by_hierarchy:
                 data:
                     - description: >
@@ -1055,32 +1050,37 @@ ecs_framework:
                           The entity path formulation uses the full path to an entity as
                           the id, including both the filepath and the path in the yaml.
                     - pro: Clearly identifies the entity with no additional calculation.
-                    - con: Too long to be readable.
-                    - con: Too long to be convenient for pointing to entities.
+                    - con:
+                        - Too long to be readable.
+                        - Too long to be convenient for pointing to entities.
                     - solution of: enable_pointing_to_entities
                 entity_hash_formulation:
                     - description: >
                           The entity hash formulation uses a hash of the entity path
                           as the id.
                     - pro: Concise.
-                    - con: Not readable.
-                    - con: Difficult to use for pointing to entities.
+                    - con:
+                        - Not readable.
+                        - Difficult to use for pointing to entities.
                     - solution of: enable_pointing_to_entities
                 entity_key_formulation:
                     - description: >
                           The entity key formulation just uses the last part of the path
                           as the id, i.e. the key in the containing dictionary.
-                    - pro: Concise.
-                    - pro: Readable.
-                    - con: Keys may not be unique.
-                    - con: Not sufficiently informative in some cases.
+                    - pro:
+                        - Concise.
+                        - Readable.
+                    - con:
+                        - Keys may not be unique.
+                        - Not sufficiently informative in some cases.
                     - solution of: enable_pointing_to_entities
                 entity_key_parent_key_formulation:
                     - description: >
                           The entity key+parent key formulation uses the last part of
                           the path as well as the parent, if it has one.
-                    - pro: Mostly concise.
-                    - pro: Readable.
+                    - pro:
+                        - Mostly concise.
+                        - Readable.
                     - con: Rarely, keys may not be unique.
                     - solution of: enable_pointing_to_entities
                 userprovided_formulation:
@@ -1088,10 +1088,12 @@ ecs_framework:
                           The user-provided formulation uses a user-provided id, if it
                           exists, and otherwise falls back to one of the other
                           formulations.
-                    - pro: Greater control.
-                    - pro: Readable.
-                    - con: Requires the user to define the aliases.
-                    - con: Room for errors creating the alias.
+                    - pro:
+                        - Greater control.
+                        - Readable.
+                    - con:
+                        - Requires the user to define the aliases.
+                        - Room for errors creating the alias.
                     - solution of: enable_pointing_to_entities
             component_table:
                 data:
@@ -1478,8 +1480,7 @@ dataflow_system:
               into a registry. They cover extracting raw data from source formats
               (e.g. YAML manifests, CSV files), transforming it into component
               tables, and loading the result into the registry.
-        - requirement:
-              value: 1.0
+        - requirement: 1.0
     validation:
         - description: >
               Validation dataflows are operations that can be run routinely on a
@@ -1487,8 +1488,7 @@ dataflow_system:
               verify that component data conforms to schema constraints, that
               relationships between entities are consistent, and that derived
               components are up to date.
-        - requirement:
-              value: 0.8
+        - requirement: 0.8
     audit:
         - description: >
               Audit dataflows are operations that audit the infrastructure defined
@@ -1496,5 +1496,4 @@ dataflow_system:
               audits evaluate the quality and completeness of the design itself—for
               example checking requirement coverage, traceability, and outstanding
               todos.
-        - requirement:
-              value: 0.6
+        - requirement: 0.6
