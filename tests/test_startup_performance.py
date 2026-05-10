@@ -99,14 +99,11 @@ def test_mcp_server_startup_time(isolated_venv):
     python = isolated_venv["python"]
 
     # Script that reproduces the lifespan work and prints a sentinel when done.
+    # The lifespan is a no-op; startup cost is just importing the module.
     startup_script = (
-        "import os, sys, time\n"
-        "from pathlib import Path\n"
-        f"manifest = '{EXAMPLE_MANIFEST}'\n"
+        "import time\n"
         "t0 = time.perf_counter()\n"
-        "from iacs.architect import Architect\n"
-        "arch = Architect.from_manifest(manifest)\n"
-        "arch.registry.get('invalid_field').execute()\n"
+        "import iacs.mcp_server  # noqa: F401\n"
         "elapsed = time.perf_counter() - t0\n"
         "print(f'STARTUP_DONE {elapsed:.3f}', flush=True)\n"
     )

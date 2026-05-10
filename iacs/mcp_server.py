@@ -2,11 +2,9 @@
 from __future__ import annotations
 
 import os
-import sys
 import tempfile
 import traceback
 import weakref
-from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -33,16 +31,6 @@ def _get_architect(ctx: Context) -> Architect:
     return _architects[session]
 
 
-@asynccontextmanager
-async def _lifespan(mcp_server):
-    from iacs.architect import Architect
-    manifest = os.environ.get(_MANIFEST_ENV_VAR, str(_EXAMPLE_MANIFEST))
-    arch = Architect.from_manifest(manifest)
-    df = arch.registry.get("invalid_field").execute()
-    print(f"invalid_field component:\n{df.to_string()}", file=sys.stderr)
-    yield
-
-
 server = FastMCP(
     "iacs",
     instructions=(
@@ -50,7 +38,6 @@ server = FastMCP(
         "manifest directory so it loads automatically on startup. "
         "Call `get_manifest_path` to confirm which manifest is currently loaded."
     ),
-    lifespan=_lifespan,
 )
 
 
