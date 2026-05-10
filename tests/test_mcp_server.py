@@ -3,14 +3,18 @@
 import yaml
 import pytest
 
+from unittest.mock import MagicMock
+
 from iacs.mcp_server import (
     _EXAMPLE_MANIFEST,
     _BUILTINS_DIR,
     _IACS_MANIFEST_DIR,
     _MANIFEST_ENV_VAR,
+    _architects,
     _build_format_description,
     _validate_yaml_string,
     get_manifest_path,
+    load_manifest,
     server,
 )
 
@@ -199,3 +203,52 @@ class TestMcpToolRegistration:
 
 # ---------------------------------------------------------------------------
 # Lifespan — startup prints invalid_field to stderr
+# ---------------------------------------------------------------------------
+# load_manifest — MCP tool
+# ---------------------------------------------------------------------------
+
+def _make_ctx():
+    """Return a minimal mock Context whose session supports weak references."""
+    ctx = MagicMock()
+    ctx.request_context.session = MagicMock()
+    return ctx
+
+
+class TestLoadManifest:
+
+    def test_returns_success_string(self):
+        ctx = _make_ctx()
+        result = load_manifest(str(_IACS_MANIFEST_DIR), ctx)
+        assert "Loaded manifest from" in result
+
+    def test_return_value_contains_manifest_path(self):
+        ctx = _make_ctx()
+        result = load_manifest(str(_IACS_MANIFEST_DIR), ctx)
+        assert str(_IACS_MANIFEST_DIR) in result
+
+    def test_return_value_lists_component_types(self):
+        ctx = _make_ctx()
+        result = load_manifest(str(_IACS_MANIFEST_DIR), ctx)
+        assert "Component types:" in result
+
+    def test_stores_architect_for_session(self):
+        ctx = _make_ctx()
+        load_manifest(str(_IACS_MANIFEST_DIR), ctx)
+        assert ctx.request_context.session in _architects
+
+    def test_loaded_architect_has_component_types(self):
+        ctx = _make_ctx()
+        load_manifest(str(_IACS_MANIFEST_DIR), ctx)
+        arch = _architects[ctx.request_context.session]
+        assert len(arch.registry.component_types) > 0
+
+    def test_env_var_reported_by_get_manifest_path(self, monkeypatch):
+        """When IACS_MANIFEST is set to _IACS_MANIFEST_DIR, get_manifest_path reports it."""
+        monkeypatch.setenv(_MANIFEST_ENV_VAR, str(_IACS_MANIFEST_DIR))
+        result = get_manifest_path()
+        assert str(_IACS_MANIFEST_DIR) in result
+        assert _MANIFEST_ENV_VAR in result
+
+    def test_load_manifest_tool_is_registered(self):
+        tool_names = {t.name for t in server._tool_manager.list_tools()}
+        assert "load_manifest" in tool_names
