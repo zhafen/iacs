@@ -61,7 +61,8 @@ class Architect:
     def _rebuild_driver(self) -> None:
         from hamilton import driver, base
         self._driver = driver.Driver(
-            {"registry": self._registry}, *self._dataflows, adapter=base.DictResult(),
+            {"registry": self._registry, "derived_registry": self._registry},
+            *self._dataflows, adapter=base.DictResult(),
             allow_module_overrides=True,
         )
 

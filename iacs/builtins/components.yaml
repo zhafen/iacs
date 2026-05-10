@@ -279,7 +279,7 @@ iacs_component:
             The ((solution.source)) solves the ((solution)).requirement.
         - parent: directed_relation
         - field:
-            target:
+            value:
                 description: The entity that this solution targets (what is being solved).
                 type: entity_ref
 
