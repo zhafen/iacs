@@ -384,3 +384,50 @@ iacs_component:
                 type: float
                 default: 0.5
                 range: [0, 1]
+
+    audit:
+        data:
+            - description: >
+                Component types produced by iacs audit dataflows. Each audit dataflow
+                stores its result as a component table in the registry. An empty result
+                table indicates the audit passed with no findings.
+        requirement_coverage:
+            - description: >
+                Output of the requirement coverage audit. One row per requirement entity,
+                showing which solution covers it and that solution's work state. A null
+                solution_eid indicates the requirement has no covering solution.
+            - field:
+                solution_eid:
+                    description: >
+                        Entity ID of the solution that covers this requirement, if any.
+                    type: entity_id
+                    nullable: true
+                solution_status:
+                    description: >
+                        The work_state of the covering solution, or null if uncovered.
+                    type: str
+                    range:
+                        - new
+                        - in progress
+                        - in review
+                        - blocked
+                        - done
+                        - removed
+                    nullable: true
+        traceability:
+            - description: >
+                Output of the traceability audit. One row per entity that does not trace
+                to any requirement. An empty table means all entities are fully traceable.
+            - field:
+                message:
+                    description: >
+                        Diagnostic message indicating the entity does not trace to any requirement.
+                    type: str
+        todo:
+            - description: >
+                Output of the todo audit. One row per entity with an outstanding todo item.
+                An empty table means no todos remain.
+            - field:
+                value:
+                    description: Description of what needs to be done.
+                    type: str
