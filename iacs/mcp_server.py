@@ -280,17 +280,7 @@ def view_entity(entity_id: str, ctx: Context, format: str = "markdown") -> str:
             "feeding_system.feed_cats").
         format: Output format — "markdown" (default) or "csv".
     """
-    arch = _get_architect(ctx)
-    components = arch.registry.view_entity_df(entity_id)
-    if not components:
-        return f"No data found for entity {entity_id!r}."
-    sections = []
-    for comp_type, df in components.items():
-        if format == "markdown":
-            sections.append(f"### {comp_type}\n\n{df.to_markdown()}")
-        else:
-            sections.append(f"# {comp_type}\n\n{df.to_csv()}")
-    return "\n\n".join(sections)
+    return _get_architect(ctx).registry.view_entity(entity_id, format=format)
 
 
 @server.tool()
