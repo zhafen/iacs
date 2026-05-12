@@ -1607,6 +1607,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "seaborn" },
     { name = "sf-hamilton", extra = ["sdk", "ui"] },
+    { name = "tabulate" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -1649,6 +1650,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "seaborn", specifier = ">=0.13.2" },
     { name = "sf-hamilton", extras = ["sdk", "ui"], specifier = ">=1.88.0" },
+    { name = "tabulate", specifier = ">=0.10.0" },
     { name = "tabulate", marker = "extra == 'mcp'", specifier = ">=0.10.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.29.0" },
 ]

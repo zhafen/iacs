@@ -168,3 +168,24 @@ class Registry:
         df = result.execute()
         df = df.set_index("entity_id")
         return df
+
+    def view_entity_df(self, entity_id: str) -> dict[str, pd.DataFrame]:
+        """Return component data for a specific entity, keyed by component type.
+
+        Accepts either the internal entity hash or a human-readable alias.
+
+        Args:
+            entity_id: Internal entity hash or entity alias.
+        """
+        result = {}
+        for comp_type in self._component_types:
+            try:
+                df = self.view_df(comp_type).reset_index()
+            except Exception:
+                continue
+            match = df[df["entity_id"] == entity_id]
+            if match.empty and "entity_id.alias" in df.columns:
+                match = df[df["entity_id.alias"] == entity_id]
+            if not match.empty:
+                result[comp_type] = match.set_index("entity_id")
+        return result

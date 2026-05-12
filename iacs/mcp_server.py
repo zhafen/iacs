@@ -34,9 +34,10 @@ def _get_architect(ctx: Context) -> Architect:
 server = FastMCP(
     "iacs",
     instructions=(
-        f"Set the {_MANIFEST_ENV_VAR} environment variable to the path of your "
-        "manifest directory so it loads automatically on startup. "
-        "Call `get_manifest_path` to confirm which manifest is currently loaded."
+        f"Call `load_manifest` with the manifest directory path to load a registry "
+        "before using any other tools. "
+        f"Optionally set the {_MANIFEST_ENV_VAR} environment variable so a default "
+        "manifest path is available, but always call `load_manifest` explicitly."
     ),
 )
 
@@ -201,22 +202,6 @@ def _validate_yaml_string(yaml_string: str) -> str:
 # ---------------------------------------------------------------------------
 
 @server.tool()
-def get_manifest_path() -> str:
-    """Return the path of the currently loaded manifest.
-
-    Also shows the environment variable name used to configure a default
-    manifest path at startup.
-    """
-    manifest = os.environ.get(_MANIFEST_ENV_VAR)
-    if manifest:
-        source = f"from {_MANIFEST_ENV_VAR} environment variable"
-    else:
-        manifest = str(_EXAMPLE_MANIFEST)
-        source = f"built-in default (set {_MANIFEST_ENV_VAR} to override)"
-    return f"Manifest path: {manifest!r} ({source})"
-
-
-@server.tool()
 def load_manifest(manifest_path: str, ctx: Context) -> str:
     """Load an iacs manifest from a directory path, replacing the current registry.
 
@@ -249,6 +234,50 @@ def view_component(component_type: str, ctx: Context, format: str = "csv") -> st
     if format == "markdown":
         return df.to_markdown(index=False)
     return df.to_csv(index=False)
+
+
+@server.tool()
+def view_entity(entity_id: str, ctx: Context, format: str = "markdown") -> str:
+    """Return all component data for a specific entity across every component type.
+
+    Args:
+        entity_id: Entity hash or human-readable alias (e.g. "feed_cats" or
+            "feeding_system.feed_cats").
+        format: Output format — "markdown" (default) or "csv".
+    """
+    arch = _get_architect(ctx)
+    components = arch.registry.view_entity_df(entity_id)
+    if not components:
+        return f"No data found for entity {entity_id!r}."
+    sections = []
+    for comp_type, df in components.items():
+        if format == "markdown":
+            sections.append(f"### {comp_type}\n\n{df.to_markdown()}")
+        else:
+            sections.append(f"# {comp_type}\n\n{df.to_csv()}")
+    return "\n\n".join(sections)
+
+
+@server.tool()
+def run_dataflow(name: str, ctx: Context) -> str:
+    """Load and execute a dataflow, storing any new components in the registry.
+
+    Use this to generate optional components such as audit results.
+    Available dataflows: "audit.requirement_coverage", "audit.traceability",
+    "audit.todo".
+
+    Args:
+        name: Dotted module path relative to iacs.dataflows
+            (e.g. "audit.requirement_coverage").
+    """
+    arch = _get_architect(ctx)
+    before = set(arch.registry.component_types)
+    arch.execute(name)
+    after = set(arch.registry.component_types)
+    added = sorted(after - before)
+    if added:
+        return f"Dataflow {name!r} complete. New component types: {added}"
+    return f"Dataflow {name!r} complete. No new component types added."
 
 
 @server.tool()

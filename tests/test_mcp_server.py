@@ -13,8 +13,9 @@ from iacs.mcp_server import (
     _architects,
     _build_format_description,
     _validate_yaml_string,
-    get_manifest_path,
     load_manifest,
+    run_dataflow,
+    view_entity,
     server,
 )
 
@@ -152,30 +153,6 @@ sol:
 
 
 # ---------------------------------------------------------------------------
-# get_manifest_path
-# ---------------------------------------------------------------------------
-
-class TestGetManifestPath:
-
-    def test_returns_builtin_path_when_env_unset(self, monkeypatch):
-        monkeypatch.delenv(_MANIFEST_ENV_VAR, raising=False)
-        result = get_manifest_path()
-        assert str(_EXAMPLE_MANIFEST) in result
-        assert "built-in default" in result
-
-    def test_returns_env_path_when_set(self, monkeypatch, tmp_path):
-        monkeypatch.setenv(_MANIFEST_ENV_VAR, str(tmp_path))
-        result = get_manifest_path()
-        assert str(tmp_path) in result
-        assert _MANIFEST_ENV_VAR in result
-
-    def test_mentions_env_var_name(self, monkeypatch):
-        monkeypatch.delenv(_MANIFEST_ENV_VAR, raising=False)
-        result = get_manifest_path()
-        assert _MANIFEST_ENV_VAR in result
-
-
-# ---------------------------------------------------------------------------
 # MCP tool registration smoke tests
 # ---------------------------------------------------------------------------
 
@@ -242,13 +219,71 @@ class TestLoadManifest:
         arch = _architects[ctx.request_context.session]
         assert len(arch.registry.component_types) > 0
 
-    def test_env_var_reported_by_get_manifest_path(self, monkeypatch):
-        """When IACS_MANIFEST is set to _IACS_MANIFEST_DIR, get_manifest_path reports it."""
-        monkeypatch.setenv(_MANIFEST_ENV_VAR, str(_IACS_MANIFEST_DIR))
-        result = get_manifest_path()
-        assert str(_IACS_MANIFEST_DIR) in result
-        assert _MANIFEST_ENV_VAR in result
-
     def test_load_manifest_tool_is_registered(self):
         tool_names = {t.name for t in server._tool_manager.list_tools()}
         assert "load_manifest" in tool_names
+
+
+# ---------------------------------------------------------------------------
+# view_entity — MCP tool
+# ---------------------------------------------------------------------------
+
+class TestViewEntity:
+
+    def test_returns_data_for_known_alias(self):
+        ctx = _make_ctx()
+        load_manifest(str(_EXAMPLE_MANIFEST), ctx)
+        result = view_entity("make_cats_happy", ctx)
+        assert "description" in result
+
+    def test_returns_markdown_by_default(self):
+        ctx = _make_ctx()
+        load_manifest(str(_EXAMPLE_MANIFEST), ctx)
+        result = view_entity("make_cats_happy", ctx)
+        assert "|" in result
+
+    def test_returns_csv_when_requested(self):
+        ctx = _make_ctx()
+        load_manifest(str(_EXAMPLE_MANIFEST), ctx)
+        result = view_entity("make_cats_happy", ctx, format="csv")
+        assert "entity_id" in result
+
+    def test_returns_not_found_for_unknown_entity(self):
+        ctx = _make_ctx()
+        load_manifest(str(_EXAMPLE_MANIFEST), ctx)
+        result = view_entity("nonexistent_xyz_entity", ctx)
+        assert "No data found" in result
+
+    def test_view_entity_tool_is_registered(self):
+        tool_names = {t.name for t in server._tool_manager.list_tools()}
+        assert "view_entity" in tool_names
+
+
+# ---------------------------------------------------------------------------
+# run_dataflow — MCP tool
+# ---------------------------------------------------------------------------
+
+class TestRunDataflow:
+
+    def test_returns_completion_message(self):
+        ctx = _make_ctx()
+        load_manifest(str(_EXAMPLE_MANIFEST), ctx)
+        result = run_dataflow("audit.requirement_coverage", ctx)
+        assert "complete" in result.lower()
+
+    def test_adds_requirement_coverage_component(self):
+        ctx = _make_ctx()
+        load_manifest(str(_EXAMPLE_MANIFEST), ctx)
+        run_dataflow("audit.requirement_coverage", ctx)
+        arch = _architects[ctx.request_context.session]
+        assert "requirement_coverage" in arch.registry.component_types
+
+    def test_new_component_types_listed_in_result(self):
+        ctx = _make_ctx()
+        load_manifest(str(_EXAMPLE_MANIFEST), ctx)
+        result = run_dataflow("audit.requirement_coverage", ctx)
+        assert "requirement_coverage" in result
+
+    def test_run_dataflow_tool_is_registered(self):
+        tool_names = {t.name for t in server._tool_manager.list_tools()}
+        assert "run_dataflow" in tool_names
