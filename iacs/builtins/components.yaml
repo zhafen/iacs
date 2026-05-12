@@ -396,6 +396,7 @@ iacs_component:
                 Output of the requirement coverage audit. One row per requirement entity,
                 showing which solution covers it and that solution's work state. A null
                 solution_eid indicates the requirement has no covering solution.
+                Generate with: run_dataflow('audit.requirement_coverage').
             - field:
                 solution_eid:
                     description: >
@@ -418,6 +419,7 @@ iacs_component:
             - description: >
                 Output of the traceability audit. One row per entity that does not trace
                 to any requirement. An empty table means all entities are fully traceable.
+                Generate with: run_dataflow('audit.traceability').
             - field:
                 message:
                     description: >
@@ -427,6 +429,7 @@ iacs_component:
             - description: >
                 Output of the todo audit. One row per entity with an outstanding todo item.
                 An empty table means no todos remain.
+                Generate with: run_dataflow('audit.todo').
             - field:
                 value:
                     description: Description of what needs to be done.

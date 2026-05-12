@@ -198,6 +198,27 @@ def _validate_yaml_string(yaml_string: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Audit component helpers
+# ---------------------------------------------------------------------------
+
+def _available_audit_components() -> dict[str, str]:
+    """Return a mapping of audit component type name to its run_dataflow argument.
+
+    Reads the iacs_component.audit section of components.yaml and derives the
+    dataflow name as "audit.<component_type>" for each child (excluding "data").
+    """
+    comp_data = yaml.safe_load(
+        (_BUILTINS_DIR / "components.yaml").read_text(encoding="utf-8")
+    )
+    audit_section = comp_data.get("iacs_component", {}).get("audit", {})
+    return {
+        key: f"audit.{key}"
+        for key in audit_section
+        if key != "data"
+    }
+
+
+# ---------------------------------------------------------------------------
 # MCP tools
 # ---------------------------------------------------------------------------
 
@@ -215,9 +236,23 @@ def load_manifest(manifest_path: str, ctx: Context) -> str:
 
 
 @server.tool()
-def list_component_types(ctx: Context) -> list[str]:
-    """List all component types available in the iacs registry."""
-    return _get_architect(ctx).registry.component_types
+def list_component_types(ctx: Context) -> str:
+    """List all component types in the registry, plus audit components that can be generated.
+
+    Loaded component types are immediately queryable with view_component or
+    view_entity. Audit components listed as "available" are not yet in the
+    registry and must first be generated with run_dataflow.
+    """
+    loaded = _get_architect(ctx).registry.component_types
+    audit_map = _available_audit_components()
+    unloaded = {ct: df for ct, df in audit_map.items() if ct not in loaded}
+
+    lines = [f"Loaded component types: {loaded}"]
+    if unloaded:
+        lines.append("\nAvailable audit components (not yet generated):")
+        for comp_type, dataflow in unloaded.items():
+            lines.append(f"  - {comp_type}: run run_dataflow('{dataflow}') to generate")
+    return "\n".join(lines)
 
 
 @server.tool()

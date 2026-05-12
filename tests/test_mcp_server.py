@@ -11,8 +11,10 @@ from iacs.mcp_server import (
     _IACS_MANIFEST_DIR,
     _MANIFEST_ENV_VAR,
     _architects,
+    _available_audit_components,
     _build_format_description,
     _validate_yaml_string,
+    list_component_types,
     load_manifest,
     run_dataflow,
     view_entity,
@@ -222,6 +224,50 @@ class TestLoadManifest:
     def test_load_manifest_tool_is_registered(self):
         tool_names = {t.name for t in server._tool_manager.list_tools()}
         assert "load_manifest" in tool_names
+
+
+# ---------------------------------------------------------------------------
+# list_component_types — MCP tool
+# ---------------------------------------------------------------------------
+
+class TestListComponentTypes:
+
+    def test_returns_string(self):
+        ctx = _make_ctx()
+        load_manifest(str(_EXAMPLE_MANIFEST), ctx)
+        result = list_component_types(ctx)
+        assert isinstance(result, str)
+
+    def test_includes_loaded_component_types(self):
+        ctx = _make_ctx()
+        load_manifest(str(_EXAMPLE_MANIFEST), ctx)
+        result = list_component_types(ctx)
+        assert "description" in result
+
+    def test_lists_unloaded_audit_components(self):
+        ctx = _make_ctx()
+        load_manifest(str(_EXAMPLE_MANIFEST), ctx)
+        result = list_component_types(ctx)
+        assert "requirement_coverage" in result
+        assert "run_dataflow" in result
+
+    def test_audit_component_absent_after_run(self):
+        ctx = _make_ctx()
+        load_manifest(str(_EXAMPLE_MANIFEST), ctx)
+        run_dataflow("audit.requirement_coverage", ctx)
+        result = list_component_types(ctx)
+        # requirement_coverage is now loaded, so it should not appear in the
+        # "available but ungenerated" section with a run_dataflow hint
+        lines = result.splitlines()
+        unloaded_lines = [l for l in lines if "run_dataflow" in l]
+        assert not any("requirement_coverage" in l for l in unloaded_lines)
+
+    def test_available_audit_components_helper(self):
+        audit_map = _available_audit_components()
+        assert "requirement_coverage" in audit_map
+        assert audit_map["requirement_coverage"] == "audit.requirement_coverage"
+        assert "traceability" in audit_map
+        assert "todo" in audit_map
 
 
 # ---------------------------------------------------------------------------
