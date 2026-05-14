@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+_IACS_SRC = str(Path(__file__).parent.parent.parent / "iacs")
+
 import iacs.dataflows.etl.load_python as load_python
 from iacs.utils import dhash
 
@@ -242,3 +244,86 @@ class TestIntegrationWithPipeline:
         sol_df = ct["solution"].to_pandas()
         assert (sol_df["modifier"] == "of").any()
         assert (sol_df["value"] == "some_req").any()
+
+
+# ---------------------------------------------------------------------------
+# Integration test: load the real iacs package
+# ---------------------------------------------------------------------------
+
+class TestLoadIacsPackage:
+    """Load the iacs source tree and verify the output is well-formed."""
+
+    @pytest.fixture(scope="class")
+    def iacs_result(self):
+        return load_python.raw_entity_first_data([_IACS_SRC])
+
+    @pytest.fixture(scope="class")
+    def all_entities(self, iacs_result):
+        merged = {}
+        for entities in iacs_result.values():
+            merged.update(entities)
+        return merged
+
+    def test_finds_multiple_files(self, iacs_result):
+        assert len(iacs_result) >= 10
+
+    def test_finds_many_entities(self, all_entities):
+        assert len(all_entities) >= 50
+
+    def test_keyed_by_py_file_path(self, iacs_result):
+        assert all(k.endswith(".py") for k in iacs_result)
+
+    def test_architect_module_entity_present(self, all_entities):
+        assert "iacs.architect" in all_entities
+
+    def test_architect_class_entity_present(self, all_entities):
+        assert "iacs.architect.Architect" in all_entities
+
+    def test_architect_method_entity_present(self, all_entities):
+        assert "iacs.architect.Architect.from_manifest" in all_entities
+
+    def test_load_manifest_module_entity_present(self, all_entities):
+        assert "iacs.dataflows.etl.load_manifest" in all_entities
+
+    def test_load_manifest_function_entities_present(self, all_entities):
+        assert "iacs.dataflows.etl.load_manifest.raw_entity_first_data" in all_entities
+        assert "iacs.dataflows.etl.load_manifest.registry" in all_entities
+
+    def test_load_python_module_itself_present(self, all_entities):
+        assert "iacs.dataflows.etl.load_python" in all_entities
+
+    def test_description_components_are_strings(self, all_entities):
+        for key, comps in all_entities.items():
+            for comp in comps:
+                if "description" in comp:
+                    assert isinstance(comp["description"], str), key
+                    assert comp["description"].strip(), key
+
+    def test_entity_values_are_lists(self, all_entities):
+        for key, val in all_entities.items():
+            assert isinstance(val, list), f"{key} should be a list"
+
+    def test_all_components_are_dicts(self, all_entities):
+        for key, comps in all_entities.items():
+            for comp in comps:
+                assert isinstance(comp, dict), f"component in {key} should be a dict"
+
+    def test_flows_through_pipeline_without_error(self, iacs_result):
+        import iacs.dataflows.etl.load_manifest as load_manifest
+        pvp = load_manifest.pathvalue_pairs(iacs_result)
+        kvs = load_manifest.keyvalue_store(pvp)
+        ct = load_manifest.component_tables(kvs)
+        assert "description" in ct
+        df = ct["description"].to_pandas()
+        assert len(df) >= 50
+
+    def test_architect_from_manifest_includes_python_entities(self):
+        """Architect.from_manifest on a dir with .py files registers Python entities."""
+        from iacs.architect import Architect
+        a = Architect.from_manifest(_IACS_SRC)
+        desc = a.registry.get("description").execute()
+        py_entities = desc[desc["entity_id"].isin(
+            a.registry.get("entity_id").execute()
+            .query("path.str.contains('.py:', regex=False)", engine="python")["value"]
+        )]
+        assert len(py_entities) >= 50
