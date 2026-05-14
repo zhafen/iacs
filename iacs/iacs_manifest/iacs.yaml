@@ -247,6 +247,216 @@ iacs:
                 - effort:
                     value: 8
                     unit: points
+    iacs_solution:
+        data:
+            - description: >
+                  The iacs solution as a whole: a tool for solutions architecture that
+                  documents infrastructure, improves design quality, and launches
+                  implementations.
+            - solution of: be_a_powerful_tool_for_solutions_architecture
+        documentation_system:
+            data:
+                - description: >
+                      Provides quality end-to-end documentation of infrastructure.
+                - solution of: provide_quality_end_to_end_documentation_of_infrastructure
+            source_of_truth_system:
+                data:
+                    - description: >
+                          Provides a single source of truth for infrastructure definitions.
+                    - solution of: provide_a_source_of_truth
+                deduplication_system:
+                    data:
+                        - description: >
+                              Minimizes duplication across infrastructure definitions.
+                        - solution of: minimize_duplication
+                    parser_system:
+                        data:
+                            - description: >
+                                  Parses infrastructure defined in a wide variety of formats.
+                            - solution of: parse_infrastructure_in_a_wide_variety_of_formats
+                        iac_format_parser:
+                            data:
+                                - description: Parses a variety of IaC formats.
+                                - solution of: parse_a_variety_of_IaC_formats
+                        code_language_parser:
+                            data:
+                                - description: Parses code languages such as Python.
+                                - solution of: parse_code_languages
+                        natural_language_parser:
+                            data:
+                                - description: >
+                                      Parses natural language descriptions of infrastructure.
+                                - solution of: parse_natural_language
+                version_control_integration:
+                    data:
+                        - description: >
+                              Ensures infrastructure definitions are compatible with
+                              version control systems.
+                        - solution of: compatible_with_version_control
+                manifest_aggregator:
+                    data:
+                        - description: >
+                              Aggregates all infrastructure definitions in one location.
+                        - solution of: aggregate_all_definitions_in_one_location
+            comprehensive_documentation:
+                data:
+                    - description: >
+                          Comprehensively documents all types of infrastructure.
+                    - solution of: comprehensively_document_infrastructure
+                entity_definition_system:
+                    data:
+                        - description: Accepts user-defined infrastructure descriptions.
+                        - solution of: accept_user_defined_infrastructure
+                    ecs_framework:
+                        data:
+                            - description: >
+                                  Describes infrastructure using an ECS framework.
+                            - solution of: describe_infrastructure_with_ecs_framework
+                infrastructure_compatibility_system:
+                    data:
+                        - description: >
+                              Ensures compatibility with any type of infrastructure.
+                        - solution of: compatible_with_any_type_of_infrastructure
+                    standard_components_support:
+                        data:
+                            - description: Supports standard infrastructure components.
+                            - solution of: compatible_with_standard_components
+                    human_execution_support:
+                        data:
+                            - description: Supports human-executed infrastructure.
+                            - solution of: compatible_with_human_executed_infrastructure
+                    abstract_components_support:
+                        data:
+                            - description: Supports abstract infrastructure components.
+                            - solution of: compatible_with_abstract_components
+                scalability_system:
+                    data:
+                        - description: Ensures infrastructure documentation scales well.
+                        - solution of: scales_well
+            format_system:
+                data:
+                    - description: >
+                          Provides documentation in formats meeting all common needs.
+                    - solution of: provide_documentation_in_formats_meeting_all_common_needs
+                format_design:
+                    data:
+                        - description: Provides good input and output formats.
+                        - solution of: have_good_formats
+                    entity_first_format:
+                        data:
+                            - description: >
+                                  Provides a human- and agent-friendly input format
+                                  (entity-first YAML).
+                            - solution of: have_human_and_agent_friendly_input_format
+                    component_first_format:
+                        data:
+                            - description: >
+                                  Provides an analysis-friendly ingested format
+                                  (component-first registry).
+                            - solution of: have_analysis_friendly_ingested_format
+                    wiki_exporter:
+                        data:
+                            - description: Exports infrastructure to wiki format.
+                            - solution of: export_infrastructure_to_wiki
+                format_transformer:
+                    data:
+                        - description: Transforms infrastructure data between formats.
+                        - solution of: transform_between_formats
+                    ecs_transformer:
+                        data:
+                            - description: >
+                                  Transforms between entity-first and component-first formats.
+                            - solution of: transform_between_entity_first_and_component_first
+        quality_improvement_system:
+            data:
+                - description: Helps improve the quality of system designs.
+                - solution of: help_improve_the_quality_of_system_designs
+            architecture_improvement_system:
+                data:
+                    - description: Improves complex solution architectures.
+                    - solution of: improve_complex_solution_architectures
+                interactive_dev_interface:
+                    data:
+                        - description: >
+                              Provides an interface for interactive development of
+                              solution designs.
+                        - solution of: provide_an_interface_for_interactive_development
+                testing_system:
+                    data:
+                        - description: Allows solution designs to be tested.
+                        - solution of: allow_solution_designs_to_be_tested
+                    test_builder:
+                        data:
+                            - description: >
+                                  Provides tools to build tests for system designs.
+                            - solution of: provide_tools_to_build_tests_for_system_designs
+                    builtin_tests:
+                        data:
+                            - description: Provides default tests for systems.
+                            - solution of: provide_default_tests_for_systems
+                        requirement_coverage_audit:
+                            data:
+                                - description: Identifies requirements missing solutions.
+                                - solution of: test_for_identifying_requirements_missing_solutions
+                        traceability_audit:
+                            data:
+                                - description: Traces every component to a requirement.
+                                - solution of: trace_every_component_to_a_requirement
+                        definition_audit:
+                            data:
+                                - description: Tests for invalid definitions.
+                                - solution of: test_for_invalid_definitions
+                        connectivity_audit:
+                            data:
+                                - description: Tests for siloed infrastructure.
+                                - solution of: test_for_siloed_infrastructure
+                        todo_audit:
+                            data:
+                                - description: Tests for completed todos.
+                                - solution of: test_for_completed_todos
+                architecture_viewer:
+                    data:
+                        - description: Conveys complex architectures visually.
+                        - solution of: convey_complex_architectures
+            design_procedure_system:
+                data:
+                    - description: Creates a procedure for designing systems.
+                    - solution of: create_a_procedure_for_designing_systems
+                requirement_decomposition_process:
+                    data:
+                        - description: >
+                              The process for decomposing requirements hierarchically.
+                        - solution of: requirement_design_process
+                solution_development_process:
+                    data:
+                        - description: >
+                              The process for developing solutions for each requirement.
+                        - solution of: system_design_process
+        implementation_system:
+            data:
+                - description: >
+                      Provides a launching point for infrastructure implementation.
+                - solution of: provide_a_launching_point_for_infrastructure_implementation
+            guided_development_system:
+                data:
+                    - description: Provides a guided process for developing solutions.
+                    - solution of: provide_a_guided_process_for_developing_solutions
+                prioritization_system:
+                    data:
+                        - description: Provides functionality for prioritizing work.
+                        - solution of: provide_functionality_for_prioritizing
+            agent_integration:
+                data:
+                    - description: Facilitates compatibility with AI agents.
+                    - solution of: facilitate_compatibility_with_agents
+            terraform_integration:
+                data:
+                    - description: Facilitates compatibility with Terraform.
+                    - solution of: facilitate_compatibility_with_terraform
+            database_integration:
+                data:
+                    - description: Facilitates compatibility with relational databases.
+                    - solution of: facilitate_compatibility_with_relational_databases
 
     iacs_meta_discussion:
         data:
