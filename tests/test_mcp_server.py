@@ -12,6 +12,7 @@ from iacs.mcp_server import (
     _MANIFEST_ENV_VAR,
     _architects,
     _build_format_description,
+    _parse_manifest_env,
     _validate_yaml_string,
     get_manifest_path,
     load_manifest,
@@ -155,6 +156,31 @@ sol:
 # get_manifest_path
 # ---------------------------------------------------------------------------
 
+class TestParseManifestEnv:
+
+    def test_returns_example_when_unset(self, monkeypatch):
+        monkeypatch.delenv(_MANIFEST_ENV_VAR, raising=False)
+        assert _parse_manifest_env() == [str(_EXAMPLE_MANIFEST)]
+
+    def test_returns_single_path(self, monkeypatch, tmp_path):
+        monkeypatch.setenv(_MANIFEST_ENV_VAR, str(tmp_path))
+        assert _parse_manifest_env() == [str(tmp_path)]
+
+    def test_returns_multiple_paths(self, monkeypatch, tmp_path):
+        import os
+        p1 = str(tmp_path / "a")
+        p2 = str(tmp_path / "b")
+        monkeypatch.setenv(_MANIFEST_ENV_VAR, os.pathsep.join([p1, p2]))
+        assert _parse_manifest_env() == [p1, p2]
+
+    def test_strips_whitespace(self, monkeypatch, tmp_path):
+        import os
+        p1 = str(tmp_path / "a")
+        p2 = str(tmp_path / "b")
+        monkeypatch.setenv(_MANIFEST_ENV_VAR, f" {p1} {os.pathsep} {p2} ")
+        assert _parse_manifest_env() == [p1, p2]
+
+
 class TestGetManifestPath:
 
     def test_returns_builtin_path_when_env_unset(self, monkeypatch):
@@ -173,6 +199,15 @@ class TestGetManifestPath:
         monkeypatch.delenv(_MANIFEST_ENV_VAR, raising=False)
         result = get_manifest_path()
         assert _MANIFEST_ENV_VAR in result
+
+    def test_reports_multiple_paths(self, monkeypatch, tmp_path):
+        import os
+        p1 = str(tmp_path / "a")
+        p2 = str(tmp_path / "b")
+        monkeypatch.setenv(_MANIFEST_ENV_VAR, os.pathsep.join([p1, p2]))
+        result = get_manifest_path()
+        assert p1 in result
+        assert p2 in result
 
 
 # ---------------------------------------------------------------------------
@@ -218,29 +253,40 @@ class TestLoadManifest:
 
     def test_returns_success_string(self):
         ctx = _make_ctx()
-        result = load_manifest(str(_IACS_MANIFEST_DIR), ctx)
+        result = load_manifest([str(_IACS_MANIFEST_DIR)], ctx)
         assert "Loaded manifest from" in result
 
     def test_return_value_contains_manifest_path(self):
         ctx = _make_ctx()
-        result = load_manifest(str(_IACS_MANIFEST_DIR), ctx)
+        result = load_manifest([str(_IACS_MANIFEST_DIR)], ctx)
         assert str(_IACS_MANIFEST_DIR) in result
 
     def test_return_value_lists_component_types(self):
         ctx = _make_ctx()
-        result = load_manifest(str(_IACS_MANIFEST_DIR), ctx)
+        result = load_manifest([str(_IACS_MANIFEST_DIR)], ctx)
         assert "Component types:" in result
 
     def test_stores_architect_for_session(self):
         ctx = _make_ctx()
-        load_manifest(str(_IACS_MANIFEST_DIR), ctx)
+        load_manifest([str(_IACS_MANIFEST_DIR)], ctx)
         assert ctx.request_context.session in _architects
 
     def test_loaded_architect_has_component_types(self):
         ctx = _make_ctx()
-        load_manifest(str(_IACS_MANIFEST_DIR), ctx)
+        load_manifest([str(_IACS_MANIFEST_DIR)], ctx)
         arch = _architects[ctx.request_context.session]
         assert len(arch.registry.component_types) > 0
+
+    def test_multiple_paths_are_merged(self, tmp_path):
+        """Loading two dirs should merge entities from both into one registry."""
+        (tmp_path / "extra.yaml").write_text(
+            "extra_entity:\n- description: From extra dir.\n"
+        )
+        ctx = _make_ctx()
+        load_manifest([str(_IACS_MANIFEST_DIR), str(tmp_path)], ctx)
+        arch = _architects[ctx.request_context.session]
+        desc = arch.registry.get("description").execute()
+        assert any("From extra dir" in str(v) for v in desc["value"])
 
     def test_env_var_reported_by_get_manifest_path(self, monkeypatch):
         """When IACS_MANIFEST is set to _IACS_MANIFEST_DIR, get_manifest_path reports it."""

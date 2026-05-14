@@ -22,21 +22,32 @@ _IACS_MANIFEST_DIR = Path(__file__).parent / "iacs_manifest"
 _architects: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 
 
+def _parse_manifest_env() -> list[str]:
+    """Return the list of manifest paths from the environment variable.
+
+    Paths are separated by ``os.pathsep`` (colon on Unix, semicolon on Windows).
+    Falls back to the built-in example manifest when the variable is unset.
+    """
+    raw = os.environ.get(_MANIFEST_ENV_VAR)
+    if not raw:
+        return [str(_EXAMPLE_MANIFEST)]
+    return [p.strip() for p in raw.split(os.pathsep) if p.strip()]
+
+
 def _get_architect(ctx: Context) -> Architect:
     session = ctx.request_context.session
     if session not in _architects:
         from iacs.architect import Architect
-        manifest = os.environ.get(_MANIFEST_ENV_VAR, str(_EXAMPLE_MANIFEST))
-        _architects[session] = Architect.from_manifest(manifest)
+        _architects[session] = Architect.from_manifest(_parse_manifest_env())
     return _architects[session]
 
 
 server = FastMCP(
     "iacs",
     instructions=(
-        f"Set the {_MANIFEST_ENV_VAR} environment variable to the path of your "
-        "manifest directory so it loads automatically on startup. "
-        "Call `get_manifest_path` to confirm which manifest is currently loaded."
+        f"Set the {_MANIFEST_ENV_VAR} environment variable to the path(s) of your "
+        f"manifest directories (colon-separated on Unix) so they load automatically "
+        "on startup. Call `get_manifest_path` to confirm which manifests are currently loaded."
     ),
 )
 
@@ -207,26 +218,29 @@ def get_manifest_path() -> str:
     Also shows the environment variable name used to configure a default
     manifest path at startup.
     """
-    manifest = os.environ.get(_MANIFEST_ENV_VAR)
-    if manifest:
+    raw = os.environ.get(_MANIFEST_ENV_VAR)
+    if raw:
+        paths = [p.strip() for p in raw.split(os.pathsep) if p.strip()]
         source = f"from {_MANIFEST_ENV_VAR} environment variable"
     else:
-        manifest = str(_EXAMPLE_MANIFEST)
+        paths = [str(_EXAMPLE_MANIFEST)]
         source = f"built-in default (set {_MANIFEST_ENV_VAR} to override)"
-    return f"Manifest path: {manifest!r} ({source})"
+    paths_str = ", ".join(repr(p) for p in paths)
+    return f"Manifest path(s): {paths_str} ({source})"
 
 
 @server.tool()
-def load_manifest(manifest_path: str, ctx: Context) -> str:
+def load_manifest(manifest_paths: list[str], ctx: Context) -> str:
     """Load an iacs manifest from a directory path, replacing the current registry.
 
     Args:
-        manifest_path: Path to the manifest directory.
+        manifest_paths: List of paths to manifest directories.
     """
     from iacs.architect import Architect
-    arch = Architect.from_manifest(manifest_path)
+    arch = Architect.from_manifest(manifest_paths)
     _architects[ctx.request_context.session] = arch
-    return f"Loaded manifest from {manifest_path!r}. Component types: {arch.registry.component_types}"
+    paths_str = ", ".join(repr(p) for p in manifest_paths)
+    return f"Loaded manifest from {paths_str}. Component types: {arch.registry.component_types}"
 
 
 @server.tool()
