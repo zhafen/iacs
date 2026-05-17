@@ -1,4 +1,8 @@
-"""Hamilton DAG for converting entity-centered data to component-centered data."""
+"""Hamilton DAG for converting entity-centered data to component-centered data.
+
+Coordinates load_yaml and load_python subdags, merges their entity-first
+dictionaries, then runs the shared pipeline through to a Registry.
+"""
 
 import re
 from pathlib import Path
@@ -6,14 +10,46 @@ from pathlib import Path
 import ibis
 import ibis.expr.types as ir
 import pandas as pd
-import yaml
+from hamilton.function_modifiers import subdag, source
 
 from ...registry import Registry
 from ...utils import dhash
+from . import load_yaml, load_python
 
 
-_BUILTINS_DIR = Path(__file__).parent.parent.parent / "builtins"
+# ---------------------------------------------------------------------------
+# Source subdags — each produces raw_entity_first_data keyed by file_id
+# ---------------------------------------------------------------------------
 
+@subdag(
+    load_yaml,
+    inputs={"input_dir": source("input_dir")},
+    config={},
+)
+def yaml_entity_first_data(raw_entity_first_data: dict) -> dict:
+    return raw_entity_first_data
+
+
+@subdag(
+    load_python,
+    inputs={"input_dir": source("input_dir")},
+    config={},
+)
+def python_entity_first_data(raw_entity_first_data: dict) -> dict:
+    return raw_entity_first_data
+
+
+def raw_entity_first_data(
+    yaml_entity_first_data: dict,
+    python_entity_first_data: dict,
+) -> dict:
+    """Merge entity-first dicts from all source loaders."""
+    return {**yaml_entity_first_data, **python_entity_first_data}
+
+
+# ---------------------------------------------------------------------------
+# CSV loading (stays inline — CSV doesn't fit the entity-first dict format)
+# ---------------------------------------------------------------------------
 
 def raw_csv_data(input_dir: list[str]) -> dict[str, pd.DataFrame]:
     """Load CSV files from a list of files or directories (user-provided only, not builtins).
@@ -84,7 +120,6 @@ def csv_component_tables(raw_csv_data: dict[str, pd.DataFrame]) -> dict[str, ir.
         Table with columns: entity_id, component_index, modifier, and one
         column per CSV field.
     """
-    # Accumulate DataFrames per component type (stem).
     per_stem: dict[str, list[pd.DataFrame]] = {}
     for file_id, df in raw_csv_data.items():
         stem = Path(file_id).stem
@@ -159,57 +194,9 @@ def csv_spine(raw_csv_data: dict[str, pd.DataFrame]) -> ir.Table:
     return ibis.memtable(spine_df)
 
 
-def raw_entity_first_data(input_dir: list[str]) -> dict:
-    """Load yaml files from a list of files or directories.
-
-    Always includes all yaml files from the builtins directory, each identified
-    as "builtins.<stem>". User-provided files are identified by their path
-    relative to the current working directory.
-
-    Parameters
-    ----------
-    input_dir : list[str]
-        A list of yaml file paths or directory paths. Directories are searched
-        recursively for yaml files.
-
-    Returns
-    -------
-    dict
-        A dict keyed by file identifier, where each value is the dict of
-        entities loaded from that file.
-    """
-    cwd = Path.cwd()
-    all_files: list[tuple[Path, str]] = []
-
-    for item in input_dir:
-        p = Path(item)
-        if p.is_file() and p.suffix in (".yaml", ".yml"):
-            try:
-                file_id = str(p.relative_to(cwd))
-            except ValueError:
-                file_id = str(p)
-            all_files.append((p, file_id))
-        elif p.is_dir():
-            for f in sorted(p.rglob("*.y*ml")):
-                if f.suffix in (".yaml", ".yml"):
-                    try:
-                        file_id = str(f.relative_to(cwd))
-                    except ValueError:
-                        file_id = str(f)
-                    all_files.append((f, file_id))
-
-    for f in sorted(_BUILTINS_DIR.rglob("*.y*ml")):
-        if f.suffix in (".yaml", ".yml"):
-            builtin_id = f"builtins.{f.stem}"
-            all_files.append((f, builtin_id))
-
-    result = {}
-    for file_path, file_id in all_files:
-        with open(file_path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
-        result[file_id] = data
-    return result
-
+# ---------------------------------------------------------------------------
+# Shared pipeline: entity-first dict → component tables → Registry
+# ---------------------------------------------------------------------------
 
 def _add_component_pairs(
     entity_path: str, index: int, component, result: list
@@ -224,20 +211,17 @@ def _add_component_pairs(
         The 0-based position of this component in the entity's list
         (bare-string tags count toward the index).
     component : str | dict
-        The raw YAML component value.
+        The raw component value.
     result : list
         Accumulator of (path, value) string tuples.
     """
     prefix = f"{entity_path}[{index}]"
     if isinstance(component, str):
-        # Tag component: bare string, no associated value.
         result.append((f"{prefix}.{component}", ""))
     elif isinstance(component, dict):
         key = next(iter(component))
         value = component[key]
         if isinstance(value, list):
-            # List of component instances: each item is its own component instance.
-            # Items use sequential indices starting from the parent's index.
             for j, item in enumerate(value):
                 item_prefix = f"{entity_path}[{index + j}]"
                 if isinstance(item, dict):
@@ -250,9 +234,6 @@ def _add_component_pairs(
         elif isinstance(value, dict) and value and all(
             isinstance(v, dict) for v in value.values()
         ):
-            # Dict-of-dicts: each key→value pair is a separate component instance.
-            # The outer key becomes the "value" sub-field; the inner dict provides
-            # the remaining sub-fields.
             for j, (inner_key, inner_dict) in enumerate(value.items()):
                 item_prefix = f"{entity_path}[{index + j}]"
                 result.append((f"{item_prefix}.{key}.value", inner_key))
@@ -260,12 +241,10 @@ def _add_component_pairs(
                     str_val = "" if sub_val is None else str(sub_val)
                     result.append((f"{item_prefix}.{key}.{sub_key}", str_val))
         elif isinstance(value, dict):
-            # Component with sub-fields, e.g. {"requirement": {"priority": 1}}.
             for sub_key, sub_val in value.items():
                 str_val = "" if sub_val is None else str(sub_val)
                 result.append((f"{prefix}.{key}.{sub_key}", str_val))
         else:
-            # Simple scalar component, e.g. {"description": "..."}.
             str_val = "" if value is None else str(value)
             result.append((f"{prefix}.{key}", str_val))
 
@@ -285,10 +264,8 @@ def _flatten_to_pathvalue(data: dict, parent_path: str = "") -> list[tuple[str, 
             for i, component in enumerate(entity_value):
                 _add_component_pairs(entity_path, i, component, result)
         elif isinstance(entity_value, dict):
-            # Entity's own components live under the "data" key (if present).
             for i, component in enumerate(entity_value.get("data", [])):
                 _add_component_pairs(f"{entity_path}.data", i, component, result)
-            # Recurse into sub-entities (every key except "data").
             sub_entities = {k: v for k, v in entity_value.items() if k != "data"}
             result.extend(_flatten_to_pathvalue(sub_entities, entity_path))
     return result
@@ -335,7 +312,6 @@ def _with_spine_path(t: ir.Table) -> ir.Table:
         _idx=t.path.re_extract(_PATH_PATTERN, 2),
         _after=t.path.re_extract(_PATH_PATTERN, 3),
     )
-    # _ctf: first dot-segment of _after (component_type_full, may include spaces)
     t = t.mutate(_ctf=t["_after"].re_extract(r"^([^.]*)", 1))
     return t.mutate(spine_path=t["_prefix"] + "[" + t["_idx"] + "]." + t["_ctf"])
 
@@ -355,7 +331,6 @@ def keyvalue_store(pathvalue_pairs: ir.Table) -> ir.Table:
     t = pathvalue_pairs.filter(pathvalue_pairs.path.re_search(_PATH_PATTERN))
     t = _with_spine_path(t)
 
-    # entity_path: strip the '.data' suffix that marks a nested entity's own components.
     t = t.mutate(
         entity_path=ibis.ifelse(
             t["_prefix"].endswith(".data"),
@@ -366,17 +341,11 @@ def keyvalue_store(pathvalue_pairs: ir.Table) -> ir.Table:
         modifier=t["_ctf"].re_extract(r"^\S+ (.+)$", 1).nullif(""),
         component_index=t["_idx"].cast("int32"),
     )
-    # entity_id: first 12 hex chars of SHA-256 (matches dhash in utils).
-    # entity_key: last segment after the last ':' or '.' in entity_path.
-    # filepath: the file identifier prefix (before ':'), NULL if absent.
     t = t.mutate(
         entity_id=t.entity_path.hexdigest("sha256").substr(0, 12),
         entity_key=t.entity_path.re_extract(r"([^:.]+)$", 1),
         filepath=t.entity_path.re_extract(r"^([^:]+):", 1).nullif(""),
     )
-    # field: sub-field name after the spine_path, or "value" for scalar components.
-    # Tags whose text ends with "." produce an empty field after the trailing dot
-    # is consumed as a separator — treat those as "value" too.
     t = t.mutate(
         field=ibis.ifelse(
             t["path"] == t["spine_path"],

@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 import iacs.dataflows.etl.load_manifest as load_manifest
+import iacs.dataflows.etl.load_yaml as load_yaml
 from iacs.registry import Registry
 from iacs.utils import dhash
 
@@ -49,6 +50,7 @@ def multi_file_yaml_dir(tmp_path):
 # ---------------------------------------------------------------------------
 
 class TestRawEntityFirstData:
+    """Tests for load_yaml.raw_entity_first_data (YAML source loader)."""
 
     def _all_entities(self, result: dict) -> dict:
         """Flatten all per-file entity dicts into one dict (for assertions)."""
@@ -59,47 +61,44 @@ class TestRawEntityFirstData:
         return merged
 
     def test_loads_single_yaml_file(self, minimal_yaml_dir):
-        result = load_manifest.raw_entity_first_data([minimal_yaml_dir])
+        result = load_yaml.raw_entity_first_data([minimal_yaml_dir])
         assert isinstance(result, dict)
         assert "my_task" in self._all_entities(result)
 
     def test_loads_multiple_yaml_files(self, multi_file_yaml_dir):
-        result = load_manifest.raw_entity_first_data([multi_file_yaml_dir])
+        result = load_yaml.raw_entity_first_data([multi_file_yaml_dir])
         entities = self._all_entities(result)
         assert "my_task" in entities
         assert "my_infra" in entities
 
     def test_loads_yaml_from_subdirectories(self, multi_file_yaml_dir):
-        result = load_manifest.raw_entity_first_data([multi_file_yaml_dir])
-        # my_infra is in a subdirectory
+        result = load_yaml.raw_entity_first_data([multi_file_yaml_dir])
         assert "my_infra" in self._all_entities(result)
 
     def test_empty_dir_has_only_builtin(self, tmp_path):
-        result = load_manifest.raw_entity_first_data([str(tmp_path)])
+        result = load_yaml.raw_entity_first_data([str(tmp_path)])
         assert "builtins.components" in result
         assert len(result) == 1
 
     def test_always_includes_builtin(self, minimal_yaml_dir):
-        result = load_manifest.raw_entity_first_data([minimal_yaml_dir])
+        result = load_yaml.raw_entity_first_data([minimal_yaml_dir])
         assert "builtins.components" in result
 
     def test_preserves_raw_structure(self, minimal_yaml_dir):
-        result = load_manifest.raw_entity_first_data([minimal_yaml_dir])
+        result = load_yaml.raw_entity_first_data([minimal_yaml_dir])
         entities = self._all_entities(result)
-        # The value should be the raw list from the YAML
         assert isinstance(entities["my_task"], list)
         assert {"description": "A task I need to complete."} in entities["my_task"]
 
     def test_keyed_by_file_path(self, minimal_yaml_dir):
-        result = load_manifest.raw_entity_first_data([minimal_yaml_dir])
-        # At least one key should end with 'minimal.yaml' (the user file)
+        result = load_yaml.raw_entity_first_data([minimal_yaml_dir])
         user_keys = [k for k in result if k != "builtins.components"]
         assert any(k.endswith("minimal.yaml") for k in user_keys)
 
     def test_accepts_single_file_path(self, tmp_path):
         yaml_file = tmp_path / "single.yaml"
         yaml_file.write_text("my_entity:\n- description: A thing.\n")
-        result = load_manifest.raw_entity_first_data([str(yaml_file)])
+        result = load_yaml.raw_entity_first_data([str(yaml_file)])
         assert "my_entity" in self._all_entities(result)
 
 
