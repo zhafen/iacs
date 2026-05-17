@@ -45,9 +45,11 @@ def _get_architect(ctx: Context) -> Architect:
 server = FastMCP(
     "iacs",
     instructions=(
-        f"Set the {_MANIFEST_ENV_VAR} environment variable to the path(s) of your "
-        f"manifest directories (colon-separated on Unix) so they load automatically "
-        "on startup. Call `get_manifest_path` to confirm which manifests are currently loaded."
+        f"Call `load_manifest` with one or more manifest directory paths to load a "
+        "registry before using any other tools. "
+        f"Optionally set {_MANIFEST_ENV_VAR} (colon-separated on Unix) so a default "
+        "set of manifest paths is available on startup. "
+        "Call `get_manifest_path` to confirm which paths are currently configured."
     ),
 )
 
@@ -208,12 +210,33 @@ def _validate_yaml_string(yaml_string: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Audit component helpers
+# ---------------------------------------------------------------------------
+
+def _available_audit_components() -> dict[str, str]:
+    """Return a mapping of audit component type name to its run_dataflow argument.
+
+    Reads the iacs_component.audit section of components.yaml and derives the
+    dataflow name as "audit.<component_type>" for each child (excluding "data").
+    """
+    comp_data = yaml.safe_load(
+        (_BUILTINS_DIR / "components.yaml").read_text(encoding="utf-8")
+    )
+    audit_section = comp_data.get("iacs_component", {}).get("audit", {})
+    return {
+        key: f"audit.{key}"
+        for key in audit_section
+        if key != "data"
+    }
+
+
+# ---------------------------------------------------------------------------
 # MCP tools
 # ---------------------------------------------------------------------------
 
 @server.tool()
 def get_manifest_path() -> str:
-    """Return the path of the currently loaded manifest.
+    """Return the path(s) of the currently loaded manifest.
 
     Also shows the environment variable name used to configure a default
     manifest path at startup.
@@ -244,9 +267,23 @@ def load_manifest(manifest_paths: list[str], ctx: Context) -> str:
 
 
 @server.tool()
-def list_component_types(ctx: Context) -> list[str]:
-    """List all component types available in the iacs registry."""
-    return _get_architect(ctx).registry.component_types
+def list_component_types(ctx: Context) -> str:
+    """List all component types in the registry, plus audit components that can be generated.
+
+    Loaded component types are immediately queryable with view_component or
+    view_entity. Audit components listed as "available" are not yet in the
+    registry and must first be generated with run_dataflow.
+    """
+    loaded = _get_architect(ctx).registry.component_types
+    audit_map = _available_audit_components()
+    unloaded = {ct: df for ct, df in audit_map.items() if ct not in loaded}
+
+    lines = [f"Loaded component types: {loaded}"]
+    if unloaded:
+        lines.append("\nAvailable audit components (not yet generated):")
+        for comp_type, dataflow in unloaded.items():
+            lines.append(f"  - {comp_type}: run run_dataflow('{dataflow}') to generate")
+    return "\n".join(lines)
 
 
 @server.tool()
@@ -263,6 +300,40 @@ def view_component(component_type: str, ctx: Context, format: str = "csv") -> st
     if format == "markdown":
         return df.to_markdown(index=False)
     return df.to_csv(index=False)
+
+
+@server.tool()
+def view_entity(entity_id: str, ctx: Context, format: str = "markdown") -> str:
+    """Return all component data for a specific entity across every component type.
+
+    Args:
+        entity_id: Entity hash or human-readable alias (e.g. "feed_cats" or
+            "feeding_system.feed_cats").
+        format: Output format — "markdown" (default) or "csv".
+    """
+    return _get_architect(ctx).registry.view_entity(entity_id, format=format)
+
+
+@server.tool()
+def run_dataflow(name: str, ctx: Context) -> str:
+    """Load and execute a dataflow, storing any new components in the registry.
+
+    Use this to generate optional components such as audit results.
+    Available dataflows: "audit.requirement_coverage", "audit.traceability",
+    "audit.todo".
+
+    Args:
+        name: Dotted module path relative to iacs.dataflows
+            (e.g. "audit.requirement_coverage").
+    """
+    arch = _get_architect(ctx)
+    before = set(arch.registry.component_types)
+    arch.execute(name)
+    after = set(arch.registry.component_types)
+    added = sorted(after - before)
+    if added:
+        return f"Dataflow {name!r} complete. New component types: {added}"
+    return f"Dataflow {name!r} complete. No new component types added."
 
 
 @server.tool()

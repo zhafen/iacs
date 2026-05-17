@@ -168,3 +168,42 @@ class Registry:
         df = result.execute()
         df = df.set_index("entity_id")
         return df
+
+    def view_entity_df(self, entity_id: str) -> dict[str, pd.DataFrame]:
+        """Return component data for a specific entity, keyed by component type.
+
+        Accepts either the internal entity hash or a human-readable alias.
+
+        Args:
+            entity_id: Internal entity hash or entity alias.
+        """
+        result = {}
+        for comp_type in self._component_types:
+            try:
+                df = self.view_df(comp_type).reset_index()
+            except Exception:
+                continue
+            match = df[df["entity_id"] == entity_id]
+            if match.empty and "entity_id.alias" in df.columns:
+                match = df[df["entity_id.alias"] == entity_id]
+            if not match.empty:
+                result[comp_type] = match.set_index("entity_id")
+        return result
+
+    def view_entity(self, entity_id: str, format: str = "markdown") -> str:
+        """Return all component data for a specific entity as a formatted string.
+
+        Args:
+            entity_id: Internal entity hash or human-readable alias.
+            format: Output format — "markdown" (default) or "csv".
+        """
+        components = self.view_entity_df(entity_id)
+        if not components:
+            return f"No data found for entity {entity_id!r}."
+        sections = []
+        for comp_type, df in components.items():
+            if format == "markdown":
+                sections.append(f"### {comp_type}\n\n{df.to_markdown()}")
+            else:
+                sections.append(f"# {comp_type}\n\n{df.to_csv()}")
+        return "\n\n".join(sections)
