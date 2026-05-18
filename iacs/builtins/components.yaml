@@ -152,6 +152,9 @@ data_structure:
                 description: >
                     A data structure specifying the allowed values for the field. If a
                     list, then the type should be categorical or a child of that type.
+        - todo: >
+            We are going to track derived vs source at a schema level, but we can also
+            record this at a field level.
     schema:
         - description: >
             A list of ((field)) components that defines the columns in a component
@@ -161,6 +164,10 @@ data_structure:
             value:
                 description: A list of ((field)) components.
                 type: list[field]
+        - todo: >
+            Do we have dueling definitions here? On one hand we have individual field
+            components that are part of the entity. On the other hand schema
+            component holds a list of field components.
     table:
         - description: >
             Tabular data type. From a row-first perspective tables are lists of
