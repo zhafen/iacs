@@ -40,3 +40,6 @@ entity_first_data = {
 incorrect_entity_first_data = {
     "examples/example/manifest.yaml": yaml.safe_load(_hierarchical_file_str)
 }
+hierarchical_entity_first_data = {
+    "examples/example/manifest.yaml": yaml.safe_load(_hierarchical_file_str)
+}
