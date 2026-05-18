@@ -155,6 +155,9 @@ data_structure:
         - todo: >
             We are going to track derived vs source at a schema level, but we can also
             record this at a field level.
+        - todo: >
+            We should check if we are modifying any columns in-place anywhere, other
+            than filling in null values, and stop that.
     schema:
         - description: >
             A list of ((field)) components that defines the columns in a component
