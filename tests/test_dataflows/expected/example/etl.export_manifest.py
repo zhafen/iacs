@@ -23,14 +23,14 @@ make_cats_happy:
         - description:
             value: The mission of our cat-happiness device.
         - requirement:
-            value: functional
-            priority: 1
+            value: 1.0
+            type: functional
     feed_and_water_cats:
         - description:
             value: Obviously.
         - requirement:
-            value: functional
-            priority: 1
+            value: 1.0
+            type: functional
 """
 )
 entity_first_data = {
