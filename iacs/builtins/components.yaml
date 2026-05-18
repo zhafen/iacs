@@ -167,6 +167,13 @@ data_structure:
             value:
                 description: A list of ((field)) components.
                 type: list[field]
+            derived:
+                description: >
+                    Whether this component type is derived (computed from other
+                    components, not sourced directly from YAML). Derived component
+                    types are excluded from manifest export.
+                type: bool
+                default: false
         - todo: >
             Do we have dueling definitions here? On one hand we have individual field
             components that are part of the entity. On the other hand schema
@@ -444,3 +451,26 @@ iacs_component:
                 value:
                     description: Description of what needs to be done.
                     type: str
+
+    entity_depth:
+        - description: >
+            Depth of an entity in the parent hierarchy. Derived from the parent
+            component by iacs.dataflows.etl.derive_components.
+        - schema:
+            derived: true
+
+    effort_total:
+        - description: >
+            Total effort for an entity and all its descendants over a configured
+            time period. Derived from effort components by
+            iacs.dataflows.etl.derive_components.
+        - schema:
+            derived: true
+
+    priority_product:
+        - description: >
+            Product of requirement priorities for an entity and its requirement
+            ancestors. Derived from requirement components by
+            iacs.dataflows.etl.derive_components.
+        - schema:
+            derived: true
