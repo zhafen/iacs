@@ -129,14 +129,151 @@ def entity_first_data(components: dict, entity_id: ir.Table) -> dict:
     }
 
 
-def exported_manifest_filepaths(entity_first_data: dict, output_dir: str) -> list[str]:
-    """Save entity_first_data to one YAML file per original source filepath.
+def _get_or_create_node(
+    path_parts: list[str], hierarchical: dict, node_of: dict
+) -> dict:
+    """Return the dict node for a given entity path, creating structural nodes as needed.
+
+    ``node_of[path]`` stores the entity's own dict value (after any list→dict conversion).
+    If the entity's value is still a list (no children have been added yet), it is
+    converted to ``{"data": list}`` on first access as a parent.
+    """
+    if not path_parts:
+        return hierarchical
+
+    path = ".".join(path_parts)
+    key = path_parts[-1]
+
+    if path in node_of:
+        val = node_of[path]
+        if isinstance(val, list):
+            parent = _get_or_create_node(path_parts[:-1], hierarchical, node_of)
+            parent[key] = {"data": val}
+            node_of[path] = parent[key]
+        return node_of[path]
+
+    parent = _get_or_create_node(path_parts[:-1], hierarchical, node_of)
+    if key not in parent:
+        parent[key] = {}
+    elif isinstance(parent[key], list):
+        parent[key] = {"data": parent[key]}
+    node_of[path] = parent[key]
+    return node_of[path]
+
+
+def hierarchical_entity_first_data(components: dict, entity_id: ir.Table) -> dict:
+    """Reconstruct a hierarchically nested entity-centered dict from component tables.
+
+    Like ``entity_first_data`` but nests child entities under their parents using
+    the dot-separated entity path stored in the registry.  When a parent has both
+    its own components and child entities, the parent's components are placed under
+    a ``"data"`` key.
 
     Parameters
     ----------
-    entity_first_data : dict
+    components : dict
+        Dict mapping component type names to ibis Tables, as returned by
+        ``components``.
+    entity_id : ir.Table
+        The entity spine table extracted from ``components``.
+
+    Returns
+    -------
+    dict
+        ``{filepath: {entity_key: ...}}`` where nested entities are dicts
+        containing a ``"data"`` key (own components) and child-entity keys.
+    """
+    spine_df = entity_id.to_pandas()
+    user_rows = spine_df[~spine_df["filepath"].str.startswith("builtins")]
+    user_entity_ids = set(user_rows["value"].unique())
+
+    id_to_filepath: dict[str, str] = {}
+    id_to_path_in_file: dict[str, str] = {}
+
+    for _, row in user_rows.iterrows():
+        eid = str(row["value"])
+        filepath = str(row["filepath"])
+        full_path = str(row["path"])
+        id_to_filepath[eid] = filepath
+        id_to_path_in_file[eid] = full_path[len(filepath) + 1:]
+
+    entity_components: dict[str, list] = {}
+
+    for comp_type, table in components.items():
+        if comp_type in ("entity_id", "component_type", "invalid_field"):
+            continue
+
+        df = table.execute()
+        if "entity_id" not in df.columns or "component_index" not in df.columns:
+            continue
+
+        for _, row in df.iterrows():
+            eid = row["entity_id"]
+            if eid not in user_entity_ids:
+                continue
+
+            modifier = row.get("modifier")
+            key = f"{comp_type} {modifier}" if pd.notna(modifier) and modifier else comp_type
+
+            fields = {
+                k: v for k, v in row.items()
+                if k not in _METADATA_COLS and pd.notna(v)
+            }
+
+            if not fields or (len(fields) == 1 and fields.get("value") == ""):
+                entry = key
+            else:
+                entry = {key: fields}
+
+            entity_components.setdefault(eid, []).append(
+                (int(row["component_index"]), entry)
+            )
+
+    sorted_entity_components = {
+        eid: [e for _, e in sorted(entries, key=lambda x: x[0])]
+        for eid, entries in entity_components.items()
+    }
+
+    filepath_entities: dict[str, list[tuple[str, str]]] = {}
+    for eid in user_entity_ids:
+        if eid in id_to_filepath:
+            filepath_entities.setdefault(id_to_filepath[eid], []).append(
+                (eid, id_to_path_in_file[eid])
+            )
+
+    result: dict[str, dict] = {}
+    for filepath, entity_list in filepath_entities.items():
+        entity_list.sort(key=lambda x: (len(x[1].split(".")), x[1]))
+
+        hierarchical: dict = {}
+        node_of: dict[str, object] = {}
+
+        for eid, path_in_file in entity_list:
+            parts = path_in_file.split(".")
+            entity_key = parts[-1]
+            comps = sorted_entity_components.get(eid, [])
+
+            if len(parts) == 1:
+                hierarchical[entity_key] = comps
+                node_of[path_in_file] = hierarchical[entity_key]
+            else:
+                parent_node = _get_or_create_node(parts[:-1], hierarchical, node_of)
+                parent_node[entity_key] = comps
+                node_of[path_in_file] = parent_node[entity_key]
+
+        result[filepath] = hierarchical
+
+    return result
+
+
+def exported_manifest_filepaths(hierarchical_entity_first_data: dict, output_dir: str) -> list[str]:
+    """Save hierarchical_entity_first_data to one YAML file per original source filepath.
+
+    Parameters
+    ----------
+    hierarchical_entity_first_data : dict
         Mapping of original filepath → entity dict, as returned by
-        ``entity_first_data``.
+        ``hierarchical_entity_first_data``.
     output_dir : str
         Directory to write the manifest YAML files into.
 
@@ -148,7 +285,7 @@ def exported_manifest_filepaths(entity_first_data: dict, output_dir: str) -> lis
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     saved = []
-    for source_filepath, entities in entity_first_data.items():
+    for source_filepath, entities in hierarchical_entity_first_data.items():
         dest = out / Path(source_filepath).with_suffix(".yaml").name
         with open(dest, "w", encoding="utf-8") as f:
             yaml.dump(entities, f, default_flow_style=False, allow_unicode=True)
