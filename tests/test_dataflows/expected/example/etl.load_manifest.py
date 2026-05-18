@@ -14,15 +14,15 @@ raw_entity_first_data = {
         "make_cats_happy": {
             "data": [
                 {"description": "The mission of our cat-happiness device."},
-                {"requirement": {"value": 1}},
+                {"requirement": 1},
             ],
             "feed_and_water_cats": {
                 "data": [
                     {"description": "Obviously."},
-                    {"requirement": {"value": 1}},
+                    {"requirement": 1},
                 ],
                 "feed_cats": [
-                    "requirement",
+                    {"requirement": 0.9},
                     {"alias": "feed_cats"},
                 ],
                 "water_cats": [
@@ -32,7 +32,7 @@ raw_entity_first_data = {
             },
             "sift_cat_box": [
                 {"description": "Unfortunately."},
-                {"requirement": {"value": 0.8}},
+                {"requirement": 0.8},
             ],
             "adore_cats": [
                 {"description": "Of course."},
@@ -54,16 +54,8 @@ raw_entity_first_data = {
             {"description": "A data representation of a cat."},
             {
                 "field": {
-                    "name": "name",
-                    "value": "The cat's name.",
-                    "type": "str",
-                }
-            },
-            {
-                "field": {
-                    "name": "breed",
-                    "value": "The breed of the cat, e.g. orange.",
-                    "type": "str",
+                    "name": {"description": "The cat's name.", "type": "str"},
+                    "breed": {"description": "The breed of the cat, e.g. orange.", "type": "str"},
                 }
             },
         ],

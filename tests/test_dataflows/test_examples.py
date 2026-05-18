@@ -65,16 +65,25 @@ def _load_expected_for_dataflow(example_dir: Path, module_name: str) -> ModuleTy
     return module
 
 
-def _expected_data_vars(expected_module: ModuleType) -> dict:
-    """Return DataFrame and dict variables from an expected module."""
-    result = {}
+def _expected_data_vars(expected_module: ModuleType) -> tuple[dict, dict]:
+    """Return (positive, negative) DataFrame and dict variables from an expected module.
+
+    Variables prefixed with ``incorrect_`` are negative cases — the test asserts
+    the actual DAG output does NOT match them.  All other non-private
+    DataFrame/dict variables are positive cases.
+    """
+    positive: dict = {}
+    negative: dict = {}
     for name in dir(expected_module):
         if name.startswith("_"):
             continue
         val = getattr(expected_module, name)
         if isinstance(val, (pd.DataFrame, dict)):
-            result[name] = val
-    return result
+            if name.startswith("incorrect_"):
+                negative[name] = val
+            else:
+                positive[name] = val
+    return positive, negative
 
 
 # ─── Input-building helper ───────────────────────────────────────────────────
@@ -203,10 +212,23 @@ def _assert_subset(var_name: str, expected_value, actual_value) -> None:
                 f"'{var_name}': key '{key}' not found in actual"
             )
             exp_val = expected_value[key]
+            act_val = actual_value[key]
             if isinstance(exp_val, pd.DataFrame):
-                _assert_df_rows_subset(
-                    exp_val, actual_value[key], context=f"{var_name}[{key}]"
-                )
+                _assert_df_rows_subset(exp_val, act_val, context=f"{var_name}[{key}]")
+            elif isinstance(exp_val, dict) and isinstance(act_val, dict):
+                _assert_manifest_subset(exp_val, act_val, context=f"{var_name}[{key!r}]")
+
+
+def _assert_not_subset(var_name: str, expected_value, actual_value) -> None:
+    """Assert expected_value is NOT contained within actual_value."""
+    try:
+        _assert_subset(var_name, expected_value, actual_value)
+    except AssertionError:
+        return
+    pytest.fail(
+        f"'{var_name}' was declared as incorrect data but it matched the actual output — "
+        "the DAG should have produced different data."
+    )
 
 
 def _manifest_item_matches(expected, actual) -> bool:
@@ -254,6 +276,11 @@ def _assert_manifest_subset(expected: dict, actual: dict, context: str = "") -> 
                 )
         elif isinstance(exp_val, dict) and isinstance(act_val, dict):
             _assert_manifest_subset(exp_val, act_val, context=ctx)
+        elif isinstance(exp_val, dict):
+            assert False, (
+                f"{ctx}: expected dict structure but got {type(act_val).__name__} — "
+                "possible hierarchical/flat format mismatch"
+            )
 
 
 # ─── Test parameters ────────────────────────────────────────────────────────
@@ -301,10 +328,10 @@ def test_dataflows_match_expected(
     3. Verify each expected variable is a subset of the actual DAG output.
     Skips when no expected variables match available nodes, or execution fails.
     """
-    expected_vars = _expected_data_vars(
+    positive_vars, negative_vars = _expected_data_vars(
         _load_expected_for_dataflow(example_dir, module_name)
     )
-    if not expected_vars:
+    if not positive_vars and not negative_vars:
         pytest.skip("No expected variables in expected file")
 
     extra = {"output_dir": str(tmp_output_dir / example_dir.name)}
@@ -315,7 +342,19 @@ def test_dataflows_match_expected(
 
     dr = driver.Driver(inputs, mod, adapter=base.DictResult())
     available = {v.name for v in dr.list_available_variables() if not v.is_external_input}
-    to_execute = [name for name in expected_vars if name in available]
+
+    # Positive: variable name matches a DAG node directly.
+    to_execute_positive = [name for name in positive_vars if name in available]
+
+    # Negative: strip "incorrect_" prefix to find the target DAG node.
+    negative_node_map = {
+        name: name[len("incorrect_"):]
+        for name in negative_vars
+        if name[len("incorrect_"):] in available
+    }
+    to_execute_negative = list(set(negative_node_map.values()))
+
+    to_execute = list(dict.fromkeys(to_execute_positive + to_execute_negative))
 
     if not to_execute:
         pytest.skip(f"No expected variables are nodes in the {module_name} DAG")
@@ -325,11 +364,17 @@ def test_dataflows_match_expected(
     except Exception as exc:
         pytest.fail(f"DAG execution failed: {exc}")
 
-    for var_name in to_execute:
+    for var_name in to_execute_positive:
         actual = results.get(var_name)
         if actual is None:
             continue
-        _assert_subset(var_name, expected_vars[var_name], actual)
+        _assert_subset(var_name, positive_vars[var_name], actual)
+
+    for incorrect_name, node_name in negative_node_map.items():
+        actual = results.get(node_name)
+        if actual is None:
+            continue
+        _assert_not_subset(incorrect_name, negative_vars[incorrect_name], actual)
 
 
 def _get_example_dirs_with_yaml() -> list[Path]:
