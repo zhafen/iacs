@@ -476,10 +476,35 @@ def component_tables(
     return result
 
 
+def authored_parent(component_tables: dict) -> ir.Table:
+    """Extract the authored (user-written) parent entries before updated_parent() modifies them.
+
+    Parameters
+    ----------
+    component_tables : dict
+        Per-component-type data tables as produced by ``component_tables``.
+
+    Returns
+    -------
+    ir.Table
+        The raw ``parent`` table from component_tables if it exists, otherwise
+        an empty ibis table with columns entity_id, component_index, modifier, value.
+    """
+    if "parent" in component_tables:
+        return component_tables["parent"]
+    empty_df = pd.DataFrame(columns=["entity_id", "component_index", "modifier", "value"])
+    empty_df["entity_id"] = empty_df["entity_id"].astype(pd.StringDtype())
+    empty_df["component_index"] = empty_df["component_index"].astype("int32")
+    empty_df["modifier"] = empty_df["modifier"].astype(pd.StringDtype())
+    empty_df["value"] = empty_df["value"].astype(pd.StringDtype())
+    return ibis.memtable(empty_df)
+
+
 def registry(
     entity_id_table: ir.Table,
     component_type_table: ir.Table,
     component_tables: dict[str, ir.Table],
+    authored_parent: ir.Table = None,
 ) -> Registry:
     """Load the constituents of a registry into the registry object.
 
@@ -507,4 +532,7 @@ def registry(
     for comp_type, table in component_tables.items():
         conn.create_table(comp_type, table.to_pandas(), overwrite=True)
         components[comp_type] = conn.table(comp_type)
+    if authored_parent is not None:
+        conn.create_table("authored_parent", authored_parent.to_pandas(), overwrite=True)
+        components["authored_parent"] = conn.table("authored_parent")
     return Registry(conn, components)

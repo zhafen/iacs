@@ -359,7 +359,6 @@ def updated_components(
     """
     components = dict(registry._components)
     components["parent"] = updated_parent
-    components["field"] = derived_field
     return components
 
 def _isnull(val) -> bool:
@@ -572,8 +571,13 @@ def validated_data(
 
     return validated_comps, invalid_table
 
-def validated_registry(validated_components: dict, invalid_field: ir.Table, registry: Registry) -> Registry:
-    """Store the validated components back in the registry, including invalid_field.
+def validated_registry(
+    validated_components: dict,
+    invalid_field: ir.Table,
+    derived_field: ir.Table,
+    registry: Registry,
+) -> Registry:
+    """Store the validated components back in the registry, including invalid_field and derived_field.
 
     Parameters
     ----------
@@ -582,13 +586,16 @@ def validated_registry(validated_components: dict, invalid_field: ir.Table, regi
     invalid_field : ir.Table
         Table of constraint violations (from ``validated_data``), stored as the
         ``"invalid_field"`` component.
+    derived_field : ir.Table
+        Inheritance-resolved field definitions (from ``derived_field``), stored
+        as the ``"derived_field"`` component.
     registry : Registry
         The original registry, whose connection is reused.
 
     Returns
     -------
     Registry
-        A new Registry with the validated components and ``invalid_field``.
+        A new Registry with the validated components, ``invalid_field``, and ``derived_field``.
     """
-    registry.update({**validated_components, "invalid_field": invalid_field})
+    registry.update({**validated_components, "invalid_field": invalid_field, "derived_field": derived_field})
     return registry

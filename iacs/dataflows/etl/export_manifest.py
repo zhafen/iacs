@@ -28,7 +28,7 @@ import pandas as pd
 
 from ...registry import Registry
 
-_BUILTIN_FILEPATH = "builtins.components"
+_EXPORT_RENAMES = {"authored_parent": "parent"}
 
 @extract_fields({"entity_id": ir.Table})
 def components(registry: Registry) -> dict:
@@ -48,120 +48,40 @@ def components(registry: Registry) -> dict:
 
 
 _METADATA_COLS = {"entity_id", "component_index", "modifier"}
-_SKIP_COMP_TYPES = {"entity_id", "component_type", "invalid_field", "parent"}
 
 
-def _explicit_parent_entries(
-    components: dict,
-    entity_id_table: ir.Table,
-    user_entity_ids: set,
-) -> dict[str, list[tuple[int, object]]]:
-    """Reconstruct explicit ``parent`` component entries for export.
-
-    ``updated_parent`` merges explicit and hierarchy-implied parent rows into a
-    single table with only ``entity_id`` and ``parent_id`` columns, losing the
-    original ``component_index`` and string reference (e.g. ``"task"``).
-
-    This function recovers explicit parent entries by:
-    1. Finding user entities that have ``component_type='parent'`` rows in the
-       ``component_type`` table (which records only YAML-authored components).
-    2. Computing the hierarchy-implied ``parent_id`` for each entity (the entity
-       whose path is one level up in the dot-separated path hierarchy).
-    3. Treating any ``parent_id`` that is NOT the hierarchy-implied one as explicit.
-    4. Looking up the entity_key for each explicit ``parent_id`` to reconstruct
-       the human-readable string reference used in YAML.
-
-    Returns a mapping ``{entity_id: [(component_index, entry), ...]}``.
-    """
-    if "parent" not in components or "component_type" not in components:
-        return {}
-
-    parent_df = components["parent"].execute()
-    ct_df = components["component_type"].execute()
-    eid_df = entity_id_table.to_pandas()
-
-    eid_to_path = eid_df.set_index("value")["path"].to_dict()
-    eid_to_key = eid_df.set_index("value")["entity_key"].to_dict()
-    path_to_eid = eid_df.set_index("path")["value"].to_dict()
-
-    def _hierarchy_parent_id(eid: str) -> str | None:
-        path = eid_to_path.get(eid, "")
-        sep = path.find(":")
-        if sep == -1:
-            return None
-        file_part, name_part = path[:sep], path[sep + 1:]
-        if "." not in name_part:
-            return None
-        parent_name = name_part.rsplit(".", 1)[0]
-        return path_to_eid.get(f"{file_part}:{parent_name}")
-
-    # Entities with explicit parent components
-    ct_parent = ct_df[ct_df["component_type"] == "parent"]
-    if ct_parent.empty:
-        return {}
-
-    # All parent rows indexed by entity_id
-    parent_by_eid: dict[str, list[str]] = {}
-    for _, row in parent_df.iterrows():
-        parent_by_eid.setdefault(str(row["entity_id"]), []).append(str(row["parent_id"]))
-
-    result: dict[str, list[tuple[int, object]]] = {}
-    for eid, group in ct_parent.groupby("entity_id"):
-        if eid not in user_entity_ids:
-            continue
-        hierarchy_pid = _hierarchy_parent_id(eid)
-        all_pids = parent_by_eid.get(eid, [])
-        explicit_pids = sorted(
-            [p for p in all_pids if p != hierarchy_pid],
-            key=lambda p: eid_to_key.get(p, p),
-        )
-        if not explicit_pids:
-            continue
-        cidxs = sorted(group["component_index"].astype(int).tolist())
-        for cidx, pid in zip(cidxs, explicit_pids):
-            parent_key = eid_to_key.get(pid, pid)
-            entry = {"parent": {"value": parent_key}}
-            result.setdefault(eid, []).append((cidx, entry))
-
-    return result
-
-
-def _authored_component_keys(components: dict) -> set[tuple]:
-    """Return (entity_id, component_index, component_type) for all user-authored rows.
-
-    Uses the ``component_type`` table, which is populated exclusively from YAML
-    loading, as the authoritative record.  Rows absent from this table (e.g.
-    inherited ``field`` definitions from ``derived_field`` or hierarchy-implied
-    ``parent`` rows from ``updated_parent``) are derived and must not be exported.
-
-    Returns an empty set when the table is unavailable, which disables the filter.
-    """
-    if "component_type" not in components:
-        return set()
-    ct_df = components["component_type"].execute()
-    return {
-        (row["entity_id"], int(row["component_index"]), row["component_type"])
-        for _, row in ct_df.iterrows()
-    }
-
-
-def _derived_comp_types(components: dict, entity_id_table: ir.Table) -> set[str]:
-    """Return component type names marked as derived in the registry schema table.
-
-    Looks up the ``schema`` component table for rows where ``derived`` is True,
-    then maps those entity_ids back to entity_keys (which equal the component type name).
-    """
+def _derived_comp_types(components: dict, entity_id: ir.Table) -> set[str]:
+    """Return component type names marked as derived via the schema table."""
     if "schema" not in components:
         return set()
-    schema_df = components["schema"].execute()
-    if "derived" not in schema_df.columns or schema_df.empty:
+    schema = components["schema"]
+    if "derived" not in schema.columns:
         return set()
-    derived_rows = schema_df[schema_df["derived"] == True]
-    if derived_rows.empty:
+    result = (
+        schema
+        .filter(schema["derived"] == True)
+        .join(entity_id, schema.entity_id == entity_id.value)
+        .select(entity_id.entity_key)
+        .execute()
+    )
+    return set(result["entity_key"].tolist())
+
+
+def _skip_on_export_types(components: dict, entity_id: ir.Table) -> set[str]:
+    """Return component type names that should be skipped during export (skip_on_export=True in schema)."""
+    if "schema" not in components:
         return set()
-    eid_df = entity_id_table.to_pandas()
-    id_to_key = eid_df.set_index("value")["entity_key"].to_dict()
-    return {id_to_key[eid] for eid in derived_rows["entity_id"] if eid in id_to_key}
+    schema = components["schema"]
+    if "skip_on_export" not in schema.columns:
+        return set()
+    result = (
+        schema
+        .filter(schema["skip_on_export"] == True)
+        .join(entity_id, schema.entity_id == entity_id.value)
+        .select(entity_id.entity_key)
+        .execute()
+    )
+    return set(result["entity_key"].tolist())
 
 
 def entity_first_data(components: dict, entity_id: ir.Table) -> dict:
@@ -199,32 +119,32 @@ def entity_first_data(components: dict, entity_id: ir.Table) -> dict:
         .to_dict()
     )
 
+    skip_types = _skip_on_export_types(components, entity_id)
     derived_types = _derived_comp_types(components, entity_id)
-    authored_keys = _authored_component_keys(components)
 
     # {filepath: {entity_key: [(component_index, entry)]}}
     result: dict[str, dict[str, list]] = {}
 
     for comp_type, table in components.items():
-        if comp_type in _SKIP_COMP_TYPES or comp_type in derived_types:
+        if comp_type in skip_types or comp_type in derived_types:
             continue
 
         df = table.execute()
         if "entity_id" not in df.columns or "component_index" not in df.columns:
             continue
 
+        export_type = _EXPORT_RENAMES.get(comp_type, comp_type)
+
         for _, row in df.iterrows():
             eid = row["entity_id"]
             cidx = int(row["component_index"])
             if eid not in user_entity_ids:
                 continue
-            if authored_keys and (eid, cidx, comp_type) not in authored_keys:
-                continue
 
             entity_key = id_to_key.get(eid, eid)
             filepath = id_to_filepath.get(eid, "manifest.yaml")
             modifier = row.get("modifier")
-            key = f"{comp_type} {modifier}" if pd.notna(modifier) and modifier else comp_type
+            key = f"{export_type} {modifier}" if pd.notna(modifier) and modifier else export_type
 
             fields = {
                 k: v for k, v in row.items()
@@ -241,13 +161,6 @@ def entity_first_data(components: dict, entity_id: ir.Table) -> dict:
             result.setdefault(filepath, {}).setdefault(entity_key, []).append(
                 (cidx, entry)
             )
-
-    for eid, parent_entries in _explicit_parent_entries(
-        components, entity_id, user_entity_ids
-    ).items():
-        entity_key = id_to_key.get(eid, eid)
-        filepath = id_to_filepath.get(eid, "manifest.yaml")
-        result.setdefault(filepath, {}).setdefault(entity_key, []).extend(parent_entries)
 
     return {
         fp: {
@@ -328,27 +241,27 @@ def hierarchical_entity_first_data(components: dict, entity_id: ir.Table) -> dic
 
     entity_components: dict[str, list] = {}
 
+    skip_types = _skip_on_export_types(components, entity_id)
     derived_types = _derived_comp_types(components, entity_id)
-    authored_keys = _authored_component_keys(components)
 
     for comp_type, table in components.items():
-        if comp_type in _SKIP_COMP_TYPES or comp_type in derived_types:
+        if comp_type in skip_types or comp_type in derived_types:
             continue
 
         df = table.execute()
         if "entity_id" not in df.columns or "component_index" not in df.columns:
             continue
 
+        export_type = _EXPORT_RENAMES.get(comp_type, comp_type)
+
         for _, row in df.iterrows():
             eid = row["entity_id"]
             cidx = int(row["component_index"])
             if eid not in user_entity_ids:
                 continue
-            if authored_keys and (eid, cidx, comp_type) not in authored_keys:
-                continue
 
             modifier = row.get("modifier")
-            key = f"{comp_type} {modifier}" if pd.notna(modifier) and modifier else comp_type
+            key = f"{export_type} {modifier}" if pd.notna(modifier) and modifier else export_type
 
             fields = {
                 k: v for k, v in row.items()
@@ -365,11 +278,6 @@ def hierarchical_entity_first_data(components: dict, entity_id: ir.Table) -> dic
             entity_components.setdefault(eid, []).append(
                 (cidx, entry)
             )
-
-    for eid, parent_entries in _explicit_parent_entries(
-        components, entity_id, user_entity_ids
-    ).items():
-        entity_components.setdefault(eid, []).extend(parent_entries)
 
     sorted_entity_components = {
         eid: [e for _, e in sorted(entries, key=lambda x: x[0])]

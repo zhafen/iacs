@@ -1,7 +1,7 @@
-"""Tests for the lineage utilities in iacs.dataflows.etl.lineage."""
+"""Tests for the lineage utilities in iacs.dataflows.etl.derive_components."""
 
 import iacs.dataflows.etl.derive_components as derive_components
-from iacs.dataflows.etl.lineage import derived_component_types
+from iacs.dataflows.etl.derive_components import derived_component_types
 
 
 def test_derived_component_types_returns_expected():
