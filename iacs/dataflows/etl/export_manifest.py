@@ -28,7 +28,7 @@ import pandas as pd
 
 from ...registry import Registry
 
-_BUILTIN_FILEPATH = "builtins.components"
+_EXPORT_RENAMES = {"authored_parent": "parent"}
 
 @extract_fields({"entity_id": ir.Table})
 def components(registry: Registry) -> dict:
@@ -48,6 +48,40 @@ def components(registry: Registry) -> dict:
 
 
 _METADATA_COLS = {"entity_id", "component_index", "modifier"}
+
+
+def _derived_comp_types(components: dict, entity_id: ir.Table) -> set[str]:
+    """Return component type names marked as derived via the schema table."""
+    if "schema" not in components:
+        return set()
+    schema = components["schema"]
+    if "derived" not in schema.columns:
+        return set()
+    result = (
+        schema
+        .filter(schema["derived"] == True)
+        .join(entity_id, schema.entity_id == entity_id.value)
+        .select(entity_id.entity_key)
+        .execute()
+    )
+    return set(result["entity_key"].tolist())
+
+
+def _skip_on_export_types(components: dict, entity_id: ir.Table) -> set[str]:
+    """Return component type names that should be skipped during export (skip_on_export=True in schema)."""
+    if "schema" not in components:
+        return set()
+    schema = components["schema"]
+    if "skip_on_export" not in schema.columns:
+        return set()
+    result = (
+        schema
+        .filter(schema["skip_on_export"] == True)
+        .join(entity_id, schema.entity_id == entity_id.value)
+        .select(entity_id.entity_key)
+        .execute()
+    )
+    return set(result["entity_key"].tolist())
 
 
 def entity_first_data(components: dict, entity_id: ir.Table) -> dict:
@@ -85,30 +119,38 @@ def entity_first_data(components: dict, entity_id: ir.Table) -> dict:
         .to_dict()
     )
 
+    skip_types = _skip_on_export_types(components, entity_id)
+    derived_types = _derived_comp_types(components, entity_id)
+
     # {filepath: {entity_key: [(component_index, entry)]}}
     result: dict[str, dict[str, list]] = {}
 
     for comp_type, table in components.items():
-        if comp_type in ("entity_id", "component_type", "invalid_field"):
+        if comp_type in skip_types or comp_type in derived_types:
             continue
 
         df = table.execute()
         if "entity_id" not in df.columns or "component_index" not in df.columns:
             continue
 
+        export_type = _EXPORT_RENAMES.get(comp_type, comp_type)
+
         for _, row in df.iterrows():
             eid = row["entity_id"]
+            cidx = int(row["component_index"])
             if eid not in user_entity_ids:
                 continue
 
             entity_key = id_to_key.get(eid, eid)
             filepath = id_to_filepath.get(eid, "manifest.yaml")
             modifier = row.get("modifier")
-            key = f"{comp_type} {modifier}" if pd.notna(modifier) and modifier else comp_type
+            key = f"{export_type} {modifier}" if pd.notna(modifier) and modifier else export_type
 
             fields = {
                 k: v for k, v in row.items()
-                if k not in _METADATA_COLS and pd.notna(v)
+                if k not in _METADATA_COLS
+                and not k.endswith("_eid")
+                and pd.notna(v)
             }
 
             if not fields or (len(fields) == 1 and fields.get("value") == ""):
@@ -117,7 +159,7 @@ def entity_first_data(components: dict, entity_id: ir.Table) -> dict:
                 entry = {key: fields}
 
             result.setdefault(filepath, {}).setdefault(entity_key, []).append(
-                (int(row["component_index"]), entry)
+                (cidx, entry)
             )
 
     return {
@@ -199,25 +241,33 @@ def hierarchical_entity_first_data(components: dict, entity_id: ir.Table) -> dic
 
     entity_components: dict[str, list] = {}
 
+    skip_types = _skip_on_export_types(components, entity_id)
+    derived_types = _derived_comp_types(components, entity_id)
+
     for comp_type, table in components.items():
-        if comp_type in ("entity_id", "component_type", "invalid_field"):
+        if comp_type in skip_types or comp_type in derived_types:
             continue
 
         df = table.execute()
         if "entity_id" not in df.columns or "component_index" not in df.columns:
             continue
 
+        export_type = _EXPORT_RENAMES.get(comp_type, comp_type)
+
         for _, row in df.iterrows():
             eid = row["entity_id"]
+            cidx = int(row["component_index"])
             if eid not in user_entity_ids:
                 continue
 
             modifier = row.get("modifier")
-            key = f"{comp_type} {modifier}" if pd.notna(modifier) and modifier else comp_type
+            key = f"{export_type} {modifier}" if pd.notna(modifier) and modifier else export_type
 
             fields = {
                 k: v for k, v in row.items()
-                if k not in _METADATA_COLS and pd.notna(v)
+                if k not in _METADATA_COLS
+                and not k.endswith("_eid")
+                and pd.notna(v)
             }
 
             if not fields or (len(fields) == 1 and fields.get("value") == ""):
@@ -226,7 +276,7 @@ def hierarchical_entity_first_data(components: dict, entity_id: ir.Table) -> dic
                 entry = {key: fields}
 
             entity_components.setdefault(eid, []).append(
-                (int(row["component_index"]), entry)
+                (cidx, entry)
             )
 
     sorted_entity_components = {

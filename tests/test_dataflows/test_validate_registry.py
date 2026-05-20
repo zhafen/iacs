@@ -240,13 +240,15 @@ class TestUpdatedComponents:
         rows = result["parent"].execute()
         assert list(rows["entity_id"]) == ["e2"]
 
-    def test_field_is_replaced(self):
+    def test_field_is_not_replaced(self):
+        # field stays as user-authored; derived_field is stored separately
         reg = self._registry()
         up = ibis.memtable(pd.DataFrame([{"entity_id": "e1", "parent_id": "e2"}]))
         new_field = ibis.memtable(pd.DataFrame([{"entity_id": "e9", "value": "new_f"}]))
         result = validate_registry.updated_components(up, new_field, reg)
         rows = result["field"].execute()
-        assert list(rows["entity_id"]) == ["e9"]
+        # field should remain as the original user-authored table (entity_id=e1)
+        assert list(rows["entity_id"]) == ["e1"]
 
     def test_other_components_are_preserved(self):
         reg = self._registry()
@@ -283,6 +285,9 @@ class TestValidatedRegistry:
     def _empty_invalid_field(self):
         return ibis.memtable(pd.DataFrame(columns=_INVALID_COLS).astype(_INVALID_DTYPES))
 
+    def _empty_derived_field(self):
+        return ibis.memtable(pd.DataFrame(columns=["entity_id", "component_index", "modifier", "value"]).astype("str"))
+
     def test_no_violations_does_not_raise(self):
         """Regression test: validated_registry must not raise when invalid_field is empty.
 
@@ -292,14 +297,15 @@ class TestValidatedRegistry:
         reg = make_registry({"description": [{"entity_id": "e1", "value": "hello"}]})
         validated_comps = {"description": reg._components["description"]}
         invalid_field = self._empty_invalid_field()
-        result = validate_registry.validated_registry(validated_comps, invalid_field, reg)
+        derived_field = self._empty_derived_field()
+        result = validate_registry.validated_registry(validated_comps, invalid_field, derived_field, reg)
         assert isinstance(result, Registry)
 
     def test_no_violations_invalid_field_is_empty(self):
         reg = make_registry({"description": [{"entity_id": "e1", "value": "hello"}]})
         validated_comps = {"description": reg._components["description"]}
         result = validate_registry.validated_registry(
-            validated_comps, self._empty_invalid_field(), reg
+            validated_comps, self._empty_invalid_field(), self._empty_derived_field(), reg
         )
         assert result._components["invalid_field"].execute().empty
 
@@ -307,7 +313,7 @@ class TestValidatedRegistry:
         reg = make_registry({"description": [{"entity_id": "e1", "value": "hello"}]})
         validated_comps = {"description": reg._components["description"]}
         result = validate_registry.validated_registry(
-            validated_comps, self._empty_invalid_field(), reg
+            validated_comps, self._empty_invalid_field(), self._empty_derived_field(), reg
         )
         df = result._components["description"].execute()
         assert df.iloc[0]["entity_id"] == "e1"
