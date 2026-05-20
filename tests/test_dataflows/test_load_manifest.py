@@ -123,13 +123,24 @@ def _make_component_type_table():
     return ibis.memtable(df)
 
 
+def _make_empty_authored_parent():
+    """Return an empty authored_parent table matching the expected schema."""
+    empty_df = pd.DataFrame(columns=["entity_id", "component_index", "modifier", "value"])
+    empty_df["entity_id"] = empty_df["entity_id"].astype(pd.StringDtype())
+    empty_df["component_index"] = empty_df["component_index"].astype("int32")
+    empty_df["modifier"] = empty_df["modifier"].astype(pd.StringDtype())
+    empty_df["value"] = empty_df["value"].astype(pd.StringDtype())
+    return ibis.memtable(empty_df)
+
+
 class TestRegistry:
 
     def test_returns_registry_instance(self):
         eid = _make_entity_id_table()
         ct = _make_component_type_table()
         comps = {"description": ibis.memtable(pd.DataFrame([{"entity_id": "e1", "value": "Hello"}]))}
-        result = load_manifest.registry(eid, ct, comps)
+        ap = _make_empty_authored_parent()
+        result = load_manifest.registry(eid, ct, comps, ap)
         assert isinstance(result, Registry)
 
     def test_registry_has_component_types(self):
@@ -139,7 +150,8 @@ class TestRegistry:
             "description": ibis.memtable(pd.DataFrame([{"entity_id": "e1", "value": "Hello"}])),
             "task": ibis.memtable(pd.DataFrame([{"entity_id": "e1"}])),
         }
-        result = load_manifest.registry(eid, ct, comps)
+        ap = _make_empty_authored_parent()
+        result = load_manifest.registry(eid, ct, comps, ap)
         assert "description" in result.component_types
         assert "task" in result.component_types
 
