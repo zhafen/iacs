@@ -435,7 +435,7 @@ def _normalize_df(df: pd.DataFrame, entity_id_df: pd.DataFrame) -> pd.DataFrame:
 
     df = df.copy()
     for col in df.columns:
-        if col.endswith("_id") or col.endswith("_eid"):
+        if col == "entity_id" or col.endswith("_eid"):
             df[col] = df[col].map(hash_to_path)
     return df
 

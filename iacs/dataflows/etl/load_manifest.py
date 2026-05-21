@@ -406,20 +406,54 @@ def entity_id_table(keyvalue_store: ir.Table, csv_spine: ir.Table = None) -> ir.
 
 
 def component_type_table(keyvalue_store: ir.Table, csv_spine: ir.Table = None) -> ir.Table:
-    """Build one row per component instance from the key-value store and optional CSV spine.
+    """Build one row per component instance, including derived and skip_on_export flags.
+
+    Reads explicit ``component_type`` component entries from the keyvalue_store to
+    populate ``derived`` and ``skip_on_export`` columns on the metadata table.
 
     Returns
     -------
     ir.Table
-        Columns: entity_id, component_index, component_type, modifier.
+        Columns: entity_id, component_index, component_type, modifier, derived, skip_on_export.
     """
-    yaml_ct = keyvalue_store.select(
-        "entity_id", "component_index", "component_type", "modifier"
-    ).distinct()
+    df = keyvalue_store.execute()
+
+    entity_keys = (
+        df[["entity_id", "entity_key"]]
+        .drop_duplicates(subset=["entity_id"])
+        .set_index("entity_id")["entity_key"]
+        .to_dict()
+    )
+
+    ct_data = df[df["component_type"] == "component_type"]
+    derived_set: set[str] = set()
+    skip_set: set[str] = set()
+    for _, row in ct_data.iterrows():
+        eid = str(row["entity_id"])
+        field = str(row["field"])
+        val = str(row.get("value", "")).strip().lower() in ("true", "1", "yes")
+        type_name = entity_keys.get(eid, "")
+        if not type_name:
+            continue
+        if field == "derived" and val:
+            derived_set.add(type_name)
+        elif field == "skip_on_export" and val:
+            skip_set.add(type_name)
+
+    meta_df = df[["entity_id", "component_index", "component_type", "modifier"]].drop_duplicates().copy()
+    meta_df["derived"] = meta_df["component_type"].isin(derived_set)
+    meta_df["skip_on_export"] = meta_df["component_type"].isin(skip_set)
+    meta_df["modifier"] = meta_df["modifier"].astype(pd.StringDtype())
+    yaml_ct = ibis.memtable(meta_df)
+
     if csv_spine is None:
         return yaml_ct
-    csv_ct = csv_spine.select("entity_id", "component_index", "component_type", "modifier")
-    return yaml_ct.union(csv_ct)
+
+    csv_df = csv_spine.to_pandas()[["entity_id", "component_index", "component_type", "modifier"]].copy()
+    csv_df["derived"] = False
+    csv_df["skip_on_export"] = False
+    csv_df["modifier"] = csv_df["modifier"].astype(pd.StringDtype())
+    return ibis.union(yaml_ct, ibis.memtable(csv_df))
 
 
 def component_tables(
@@ -530,6 +564,8 @@ def registry(
         "component_type": conn.table("component_type"),
     }
     for comp_type, table in component_tables.items():
+        if comp_type == "component_type":
+            continue  # flags already incorporated into component_type_table
         conn.create_table(comp_type, table.to_pandas(), overwrite=True)
         components[comp_type] = conn.table(comp_type)
     if authored_parent is not None:

@@ -74,12 +74,12 @@ def updated_parent(entity_id: ir.Table, parent: ir.Table) -> ir.Table:
     nested = spine_pairs[spine_pairs["entity_path"].apply(has_parent)].copy()
 
     if nested.empty:
-        hierarchy = pd.DataFrame([], columns=["entity_id", "parent_id"])
+        hierarchy = pd.DataFrame([], columns=["entity_id", "parent_eid"])
     else:
-        nested["parent_id"] = nested["entity_path"].apply(
+        nested["parent_eid"] = nested["entity_path"].apply(
             lambda ep: dhash(get_parent_path(ep))
         )
-        hierarchy = nested[["entity_id", "parent_id"]].drop_duplicates()
+        hierarchy = nested[["entity_id", "parent_eid"]].drop_duplicates()
 
     # ── Part 2: explicit parent components ────────────────────────────────
     # Build entity_key → entity_id lookup from the spine.
@@ -95,14 +95,14 @@ def updated_parent(entity_id: ir.Table, parent: ir.Table) -> ir.Table:
     df_parent = parent.to_pandas()
     if not df_parent.empty and "value" in df_parent.columns:
         df_parent = df_parent[["entity_id", "value"]].dropna(subset=["value"])
-        df_parent["parent_id"] = df_parent["value"].map(key_to_id)
+        df_parent["parent_eid"] = df_parent["value"].map(key_to_id)
         explicit = (
-            df_parent[["entity_id", "parent_id"]]
-            .dropna(subset=["parent_id"])
+            df_parent[["entity_id", "parent_eid"]]
+            .dropna(subset=["parent_eid"])
             .drop_duplicates()
         )
     else:
-        explicit = pd.DataFrame([], columns=["entity_id", "parent_id"])
+        explicit = pd.DataFrame([], columns=["entity_id", "parent_eid"])
 
     combined = (
         pd.concat([hierarchy, explicit], ignore_index=True)
@@ -276,7 +276,7 @@ def derived_field(validated_field: ir.Table, updated_parent: ir.Table) -> ir.Tab
     # ── parent_map: entity_id -> [parent_id, ...] ─────────────────────────
     parent_map: dict[str, list[str]] = {}
     for _, row in df_parent.iterrows():
-        eid, pid = row.get("entity_id"), row.get("parent_id")
+        eid, pid = row.get("entity_id"), row.get("parent_eid")
         if pd.notna(eid) and pd.notna(pid):
             parent_map.setdefault(str(eid), []).append(str(pid))
 

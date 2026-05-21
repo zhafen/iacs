@@ -3,13 +3,10 @@ This is intended to be completed post-validation, so fields need to be derived
 separately as part of validation.
 """
 
-import inspect
 import networkx as nx
 import pandas as pd
 from hamilton.function_modifiers import extract_fields
 import ibis.expr.types as ir
-from types import ModuleType
-from typing import get_type_hints
 
 from iacs.registry import Registry
 from iacs.utils import candidate_entity_ids
@@ -116,7 +113,7 @@ def entity_depth(parent: ir.Table) -> pd.DataFrame:
 
     # Directed graph: parent -> child (natural top-down direction)
     G = nx.DiGraph()
-    G.add_edges_from(zip(parents_df["parent_id"], parents_df["entity_id"]))
+    G.add_edges_from(zip(parents_df["parent_eid"], parents_df["entity_id"]))
 
     # Roots: nodes that appear only as parents, never as children
     roots = [n for n in G.nodes if G.in_degree(n) == 0]
@@ -159,7 +156,7 @@ def effort_sum(parent: ir.Table, components: dict) -> pd.DataFrame:
 
     # Directed graph: parent -> child
     G = nx.DiGraph()
-    G.add_edges_from(zip(parent_df["parent_id"], parent_df["entity_id"]))
+    G.add_edges_from(zip(parent_df["parent_eid"], parent_df["entity_id"]))
 
     entities_with_effort = set(effort_df["entity_id"])
     # Only compute for entities that have effort somewhere in their subtree
@@ -274,7 +271,7 @@ def priority_product(parent: ir.Table, entity_id: ir.Table, components: dict) ->
 
     # Directed graph: parent -> child
     G = nx.DiGraph()
-    G.add_edges_from(zip(parent_df["parent_id"], parent_df["entity_id"]))
+    G.add_edges_from(zip(parent_df["parent_eid"], parent_df["entity_id"]))
 
     entity_id_df = entity_id.to_pandas()
     all_entity_ids = entity_id_df["value"].tolist()
@@ -334,40 +331,3 @@ def derived_registry(
     return validated_registry
 
 
-def derived_component_types(module: ModuleType) -> list[str]:
-    """Return component type names that are purely derived in a Hamilton module.
-
-    Inspects the ``derived_registry`` function's parameters and returns the names
-    of those whose producer functions (in the same module) return ``pd.DataFrame``.
-    These are component types added to the registry as new tables by the derivation
-    step, not components sourced directly from YAML.
-
-    Parameters
-    ----------
-    module : ModuleType
-        A Hamilton DAG module, typically ``iacs.dataflows.etl.derive_components``.
-
-    Returns
-    -------
-    list[str]
-        Component type names (e.g. ``["entity_depth", "effort_total", "priority_product"]``).
-    """
-    derived_registry_fn = getattr(module, "derived_registry", None)
-    if derived_registry_fn is None:
-        return []
-
-    sig = inspect.signature(derived_registry_fn)
-    result = []
-    for param_name in sig.parameters:
-        if param_name in ("validated_registry", "components_with_resolved_paths"):
-            continue
-        producer_fn = getattr(module, param_name, None)
-        if producer_fn is None:
-            continue
-        try:
-            hints = get_type_hints(producer_fn)
-        except Exception:
-            continue
-        if hints.get("return") is pd.DataFrame:
-            result.append(param_name)
-    return result

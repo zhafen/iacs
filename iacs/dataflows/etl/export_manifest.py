@@ -50,38 +50,36 @@ def components(registry: Registry) -> dict:
 _METADATA_COLS = {"entity_id", "component_index", "modifier"}
 
 
-def _derived_comp_types(components: dict, entity_id: ir.Table) -> set[str]:
-    """Return component type names marked as derived via the schema table."""
-    if "schema" not in components:
+def _derived_comp_types(components: dict) -> set[str]:
+    """Return component type names marked derived=True in the component_type table."""
+    if "component_type" not in components:
         return set()
-    schema = components["schema"]
-    if "derived" not in schema.columns:
+    ct = components["component_type"]
+    if "derived" not in ct.columns:
         return set()
-    result = (
-        schema
-        .filter(schema["derived"] == True)
-        .join(entity_id, schema.entity_id == entity_id.value)
-        .select(entity_id.entity_key)
-        .execute()
+    return set(
+        ct.filter(ct["derived"] == True)
+        .select("component_type")
+        .distinct()
+        .execute()["component_type"]
+        .tolist()
     )
-    return set(result["entity_key"].tolist())
 
 
-def _skip_on_export_types(components: dict, entity_id: ir.Table) -> set[str]:
-    """Return component type names that should be skipped during export (skip_on_export=True in schema)."""
-    if "schema" not in components:
+def _skip_on_export_types(components: dict) -> set[str]:
+    """Return component type names marked skip_on_export=True in the component_type table."""
+    if "component_type" not in components:
         return set()
-    schema = components["schema"]
-    if "skip_on_export" not in schema.columns:
+    ct = components["component_type"]
+    if "skip_on_export" not in ct.columns:
         return set()
-    result = (
-        schema
-        .filter(schema["skip_on_export"] == True)
-        .join(entity_id, schema.entity_id == entity_id.value)
-        .select(entity_id.entity_key)
-        .execute()
+    return set(
+        ct.filter(ct["skip_on_export"] == True)
+        .select("component_type")
+        .distinct()
+        .execute()["component_type"]
+        .tolist()
     )
-    return set(result["entity_key"].tolist())
 
 
 def entity_first_data(components: dict, entity_id: ir.Table) -> dict:
@@ -119,8 +117,8 @@ def entity_first_data(components: dict, entity_id: ir.Table) -> dict:
         .to_dict()
     )
 
-    skip_types = _skip_on_export_types(components, entity_id)
-    derived_types = _derived_comp_types(components, entity_id)
+    skip_types = _skip_on_export_types(components)
+    derived_types = _derived_comp_types(components)
 
     # {filepath: {entity_key: [(component_index, entry)]}}
     result: dict[str, dict[str, list]] = {}
@@ -241,8 +239,8 @@ def hierarchical_entity_first_data(components: dict, entity_id: ir.Table) -> dic
 
     entity_components: dict[str, list] = {}
 
-    skip_types = _skip_on_export_types(components, entity_id)
-    derived_types = _derived_comp_types(components, entity_id)
+    skip_types = _skip_on_export_types(components)
+    derived_types = _derived_comp_types(components)
 
     for comp_type, table in components.items():
         if comp_type in skip_types or comp_type in derived_types:
