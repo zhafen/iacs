@@ -69,7 +69,7 @@ def components_with_resolved_paths(
     Returns
     -------
     dict[str, pd.DataFrame]
-        Mapping of component_type -> DataFrame with resolved ``{field}_id`` columns.
+        Mapping of component_type -> DataFrame with resolved ``{field}_eid`` columns.
     """
     entity_id_df = entity_id.to_pandas()
 

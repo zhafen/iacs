@@ -399,7 +399,7 @@ def _normalize_df(df: pd.DataFrame, entity_id_df: pd.DataFrame) -> pd.DataFrame:
     in entity_id but do appear in derived tables.  We reconstruct their paths from
     their children's paths so they normalize correctly across registries.
 
-    Also normalises ``*_id`` and ``*_eid`` columns (entity ID references).
+    Also normalises ``*_eid`` and the primary ``entity_id`` column (entity ID references).
     """
     from iacs.utils import dhash
 

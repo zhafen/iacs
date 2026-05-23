@@ -136,7 +136,7 @@ def csv_component_tables(raw_csv_data: dict[str, pd.DataFrame]) -> dict[str, ir.
             rows.append(record)
         part_df = pd.DataFrame(rows)
         part_df["modifier"] = part_df["modifier"].astype(pd.StringDtype())
-        part_df["component_index"] = part_df["component_index"].astype("int32")
+        part_df["component_index"] = part_df["component_index"].astype("int64")
         per_stem.setdefault(stem, []).append(part_df)
 
     result = {}
@@ -190,7 +190,7 @@ def csv_spine(raw_csv_data: dict[str, pd.DataFrame]) -> ir.Table:
     for col in ("entity_id", "entity_key", "component_type", "filepath", "path"):
         spine_df[col] = spine_df[col].astype(pd.StringDtype())
     spine_df["modifier"] = spine_df["modifier"].astype(pd.StringDtype())
-    spine_df["component_index"] = spine_df["component_index"].astype("int32")
+    spine_df["component_index"] = spine_df["component_index"].astype("int64")
     return ibis.memtable(spine_df)
 
 
@@ -339,7 +339,7 @@ def keyvalue_store(pathvalue_pairs: ir.Table) -> ir.Table:
         ),
         component_type=t["_ctf"].re_extract(r"^(\S+)", 1),
         modifier=t["_ctf"].re_extract(r"^\S+ (.+)$", 1).nullif(""),
-        component_index=t["_idx"].cast("int32"),
+        component_index=t["_idx"].cast("int64"),
     )
     t = t.mutate(
         entity_id=t.entity_path.hexdigest("sha256").substr(0, 12),
@@ -403,6 +403,35 @@ def entity_id_table(keyvalue_store: ir.Table, csv_spine: ir.Table = None) -> ir.
         df[col] = df[col].astype(pd.StringDtype())
     df["filepath"] = df["filepath"].astype(pd.StringDtype())
     return ibis.memtable(df)
+
+
+def component_type_export_as(keyvalue_store: ir.Table) -> dict[str, str]:
+    """Build the export-as rename map from component_type definitions in the keyvalue_store.
+
+    Reads ``- component_type: { export_as: X }`` entries to find component types
+    that should be renamed during manifest export.
+
+    Returns
+    -------
+    dict[str, str]
+        Mapping of internal component type name → export name (e.g. ``{"authored_parent": "parent"}``).
+    """
+    df = keyvalue_store.execute()
+    entity_keys = (
+        df[["entity_id", "entity_key"]]
+        .drop_duplicates(subset=["entity_id"])
+        .set_index("entity_id")["entity_key"]
+        .to_dict()
+    )
+    ct_data = df[(df["component_type"] == "component_type") & (df["field"] == "export_as")]
+    result: dict[str, str] = {}
+    for _, row in ct_data.iterrows():
+        eid = str(row["entity_id"])
+        val = str(row.get("value", "")).strip()
+        type_name = entity_keys.get(eid, "")
+        if type_name and val:
+            result[type_name] = val
+    return result
 
 
 def component_type_table(keyvalue_store: ir.Table, csv_spine: ir.Table = None) -> ir.Table:
@@ -528,7 +557,7 @@ def authored_parent(component_tables: dict) -> ir.Table:
         return component_tables["parent"]
     empty_df = pd.DataFrame(columns=["entity_id", "component_index", "modifier", "value"])
     empty_df["entity_id"] = empty_df["entity_id"].astype(pd.StringDtype())
-    empty_df["component_index"] = empty_df["component_index"].astype("int32")
+    empty_df["component_index"] = empty_df["component_index"].astype("int64")
     empty_df["modifier"] = empty_df["modifier"].astype(pd.StringDtype())
     empty_df["value"] = empty_df["value"].astype(pd.StringDtype())
     return ibis.memtable(empty_df)
@@ -539,6 +568,7 @@ def registry(
     component_type_table: ir.Table,
     component_tables: dict[str, ir.Table],
     authored_parent: ir.Table = None,
+    component_type_export_as: dict = None,
 ) -> Registry:
     """Load the constituents of a registry into the registry object.
 
@@ -571,4 +601,13 @@ def registry(
     if authored_parent is not None:
         conn.create_table("authored_parent", authored_parent.to_pandas(), overwrite=True)
         components["authored_parent"] = conn.table("authored_parent")
+    if component_type_export_as:
+        renames_df = pd.DataFrame(
+            [{"from_type": k, "to_type": v} for k, v in component_type_export_as.items()],
+            columns=["from_type", "to_type"],
+        )
+        renames_df["from_type"] = renames_df["from_type"].astype(pd.StringDtype())
+        renames_df["to_type"] = renames_df["to_type"].astype(pd.StringDtype())
+        conn.create_table("_export_renames", renames_df, overwrite=True)
+        components["_export_renames"] = conn.table("_export_renames")
     return Registry(conn, components)

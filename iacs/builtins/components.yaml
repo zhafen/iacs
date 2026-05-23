@@ -83,6 +83,13 @@ base_data_type:
                         sourced directly from YAML.
                     type: bool
                     default: false
+                export_as:
+                    description: >
+                        When set, the component type is exported under this name
+                        instead of its own name. Used for internal aliases whose
+                        canonical YAML name differs from the registry table name.
+                    type: str
+                    default: null
         categorical:
             - alias: categorical
             - description: Data type for a limited set of categories.
@@ -501,3 +508,11 @@ iacs_component:
             iacs.dataflows.etl.derive_components.
         - component_type:
             derived: true
+
+    authored_parent:
+        - description: >
+            Load-time copy of user-authored parent entries, preserved
+            before hierarchy-implied parents are merged in. Exported
+            back as "parent".
+        - component_type:
+            export_as: parent

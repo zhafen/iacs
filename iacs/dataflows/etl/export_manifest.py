@@ -28,7 +28,13 @@ import pandas as pd
 
 from ...registry import Registry
 
-_EXPORT_RENAMES = {"authored_parent": "parent"}
+def _export_renames(components: dict) -> dict[str, str]:
+    """Build the component-type rename map from the _export_renames table in the registry."""
+    if "_export_renames" not in components:
+        return {}
+    df = components["_export_renames"].execute()
+    return dict(zip(df["from_type"], df["to_type"]))
+
 
 @extract_fields({"entity_id": ir.Table})
 def components(registry: Registry) -> dict:
@@ -119,6 +125,7 @@ def entity_first_data(components: dict, entity_id: ir.Table) -> dict:
 
     skip_types = _skip_on_export_types(components)
     derived_types = _derived_comp_types(components)
+    renames = _export_renames(components)
 
     # {filepath: {entity_key: [(component_index, entry)]}}
     result: dict[str, dict[str, list]] = {}
@@ -131,7 +138,7 @@ def entity_first_data(components: dict, entity_id: ir.Table) -> dict:
         if "entity_id" not in df.columns or "component_index" not in df.columns:
             continue
 
-        export_type = _EXPORT_RENAMES.get(comp_type, comp_type)
+        export_type = renames.get(comp_type, comp_type)
 
         for _, row in df.iterrows():
             eid = row["entity_id"]
@@ -241,6 +248,7 @@ def hierarchical_entity_first_data(components: dict, entity_id: ir.Table) -> dic
 
     skip_types = _skip_on_export_types(components)
     derived_types = _derived_comp_types(components)
+    renames = _export_renames(components)
 
     for comp_type, table in components.items():
         if comp_type in skip_types or comp_type in derived_types:
@@ -250,7 +258,7 @@ def hierarchical_entity_first_data(components: dict, entity_id: ir.Table) -> dic
         if "entity_id" not in df.columns or "component_index" not in df.columns:
             continue
 
-        export_type = _EXPORT_RENAMES.get(comp_type, comp_type)
+        export_type = renames.get(comp_type, comp_type)
 
         for _, row in df.iterrows():
             eid = row["entity_id"]
