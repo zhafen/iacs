@@ -33,10 +33,13 @@ def updated_parent(entity_id: ir.Table, parent: ir.Table) -> ir.Table:
 
     1. **Hierarchy-implied**: every nested entity (whose entity path contains
        a dot after the file-id separator) is a child of the entity at the
-       path one level up.
+       path one level up. These rows get ``is_primary=True``,
+       ``component_index=-1``, ``modifier=pd.NA``, and ``value=<parent entity_key>``.
     2. **Explicit**: rows in the ``parent`` component table declare a parent
-       via a string reference (``value``), which is resolved to an
-       ``entity_id`` by matching against ``entity_key`` in the entity_id_table.
+       via a string reference (``value``), which is resolved to a
+       ``parent_eid`` by matching against ``entity_key`` in the entity_id_table.
+       These rows get ``is_primary=False`` and preserve ``component_index``,
+       ``modifier``, ``value`` from the original table.
 
     Parameters
     ----------
@@ -50,8 +53,8 @@ def updated_parent(entity_id: ir.Table, parent: ir.Table) -> ir.Table:
     Returns
     -------
     ir.Table
-        A table with columns ``entity_id`` and ``parent_id``, each row
-        representing a child→parent relationship as hashed entity IDs.
+        A table with columns ``entity_id``, ``component_index``, ``modifier``,
+        ``parent_eid``, ``is_primary``.
     """
     df_spine = entity_id.to_pandas()
     df_spine = df_spine.rename(columns={"value": "entity_id"})
@@ -74,12 +77,20 @@ def updated_parent(entity_id: ir.Table, parent: ir.Table) -> ir.Table:
     nested = spine_pairs[spine_pairs["entity_path"].apply(has_parent)].copy()
 
     if nested.empty:
-        hierarchy = pd.DataFrame([], columns=["entity_id", "parent_id"])
+        hierarchy = pd.DataFrame(
+            [],
+            columns=["entity_id", "component_index", "modifier", "parent_eid", "is_primary"],
+        )
     else:
-        nested["parent_id"] = nested["entity_path"].apply(
+        nested["parent_eid"] = nested["entity_path"].apply(
             lambda ep: dhash(get_parent_path(ep))
         )
-        hierarchy = nested[["entity_id", "parent_id"]].drop_duplicates()
+        nested["component_index"] = -1
+        nested["modifier"] = pd.NA
+        nested["is_primary"] = True
+        hierarchy = nested[
+            ["entity_id", "component_index", "modifier", "parent_eid", "is_primary"]
+        ].drop_duplicates()
 
     # ── Part 2: explicit parent components ────────────────────────────────
     # Build entity_key → entity_id lookup from the spine.
@@ -94,21 +105,33 @@ def updated_parent(entity_id: ir.Table, parent: ir.Table) -> ir.Table:
 
     df_parent = parent.to_pandas()
     if not df_parent.empty and "value" in df_parent.columns:
-        df_parent = df_parent[["entity_id", "value"]].dropna(subset=["value"])
-        df_parent["parent_id"] = df_parent["value"].map(key_to_id)
-        explicit = (
-            df_parent[["entity_id", "parent_id"]]
-            .dropna(subset=["parent_id"])
-            .drop_duplicates()
-        )
+        df_exp = df_parent.copy()
+        df_exp = df_exp.dropna(subset=["value"])
+        df_exp["parent_eid"] = df_exp["value"].map(key_to_id)
+        df_exp["is_primary"] = False
+        # Keep only rows where parent_eid could be resolved
+        df_exp = df_exp.dropna(subset=["parent_eid"])
+        explicit_cols = ["entity_id", "component_index", "modifier", "parent_eid", "is_primary"]
+        # Ensure component_index column exists
+        for col in explicit_cols:
+            if col not in df_exp.columns:
+                df_exp[col] = pd.NA
+        explicit = df_exp[explicit_cols].drop_duplicates()
     else:
-        explicit = pd.DataFrame([], columns=["entity_id", "parent_id"])
+        explicit = pd.DataFrame(
+            [],
+            columns=["entity_id", "component_index", "modifier", "parent_eid", "is_primary"],
+        )
 
     combined = (
         pd.concat([hierarchy, explicit], ignore_index=True)
         .drop_duplicates()
         .reset_index(drop=True)
     )
+    combined["entity_id"] = combined["entity_id"].astype(pd.StringDtype())
+    combined["modifier"] = combined["modifier"].astype(pd.StringDtype())
+    combined["parent_eid"] = combined["parent_eid"].astype(pd.StringDtype())
+    combined["component_index"] = combined["component_index"].astype("int64")
     return ibis.memtable(combined)
 
 
@@ -276,7 +299,7 @@ def derived_field(validated_field: ir.Table, updated_parent: ir.Table) -> ir.Tab
     # ── parent_map: entity_id -> [parent_id, ...] ─────────────────────────
     parent_map: dict[str, list[str]] = {}
     for _, row in df_parent.iterrows():
-        eid, pid = row.get("entity_id"), row.get("parent_id")
+        eid, pid = row.get("entity_id"), row.get("parent_eid")
         if pd.notna(eid) and pd.notna(pid):
             parent_map.setdefault(str(eid), []).append(str(pid))
 
@@ -359,7 +382,6 @@ def updated_components(
     """
     components = dict(registry._components)
     components["parent"] = updated_parent
-    components["field"] = derived_field
     return components
 
 def _isnull(val) -> bool:
@@ -572,8 +594,13 @@ def validated_data(
 
     return validated_comps, invalid_table
 
-def validated_registry(validated_components: dict, invalid_field: ir.Table, registry: Registry) -> Registry:
-    """Store the validated components back in the registry, including invalid_field.
+def validated_registry(
+    validated_components: dict,
+    invalid_field: ir.Table,
+    derived_field: ir.Table,
+    registry: Registry,
+) -> Registry:
+    """Store the validated components back in the registry, including invalid_field and derived_field.
 
     Parameters
     ----------
@@ -582,13 +609,16 @@ def validated_registry(validated_components: dict, invalid_field: ir.Table, regi
     invalid_field : ir.Table
         Table of constraint violations (from ``validated_data``), stored as the
         ``"invalid_field"`` component.
+    derived_field : ir.Table
+        Inheritance-resolved field definitions (from ``derived_field``), stored
+        as the ``"derived_field"`` component.
     registry : Registry
         The original registry, whose connection is reused.
 
     Returns
     -------
     Registry
-        A new Registry with the validated components and ``invalid_field``.
+        A new Registry with the validated components, ``invalid_field``, and ``derived_field``.
     """
-    registry.update({**validated_components, "invalid_field": invalid_field})
+    registry.update({**validated_components, "invalid_field": invalid_field, "derived_field": derived_field})
     return registry
