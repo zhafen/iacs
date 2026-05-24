@@ -1,7 +1,7 @@
 from hamilton.function_modifiers import subdag, source
 
-from .etl import load_manifest, derive_components
-from .validation import validate_registry
+from .etl import load_manifest, old_derive_components
+from .validation import old_validate_registry
 from ..registry import Registry
 
 @subdag(
@@ -13,7 +13,7 @@ def loaded_registry(registry: Registry) -> Registry:
     return registry
 
 @subdag(
-    validate_registry,
+    old_validate_registry,
     inputs={"registry": source("loaded_registry")},
    config={}
 )
@@ -21,7 +21,7 @@ def validated_registry(validated_registry: Registry) -> Registry:
     return validated_registry
 
 @subdag(
-    derive_components,
+    old_derive_components,
     inputs={"validated_registry": source("validated_registry")},
    config={}
 )
