@@ -153,10 +153,10 @@ def priority_product(updated_parent: ir.Table, entity_id: ir.Table, components_w
         Columns: entity_id, priority_product.  One row per entity that has
         a requirement component or at least one ancestor with a requirement component.
     """
-    if "requirement" not in components:
+    if "requirement" not in components_with_resolved_paths:
         return pd.DataFrame(columns=["entity_id", "priority_product"])
 
-    req_df = components["requirement"].to_pandas()
+    req_df = components_with_resolved_paths["requirement"].to_pandas()
     parent_df = updated_parent.to_pandas()
 
     req_priority = req_df.set_index("entity_id")["value"]

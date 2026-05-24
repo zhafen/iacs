@@ -1,5 +1,4 @@
 import ast
-import re
 
 import pandas as pd
 import pandera.ibis as pa
@@ -9,6 +8,55 @@ import ibis.expr.types as ir
 
 from ...registry import Registry
 from ...utils import dhash
+
+
+_IACS_TO_PYTHON_TYPE: dict[str, type] = {
+    "str": str,
+    "bool": bool,
+    "int": int,
+    "float": float,
+    "rating": float,
+}
+
+
+def _isnull(val) -> bool:
+    if val is None:
+        return True
+    if isinstance(val, (list, dict)):
+        return False
+    try:
+        result = pd.isna(val)
+        return bool(result) if isinstance(result, (bool, type(result))) else False
+    except (TypeError, ValueError):
+        return False
+
+
+def _parse_range(val):
+    if isinstance(val, list):
+        return val
+    if _isnull(val):
+        return None
+    if isinstance(val, str):
+        s = val.strip()
+        if s.startswith("[") and s.endswith("]"):
+            try:
+                parsed = ast.literal_eval(s)
+                if isinstance(parsed, list):
+                    return parsed
+            except (ValueError, SyntaxError):
+                pass
+    return None
+
+
+def _coerce_default(val, py_type: type):
+    if py_type is bool:
+        if isinstance(val, str):
+            return val.strip().lower() in ("true", "1", "yes")
+        return bool(val)
+    try:
+        return py_type(val)
+    except (ValueError, TypeError):
+        return val
 
 
 @extract_fields(dict(entity_id=ir.Table, field=ir.Table))
@@ -194,7 +242,7 @@ def validated_data(
             )
         )
 
-    return validated_comps, invalid_field
+    return validated_comps, invalid_table
 
 
 def validated_registry(validated_components: dict, invalid_field: ir.Table, registry: Registry) -> Registry:
