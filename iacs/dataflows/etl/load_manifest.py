@@ -405,34 +405,6 @@ def entity_id_table(keyvalue_store: ir.Table, csv_spine: ir.Table = None) -> ir.
     return ibis.memtable(df)
 
 
-def component_type_export_as(keyvalue_store: ir.Table) -> dict[str, str]:
-    """Build the export-as rename map from component_type definitions in the keyvalue_store.
-
-    Reads ``- component_type: { export_as: X }`` entries to find component types
-    that should be renamed during manifest export.
-
-    Returns
-    -------
-    dict[str, str]
-        Mapping of internal component type name → export name (e.g. ``{"authored_parent": "parent"}``).
-    """
-    df = keyvalue_store.execute()
-    entity_keys = (
-        df[["entity_id", "entity_key"]]
-        .drop_duplicates(subset=["entity_id"])
-        .set_index("entity_id")["entity_key"]
-        .to_dict()
-    )
-    ct_data = df[(df["component_type"] == "component_type") & (df["field"] == "export_as")]
-    result: dict[str, str] = {}
-    for _, row in ct_data.iterrows():
-        eid = str(row["entity_id"])
-        val = str(row.get("value", "")).strip()
-        type_name = entity_keys.get(eid, "")
-        if type_name and val:
-            result[type_name] = val
-    return result
-
 
 def component_type_table(keyvalue_store: ir.Table, csv_spine: ir.Table = None) -> ir.Table:
     """Build one row per component instance, including derived and skip_on_export flags.
@@ -539,36 +511,10 @@ def component_tables(
     return result
 
 
-def authored_parent(component_tables: dict) -> ir.Table:
-    """Extract the authored (user-written) parent entries before updated_parent() modifies them.
-
-    Parameters
-    ----------
-    component_tables : dict
-        Per-component-type data tables as produced by ``component_tables``.
-
-    Returns
-    -------
-    ir.Table
-        The raw ``parent`` table from component_tables if it exists, otherwise
-        an empty ibis table with columns entity_id, component_index, modifier, value.
-    """
-    if "parent" in component_tables:
-        return component_tables["parent"]
-    empty_df = pd.DataFrame(columns=["entity_id", "component_index", "modifier", "value"])
-    empty_df["entity_id"] = empty_df["entity_id"].astype(pd.StringDtype())
-    empty_df["component_index"] = empty_df["component_index"].astype("int64")
-    empty_df["modifier"] = empty_df["modifier"].astype(pd.StringDtype())
-    empty_df["value"] = empty_df["value"].astype(pd.StringDtype())
-    return ibis.memtable(empty_df)
-
-
 def registry(
     entity_id_table: ir.Table,
     component_type_table: ir.Table,
     component_tables: dict[str, ir.Table],
-    authored_parent: ir.Table = None,
-    component_type_export_as: dict = None,
 ) -> Registry:
     """Load the constituents of a registry into the registry object.
 
@@ -598,16 +544,4 @@ def registry(
             continue  # flags already incorporated into component_type_table
         conn.create_table(comp_type, table.to_pandas(), overwrite=True)
         components[comp_type] = conn.table(comp_type)
-    if authored_parent is not None:
-        conn.create_table("authored_parent", authored_parent.to_pandas(), overwrite=True)
-        components["authored_parent"] = conn.table("authored_parent")
-    if component_type_export_as:
-        renames_df = pd.DataFrame(
-            [{"from_type": k, "to_type": v} for k, v in component_type_export_as.items()],
-            columns=["from_type", "to_type"],
-        )
-        renames_df["from_type"] = renames_df["from_type"].astype(pd.StringDtype())
-        renames_df["to_type"] = renames_df["to_type"].astype(pd.StringDtype())
-        conn.create_table("_export_renames", renames_df, overwrite=True)
-        components["_export_renames"] = conn.table("_export_renames")
     return Registry(conn, components)
