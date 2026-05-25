@@ -1,76 +1,77 @@
 # Dataflow DAGs
 
-Hamilton DAG visualizations for all iacs dataflows.
-Regenerate images with: `uv run python docs/gen_dag_images.py`
+Hamilton DAG visualizations for iacs dataflows.
+Regenerate with: `uv run python docs/gen_dag_images.py`
 
 ---
 
-## ETL
+## `audit.requirement_coverage`
 
-### load_manifest
-
-Converts entity-centered YAML data into the component-centered Registry format.
-
-![load_manifest DAG](img/load_manifest.png)
+![audit.requirement_coverage DAG](img/audit_requirement_coverage.png)
 
 ---
 
-### derive_components
+## `audit.todo`
 
-Derives additional components from the base input (e.g. resolving entity references).
+![audit.todo DAG](img/audit_todo.png)
+
+---
+
+## `audit.traceability`
+
+![audit.traceability DAG](img/audit_traceability.png)
+
+---
+
+## `base_etl`
+
+![base_etl DAG](img/base_etl.png)
+
+---
+
+## `derive.calculate_effort_and_priority`
+
+![derive.calculate_effort_and_priority DAG](img/derive_calculate_effort_and_priority.png)
+
+---
+
+## `derive.inherit_components`
+
+![derive.inherit_components DAG](img/derive_inherit_components.png)
+
+---
+
+## `derive.resolve_paths`
+
+![derive.resolve_paths DAG](img/derive_resolve_paths.png)
+
+---
+
+## `derive_components`
 
 ![derive_components DAG](img/derive_components.png)
 
 ---
 
-### export_manifest
+## `etl.export_manifest`
 
-Exports the registry back to entity-centered YAML format.
-
-![export_manifest DAG](img/export_manifest.png)
+![etl.export_manifest DAG](img/etl_export_manifest.png)
 
 ---
 
-## Validation
+## `etl.load_manifest`
 
-### validate_registry
-
-Validates the registry against schemas and constraints.
-
-![validate_registry DAG](img/validate_registry.png)
+![etl.load_manifest DAG](img/etl_load_manifest.png)
 
 ---
 
-## Audit
+## `etl.load_python`
 
-### requirement_coverage
-
-Checks that all requirements have at least one solution.
-
-![audit_requirement_coverage DAG](img/audit_requirement_coverage.png)
+![etl.load_python DAG](img/etl_load_python.png)
 
 ---
 
-### traceability
+## `etl.load_yaml`
 
-Checks that all solutions can be traced back to a requirement.
+![etl.load_yaml DAG](img/etl_load_yaml.png)
 
-![audit_traceability DAG](img/audit_traceability.png)
-
----
-
-### todo
-
-Checks for unresolved TODO items in the solution.
-
-![audit_todo DAG](img/audit_todo.png)
-
----
-
-## Base
-
-### base_etl
-
-Base ETL utilities shared across dataflows.
-
-![base_etl DAG](img/base_etl.png)
