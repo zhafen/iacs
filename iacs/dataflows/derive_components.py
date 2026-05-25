@@ -1,6 +1,6 @@
 from hamilton.function_modifiers import subdag, source
 
-from .derive import resolve_paths, inherit_components, calculate_effort_and_priority
+from .derive import calculate_effort_and_priority
 
 from .etl import load_manifest
 from .validation import validate_registry
@@ -14,17 +14,8 @@ from ..registry import Registry
 def loaded_registry(registry: Registry) -> Registry:
     return registry
 
-# Put resolve_paths subdag here
-
-# Put validate_components subdag here, but *only* for the field component
-# So the input should be components={"field": components["field"]} and
-# field=components["field"].filter(entity=="field") (but with correct syntax)
-
-# Put inherit_components subdag here
-
-# Replace this with validate_components for all components
 @subdag(
-    validate_fields,
+    validate_registry,
     inputs={"registry": source("loaded_registry")},
    config={}
 )
