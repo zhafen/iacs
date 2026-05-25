@@ -12,19 +12,19 @@ from iacs.registry import Registry
 from iacs.utils import candidate_entity_ids
 
 
-@extract_fields(dict(field=ir.Table, entity_id=ir.Table, parent=ir.Table))
+@extract_fields(dict(derived_field=ir.Table, entity_id=ir.Table, parent=ir.Table))
 def components(validated_registry: Registry) -> dict:
     """Give access to the components in the validated registry."""
     return validated_registry._components
 
 
-def field_types_with_entity_ref(field: ir.Table, entity_id: ir.Table) -> dict[str, list[str]]:
+def field_types_with_entity_ref(derived_field: ir.Table, entity_id: ir.Table) -> dict[str, list[str]]:
     """Return a mapping of component_type -> [field_names] for entity_ref fields.
 
     Parameters
     ----------
-    field : ir.Table
-        The field component table from the registry.
+    derived_field : ir.Table
+        The derived_field component table from the registry.
     entity_id : ir.Table
         The entity_id component table from the registry.
 
@@ -33,10 +33,10 @@ def field_types_with_entity_ref(field: ir.Table, entity_id: ir.Table) -> dict[st
     dict[str, list[str]]
         E.g. ``{"solution": ["target"]}``
     """
-    field_df = field.to_pandas()
+    derived_field_df = derived_field.to_pandas()
     entity_id_df = entity_id.to_pandas()
 
-    entity_ref_fields = field_df[field_df["type"] == "entity_ref"]
+    entity_ref_fields = derived_field_df[derived_field_df["type"] == "entity_ref"]
     id_to_key = entity_id_df.set_index("value")["entity_key"]
 
     result: dict[str, list[str]] = {}
@@ -69,7 +69,7 @@ def components_with_resolved_paths(
     Returns
     -------
     dict[str, pd.DataFrame]
-        Mapping of component_type -> DataFrame with resolved ``{field}_id`` columns.
+        Mapping of component_type -> DataFrame with resolved ``{field}_eid`` columns.
     """
     entity_id_df = entity_id.to_pandas()
 
@@ -113,7 +113,7 @@ def entity_depth(parent: ir.Table) -> pd.DataFrame:
 
     # Directed graph: parent -> child (natural top-down direction)
     G = nx.DiGraph()
-    G.add_edges_from(zip(parents_df["parent_id"], parents_df["entity_id"]))
+    G.add_edges_from(zip(parents_df["parent_eid"], parents_df["entity_id"]))
 
     # Roots: nodes that appear only as parents, never as children
     roots = [n for n in G.nodes if G.in_degree(n) == 0]
@@ -156,7 +156,7 @@ def effort_sum(parent: ir.Table, components: dict) -> pd.DataFrame:
 
     # Directed graph: parent -> child
     G = nx.DiGraph()
-    G.add_edges_from(zip(parent_df["parent_id"], parent_df["entity_id"]))
+    G.add_edges_from(zip(parent_df["parent_eid"], parent_df["entity_id"]))
 
     entities_with_effort = set(effort_df["entity_id"])
     # Only compute for entities that have effort somewhere in their subtree
@@ -271,7 +271,7 @@ def priority_product(parent: ir.Table, entity_id: ir.Table, components: dict) ->
 
     # Directed graph: parent -> child
     G = nx.DiGraph()
-    G.add_edges_from(zip(parent_df["parent_id"], parent_df["entity_id"]))
+    G.add_edges_from(zip(parent_df["parent_eid"], parent_df["entity_id"]))
 
     entity_id_df = entity_id.to_pandas()
     all_entity_ids = entity_id_df["value"].tolist()
@@ -329,3 +329,5 @@ def derived_registry(
     }
     validated_registry.update({k: v for k, v in derived.items() if not v.empty})
     return validated_registry
+
+

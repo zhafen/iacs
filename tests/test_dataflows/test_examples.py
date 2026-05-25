@@ -385,6 +385,139 @@ def _get_example_dirs_with_yaml() -> list[Path]:
     ]
 
 
+# ─── Round-trip helpers ─────────────────────────────────────────────────────
+
+def _normalize_df(df: pd.DataFrame, entity_id_df: pd.DataFrame) -> pd.DataFrame:
+    """Replace entity_id hashes with within-file entity paths for cross-registry comparison.
+
+    Entity IDs are hashes of ``filepath:entity_path``.  Two registries loaded
+    from different directories produce different hashes for the same logical
+    entities, so we normalize by using only the within-file entity path.
+
+    Also handles *phantom parents*: entities that appear in the parent graph (e.g.
+    container entities with no own components like ``cat_food_supply``) have no row
+    in entity_id but do appear in derived tables.  We reconstruct their paths from
+    their children's paths so they normalize correctly across registries.
+
+    Also normalises ``*_eid`` and the primary ``entity_id`` column (entity ID references).
+    """
+    from iacs.utils import dhash
+
+    filepath_of = entity_id_df.set_index("value")["filepath"].to_dict()
+    path_of = entity_id_df.set_index("value")["path"].to_dict()
+
+    # Build extended map: include phantom ancestor paths derived from known entity paths
+    extra_filepath: dict[str, str] = {}
+    extra_path: dict[str, str] = {}
+    for eid, full_path in path_of.items():
+        fp = filepath_of.get(eid, "")
+        sep = full_path.find(":")
+        if sep == -1:
+            continue
+        name_part = full_path[sep + 1:]
+        while "." in name_part:
+            name_part = name_part.rsplit(".", 1)[0]
+            ancestor_full = f"{full_path[:sep]}:{name_part}"
+            ancestor_hash = dhash(ancestor_full)
+            if ancestor_hash not in path_of and ancestor_hash not in extra_path:
+                extra_filepath[ancestor_hash] = fp
+                extra_path[ancestor_hash] = ancestor_full
+
+    all_filepath = {**filepath_of, **extra_filepath}
+    all_path = {**path_of, **extra_path}
+
+    def hash_to_path(eid):
+        if pd.isna(eid):
+            return eid
+        fp = all_filepath.get(str(eid), "")
+        p = all_path.get(str(eid), str(eid))
+        return p[len(fp) + 1:] if fp and p.startswith(fp + ":") else p
+
+    df = df.copy()
+    for col in df.columns:
+        if col == "entity_id" or col.endswith("_eid"):
+            df[col] = df[col].map(hash_to_path)
+    return df
+
+
+def _assert_tables_equal(
+    df1: pd.DataFrame,
+    df2: pd.DataFrame,
+    eid_df1: pd.DataFrame,
+    eid_df2: pd.DataFrame,
+    comp_type: str,
+) -> None:
+    """Normalize and compare two component tables for round-trip equality.
+
+    ``component_index`` is excluded from comparison because list-expansion in
+    the loader assigns overlapping indices when a multi-item list component is
+    followed by another component (e.g. ``- includes: [A, B, C]`` expands to
+    indices 1-3 but the next YAML entry is at index 2, causing a collision).
+    After round-trip the exporter writes one entry per row, so re-import assigns
+    clean sequential indices.  The semantic content (field values) is what we
+    test for equivalence.
+    """
+    norm1 = _normalize_df(df1, eid_df1)
+    norm2 = _normalize_df(df2, eid_df2)
+
+    drop = {"component_index"}
+    common_cols = sorted(set(norm1.columns) & set(norm2.columns) - drop)
+    norm1 = norm1[common_cols].sort_values(common_cols, na_position="last").reset_index(drop=True)
+    norm2 = norm2[common_cols].sort_values(common_cols, na_position="last").reset_index(drop=True)
+
+    pd.testing.assert_frame_equal(
+        norm1, norm2, check_dtype=False, obj=f"component_type={comp_type!r}"
+    )
+
+
+@pytest.mark.parametrize("example_dir", _get_example_dirs_with_yaml(), ids=lambda d: d.name)
+def test_round_trip_consistency(example_dir: Path, tmp_path: Path) -> None:
+    """Exporting a registry and re-loading it produces identical component tables.
+
+    Steps:
+    1. Load the example manifest into reg1 via the full ETL + derive pipeline.
+    2. Export reg1 to a temp directory using the export_manifest dataflow.
+    3. Re-load from the exported files into reg2 via the same full pipeline.
+    4. For each component type in reg1, assert the table equals reg2's table
+       after normalising entity_id hashes to within-file entity paths.
+    """
+    from hamilton import driver, base
+    import iacs.dataflows.etl.export_manifest as export_mod
+
+    a1 = Architect.from_manifest(str(example_dir))
+
+    output_dir = tmp_path / "exported"
+    dr = driver.Driver(
+        {"registry": a1.registry, "output_dir": str(output_dir)},
+        export_mod,
+        adapter=base.DictResult(),
+    )
+    dr.execute(["exported_manifest_filepaths"])
+
+    a2 = Architect.from_manifest(str(output_dir))
+
+    reg1 = a1.registry
+    reg2 = a2.registry
+
+    eid_df1 = reg1.get("entity_id").execute()
+    eid_df2 = reg2.get("entity_id").execute()
+
+    skip = {"entity_id", "component_type", "invalid_field"}
+    types1 = set(reg1.component_types) - skip
+    types2 = set(reg2.component_types) - skip
+
+    assert types1 == types2, (
+        f"Component type mismatch after round-trip:\n"
+        f"  only in original:  {sorted(types1 - types2)}\n"
+        f"  only in re-loaded: {sorted(types2 - types1)}"
+    )
+
+    for comp_type in sorted(types1):
+        df1 = reg1.get(comp_type).execute()
+        df2 = reg2.get(comp_type).execute()
+        _assert_tables_equal(df1, df2, eid_df1, eid_df2, comp_type)
+
+
 @pytest.mark.parametrize("example_dir", _get_example_dirs_with_yaml(), ids=lambda d: d.name)
 def test_incremental_load_matches_directory(example_dir: Path) -> None:
     """Loading each YAML file one at a time must produce the same registry as loading the directory."""
