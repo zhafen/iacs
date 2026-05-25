@@ -7,10 +7,10 @@ from ...registry import Registry
 from ...utils import candidate_entity_ids, dhash
 
 
-@extract_fields(dict(field=ir.Table, entity_id=ir.Table))
-def components(validated_registry: Registry) -> dict:
-    """Give access to the components in the validated registry."""
-    return validated_registry._components
+@extract_fields(dict(field=ir.Table, entity_id=ir.Table, parent=ir.Table))
+def components(registry: Registry) -> dict:
+    """Give access to the components in the registry."""
+    return registry._components
 
 
 def field_types_with_entity_ref(entity_id: ir.Table, field: ir.Table) -> dict[str, list[str]]:
@@ -42,7 +42,6 @@ def field_types_with_entity_ref(entity_id: ir.Table, field: ir.Table) -> dict[st
     return result
 
 
-@extract_fields(dict(parent=ir.Table))
 def components_with_resolved_paths(
     entity_id: ir.Table,
     components: dict,
@@ -190,3 +189,13 @@ def updated_parent(
     combined["parent_eid"] = combined["parent_eid"].astype(pd.StringDtype())
     combined["component_index"] = combined["component_index"].astype("int64")
     return ibis.memtable(combined)
+
+
+def resolved_registry(
+    registry: Registry,
+    updated_parent: ir.Table,
+    components_with_resolved_paths: dict,
+) -> Registry:
+    """Store resolved paths and updated parent back into the registry."""
+    registry.update({"parent": updated_parent, **components_with_resolved_paths})
+    return registry

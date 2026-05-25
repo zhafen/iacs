@@ -1,33 +1,42 @@
 import pandas as pd
 import ibis
 import ibis.expr.types as ir
+from hamilton.function_modifiers import extract_fields
+
+from ...registry import Registry
 
 
-def derived_field(validated_field: ir.Table, updated_parent: ir.Table) -> ir.Table:
+@extract_fields({"field": ir.Table, "parent": ir.Table})
+def components(registry: Registry) -> dict:
+    """Give access to the components in the registry."""
+    return registry._components
+
+
+def derived_field(field: ir.Table, parent: ir.Table) -> ir.Table:
     """Component definitions inherit fields from their parents, but can override them.
     The derived_field table contains the results of applying this inheritance.
 
     For each entity the full set of fields is resolved by a BFS walk up the
     parent chain.  The child's own definition of a field always beats any
     ancestor's definition of a field with the same name (``value`` column).
-    The output has the same columns as ``validated_field`` but one row per
+    The output has the same columns as ``field`` but one row per
     ``(entity_id, field_name)`` pair, where ``entity_id`` is the entity that
     *has* the field (directly or through inheritance).
 
     Parameters
     ----------
-    validated_field : ir.Table
-        The type-coerced field component table produced by ``validated_field``.
-    updated_parent : ir.Table
-        Parent–child relationships with columns ``entity_id`` and ``parent_id``.
+    field : ir.Table
+        The type-coerced field component table.
+    parent : ir.Table
+        Parent–child relationships with columns ``entity_id`` and ``parent_eid``.
 
     Returns
     -------
     ir.Table
         One row per (entity, field_name) with the winning field definition.
     """
-    df_field = validated_field.execute()
-    df_parent = updated_parent.execute()
+    df_field = field.execute()
+    df_parent = parent.execute()
 
     # ── entity_own_fields: entity_id -> {field_name: row_dict} ───────────
     entity_own_fields: dict[str, dict[str, dict]] = {}
@@ -94,3 +103,9 @@ def derived_field(validated_field: ir.Table, updated_parent: ir.Table) -> ir.Tab
         result_df = df_field.iloc[0:0].copy()
 
     return ibis.memtable(result_df)
+
+
+def derived_registry(registry: Registry, derived_field: ir.Table) -> Registry:
+    """Store the inherited field table in the registry as derived_field."""
+    registry.update({"derived_field": derived_field})
+    return registry
