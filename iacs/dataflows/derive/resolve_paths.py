@@ -1,3 +1,12 @@
+import pandas as pd
+import ibis
+import ibis.expr.types as ir
+from hamilton.function_modifiers import extract_fields
+
+from ...registry import Registry
+from ...utils import candidate_entity_ids, dhash
+
+
 @extract_fields(dict(field=ir.Table, entity_id=ir.Table))
 def components(validated_registry: Registry) -> dict:
     """Give access to the components in the validated registry."""
@@ -9,8 +18,8 @@ def field_types_with_entity_ref(entity_id: ir.Table, field: ir.Table) -> dict[st
 
     Parameters
     ----------
-    derived_field : ir.Table
-        The derived_field component table from the registry.
+    field : ir.Table
+        The field component table from the registry.
     entity_id : ir.Table
         The entity_id component table from the registry.
 
@@ -79,30 +88,18 @@ def components_with_resolved_paths(
         result[comp_type] = df
     return result
 
+
 def parent_from_hierarchy(entity_id: ir.Table) -> ir.Table:
-    """Convert the entity paths in entity_id_table into parent-child relationships and
-    add them to the parent component.
+    """Convert the entity paths in entity_id_table into parent-child relationships.
 
-    Produces two kinds of parent-child rows:
-
-    1. **Hierarchy-implied**: every nested entity (whose entity path contains
-       a dot after the file-id separator) is a child of the entity at the
-       path one level up. These rows get ``is_primary=True``,
-       ``component_index=-1``, ``modifier=pd.NA``, and ``value=<parent entity_key>``.
-    2. **Explicit**: rows in the ``parent`` component table declare a parent
-       via a string reference (``value``), which is resolved to a
-       ``parent_eid`` by matching against ``entity_key`` in the entity_id_table.
-       These rows get ``is_primary=False`` and preserve ``component_index``,
-       ``modifier``, ``value`` from the original table.
+    Produces hierarchy-implied parent-child rows: every nested entity (whose
+    entity path contains a dot after the file-id separator) is a child of the
+    entity at the path one level up.
 
     Parameters
     ----------
     entity_id : ir.Table
-        One row per entity with columns ``hash``, ``path``, ``entity_key``, ``filepath``.
-    parent : ir.Table
-        The ``parent`` component table from the registry, containing at
-        minimum ``entity_id`` and ``value`` (the string reference to the
-        parent entity).
+        One row per entity with columns ``value``, ``path``, ``entity_key``, ``filepath``.
 
     Returns
     -------
@@ -114,7 +111,6 @@ def parent_from_hierarchy(entity_id: ir.Table) -> ir.Table:
     df_spine = df_spine.rename(columns={"value": "entity_id"})
     df_spine["entity_path"] = df_spine["path"]
 
-    # ── Part 1: hierarchy-implied parents from entity path nesting ────────
     def has_parent(entity_path):
         sep = entity_path.find(":")
         name_part = entity_path[sep + 1:] if sep != -1 else entity_path
@@ -146,32 +142,34 @@ def parent_from_hierarchy(entity_id: ir.Table) -> ir.Table:
             ["entity_id", "component_index", "modifier", "parent_eid", "is_primary"]
         ].drop_duplicates()
 
-    # ── Part 2: explicit parent components ────────────────────────────────
-    # Build entity_key → entity_id lookup from the spine.
+    return ibis.memtable(hierarchy)
+
+
+def updated_parent(
+    entity_id: ir.Table, parent: ir.Table, parent_from_hierarchy: ir.Table
+) -> ir.Table:
+    """Combine the parents from the hierarchy with the ones from the resolved components."""
+    df_spine = entity_id.to_pandas()
+    df_spine = df_spine.rename(columns={"value": "entity_id"})
     key_to_id = (
         df_spine[["entity_id", "entity_key"]]
         .dropna()
         .drop_duplicates(subset=["entity_id", "entity_key"])
-        .drop_duplicates(subset=["entity_key"])  # keep first for ambiguous keys
+        .drop_duplicates(subset=["entity_key"])
         .set_index("entity_key")["entity_id"]
         .to_dict()
     )
 
-def updated_parent(parent: ir.Table, parent_from_hierarchy: ir.Table) -> ir.Table:
-    """Combine the parents from the hierarchy with the ones from the resolved
-    components.
-    """
-
     df_parent = parent.to_pandas()
+    df_hierarchy = parent_from_hierarchy.to_pandas()
+
     if not df_parent.empty and "value" in df_parent.columns:
         df_exp = df_parent.copy()
         df_exp = df_exp.dropna(subset=["value"])
         df_exp["parent_eid"] = df_exp["value"].map(key_to_id)
         df_exp["is_primary"] = False
-        # Keep only rows where parent_eid could be resolved
         df_exp = df_exp.dropna(subset=["parent_eid"])
         explicit_cols = ["entity_id", "component_index", "modifier", "parent_eid", "is_primary"]
-        # Ensure component_index column exists
         for col in explicit_cols:
             if col not in df_exp.columns:
                 df_exp[col] = pd.NA
@@ -183,7 +181,7 @@ def updated_parent(parent: ir.Table, parent_from_hierarchy: ir.Table) -> ir.Tabl
         )
 
     combined = (
-        pd.concat([parent_from_hierarchy, explicit], ignore_index=True)
+        pd.concat([df_hierarchy, explicit], ignore_index=True)
         .drop_duplicates()
         .reset_index(drop=True)
     )
@@ -192,4 +190,3 @@ def updated_parent(parent: ir.Table, parent_from_hierarchy: ir.Table) -> ir.Tabl
     combined["parent_eid"] = combined["parent_eid"].astype(pd.StringDtype())
     combined["component_index"] = combined["component_index"].astype("int64")
     return ibis.memtable(combined)
-

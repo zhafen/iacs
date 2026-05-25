@@ -1,3 +1,7 @@
+import pandas as pd
+import ibis
+import ibis.expr.types as ir
+
 
 def derived_field(validated_field: ir.Table, updated_parent: ir.Table) -> ir.Table:
     """Component definitions inherit fields from their parents, but can override them.

@@ -1,10 +1,10 @@
-"""Tests for the validate_fields Hamilton DAG functions."""
+"""Tests for the validate_components Hamilton DAG functions."""
 
 import ibis
 import pandas as pd
 import pytest
 
-import iacs.dataflows.validation.validate_fields as validate_fields
+import iacs.dataflows.validation.validate_components as validate_components
 
 
 _EMPTY_FIELD_COLS = ["entity_id", "component_index", "value", "type", "nullable", "default", "range"]
@@ -30,7 +30,7 @@ def _make_component_table(rows: list[dict]) -> ibis.Table:
 def _call(components, field_rows, entity_id_rows):
     field = _make_field_table(field_rows)
     entity_id = _make_entity_id_table(entity_id_rows)
-    return validate_fields.validated_components(components, field, entity_id)
+    return validate_components.validated_components(components, field, entity_id)
 
 
 class TestValidatedComponents:

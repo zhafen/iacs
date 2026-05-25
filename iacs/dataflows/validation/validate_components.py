@@ -9,6 +9,7 @@ import ibis.expr.datatypes as dt
 import ibis.expr.types as ir
 
 
+
 _IACS_TO_IBIS_TYPE: dict[str, dt.DataType] = {
     "str": dt.String(),
     "bool": dt.Boolean(),
