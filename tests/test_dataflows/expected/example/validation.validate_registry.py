@@ -12,22 +12,25 @@ updated_parent = pd.DataFrame(
     [
         {
             "entity_id": get_id("make_cats_happy.feed_and_water_cats.feed_cats"),
-            "parent_id": get_id("make_cats_happy.feed_and_water_cats"),
+            "parent_eid": get_id("make_cats_happy.feed_and_water_cats"),
+            "is_primary": True,
         },
         {
             "entity_id": get_id("make_cats_happy.feed_and_water_cats"),
-            "parent_id": get_id("make_cats_happy"),
+            "parent_eid": get_id("make_cats_happy"),
+            "is_primary": True,
         },
         {
             "entity_id": get_id("cat_happiness_device.feeding_system.feed_cats"),
-            "parent_id": get_id("cat_happiness_device.feeding_system"),
+            "parent_eid": get_id("cat_happiness_device.feeding_system"),
+            "is_primary": True,
         },
         {
             "entity_id": get_id("cat_happiness_device.feeding_system"),
-            "parent_id": get_id("cat_happiness_device"),
+            "parent_eid": get_id("cat_happiness_device"),
+            "is_primary": True,
         },
     ],
-    columns=["entity_id", "parent_id"],
 )
 
 validated_field = pd.DataFrame(

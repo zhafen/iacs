@@ -22,13 +22,13 @@ components_with_resolved_paths = {
         {
             "entity_id": get_id("my_infrastructure.infrastructure_for_first_requirement"),
             "target": "core_requirement.first_subrequirement",
-            "target_id": get_id("core_requirement.first_subrequirement"),
+            "target_eid": get_id("core_requirement.first_subrequirement"),
             "modifier": "of",
         },
         {
             "entity_id": get_id("my_infrastructure.infrastructure_for_second_requirement"),
             "target": "second_subrequirement",
-            "target_id": get_id("core_requirement.second_subrequirement"),
+            "target_eid": get_id("core_requirement.second_subrequirement"),
             "modifier": "of",
         }
     ])

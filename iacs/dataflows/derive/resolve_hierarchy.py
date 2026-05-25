@@ -5,7 +5,7 @@ import ibis
 import ibis.expr.types as ir
 
 from iacs.registry import Registry
-from iacs.utils import candidate_entity_ids
+from iacs.utils import candidate_entity_ids, dhash
 
 @extract_fields(dict(entity_id=ir.Table, parent=ir.Table))
 def components(registry: Registry) -> dict:
@@ -70,7 +70,10 @@ def parent_from_hierarchy(entity_id: ir.Table) -> ir.Table:
 
     return hierarchy
 
-def updated_parent(parent: ir.Table, parent_from_hiearchy: ir.Table) -> ir.Table:
+def updated_parent(entity_id: ir.Table, parent: ir.Table, parent_from_hierarchy: ir.Table) -> ir.Table:
+
+    df_spine = entity_id.to_pandas()
+    df_spine = df_spine.rename(columns={"value": "entity_id"})
 
     # ── Part 2: explicit parent components ────────────────────────────────
     # Build entity_key → entity_id lookup from the spine.
@@ -95,6 +98,7 @@ def updated_parent(parent: ir.Table, parent_from_hiearchy: ir.Table) -> ir.Table
     else:
         explicit = pd.DataFrame([], columns=["entity_id", "parent_id"])
 
+    hierarchy = parent_from_hierarchy.to_pandas() if not isinstance(parent_from_hierarchy, pd.DataFrame) else parent_from_hierarchy
     combined = (
         pd.concat([hierarchy, explicit], ignore_index=True)
         .drop_duplicates()
@@ -104,7 +108,7 @@ def updated_parent(parent: ir.Table, parent_from_hiearchy: ir.Table) -> ir.Table
 
 def entity_depth(updated_parent: ir.Table) -> ir.Table:
     """Compute the depth of each entity in the parent hierarchy.
-updatedparent
+
     Depth is the length of the shortest path from any root node (an entity with
     no parent) to the entity.  Entities that appear only as roots have depth 0.
 
@@ -120,7 +124,7 @@ updatedparent
     """
     parents_df = updated_parent.to_pandas()
 
-    # Directed grupdatedparentarent -> child (natural top-down direction)
+    # Directed graph: parent -> child (natural top-down direction)
     G = nx.DiGraph()
     G.add_edges_from(zip(parents_df["parent_id"], parents_df["entity_id"]))
 

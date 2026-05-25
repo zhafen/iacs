@@ -38,7 +38,7 @@ def build_requirement_tree(architect: Architect, ancestor_key: str) -> dict:
     # Build full graph and find req descendants
     G_full = nx.DiGraph()
     for _, row in parents_pd.iterrows():
-        G_full.add_edge(row["parent_id"], row["entity_id"])
+        G_full.add_edge(row["parent_eid"], row["entity_id"])
 
     descendants = nx.descendants(G_full, ancestor_id) | {ancestor_id}
     req_nodes = (descendants & req_ids) | {ancestor_id}
@@ -46,8 +46,8 @@ def build_requirement_tree(architect: Architect, ancestor_key: str) -> dict:
     # Build children lookup restricted to req_nodes
     children_map = defaultdict(list)
     for _, row in parents_pd.iterrows():
-        if row["parent_id"] in req_nodes and row["entity_id"] in req_nodes:
-            children_map[row["parent_id"]].append(row["entity_id"])
+        if row["parent_eid"] in req_nodes and row["entity_id"] in req_nodes:
+            children_map[row["parent_eid"]].append(row["entity_id"])
 
     def build_tree(node_id):
         node = {
