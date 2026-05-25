@@ -14,21 +14,9 @@ def field_derived_registry(derived_registry: Registry) -> Registry:
     return derived_registry
 
 
-def components_with_resolved_paths(resolved_registry: Registry) -> dict:
-    """Re-expose resolved component tables for calculate_effort_and_priority."""
-    return {
-        k: v
-        for k, v in resolved_registry._components.items()
-        if hasattr(v, "columns") and any(c.endswith("_eid") for c in v.columns)
-    }
-
-
 @subdag(
     calculate_effort_and_priority,
-    inputs={
-        "validated_registry": source("field_derived_registry"),
-        "components_with_resolved_paths": source("components_with_resolved_paths"),
-    },
+    inputs={"registry": source("field_derived_registry")},
     config={},
 )
 def derived_registry(derived_registry: Registry) -> Registry:

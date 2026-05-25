@@ -13,9 +13,9 @@ from iacs.utils import candidate_entity_ids
 
 
 @extract_fields(dict(entity_id=ir.Table, parent=ir.Table))
-def components(validated_registry: Registry) -> dict:
-    """Give access to the components in the validated registry."""
-    return validated_registry._components
+def components(registry: Registry) -> dict:
+    """Give access to the components in the registry."""
+    return registry._components
 
 
 def entity_depth(parent: ir.Table) -> pd.DataFrame:
@@ -220,39 +220,18 @@ def priority_product(parent: ir.Table, entity_id: ir.Table, components: dict) ->
 
 
 def derived_registry(
-    validated_registry: Registry,
-    components_with_resolved_paths: dict,
+    registry: Registry,
     entity_depth: pd.DataFrame,
     effort_total: pd.DataFrame,
     priority_product: pd.DataFrame,
 ) -> Registry:
-    """Store all derived components back to the registry.
-
-    Parameters
-    ----------
-    validated_registry : Registry
-        The validated registry to update.
-    components_with_resolved_paths : dict
-        Updated component tables with resolved entity_ref fields.
-    entity_depth : pd.DataFrame
-        Entity depth in the parent hierarchy.
-    effort_total : pd.DataFrame
-        Total effort per entity over the configured time period.
-    priority_product : pd.DataFrame
-        Product of requirement priorities for each entity.
-
-    Returns
-    -------
-    Registry
-        The updated registry with all derived components stored.
-    """
-    validated_registry.update(components_with_resolved_paths)
+    """Store all derived components back to the registry."""
     derived = {
         "entity_depth": entity_depth,
         "effort_total": effort_total,
         "priority_product": priority_product,
     }
-    validated_registry.update({k: v for k, v in derived.items() if not v.empty})
-    return validated_registry
+    registry.update({k: v for k, v in derived.items() if not v.empty})
+    return registry
 
 

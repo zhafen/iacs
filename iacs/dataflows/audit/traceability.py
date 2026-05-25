@@ -7,7 +7,7 @@ import ibis.expr.types as ir
 from iacs.registry import Registry
 
 
-@extract_fields({"requirement": ir.Table, "solution_of": ir.Table})
+@extract_fields({"requirement": ir.Table, "solution_of": ir.Table, "entity_id": ir.Table})
 def components(registry: Registry) -> dict:
     """Give access to the components dict from the registry."""
     comps = dict(registry._components)
@@ -20,16 +20,9 @@ def components(registry: Registry) -> dict:
     return comps
 
 
-def all_entities(registry: Registry) -> ibis.expr.types.Table | None:
-    """Collect all unique entity IDs across all component types."""
-    tables = [
-        registry._components[ct].select("entity_id").distinct()
-        for ct in registry._components
-        if isinstance(registry._components[ct], ibis.Table) and "entity_id" in registry._components[ct].columns
-    ]
-    if not tables:
-        return None
-    return ibis.union(*tables).distinct()
+def all_entities(entity_id: ir.Table) -> ibis.expr.types.Table:
+    """Collect all unique entity IDs from the entity_id component."""
+    return entity_id.select(entity_id["value"].name("entity_id")).distinct()
 
 
 def req_entities(requirement: ir.Table) -> ibis.expr.types.Table:
@@ -43,13 +36,11 @@ def solution_entities(solution_of: ir.Table) -> ibis.expr.types.Table:
 
 
 def orphan_entities(
-    all_entities: ibis.expr.types.Table | None,
+    all_entities: ibis.expr.types.Table,
     req_entities: ibis.expr.types.Table,
     solution_entities: ibis.expr.types.Table,
 ) -> ibis.expr.types.Table:
     """Find entities that don't trace to any requirement."""
-    if all_entities is None:
-        return ibis.memtable({"entity_id": []}, schema={"entity_id": "string"})
     return all_entities.filter(
         ~all_entities.entity_id.isin(req_entities.entity_id)
         & ~all_entities.entity_id.isin(solution_entities.entity_id)
