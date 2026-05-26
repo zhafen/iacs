@@ -13,7 +13,7 @@ def components(registry: Registry) -> dict:
     return registry._components
 
 
-def field_types_with_entity_ref(entity_id: ir.Table, field: ir.Table) -> dict[str, list[str]]:
+def fields_of_type_entity_ref(entity_id: ir.Table, field: ir.Table) -> dict[str, list[str]]:
     """Return a mapping of component_type -> [field_names] for entity_ref fields.
 
     Parameters
