@@ -7,7 +7,7 @@ from ...registry import Registry
 from ...utils import candidate_entity_ids, dhash
 
 
-@extract_fields(dict(field=ir.Table, entity_id=ir.Table, parent=ir.Table))
+@extract_fields(dict(field=ir.Table, entity_id=ir.Table))
 def components(registry: Registry) -> dict:
     """Give access to the components in the registry."""
     return registry._components
@@ -42,6 +42,7 @@ def field_types_with_entity_ref(entity_id: ir.Table, field: ir.Table) -> dict[st
     return result
 
 
+@extract_fields(dict(parent=ir.Table))
 def components_with_resolved_paths(
     entity_id: ir.Table,
     components: dict,
