@@ -1,50 +1,65 @@
-from hamilton.function_modifiers import subdag, source, extract_fields
+from hamilton.function_modifiers import subdag, source
 import ibis.expr.types as ir
 
 import iacs.dataflows.derive_components as _derive_components
+import iacs.dataflows.validation.validate_components as _validate_components
 from .etl import load_manifest
 from ..registry import Registry
 
 
-_INFRA_TYPES = frozenset({"entity_id", "component_type", "invalid_field", "schema", "parent", "field"})
-
-
-@subdag(
-    load_manifest,
-    inputs={"input_dir": source("input_dir")},
-    config={}
-)
+@subdag(load_manifest, inputs={"input_dir": source("input_dir")}, config={})
 def loaded_registry(registry: Registry) -> Registry:
     return registry
 
 
-@extract_fields({"field": ir.Table, "entity_id": ir.Table})
-def loaded_components(loaded_registry: Registry) -> dict:
-    return loaded_registry._components
+def builtin_field(loaded_registry: Registry) -> ir.Table:
+    """Field table limited to schemas defined in the built-in components file.
+
+    At load time the full derived field schema is not yet available.  Using only
+    the built-in schemas (not user-defined extensions) avoids false positives on
+    fields that only exist after derivation while still typing and defaulting the
+    built-in component fields (effort.unit, priority.value, etc.) so the derive
+    step has properly-typed data.
+    """
+    comps = loaded_registry._components
+    f = comps["field"]
+    eid = comps["entity_id"]
+    builtin_eids = eid.filter(eid["filepath"] == "builtins.components").select("value")
+    return f.filter(f["entity_id"].isin(builtin_eids["value"]))
 
 
-def validated_registry(
-    loaded_components: dict,
-    field: ir.Table,
-    entity_id: ir.Table,
-    loaded_registry: Registry,
-) -> Registry:
-    from .validation.validate_components import validated_components as _run_validation
-    user_comps = {k: v for k, v in loaded_components.items() if k not in _INFRA_TYPES}
-    validated_comps, invalid_table = _run_validation(user_comps, field, entity_id)
-    loaded_registry.update({**validated_comps, "invalid_field": invalid_table})
-    return loaded_registry
-
-
-def registry(derived_registry: Registry) -> Registry:
-    """Expose the fully derived registry for downstream modules."""
-    return derived_registry
+@subdag(
+    _validate_components,
+    inputs={"registry": source("loaded_registry"), "field": source("builtin_field")},
+    config={},
+)
+def initial_validated_registry(validated_registry: Registry) -> Registry:
+    return validated_registry
 
 
 @subdag(
     _derive_components,
-    inputs={"registry": source("validated_registry")},
+    inputs={"registry": source("initial_validated_registry")},
     config={},
 )
 def derived_registry(derived_registry: Registry) -> Registry:
     return derived_registry
+
+
+def derived_field(derived_registry: Registry) -> ir.Table:
+    """Full field table from the derived registry, including inherited field definitions."""
+    return derived_registry._components["field"]
+
+
+@subdag(
+    _validate_components,
+    inputs={"registry": source("derived_registry"), "field": source("derived_field")},
+    config={},
+)
+def validated_registry(validated_registry: Registry) -> Registry:
+    return validated_registry
+
+
+def registry(validated_registry: Registry) -> Registry:
+    """Expose the fully derived and validated registry for downstream modules."""
+    return validated_registry

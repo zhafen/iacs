@@ -77,6 +77,7 @@ def effort_sum(parent: ir.Table, components: dict) -> pd.DataFrame:
     if not required_cols.issubset(effort_df.columns):
         return pd.DataFrame(columns=["entity_id", "schedule", "unit", "value"])
     effort_df["schedule"] = effort_df["schedule"].replace("", pd.NA)
+    effort_df["value"] = pd.to_numeric(effort_df["value"], errors="coerce")
     parent_df = parent.to_pandas()
 
     # Directed graph: parent -> child
@@ -212,7 +213,7 @@ def priority_product(parent: ir.Table, entity_id: ir.Table, components: dict) ->
         product = 1.0
         for req_id in req_nodes:
             priority = req_priority[req_id]
-            if pd.notna(priority):
+            if pd.notna(priority) and priority != "":
                 product *= float(priority)
         rows.append({"entity_id": eid, "priority_product": product})
 

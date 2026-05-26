@@ -3,10 +3,26 @@ import ast
 import pandas as pd
 import pandera
 import pandera.ibis as pa
-from hamilton.function_modifiers import unpack_fields
+from hamilton.function_modifiers import extract_fields, unpack_fields
 import ibis
 import ibis.expr.datatypes as dt
 import ibis.expr.types as ir
+
+from ...registry import Registry
+
+
+_INFRA_TYPES = frozenset({"entity_id", "component_type", "invalid_field", "schema", "parent", "field"})
+
+
+@extract_fields({"entity_id": ir.Table})
+def components(registry: Registry) -> dict:
+    """Extract components from the registry; entity_id is pulled out as a separate node."""
+    return registry._components
+
+
+def user_components(components: dict) -> dict:
+    """Filter infrastructure types, leaving only user-defined components for validation."""
+    return {k: v for k, v in components.items() if k not in _INFRA_TYPES}
 
 
 
@@ -75,9 +91,9 @@ def _coerce_default(val, py_type: type):
         return val
 
 
-@unpack_fields("validated_components", "invalid_field")
+@unpack_fields("validation_result", "invalid_field")
 def validated_components(
-    components: dict, field: ir.Table, entity_id: ir.Table,
+    user_components: dict, field: ir.Table, entity_id: ir.Table,
 ) -> tuple[dict, ir.Table]:
     """Use the schemas defined by the ((field)) component to validate and coerce
     the data in each component.
@@ -123,7 +139,7 @@ def validated_components(
 
     # Build per-component-type schema from field rows
     component_schemas: dict[str, dict] = {}
-    for ctype in components:
+    for ctype in user_components:
         schema: dict[str, dict] = {}
         for eid in key_to_eids.get(ctype, []):
             for _, row in df_field[df_field["entity_id"] == eid].iterrows():
@@ -144,7 +160,7 @@ def validated_components(
     validated_comps: dict = {}
     violation_tables: list[ir.Table] = []
 
-    for ctype, table in components.items():
+    for ctype, table in user_components.items():
         t = table
         schema = component_schemas.get(ctype, {})
 
@@ -257,3 +273,13 @@ def validated_components(
         )
 
     return validated_comps, invalid_table
+
+
+def validated_registry(
+    registry: Registry,
+    validation_result: dict,
+    invalid_field: ir.Table,
+) -> Registry:
+    """Store validated components and constraint violations back into the registry."""
+    registry.update({**validation_result, "invalid_field": invalid_field})
+    return registry
