@@ -9,6 +9,7 @@ from iacs.commands import (
     available_audit_components,
     build_format_description,
     cmd_list_component_types,
+    cmd_refresh,
     cmd_view_component,
     cmd_view_entity,
     get_manifest_path_str,
@@ -96,6 +97,14 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     sub.add_parser(
+        "refresh",
+        help=(
+            "Run the ETL pipeline and write normalised YAML back to the original source paths. "
+            "Equivalent to loading the manifest then exporting it in-place."
+        ),
+    )
+
+    sub.add_parser(
         "describe-format",
         help="Show the entity-first YAML format specification.",
     )
@@ -140,7 +149,10 @@ def main() -> None:
     manifest_paths = _resolve_manifest_paths(args)
     arch = make_architect(manifest_paths)
 
-    if args.command == "list-types":
+    if args.command == "refresh":
+        print(cmd_refresh(arch))
+
+    elif args.command == "list-types":
         print(cmd_list_component_types(arch))
 
     elif args.command == "view-component":

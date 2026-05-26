@@ -14,6 +14,7 @@ from iacs.commands import (
     available_audit_components as _available_audit_components,
     build_format_description as _build_format_description,
     cmd_list_component_types,
+    cmd_refresh,
     cmd_run_dataflow,
     cmd_view_component,
     cmd_view_entity,
@@ -119,6 +120,20 @@ def run_dataflow(name: str, ctx: Context) -> str:
             (e.g. "audit.requirement_coverage").
     """
     return cmd_run_dataflow(_get_architect(ctx), name)
+
+
+@server.tool()
+def refresh(ctx: Context) -> str:
+    """Run the ETL export and write normalised YAML back to the original source paths.
+
+    Executes the full export pipeline against the currently loaded registry
+    (which has already passed through load → validate → derive) and saves
+    each YAML file back to its original location, normalising formatting and
+    resolving any derived fields in-place.
+
+    Returns a summary listing each file that was written.
+    """
+    return cmd_refresh(_get_architect(ctx))
 
 
 @server.tool()

@@ -252,6 +252,62 @@ class TestRunDataflowCommand:
 
 
 # ---------------------------------------------------------------------------
+# refresh command
+# ---------------------------------------------------------------------------
+
+class TestRefreshCommand:
+
+    def test_writes_files_back_to_source(self, monkeypatch, capsys, tmp_path):
+        manifest = tmp_path / "manifest.yaml"
+        manifest.write_text(
+            "my_entity:\n- description: A test entity.\n", encoding="utf-8"
+        )
+        out, _ = run_cli(
+            "--manifest", str(tmp_path),
+            "refresh",
+            monkeypatch=monkeypatch, capsys=capsys,
+        )
+        assert "Refreshed" in out
+        assert manifest.exists()
+
+    def test_output_lists_written_files(self, monkeypatch, capsys, tmp_path):
+        manifest = tmp_path / "manifest.yaml"
+        manifest.write_text(
+            "my_entity:\n- description: A test entity.\n", encoding="utf-8"
+        )
+        out, _ = run_cli(
+            "--manifest", str(tmp_path),
+            "refresh",
+            monkeypatch=monkeypatch, capsys=capsys,
+        )
+        assert "manifest.yaml" in out
+
+    def test_written_yaml_is_valid(self, monkeypatch, capsys, tmp_path):
+        import yaml
+        manifest = tmp_path / "manifest.yaml"
+        manifest.write_text(
+            "my_entity:\n- description: A test entity.\n", encoding="utf-8"
+        )
+        run_cli(
+            "--manifest", str(tmp_path),
+            "refresh",
+            monkeypatch=monkeypatch, capsys=capsys,
+        )
+        data = yaml.safe_load(manifest.read_text())
+        assert "my_entity" in data
+
+    def test_refresh_count_matches_source_files(self, monkeypatch, capsys, tmp_path):
+        (tmp_path / "a.yaml").write_text("entity_a:\n- description: A.\n")
+        (tmp_path / "b.yaml").write_text("entity_b:\n- description: B.\n")
+        out, _ = run_cli(
+            "--manifest", str(tmp_path),
+            "refresh",
+            monkeypatch=monkeypatch, capsys=capsys,
+        )
+        assert "2 file(s)" in out
+
+
+# ---------------------------------------------------------------------------
 # Argument parser structure
 # ---------------------------------------------------------------------------
 
@@ -262,7 +318,7 @@ class TestParserStructure:
         choices = parser._subparsers._actions[-1].choices
         expected = {
             "manifest", "list-types", "view-component", "view-entity",
-            "run-dataflow", "describe-format", "validate-yaml",
+            "run-dataflow", "refresh", "describe-format", "validate-yaml",
         }
         assert expected == set(choices.keys())
 

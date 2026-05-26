@@ -89,6 +89,23 @@ def cmd_run_dataflow(arch: "Architect", name: str) -> str:
     return f"Dataflow {name!r} complete. No new component types added."
 
 
+def cmd_refresh(arch: "Architect") -> str:
+    """Run the ETL export and write normalised YAML back to the original source paths.
+
+    Executes the etl.export_manifest dataflow against the already-loaded
+    registry (which has gone through load → validate → derive) and saves
+    each file to its original location, effectively round-tripping the
+    manifest through the pipeline.
+    """
+    result = arch.execute("etl.export_manifest")
+    saved: list[str] = result.get("exported_manifest_filepaths", [])
+    if not saved:
+        return "No YAML files to refresh."
+    lines = [f"Refreshed {len(saved)} file(s):"]
+    lines.extend(f"  {p}" for p in saved)
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # Format guide helpers
 # ---------------------------------------------------------------------------
