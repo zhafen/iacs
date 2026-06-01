@@ -18,6 +18,7 @@ from iacs.mcp_server import (
     get_manifest_path,
     list_component_types,
     load_manifest,
+    refresh,
     run_dataflow,
     view_entity,
     server,
@@ -411,3 +412,47 @@ class TestRunDataflow:
     def test_run_dataflow_tool_is_registered(self):
         tool_names = {t.name for t in server._tool_manager.list_tools()}
         assert "run_dataflow" in tool_names
+
+
+# ---------------------------------------------------------------------------
+# refresh — MCP tool
+# ---------------------------------------------------------------------------
+
+class TestRefresh:
+
+    def test_returns_refreshed_message(self, tmp_path):
+        manifest = tmp_path / "manifest.yaml"
+        manifest.write_text(
+            "my_entity:\n- description: A test entity.\n", encoding="utf-8"
+        )
+        ctx = _make_ctx()
+        load_manifest([str(tmp_path)], ctx)
+        result = refresh(ctx)
+        assert "Refreshed" in result
+
+    def test_lists_written_files(self, tmp_path):
+        manifest = tmp_path / "manifest.yaml"
+        manifest.write_text(
+            "my_entity:\n- description: A test entity.\n", encoding="utf-8"
+        )
+        ctx = _make_ctx()
+        load_manifest([str(tmp_path)], ctx)
+        result = refresh(ctx)
+        assert "manifest.yaml" in result
+
+    def test_files_are_actually_written(self, tmp_path):
+        manifest = tmp_path / "manifest.yaml"
+        manifest.write_text(
+            "my_entity:\n- description: A test entity.\n", encoding="utf-8"
+        )
+        ctx = _make_ctx()
+        load_manifest([str(tmp_path)], ctx)
+        refresh(ctx)
+        assert manifest.exists()
+        import yaml
+        data = yaml.safe_load(manifest.read_text())
+        assert "my_entity" in data
+
+    def test_refresh_tool_is_registered(self):
+        tool_names = {t.name for t in server._tool_manager.list_tools()}
+        assert "refresh" in tool_names

@@ -452,7 +452,7 @@ def hierarchical_entity_first_data(
     return result
 
 
-def exported_manifest_filepaths(hierarchical_entity_first_data: dict, output_dir: str) -> list[str]:
+def exported_manifest_filepaths(hierarchical_entity_first_data: dict, output_dir: str = "") -> list[str]:
     """Save hierarchical_entity_first_data to one YAML file per original source filepath.
 
     Parameters
@@ -461,18 +461,24 @@ def exported_manifest_filepaths(hierarchical_entity_first_data: dict, output_dir
         Mapping of original filepath → entity dict, as returned by
         ``hierarchical_entity_first_data``.
     output_dir : str
-        Directory to write the manifest YAML files into.
+        Directory to write the manifest YAML files into.  When empty (the
+        default), each file is written back to its original source path,
+        normalising YAML in-place.
 
     Returns
     -------
     list[str]
         The saved filepaths, sorted for determinism.
     """
-    out = Path(output_dir)
-    out.mkdir(parents=True, exist_ok=True)
     saved = []
     for source_filepath, entities in hierarchical_entity_first_data.items():
-        dest = out / Path(source_filepath).with_suffix(".yaml").name
+        if output_dir:
+            out = Path(output_dir)
+            out.mkdir(parents=True, exist_ok=True)
+            dest = out / Path(source_filepath).with_suffix(".yaml").name
+        else:
+            dest = Path(source_filepath)
+            dest.parent.mkdir(parents=True, exist_ok=True)
         with open(dest, "w", encoding="utf-8") as f:
             yaml.dump(entities, f, default_flow_style=False, allow_unicode=True)
         saved.append(str(dest))

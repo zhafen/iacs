@@ -39,6 +39,7 @@ dev = [
 
 [project.scripts]
 iacs-mcp = "iacs.mcp_server:main"
+iacs = "iacs.cli:main"
 
 [tool.setuptools]
 py-modules = ["app"]
