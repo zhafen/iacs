@@ -1,11 +1,7 @@
-my_infrastructure:
-- description:
-    value: Infrastructure to complete the task.
 my_requirement:
-- description:
-    value: A task I need to complete.
-- requirement:
-    type: functional
-    value: 0.5
-- solution:
-    value: my_infrastructure
+- description: A task I need to complete.
+- requirement
+- solution: my_infrastructure
+
+my_infrastructure:
+- description: Infrastructure to complete the task.
