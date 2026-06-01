@@ -12,8 +12,8 @@ from ...registry import Registry
     "solution": ir.Table,
     "status": ir.Table,
 })
-def components(derived_registry: Registry) -> dict:
-    comps = dict(derived_registry._components)
+def components(registry: Registry) -> dict:
+    comps = dict(registry._components)
     if "requirement" not in comps:
         comps["requirement"] = ibis.memtable({"entity_id": []}, schema={"entity_id": "string"})
     if "solution" not in comps:
@@ -57,7 +57,7 @@ def requirement_coverage(requirement: ir.Table, solution_with_state: ir.Table) -
     )
 
 
-def updated_registry(derived_registry: Registry, requirement_coverage: ir.Table) -> Registry:
+def updated_registry(registry: Registry, requirement_coverage: ir.Table) -> Registry:
     """Store the requirement coverage audit result as a component in the registry."""
-    derived_registry.update({"requirement_coverage": requirement_coverage})
-    return derived_registry
+    registry.update({"requirement_coverage": requirement_coverage})
+    return registry

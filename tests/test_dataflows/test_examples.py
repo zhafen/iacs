@@ -23,9 +23,8 @@ EXAMPLES_DIR = Path(__file__).parent.parent.parent / "examples"
 EXPECTED_DIR = Path(__file__).parent / "expected"
 
 DATAFLOW_MODULE_NAMES = [
+    "base_etl",
     "etl.load_manifest",
-    "validation.validate_registry",
-    "etl.derive_components",
     "etl.export_manifest",
     "audit.todo",
     "audit.traceability",

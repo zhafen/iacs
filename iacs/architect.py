@@ -53,15 +53,15 @@ class Architect:
             manifest = [str(p) for p in manifest]
         result = driver.Driver(
             {}, base_etl, adapter=base.DictResult()
-        ).execute(["derived_registry"], inputs={"input_dir": manifest})
-        new_registry = result["derived_registry"]
+        ).execute(["registry"], inputs={"input_dir": manifest})
+        new_registry = result["registry"]
         self._registry.merge(new_registry)
         new_registry.close()
 
     def _rebuild_driver(self) -> None:
         from hamilton import driver, base
         self._driver = driver.Driver(
-            {"registry": self._registry, "derived_registry": self._registry},
+            {"registry": self._registry},
             *self._dataflows, adapter=base.DictResult(),
             allow_module_overrides=True,
         )
