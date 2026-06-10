@@ -38,6 +38,24 @@ audit = iacs.RequirementCoverageAudit(registry)
 print(audit.report())
 ```
 
+## CLI
+
+The `iacs` CLI lets you inspect and audit your infrastructure manifests from the terminal.
+
+If you installed with `uv`, prefix commands with `uv run`:
+
+```bash
+uv run iacs --help
+uv run iacs <command> --help
+```
+
+Set `IACS_MANIFEST` to your manifest directory to avoid passing `--manifest` on every call:
+
+```bash
+export IACS_MANIFEST=./infra
+iacs --help
+```
+
 ## Development
 
 ### Setup
