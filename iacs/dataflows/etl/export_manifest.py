@@ -8,7 +8,8 @@ DAG structure (dependency order):
                 │       └── non_hierarchy_parents (depends on components + entity_hierarchy + entity_id)
                 │               └── components_for_export
                 │                       └── entity_first_data (depends on components_for_export + entity_id)
-                │                               └── hierarchical_entity_first_data
+                │                               └── condensed_entity_first_data
+                │                                       └── hierarchical_entity_first_data
                 │                                       └── exported_manifest_filepaths
                 └── entity_id (extracted via @extract_fields)
 
@@ -26,9 +27,11 @@ parents only (removing hierarchy-implied parents that would be reconstructed
 from nesting on reload).
 
 entity_first_data serialises all component tables to {entity_id: [(idx, entry)]}
-(flat, keyed by entity_id).  hierarchical_entity_first_data uses the
-entity_hierarchy to nest child entities under their parents and produces the
-{filepath: {entity_key: ...}} structure written to YAML.
+(flat, keyed by entity_id).  condensed_entity_first_data collapses single-field
+component dicts from ``{type: {field: value}}`` to ``{type: value}``.
+hierarchical_entity_first_data uses the entity_hierarchy to nest child entities
+under their parents and produces the {filepath: {entity_key: ...}} structure
+written to YAML.
 """
 
 from pathlib import Path
@@ -335,6 +338,37 @@ def entity_first_data(components_for_export: dict, entity_id: ir.Table) -> dict:
     return result
 
 
+def condensed_entity_first_data(entity_first_data: dict) -> dict:
+    """Condense single-field component entries to a scalar form.
+
+    For any component entry of the form ``{type: {field: value}}`` where the
+    inner dict has exactly one field, replaces it with ``{type: value}`` so
+    the exported YAML stays concise.
+
+    Parameters
+    ----------
+    entity_first_data : dict
+        Output of ``entity_first_data``: ``{entity_id: [(idx, entry), ...]}``.
+
+    Returns
+    -------
+    dict
+        Same structure, with single-field component dicts collapsed.
+    """
+    result: dict[str, list] = {}
+    for eid, entries in entity_first_data.items():
+        condensed = []
+        for idx, entry in entries:
+            if isinstance(entry, dict):
+                (comp_type, fields), = entry.items()
+                if isinstance(fields, dict) and len(fields) == 1:
+                    (field_value,) = fields.values()
+                    entry = {comp_type: field_value}
+            condensed.append((idx, entry))
+        result[eid] = condensed
+    return result
+
+
 def _get_or_create_node(
     path_parts: list[str], hierarchical: dict, node_of: dict
 ) -> dict:
@@ -368,26 +402,28 @@ def _get_or_create_node(
 
 
 def hierarchical_entity_first_data(
-    entity_first_data: dict,
+    condensed_entity_first_data: dict,
     entity_hierarchy: dict[str, str | None],  # noqa: ARG001 — used for DAG wiring
     entity_id: ir.Table,
 ) -> dict:
     """Nest entity components using the entity path stored in the registry.
 
-    Takes components from ``entity_first_data`` and nests child entities under
-    their parents using the dot-separated path.  When an entity has both its
-    own components and child entities, its components go under a ``"data"`` key.
+    Takes components from ``condensed_entity_first_data`` and nests child
+    entities under their parents using the dot-separated path.  When an entity
+    has both its own components and child entities, its components go under a
+    ``"data"`` key.
 
     ``entity_hierarchy`` is accepted for DAG dependency ordering (it ensures
-    non-hierarchy parents are already filtered out of ``entity_first_data``'s
-    source dict) but the actual nesting is path-based so virtual parent nodes
-    (path segments with no corresponding entity) are handled automatically.
+    non-hierarchy parents are already filtered out of
+    ``condensed_entity_first_data``'s source dict) but the actual nesting is
+    path-based so virtual parent nodes (path segments with no corresponding
+    entity) are handled automatically.
 
     Parameters
     ----------
-    entity_first_data : dict
+    condensed_entity_first_data : dict
         Flat mapping ``{entity_id: [(component_index, entry), ...]}`` as
-        returned by ``entity_first_data``.
+        returned by ``condensed_entity_first_data``.
     entity_hierarchy : dict[str, str | None]
         Unused directly; accepted so Hamilton routes this node after
         ``entity_hierarchy`` is computed.
@@ -414,10 +450,10 @@ def hierarchical_entity_first_data(
         id_to_filepath[eid] = filepath
         id_to_path_in_file[eid] = full_path[len(filepath) + 1:]
 
-    # Resolve component lists per entity_id (already sorted by entity_first_data)
+    # Resolve component lists per entity_id (already sorted by condensed_entity_first_data)
     entity_components: dict[str, list] = {
         eid: [e for _, e in sorted(entries, key=lambda x: x[0])]
-        for eid, entries in entity_first_data.items()
+        for eid, entries in condensed_entity_first_data.items()
     }
 
     filepath_entities: dict[str, list[tuple[str, str]]] = {}
