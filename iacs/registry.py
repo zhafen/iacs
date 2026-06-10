@@ -31,6 +31,11 @@ class Registry:
             k for k, v in components.items()
             if k != "schema" and isinstance(v, ibis.Table)
         ]
+        self._schemas: dict[str, ibis.Schema] = {
+            k: v.schema()
+            for k, v in components.items()
+            if isinstance(v, ibis.Table)
+        }
 
     def update(self, components: dict) -> None:
         """Add or overwrite component tables in the registry.
@@ -41,6 +46,7 @@ class Registry:
         for comp_type, table in components.items():
             self._con.create_table(comp_type, table, overwrite=True)
             self._components[comp_type] = self._con.table(comp_type)
+            self._schemas[comp_type] = self._con.table(comp_type).schema()
             if comp_type not in self._component_types and comp_type != "schema":
                 self._component_types.append(comp_type)
 
@@ -107,8 +113,17 @@ class Registry:
         return list(self._component_types)
 
     def get(self, key: str):
-        """Return the component table for the given component type."""
-        return self._components[key]
+        """Return the component table for the given component type.
+
+        If the component type does not exist but its schema is known, returns
+        an empty table with that schema. If the schema is also unknown, returns
+        an empty table with only an ``entity_id`` string column.
+        """
+        if key in self._components:
+            return self._components[key]
+        if key in self._schemas:
+            return ibis.memtable([], schema=self._schemas[key])
+        return ibis.memtable([], schema={"entity_id": "string"})
 
     def view(self, component_type: str | list[str]) -> ibis.Table:
         """Return a copy of the dataframe for the given component type(s).
