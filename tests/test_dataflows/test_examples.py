@@ -21,24 +21,36 @@ from iacs.architect import Architect
 
 EXAMPLES_DIR = Path(__file__).parent.parent.parent / "examples"
 EXPECTED_DIR = Path(__file__).parent / "expected"
-
-DATAFLOW_MODULE_NAMES = [
-    "base_etl",
-    "etl.load_manifest",
-    "etl.export_manifest",
-    "audit.todo",
-    "audit.traceability",
-    "audit.requirement_coverage",
-]
+DATAFLOWS_DIR = Path(__file__).parent.parent.parent / "iacs" / "dataflows"
 
 
 # ─── Discovery helpers ──────────────────────────────────────────────────────
 
+def _discover_dataflow_module_names() -> list[str]:
+    """Return dot-separated module names for every .py file under iacs/dataflows/.
+
+    __init__ files are excluded. Results are sorted so that shallower (less
+    nested) modules come first, with alphabetical ordering within each depth
+    level — this approximates the typical dependency order (base modules before
+    sub-packages) without hardcoding names.
+    """
+    names = []
+    for path in sorted(DATAFLOWS_DIR.rglob("*.py")):
+        if path.stem == "__init__":
+            continue
+        rel = path.relative_to(DATAFLOWS_DIR)
+        name = ".".join(rel.with_suffix("").parts)
+        names.append(name)
+    # Stable sort: shallower modules first, then alphabetical.
+    names.sort(key=lambda n: (n.count("."), n))
+    return names
+
+
 def _get_dataflow_modules() -> list[tuple[str, ModuleType]]:
-    """Return (name, module) for every Hamilton DAG module listed in DATAFLOW_MODULE_NAMES."""
+    """Return (name, module) for every Hamilton DAG module under iacs/dataflows/."""
     return [
         (name, importlib.import_module(f"iacs.dataflows.{name}"))
-        for name in DATAFLOW_MODULE_NAMES
+        for name in _discover_dataflow_module_names()
     ]
 
 
@@ -99,8 +111,9 @@ def _build_inputs_for(
     """
     base_inputs = {"input_dir": [str(example_dir)], **(extra_inputs or {})}
 
+    all_names = _discover_dataflow_module_names()
     preceding_mods = []
-    for name in DATAFLOW_MODULE_NAMES:
+    for name in all_names:
         if name == module_name:
             break
         preceding_mods.append(importlib.import_module(f"iacs.dataflows.{name}"))
@@ -285,20 +298,23 @@ def _assert_manifest_subset(expected: dict, actual: dict, context: str = "") -> 
 # ─── Test parameters ────────────────────────────────────────────────────────
 
 def _test_params() -> list:
-    """Generate pytest.param objects for each (example_dir, module_name) pair
-    that has a corresponding expected file."""
+    """Generate pytest.param objects for every (example_dir, module_name) pair.
+
+    All discovered dataflow modules are included for each example directory that
+    contains a manifest.yaml.  Pairs without a corresponding expected file are
+    still exercised (the DAG is run) but the output comparison is skipped.
+    """
     params = []
     for example_dir in sorted(EXAMPLES_DIR.iterdir()):
         if not example_dir.is_dir():
             continue
         for module_name, mod in _get_dataflow_modules():
-            if (EXPECTED_DIR / example_dir.name / f"{module_name}.py").exists():
-                params.append(
-                    pytest.param(
-                        example_dir, module_name, mod,
-                        id=f"{example_dir.name}-{module_name}",
-                    )
+            params.append(
+                pytest.param(
+                    example_dir, module_name, mod,
+                    id=f"{example_dir.name}-{module_name}",
                 )
+            )
     return params
 
 
@@ -327,11 +343,15 @@ def test_dataflows_match_expected(
     3. Verify each expected variable is a subset of the actual DAG output.
     Skips when no expected variables match available nodes, or execution fails.
     """
-    positive_vars, negative_vars = _expected_data_vars(
-        _load_expected_for_dataflow(example_dir, module_name)
-    )
-    if not positive_vars and not negative_vars:
-        pytest.skip("No expected variables in expected file")
+    expected_file = EXPECTED_DIR / example_dir.name / f"{module_name}.py"
+    if expected_file.exists():
+        positive_vars, negative_vars = _expected_data_vars(
+            _load_expected_for_dataflow(example_dir, module_name)
+        )
+    else:
+        positive_vars, negative_vars = {}, {}
+
+    has_expected = bool(positive_vars or negative_vars)
 
     extra = {"output_dir": str(tmp_output_dir / example_dir.name)}
     try:
@@ -356,12 +376,22 @@ def test_dataflows_match_expected(
     to_execute = list(dict.fromkeys(to_execute_positive + to_execute_negative))
 
     if not to_execute:
+        if not has_expected:
+            # No expected file — run a smoke check by executing all available nodes.
+            try:
+                dr.execute(list(available))
+            except Exception as exc:
+                pytest.fail(f"DAG execution failed: {exc}")
+            return
         pytest.skip(f"No expected variables are nodes in the {module_name} DAG")
 
     try:
         results = dr.execute(to_execute)
     except Exception as exc:
         pytest.fail(f"DAG execution failed: {exc}")
+
+    if not has_expected:
+        return
 
     for var_name in to_execute_positive:
         actual = results.get(var_name)
