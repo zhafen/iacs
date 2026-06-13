@@ -123,7 +123,7 @@ class Registry:
             return self._components[key]
         if key in self._schemas:
             return ibis.memtable([], schema=self._schemas[key])
-        return ibis.memtable([], schema={"entity_id": "string"})
+        return ibis.memtable([], schema={"entity_id": "string", "value": "string"})
 
     def view(self, component_type: str | list[str]) -> ibis.Table:
         """Return a copy of the dataframe for the given component type(s).
