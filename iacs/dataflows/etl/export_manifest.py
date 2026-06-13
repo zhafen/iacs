@@ -362,8 +362,9 @@ def condensed_entity_first_data(entity_first_data: dict) -> dict:
             if isinstance(entry, dict):
                 (comp_type, fields), = entry.items()
                 if isinstance(fields, dict) and len(fields) == 1:
-                    (field_value,) = fields.values()
-                    entry = {comp_type: field_value}
+                    (field_name, field_value), = fields.items()
+                    if field_name == "value":
+                        entry = {comp_type: field_value}
             condensed.append((idx, entry))
         result[eid] = condensed
     return result
