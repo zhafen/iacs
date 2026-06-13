@@ -517,6 +517,6 @@ def exported_manifest_filepaths(hierarchical_entity_first_data: dict, output_dir
             dest = Path(source_filepath)
             dest.parent.mkdir(parents=True, exist_ok=True)
         with open(dest, "w", encoding="utf-8") as f:
-            yaml.dump(entities, f, default_flow_style=False, allow_unicode=True)
+            yaml.dump(entities, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
         saved.append(str(dest))
     return sorted(saved)

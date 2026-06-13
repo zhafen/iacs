@@ -15,6 +15,7 @@ from types import ModuleType
 
 import pandas as pd
 import pytest
+import yaml
 from hamilton import driver, base
 
 from iacs.architect import Architect
@@ -545,6 +546,66 @@ def test_round_trip_consistency(example_dir: Path, tmp_path: Path) -> None:
         df1 = reg1.get(comp_type).execute()
         df2 = reg2.get(comp_type).execute()
         _assert_tables_equal(df1, df2, eid_df1, eid_df2, comp_type)
+
+
+def _collect_key_order(data: dict, depth: int = 0) -> list[tuple[int, str]]:
+    """Return (depth, key) pairs for all keys in a nested dict, in traversal order."""
+    result = []
+    for key, value in data.items():
+        result.append((depth, str(key)))
+        if isinstance(value, dict):
+            result.extend(_collect_key_order(value, depth + 1))
+    return result
+
+
+@pytest.mark.parametrize("example_dir", _get_example_dirs_with_yaml(), ids=lambda d: d.name)
+def test_round_trip_key_order(example_dir: Path, tmp_path: Path) -> None:
+    """Exporting and re-exporting a registry preserves entity key order in YAML.
+
+    Steps:
+    1. Load the example manifest and export once (exported1).
+    2. Reload from exported1 and export again (exported2).
+    3. Assert that each YAML file in exported1 has the same key order as the
+       corresponding file in exported2 — confirming sort_keys=False is stable.
+    """
+    import iacs.dataflows.etl.export_manifest as export_mod
+
+    a1 = Architect.from_manifest(str(example_dir))
+    out1 = tmp_path / "export1"
+    dr1 = driver.Driver(
+        {"registry": a1.registry, "output_dir": str(out1)},
+        export_mod,
+        adapter=base.DictResult(),
+    )
+    dr1.execute(["exported_manifest_filepaths"])
+
+    a2 = Architect.from_manifest(str(out1))
+    out2 = tmp_path / "export2"
+    dr2 = driver.Driver(
+        {"registry": a2.registry, "output_dir": str(out2)},
+        export_mod,
+        adapter=base.DictResult(),
+    )
+    dr2.execute(["exported_manifest_filepaths"])
+
+    files1 = sorted(out1.glob("*.yaml"))
+    files2 = sorted(out2.glob("*.yaml"))
+    assert [f.name for f in files1] == [f.name for f in files2], (
+        "Exported file names differ between first and second export."
+    )
+
+    for f1, f2 in zip(files1, files2):
+        with open(f1) as fh:
+            data1 = yaml.safe_load(fh) or {}
+        with open(f2) as fh:
+            data2 = yaml.safe_load(fh) or {}
+        order1 = _collect_key_order(data1)
+        order2 = _collect_key_order(data2)
+        assert order1 == order2, (
+            f"Key order changed between exports for {f1.name}.\n"
+            f"  First export:  {order1}\n"
+            f"  Second export: {order2}"
+        )
 
 
 @pytest.mark.parametrize("example_dir", _get_example_dirs_with_yaml(), ids=lambda d: d.name)
