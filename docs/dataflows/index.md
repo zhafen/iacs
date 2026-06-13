@@ -75,3 +75,9 @@ Regenerate with: `uv run python docs/gen_dag_images.py`
 
 ![etl.load_yaml DAG](img/etl_load_yaml.png)
 
+---
+
+## `validation.validate_components`
+
+![validation.validate_components DAG](img/validation_validate_components.png)
+
