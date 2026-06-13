@@ -22,6 +22,11 @@ def solution_with_state(solution: ir.Table, status: ir.Table) -> ir.Table:
     solution.value_eid is populated by derive_components based on the entity_ref
     field declared for the solution component in builtins/components.yaml.
     """
+    if "value_eid" not in solution.columns:
+        return ibis.memtable(
+            [],
+            schema={"solution_eid": "string", "entity_id": "string", "solution_status": "string"},
+        )
     status_for_join = status.rename({"status_eid": "entity_id", "solution_status": "value"})
     return (
         solution
