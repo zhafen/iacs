@@ -10,14 +10,12 @@ def _eid(path):
 _hierarchical_file_str = """
 make_cats_happy:
     data:
-        - description:
-            value: The mission of our cat-happiness device.
+        - description: The mission of our cat-happiness device.
         - requirement:
             value: 1.0
             type: functional
     feed_and_water_cats:
-        - description:
-            value: Obviously.
+        - description: Obviously.
         - requirement:
             value: 1.0
             type: functional
@@ -31,6 +29,17 @@ entity_first_data = {
     ],
     _eid("make_cats_happy.feed_and_water_cats"): [
         (0, {"description": {"value": "Obviously."}}),
+        (1, {"requirement": {"value": 1.0, "type": "functional"}}),
+    ],
+}
+
+condensed_entity_first_data = {
+    _eid("make_cats_happy"): [
+        (0, {"description": "The mission of our cat-happiness device."}),
+        (1, {"requirement": {"value": 1.0, "type": "functional"}}),
+    ],
+    _eid("make_cats_happy.feed_and_water_cats"): [
+        (0, {"description": "Obviously."}),
         (1, {"requirement": {"value": 1.0, "type": "functional"}}),
     ],
 }
