@@ -7,17 +7,19 @@ import ibis.expr.types as ir
 from iacs.registry import Registry
 
 
-@extract_fields({"requirement": ir.Table, "solution_of": ir.Table, "entity_id": ir.Table})
+INPUT_COMPONENT_TYPES = ["requirement", "solution_of", "entity_id"]
+
+
+@extract_fields({ct: ir.Table for ct in INPUT_COMPONENT_TYPES})
 def components(registry: Registry) -> dict:
-    """Give access to the components dict from the registry."""
-    comps = dict(registry._components)
-    if "requirement" not in comps:
-        comps["requirement"] = ibis.memtable({"entity_id": []}, schema={"entity_id": "string"})
-    comps["solution_of"] = comps.pop(
-        "solution of",
-        ibis.memtable({"entity_id": []}, schema={"entity_id": "string"}),
-    )
-    return comps
+    """Give access to the components needed by this dataflow.
+
+    ``solution_of`` is fetched as ``"solution of"`` from the registry because
+    Hamilton node names cannot contain spaces.
+    """
+    result = {ct: registry.get(ct) for ct in INPUT_COMPONENT_TYPES if ct != "solution_of"}
+    result["solution_of"] = registry.get("solution of")
+    return result
 
 
 def all_entities(entity_id: ir.Table) -> ibis.expr.types.Table:

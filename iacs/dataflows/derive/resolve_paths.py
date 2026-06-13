@@ -7,9 +7,17 @@ from ...registry import Registry
 from ...utils import candidate_entity_ids, dhash
 
 
-@extract_fields(dict(field=ir.Table, entity_id=ir.Table))
+INPUT_COMPONENT_TYPES = ["field", "entity_id"]
+
+
+@extract_fields({ct: ir.Table for ct in INPUT_COMPONENT_TYPES})
 def components(registry: Registry) -> dict:
-    """Give access to the components in the registry."""
+    """Give access to the components needed by this dataflow.
+
+    Returns all registry components (not just INPUT_COMPONENT_TYPES) so that
+    ``components_with_resolved_paths`` can resolve entity_ref fields across
+    every component type.
+    """
     return registry._components
 
 

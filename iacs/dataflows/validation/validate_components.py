@@ -13,10 +13,16 @@ from ...registry import Registry
 
 _INFRA_TYPES = frozenset({"entity_id", "component_type", "invalid_field", "schema", "parent", "field"})
 
+INPUT_COMPONENT_TYPES = ["entity_id"]
 
-@extract_fields({"entity_id": ir.Table})
+
+@extract_fields({ct: ir.Table for ct in INPUT_COMPONENT_TYPES})
 def components(registry: Registry) -> dict:
-    """Extract components from the registry; entity_id is pulled out as a separate node."""
+    """Extract components from the registry.
+
+    Returns all registry components (not just INPUT_COMPONENT_TYPES) so that
+    the downstream ``user_components`` node can filter the full set.
+    """
     return registry._components
 
 

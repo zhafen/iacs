@@ -45,21 +45,25 @@ import pandas as pd
 from ...registry import Registry
 
 
-@extract_fields({"entity_id": ir.Table})
+INPUT_COMPONENT_TYPES = ["entity_id", "parent"]
+
+
+@extract_fields({ct: ir.Table for ct in INPUT_COMPONENT_TYPES})
 def components(registry: Registry) -> dict:
-    """Extract all component tables from the registry, including entity_id_table.
+    """Extract all component tables from the registry.
 
-    Parameters
-    ----------
-    registry : Registry
-        The registry containing component tables.
-
-    Returns
-    -------
-    dict
-        A dict mapping component type names (including "entity_id") to ibis Tables.
+    Returns all components (not just INPUT_COMPONENT_TYPES) because downstream
+    nodes such as ``components_for_export`` and ``entity_first_data`` must
+    iterate over every component type to reconstruct the full manifest.
+    ``parent`` is guaranteed present via a fallback empty table.
     """
-    return registry._components
+    result = dict(registry._components)
+    if "parent" not in result:
+        result["parent"] = ibis.memtable(
+            [],
+            schema={"entity_id": "string", "component_index": "int64", "modifier": "string", "parent_eid": "string", "is_primary": "boolean"},
+        )
+    return result
 
 
 _METADATA_COLS = {"entity_id", "component_index", "modifier", "is_primary"}
@@ -97,7 +101,7 @@ def _skip_on_export_types(components: dict) -> set[str]:
     )
 
 
-def entity_hierarchy(components: dict, entity_id: ir.Table) -> dict[str, str | None]:
+def entity_hierarchy(parent: ir.Table, entity_id: ir.Table) -> dict[str, str | None]:
     """Determine the hierarchy parent for each user entity.
 
     Rule: if the entity has exactly one parent with is_primary=True, use that.
@@ -106,8 +110,8 @@ def entity_hierarchy(components: dict, entity_id: ir.Table) -> dict[str, str | N
 
     Parameters
     ----------
-    components : dict
-        Dict mapping component type names to ibis Tables.
+    parent : ir.Table
+        The parent component table from the registry.
     entity_id : ir.Table
         The entity spine table extracted from ``components``.
 
@@ -117,14 +121,11 @@ def entity_hierarchy(components: dict, entity_id: ir.Table) -> dict[str, str | N
         Mapping of child entity_id → parent entity_id (or None for roots).
         Entities with no parents are NOT included in the dict.
     """
-    if "parent" not in components:
-        return {}
-
     spine_df = entity_id.to_pandas()
     user_rows = spine_df[~spine_df["filepath"].str.startswith("builtins")]
     user_entity_ids = set(user_rows["value"].unique())
 
-    parent_df = components["parent"].execute()
+    parent_df = parent.execute()
 
     # Filter to user entities only
     parent_df = parent_df[parent_df["entity_id"].isin(user_entity_ids)].copy()
@@ -152,10 +153,10 @@ def entity_hierarchy(components: dict, entity_id: ir.Table) -> dict[str, str | N
 
 
 def non_hierarchy_parents(
-    components: dict,
+    parent: ir.Table,
     entity_hierarchy: dict[str, str | None],
     entity_id: ir.Table,
-) -> ir.Table | None:
+) -> ir.Table:
     """Return parent rows NOT used as the hierarchy parent for each entity.
 
     Only user entities (non-builtin) are considered. Builtin entity rows are
@@ -163,8 +164,8 @@ def non_hierarchy_parents(
 
     Parameters
     ----------
-    components : dict
-        Dict mapping component type names to ibis Tables.
+    parent : ir.Table
+        The parent component table from the registry.
     entity_hierarchy : dict[str, str | None]
         Mapping of child entity_id → parent entity_id as returned by
         ``entity_hierarchy``.
@@ -173,15 +174,12 @@ def non_hierarchy_parents(
 
     Returns
     -------
-    ir.Table or None
+    ir.Table
         Parent rows (same schema as the parent component table) for all
-        parent entries that were not selected as the hierarchy parent,
-        or None if there is no parent table.
+        parent entries that were not selected as the hierarchy parent.
+        Empty table if there are no non-hierarchy parents.
     """
-    if "parent" not in components:
-        return None
-
-    parent_df = components["parent"].execute()
+    parent_df = parent.execute()
     if parent_df.empty:
         return ibis.memtable(parent_df)
 
@@ -238,17 +236,17 @@ def non_hierarchy_parents(
 
 def components_for_export(
     components: dict,
-    non_hierarchy_parents: ir.Table | None,
+    non_hierarchy_parents: ir.Table,
 ) -> dict:
     """Return updated components dict with parent table replaced by non-hierarchy-only parents.
 
-    If non_hierarchy_parents is None or empty, the parent key is removed from components.
+    If non_hierarchy_parents is empty, the parent key is removed from components.
 
     Parameters
     ----------
     components : dict
         Dict mapping component type names to ibis Tables.
-    non_hierarchy_parents : ir.Table or None
+    non_hierarchy_parents : ir.Table
         Parent rows not used as hierarchy parents, as returned by
         ``non_hierarchy_parents``.
 
@@ -258,10 +256,6 @@ def components_for_export(
         Updated components dict.
     """
     result = dict(components)
-    if non_hierarchy_parents is None:
-        result.pop("parent", None)
-        return result
-
     nhp_df = non_hierarchy_parents.execute()
     if nhp_df.empty:
         result.pop("parent", None)

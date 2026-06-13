@@ -6,10 +6,13 @@ from hamilton.function_modifiers import extract_fields
 from ...registry import Registry
 
 
-@extract_fields({"field": ir.Table, "parent": ir.Table})
+INPUT_COMPONENT_TYPES = ["field", "parent"]
+
+
+@extract_fields({ct: ir.Table for ct in INPUT_COMPONENT_TYPES})
 def components(registry: Registry) -> dict:
-    """Give access to the components in the registry."""
-    return registry._components
+    """Give access to the components needed by this dataflow."""
+    return {ct: registry.get(ct) for ct in INPUT_COMPONENT_TYPES}
 
 
 def derived_field(field: ir.Table, parent: ir.Table) -> ir.Table:

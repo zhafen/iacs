@@ -12,10 +12,13 @@ from iacs.registry import Registry
 from iacs.utils import candidate_entity_ids
 
 
-@extract_fields(dict(entity_id=ir.Table, parent=ir.Table))
+INPUT_COMPONENT_TYPES = ["entity_id", "parent", "effort", "requirement"]
+
+
+@extract_fields({ct: ir.Table for ct in INPUT_COMPONENT_TYPES})
 def components(registry: Registry) -> dict:
-    """Give access to the components in the registry."""
-    return registry._components
+    """Give access to the components needed by this dataflow."""
+    return {ct: registry.get(ct) for ct in INPUT_COMPONENT_TYPES}
 
 
 def entity_depth(parent: ir.Table) -> pd.DataFrame:
@@ -49,7 +52,7 @@ def entity_depth(parent: ir.Table) -> pd.DataFrame:
     return pd.DataFrame(list(depths.items()), columns=["entity_id", "depth"])
 
 
-def effort_sum(parent: ir.Table, components: dict) -> pd.DataFrame:
+def effort_sum(parent: ir.Table, effort: ir.Table) -> pd.DataFrame:
     """Sum effort for each entity and all its descendants, grouped by schedule and unit.
 
     For each entity that either has effort itself or is an ancestor of one that
@@ -60,8 +63,8 @@ def effort_sum(parent: ir.Table, components: dict) -> pd.DataFrame:
     ----------
     parent : ir.Table
         The parent component table from the registry.
-    components : dict
-        The full components dict from the registry.
+    effort : ir.Table
+        The effort component table from the registry.
 
     Returns
     -------
@@ -69,10 +72,7 @@ def effort_sum(parent: ir.Table, components: dict) -> pd.DataFrame:
         Columns: entity_id, schedule, unit, value.  One row per
         (entity_id, schedule, unit) combination.
     """
-    if "effort" not in components:
-        return pd.DataFrame(columns=["entity_id", "schedule", "unit", "value"])
-
-    effort_df = components["effort"].to_pandas()
+    effort_df = effort.to_pandas()
     required_cols = {"entity_id", "schedule", "unit", "value"}
     if not required_cols.issubset(effort_df.columns):
         return pd.DataFrame(columns=["entity_id", "schedule", "unit", "value"])
@@ -165,7 +165,7 @@ def effort_total(effort_sum: pd.DataFrame, effort_time_period: str = "28 days") 
     return result
 
 
-def priority_product(parent: ir.Table, entity_id: ir.Table, components: dict) -> pd.DataFrame:
+def priority_product(parent: ir.Table, entity_id: ir.Table, requirement: ir.Table) -> pd.DataFrame:
     """Compute the product of requirement priorities for an entity and its ancestors.
 
     For each entity that has a requirement component itself or has at least one
@@ -178,8 +178,8 @@ def priority_product(parent: ir.Table, entity_id: ir.Table, components: dict) ->
         The parent component table from the registry.
     entity_id : ir.Table
         The entity_id component table from the registry.
-    components : dict
-        The full components dict from the registry.
+    requirement : ir.Table
+        The requirement component table from the registry.
 
     Returns
     -------
@@ -187,10 +187,10 @@ def priority_product(parent: ir.Table, entity_id: ir.Table, components: dict) ->
         Columns: entity_id, priority_product.  One row per entity that has
         a requirement component or at least one ancestor with a requirement component.
     """
-    if "requirement" not in components:
+    req_df = requirement.to_pandas()
+    if req_df.empty or "value" not in req_df.columns:
         return pd.DataFrame(columns=["entity_id", "priority_product"])
 
-    req_df = components["requirement"].to_pandas()
     parent_df = parent.to_pandas()
 
     req_priority = req_df.set_index("entity_id")["value"]
