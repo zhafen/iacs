@@ -536,6 +536,101 @@ iacs:
                       Decide on the primary interface for browsing and editing persisted
                       infrastructure. Evaluate editable YAML exports vs. a generated
                       wiki. See also: export_infrastructure_to_wiki.
+        alternate_yaml_format_discussion:
+            data:
+                - description: >
+                      An alternate entity-first YAML format was explored where all
+                      entities are dicts rather than lists. Components are distinguished
+                      from child entities purely by value type, eliminating list syntax
+                      for single-instance entities and the "data:" wrapper for entities
+                      that have both own components and children.
+
+                      Decided against adopting at this time—the format has real
+                      ergonomic costs that outweigh the visual savings.
+            format_rules:
+                - description: >
+                      Within an entity dict each key maps to either a component or a
+                      child entity, determined by value type:
+                        null (~)           tag component (presence-only)
+                        atomic scalar      scalar component
+                        list               multiple instances of that component type;
+                                           each item is a scalar or sub-field dict
+                        dict               child entity (recurse)
+            example:
+                - description: >
+                      Classic format:
+
+                        make_cats_happy:
+                            data:
+                                - description: The mission.
+                                - requirement: 1
+                            feed_and_water_cats:
+                                data:
+                                    - description: Obviously.
+                                    - requirement: 1
+                                water_cats:
+                                    - requirement
+                                    - alias: water_cats
+                        cat_happiness_device:
+                            data:
+                                - description: An all-in-one tool.
+                                - solution of: make_cats_happy
+                                - system
+                            feeding_system:
+                                data:
+                                    - effort: 2
+                                feed_cats:
+                                    - effort:
+                                        - 8
+                                        - value: 2
+                                          schedule: weekly
+
+                      Alternate format (same data):
+
+                        make_cats_happy:
+                            description: The mission.
+                            requirement: 1
+                            feed_and_water_cats:
+                                description: Obviously.
+                                requirement: 1
+                                water_cats:
+                                    requirement: ~
+                                    alias: water_cats
+                        cat_happiness_device:
+                            description: An all-in-one tool.
+                            solution of: make_cats_happy
+                            system: ~
+                            feeding_system:
+                                effort: 2
+                                feed_cats:
+                                    effort:
+                                        - 8
+                                        - value: 2
+                                          schedule: weekly
+            tradeoffs:
+                data:
+                    - description: Why the format was not adopted.
+                pro_no_list_syntax:
+                    - description: >
+                          Single-component entities are more readable without leading
+                          dashes. Nested structure directly mirrors the entity hierarchy.
+                con_tags_need_explicit_null:
+                    - description: >
+                          Tag components require "component_name: ~" instead of the
+                          clean bare-string "- component_name". The null syntax is less
+                          visually distinct and more surprising to readers.
+                con_subfield_components_need_list:
+                    - description: >
+                          Because any dict value is interpreted as a child entity,
+                          a single-instance component with sub-fields must be wrapped
+                          in a one-element list (e.g. "link: [{source: A, target: B}]")
+                          rather than the natural "link: {source: A, target: B}".
+                          This is worse than the problem it was meant to solve.
+                con_migration_cost:
+                    - description: >
+                          All existing manifests, the load/export pipeline, and tooling
+                          use the classic list-based format. Migration would require
+                          converting every file and rewriting the core ETL path.
 
 ecs_framework:
     data:
