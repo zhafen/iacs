@@ -1,7 +1,7 @@
 """Tests for the strip_description_whitespace Hamilton DAG functions."""
 
-import ibis
 import pandas as pd
+import ibis
 
 import iacs.dataflows.derive.strip_description_whitespace as sut
 from tests.conftest import make_registry
@@ -75,6 +75,17 @@ class TestStrippedRegistry:
         df = result._components["mycomp"].to_pandas()
         assert df.loc[0, "summary"] == "padded"
         assert df.loc[0, "other"] == "  untouched  "
+
+    def test_description_typed_field_in_non_description_component(self):
+        reg = make_registry({
+            "task": [
+                {"entity_id": "e1", "notes": "  review this  ", "value": "  untouched  "},
+            ],
+        })
+        result = sut.stripped_registry(reg, {"task": ["notes"]})
+        df = result._components["task"].to_pandas()
+        assert df.loc[0, "notes"] == "review this"
+        assert df.loc[0, "value"] == "  untouched  "
 
     def test_non_string_values_are_unchanged(self):
         reg = make_registry({
