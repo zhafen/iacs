@@ -1,6 +1,0 @@
-my_requirement:
-  description: A task I need to complete.
-  requirement: null
-  solution: my_infrastructure
-my_infrastructure:
-  description: Infrastructure to complete the task.
