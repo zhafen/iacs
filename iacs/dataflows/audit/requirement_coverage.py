@@ -7,26 +7,13 @@ import ibis.expr.types as ir
 from ...registry import Registry
 
 
-@extract_fields({
-    "requirement": ir.Table,
-    "solution": ir.Table,
-    "status": ir.Table,
-})
+INPUT_COMPONENT_TYPES = ["requirement", "solution", "status"]
+
+
+@extract_fields({ct: ir.Table for ct in INPUT_COMPONENT_TYPES})
 def components(registry: Registry) -> dict:
-    comps = dict(registry._components)
-    if "requirement" not in comps:
-        comps["requirement"] = ibis.memtable({"entity_id": []}, schema={"entity_id": "string"})
-    if "solution" not in comps:
-        comps["solution"] = ibis.memtable(
-            {"entity_id": [], "value_eid": []},
-            schema={"entity_id": "string", "value_eid": "string"},
-        )
-    if "status" not in comps:
-        comps["status"] = ibis.memtable(
-            {"entity_id": [], "value": []},
-            schema={"entity_id": "string", "value": "string"},
-        )
-    return comps
+    """Give access to the components needed by this dataflow."""
+    return {ct: registry.get(ct) for ct in INPUT_COMPONENT_TYPES}
 
 
 def solution_with_state(solution: ir.Table, status: ir.Table) -> ir.Table:

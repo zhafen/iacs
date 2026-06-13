@@ -12,13 +12,13 @@ from iacs.registry import Registry
 from iacs.utils import candidate_entity_ids
 
 
-_input_component_types = ["entity_id", "parent", "effort", "requirement"]
+INPUT_COMPONENT_TYPES = ["entity_id", "parent", "effort", "requirement"]
 
 
-@extract_fields(dict(entity_id=ir.Table, parent=ir.Table, effort=ir.Table, requirement=ir.Table))
+@extract_fields({ct: ir.Table for ct in INPUT_COMPONENT_TYPES})
 def components(registry: Registry) -> dict:
     """Give access to the components needed by this dataflow."""
-    return {ct: registry.get(ct) for ct in _input_component_types}
+    return {ct: registry.get(ct) for ct in INPUT_COMPONENT_TYPES}
 
 
 def entity_depth(parent: ir.Table) -> pd.DataFrame:

@@ -7,18 +7,18 @@ import ibis.expr.types as ir
 from iacs.registry import Registry
 
 
+INPUT_COMPONENT_TYPES = ["todo"]
+
+
 @extract_fields({"todo_component": ir.Table})
 def components(registry: Registry) -> dict:
-    """Give access to the components dict from the registry."""
-    comps = dict(registry._components)
-    comps["todo_component"] = comps.get(
-        "todo",
-        ibis.memtable(
-            {"entity_id": [], "value": []},
-            schema={"entity_id": "string", "value": "string"},
-        ),
-    )
-    return comps
+    """Give access to the components needed by this dataflow.
+
+    The ``todo`` component is extracted as ``todo_component`` to avoid a name
+    collision with the ``todo`` output node produced by this DAG.
+    """
+    return {"todo_component": registry.get("todo")}
+
 
 
 def todo_table(todo_component: ir.Table) -> ibis.expr.types.Table | None:

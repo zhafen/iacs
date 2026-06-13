@@ -45,19 +45,17 @@ import pandas as pd
 from ...registry import Registry
 
 
-@extract_fields({"entity_id": ir.Table, "parent": ir.Table})
+INPUT_COMPONENT_TYPES = ["entity_id", "parent"]
+
+
+@extract_fields({ct: ir.Table for ct in INPUT_COMPONENT_TYPES})
 def components(registry: Registry) -> dict:
-    """Extract all component tables from the registry, including entity_id_table.
+    """Extract all component tables from the registry.
 
-    Parameters
-    ----------
-    registry : Registry
-        The registry containing component tables.
-
-    Returns
-    -------
-    dict
-        A dict mapping component type names (including "entity_id") to ibis Tables.
+    Returns all components (not just INPUT_COMPONENT_TYPES) because downstream
+    nodes such as ``components_for_export`` and ``entity_first_data`` must
+    iterate over every component type to reconstruct the full manifest.
+    ``parent`` is guaranteed present via a fallback empty table.
     """
     result = dict(registry._components)
     if "parent" not in result:
