@@ -268,23 +268,6 @@ iacs_component:
                         Impact score, with higher values corresponding to greater impact.
                     type: rating
                     default: 0.5
-        discovery:
-            - description: >
-                Represents the inherent value attached to experiencing or learning
-                something new.
-            - parent: impact
-        enjoyment:
-            - description: >
-                Represents a positive emotion or pleasurable feeling associated
-                with an entity. May have a temporal dimension: anticipated
-                (before), ongoing (during), or past (after).
-            - parent: impact
-        motivation:
-            - description: >
-                Represents a desire or impulse to do or avoid something. Higher
-                values indicate stronger desire to pursue; lower values indicate
-                impulse to avoid.
-            - parent: impact
         requirement:
             - description: >
                 Indicates that an entity represents a requirement that must be satisfied
@@ -335,26 +318,27 @@ iacs_component:
                     description: Cost magnitude, with higher values corresponding to greater cost.
                     type: float
         effort:
-            - description: >
-                Used to quantify the amount of human work for a solution to function.
-            - parent: cost
-            - field:
-                value:
-                    description: Quantification of work required.
-                    type: float
-                unit:
-                    description: >
-                        Units for the quantifications. Points refers to story points.
-                    type: str
-                    range: [points, hours]
-                    default: points
-                    nullable: false
-                schedule:
-                    description: >
-                        How often the effort needs to be put in, i.e. the maintenance
-                        effort. When not provided, assumes a one-time effort (setup effort).
-                    type: timedelta
-                    default: null
+            data:
+                - description: >
+                    Used to quantify the amount of human work to get the impact.
+                - parent: cost
+                - field:
+                    value:
+                        description: Quantification of work required.
+                        type: float
+                    schedule:
+                        description: >
+                            How often the effort needs to be put in, i.e. the maintenance
+                            effort. Null indicates a one-time effort.
+                        type: timedelta
+                        default: null
+                    conversion:
+                        description: Units of effort required to 
+                        type: float
+            time_effort:
+                - description: Number of hours of human work required.
+            story_points:
+                - description: Agile story points required.
 
     task:
         - description: >

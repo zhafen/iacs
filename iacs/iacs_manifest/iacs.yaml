@@ -138,6 +138,13 @@ iacs:
                         - effort:
                             value: 8
                             unit: points
+            address_issues_with_multiple_possible_representations:
+                data:
+                    - requirement: 0.7
+                address_when_to_make_fields_a_particular_object_type_vs_a_base_type:
+                    - requirement: 0.7
+                address_when_use_parents_vs_components:
+                    - requirement: 0.9
         help_improve_the_quality_of_system_designs:
             data:
                 - requirement
