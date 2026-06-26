@@ -1809,3 +1809,52 @@ dataflow_system:
               example checking requirement coverage, traceability, and outstanding
               todos.
         - requirement: 0.6
+
+text_discretization:
+    data:
+        - description: >
+              A top-level capability for abstracting (discretizing) text data into
+              relational data by rewriting it as entity-component-system formatted
+              YAML files (EC files). Rather than leaving knowledge locked in
+              free-form prose, discretization produces structured, queryable, and
+              version-controllable records that can be ingested by iacs and
+              downstream tooling.
+
+              Organizationally, this capability likely warrants its own repository,
+              separate from the core iacs repo. At minimum the split is two repos:
+              one for iacs core functionality and one for the text-discretization
+              pipeline.
+        - requirement
+    user_defined_schema:
+        data:
+            - description: >
+                  Users must be able to specify the target schema by providing
+                  component definitions (i.e. defining which component types and
+                  fields the discretized output should use). This allows domain-
+                  specific vocabularies to be encoded and enforced rather than
+                  relying on a generic default schema.
+            - requirement
+    model_inferred_schema:
+        data:
+            - description: >
+                  When the user has not provided a schema, the model should perform
+                  an initial pass over the source text and propose a best-effort
+                  schema (component definitions) before producing EC file output.
+                  The proposed schema is presented to the user for review and
+                  refinement before the full discretization run.
+            - requirement
+    compare_existing_tools:
+        data:
+            - description: >
+                  As designers of this functionality we must survey and compare
+                  existing tools with overlapping functionality before committing
+                  to an implementation approach. Relevant tool categories include
+                  knowledge-graph extractors, information-extraction pipelines,
+                  ontology-learning systems, and LLM-based structured-output
+                  frameworks.
+            - requirement
+            - todo: >
+                  Complete a landscape review of overlapping tools (e.g. Graphiti,
+                  Instructor, LlamaIndex property-graph extraction, DSPy, Marvin,
+                  Outlines, Langchain document transformers) and document pros/cons
+                  in this file before beginning implementation.
