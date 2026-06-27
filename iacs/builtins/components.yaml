@@ -327,9 +327,6 @@ iacs_component:
                     description: Count of units of subtype cost per normalized cost.
                     type: float
                     default: 1
-            - todo: >
-                We might say there's an overall budget, but different types of cost
-                have different budgets. They're not always interchangeable.
         effort:
             data:
                 - description: >

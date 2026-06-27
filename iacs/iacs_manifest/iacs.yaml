@@ -1638,6 +1638,15 @@ audit_system:
                                           inconsistencies can emerge if implementations
                                           diverge across the codebase.
                                     - weight: -0.6
+                incorporate_multiple_budget_constraints:
+                    - description: >
+                        Improve cost-impact analysis using utility-maximization
+                        (consumer theory) principles: multiple budget constraints
+                        (money, time, capacity), shadow prices per constraint,
+                        binding constraint identification, impact-per-cost
+                        ranking, and dual solution when constraints bind
+                        simultaneously.
+                    - requirement
         requirement_coverage_audit:
             - description: >
                   Checks that requirements have implementing solutions.
