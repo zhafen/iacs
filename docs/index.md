@@ -6,7 +6,7 @@ iacs uses an Entity-Component-System framework for modeling infrastructure solut
 
 ## Key Concepts
 
-- **Entity-Centered Format**: Human-friendly YAML format for defining entities and their components.
+- **Entity-Centered Format**: Human-friendly EC file format for defining entities and their components.
 - **Component-Centered Format (Registry)**: Internal format with one table per component type.
 - **Audits**: Checks that evaluate solution quality (`RequirementCoverageAudit`, `TraceabilityAudit`, `TodoAudit`).
 - **`solution of` component**: A `directed_relation` component indicating that an entity solves/fulfills a requirement.

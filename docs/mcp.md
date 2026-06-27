@@ -21,7 +21,7 @@ Add the following to your `.mcp.json` (or Claude Desktop's `claude_desktop_confi
 }
 ```
 
-Replace `/path/to/your/manifest` with the directory that contains your YAML manifest files. If you omit `IACS_MANIFEST`, the server loads the built-in example manifest.
+Replace `/path/to/your/manifest` with the directory that contains your EC files. If you omit `IACS_MANIFEST`, the server loads the built-in example manifest.
 
 ## Configuration
 

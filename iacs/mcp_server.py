@@ -124,11 +124,11 @@ def run_dataflow(name: str, ctx: Context) -> str:
 
 @server.tool()
 def refresh(ctx: Context) -> str:
-    """Run the ETL export and write normalised YAML back to the original source paths.
+    """Run the ETL export and write normalised EC files back to the original source paths.
 
     Executes the full export pipeline against the currently loaded registry
     (which has already passed through load → validate → derive) and saves
-    each YAML file back to its original location, normalising formatting and
+    each EC file back to its original location, normalising formatting and
     resolving any derived fields in-place.
 
     Returns a summary listing each file that was written.
@@ -140,7 +140,7 @@ def refresh(ctx: Context) -> str:
 def describe_format() -> str:
     """Return the entity-first YAML format specification with a canonical example.
 
-    Use this before transcribing text into iacs YAML to understand the
+    Use this before transcribing text into an EC file to understand the
     required structure, built-in component types, and formatting rules.
     Sourced from the iacs builtins directory.
     """
