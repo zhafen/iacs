@@ -317,6 +317,19 @@ iacs_component:
                 value:
                     description: Cost magnitude, with higher values corresponding to greater cost.
                     type: float
+                schedule:
+                    description: >
+                        How often the cost needs to be paid, i.e. the maintenance
+                        cost. Null indicates a one-time effort.
+                    type: timedelta
+                    default: null
+                conversion:
+                    description: Count of units of subtype cost per normalized cost.
+                    type: float
+                    default: 1
+            - todo: >
+                We might say there's an overall budget, but different types of cost
+                have different budgets. They're not always interchangeable.
         effort:
             data:
                 - description: >
@@ -326,19 +339,19 @@ iacs_component:
                     value:
                         description: Quantification of work required.
                         type: float
-                    schedule:
-                        description: >
-                            How often the effort needs to be put in, i.e. the maintenance
-                            effort. Null indicates a one-time effort.
-                        type: timedelta
-                        default: null
-                    conversion:
-                        description: Units of effort required to 
-                        type: float
             time_effort:
                 - description: Number of hours of human work required.
             story_points:
                 - description: Agile story points required.
+        money:
+            data:
+                - description: Monetary cost.
+                - parent: cost
+                - field:
+                    currency:
+                        description: Currency for the monetary cost.
+                        unit: usd
+                        type: str
 
     task:
         - description: >
