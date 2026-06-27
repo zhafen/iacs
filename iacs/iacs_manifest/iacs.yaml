@@ -795,10 +795,41 @@ ecs_framework:
                         - requirement
                 formatting_is_concise:
                     children_inherit_components_of_parents:
-                        - requirement:
-                              type: quality
-                              value: 0.7
-                        - parent: have_good_yaml_formatting
+                        data:
+                            - requirement:
+                                  type: quality
+                                  value: 0.7
+                            - parent: have_good_yaml_formatting
+                        con_unclear_parent_child_relationship:
+                            - description: >
+                                The type of relationship between a parent entity and
+                                its child entities is implicit; a reader cannot tell
+                                at a glance what a child inherits or why, reducing
+                                readability.
+                                This is specifically especially relevant
+                                for child component types.
+                                For example, consider the below defs:
+                                happiness:
+                                data:
+                                    - description: >
+                                        Quantification of happiness.
+                                    - field:
+                                        value:
+                                            description: >
+                                                Quantitative value.
+                                            type: float
+                                wealth:
+                                    - description: >
+                                        Quantification of wealth,
+                                        which is clearly part of
+                                        happiness.
+
+                                And this usage:
+                                - happiness: 0.5
+                                - wealth: 0.1
+
+                                There's no clear relationship.
+
                 formatting_is_clear:
                     commonly_used_components_have_compressed_format:
                         - description: >
