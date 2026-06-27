@@ -100,7 +100,7 @@ def cmd_refresh(arch: "Architect") -> str:
     result = arch.execute("etl.export_manifest")
     saved: list[str] = result.get("exported_manifest_filepaths", [])
     if not saved:
-        return "No YAML files to refresh."
+        return "No EC files to refresh."
     lines = [f"Refreshed {len(saved)} file(s):"]
     lines.extend(f"  {p}" for p in saved)
     return "\n".join(lines)

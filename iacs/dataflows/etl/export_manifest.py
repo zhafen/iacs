@@ -484,7 +484,7 @@ def hierarchical_entity_first_data(
 
 
 def exported_manifest_filepaths(hierarchical_entity_first_data: dict, output_dir: str = "") -> list[str]:
-    """Save hierarchical_entity_first_data to one YAML file per original source filepath.
+    """Save hierarchical_entity_first_data to one EC file per original source filepath.
 
     Parameters
     ----------
@@ -492,9 +492,9 @@ def exported_manifest_filepaths(hierarchical_entity_first_data: dict, output_dir
         Mapping of original filepath → entity dict, as returned by
         ``hierarchical_entity_first_data``.
     output_dir : str
-        Directory to write the manifest YAML files into.  When empty (the
+        Directory to write the EC files into.  When empty (the
         default), each file is written back to its original source path,
-        normalising YAML in-place.
+        normalising formatting in-place.
 
     Returns
     -------

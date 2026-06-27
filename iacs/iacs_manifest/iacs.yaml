@@ -516,32 +516,32 @@ iacs:
             primary_storage:
                 - description: >
                       If infrastructure is data, databases are the more natural primary
-                      storage medium rather than YAML files on disk. This would make
+                      storage medium rather than EC files on disk. This would make
                       querying, diffing, and auditing infrastructure more tractable.
                 - todo: >
-                      Evaluate database backends as primary storage for iacs, with YAML
+                      Evaluate database backends as primary storage for iacs, with EC files
                       serving only as an ingestion and interchange format. See also:
                       facilitate_compatibility_with_relational_databases.
             yaml_as_ingestion_format:
                 - description: >
-                      Even with a database backend, YAML remains valuable as the human-
-                      authored input format. Users write YAML, iacs ingests it into the
-                      database. The round-trip direction — exporting arbitrary slices of
-                      the infrastructure back to YAML for viewing and editing — is a
+                      Even with a database backend, EC files remain valuable as the human-
+                      authored input format. Users write EC files, iacs ingests them into
+                      the database. The round-trip direction — exporting arbitrary slices of
+                      the infrastructure back to EC files for viewing and editing — is a
                       strong candidate for the primary editing workflow.
                 - todo: >
-                      Design the YAML round-trip: exporting a subgraph of the database
-                      back to entity-first YAML, letting the user modify it, and
+                      Design the EC file round-trip: exporting a subgraph of the database
+                      back to entity-first EC files, letting the user modify them, and
                       re-ingesting the result cleanly.
             viewing_and_editing:
                 - description: >
                       Open question: how do users view and edit infrastructure once it
                       lives in a database? Two candidate approaches are (1) exposing
-                      arbitrary subsets as editable YAML files, and (2) a generated wiki
+                      arbitrary subsets as editable EC files, and (2) a generated wiki
                       or documentation site. Both may be needed simultaneously.
                 - todo: >
                       Decide on the primary interface for browsing and editing persisted
-                      infrastructure. Evaluate editable YAML exports vs. a generated
+                      infrastructure. Evaluate editable EC file exports vs. a generated
                       wiki. See also: export_infrastructure_to_wiki.
         alternate_yaml_format_discussion:
             data:
@@ -927,9 +927,9 @@ ecs_framework:
                           component_type, component_value.
             read_entity_first_file:
                 - description: >
-                      Read entity-first data from a YAML file.
+                      Read entity-first data from an EC file.
                 - input:
-                      path [str]: Path to the YAML file.
+                      path [str]: Path to the EC file.
                 - output:
                       df [dataframe]: Parsed entity-first DataFrame.
             to_entity_first:
@@ -952,7 +952,7 @@ ecs_framework:
                 - todo: Not yet implemented.
             write_entity_first_file:
                 - description: >
-                      Write entity-first data to a YAML file.
+                      Write entity-first data to an EC file.
                       (Not yet implemented.)
                 - input:
                       df [dataframe]: Entity-centered DataFrame.
@@ -1338,7 +1338,7 @@ ecs_framework:
                   The entity-first ECS format organizes the data around entities,
                   grouping together components associated with an entity.
                   This format is best for inspecting a single entity, and is
-                  typically best for manual data input, often via yaml.
+                  typically best for manual data input, often via EC files.
                   See iacs_manifest/format_guide.yaml for the full format specification.
         component_first:
             data:
@@ -1725,7 +1725,7 @@ deduplication_system:
                 - description: >
                       Entities with the same entity_key but different entity_ids
                       are strong candidates. This is the common case when the same
-                      concept is defined independently in multiple YAML files.
+                      concept is defined independently in multiple EC files.
             side_by_side_view:
                 - description: >
                       The most reliable identification method is to display all
@@ -1756,12 +1756,12 @@ deduplication_system:
         manual_override:
             - description: >
                   A ((duplicate_of)) component allows users to declare canonical
-                  duplicates explicitly in YAML. These declarations are ingested
+                  duplicates explicitly in EC files. These declarations are ingested
                   first and take precedence over any algorithmically generated
                   candidates.
         idempotency:
             - description: >
-                  The merge map is serializable to YAML alongside the manifests.
+                  The merge map is serializable alongside the EC files as a manifest.
                   Re-running deduplication reads the existing map first, extends
                   it with any new candidates, and re-applies, so the process is
                   safe to run repeatedly without accumulating drift.
@@ -1790,7 +1790,7 @@ dataflow_system:
         - description: >
               ETL (Extract, Transform, Load) dataflows are performed to load data
               into a registry. They cover extracting raw data from source formats
-              (e.g. YAML manifests, CSV files), transforming it into component
+              (e.g. EC files, CSV files), transforming it into component
               tables, and loading the result into the registry.
         - requirement: 1.0
     validation:

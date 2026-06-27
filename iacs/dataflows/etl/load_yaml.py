@@ -1,4 +1,4 @@
-"""Hamilton DAG for loading entity-first data from YAML files."""
+"""Hamilton DAG for loading entity-first data from EC files."""
 
 from pathlib import Path
 
@@ -9,17 +9,17 @@ _BUILTINS_DIR = Path(__file__).parent.parent.parent / "builtins"
 
 
 def raw_entity_first_data(input_dir: list[str]) -> dict:
-    """Load YAML files from a list of files or directories.
+    """Load EC files from a list of files or directories.
 
-    Always includes all yaml files from the builtins directory, each identified
+    Always includes all EC files from the builtins directory, each identified
     as "builtins.<stem>". User-provided files are identified by their path
     relative to the current working directory.
 
     Parameters
     ----------
     input_dir : list[str]
-        A list of yaml file paths or directory paths. Directories are searched
-        recursively for yaml files.
+        A list of EC file paths or directory paths. Directories are searched
+        recursively for EC files.
 
     Returns
     -------
