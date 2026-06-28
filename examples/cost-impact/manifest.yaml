@@ -28,8 +28,9 @@ impact_budgets:
                 normalized_value_per_unit: 1.5
             time_with_loved_ones:
                 description: >
-                    Time in hours spent actively doing something together with a
-                    loved one. As a social interaction, there is typically a limit.
+                    Time in hours spent actively doing something together with a loved
+                    one. As a social interaction, there is often a social_interaction
+                    cost associated with this.
                 normalized_value_per_unit: 3
                 budget: 7
     personal_value:
@@ -97,7 +98,10 @@ cost_budgets:
                 description: >
                     Time spent in hours doing something insufficiently stimulating.
                 normalized_value_per_unit: 1.5
-            physical_time_effort:
+            stress:
+                description: Time spent in hours facing mental stress.
+                normalized_value_per_unit: 3
+            physical_effort:
                 description: >
                     Time spent in hours doing something that is physically straining.
                 normalized_value_per_unit: 4
@@ -291,16 +295,128 @@ activities:
                 value: 0.25
     tabletop_games:
         flamecraft_with_tania:
-            - description: A game of Flamecraft with Tania.
+            - description: A two-hour first game of Flamecraft with Tania.
             - impact:
+                type: discovery
+                value: 0.75
+            - impact:
+                type: enjoyment
+                value: 0.75
+            - impact:
+                type: impulse
+                value: 0.5
+            - impact:
+                type: time_with_loved_ones
+                value: 1.5
+            - cost:
+                type: learning
+                value: 0.25
+            - cost:
+                type: high_intensity_problem_solving
+                value: 0.5
+            - cost:
+                type: standard_problem_solving
+                value: 0.5
+            - cost:
+                type: social_interaction
+                value: 0.75
+            - cost:
+                type: usd
+                value: 50
         play_mtg_arena:
-        play_mtg_in_person:
-        play_roleplaying_game_online:
-        play_roleplaying_game_in_person:
+            - description: One hour of playing MTG Arena.
+            - impact:
+                type: discovery
+                value: 0.25
+            - impact:
+                type: enjoyment
+                value: 0.25
+            - impact:
+                type: impulse
+                value: 0.5
+            - cost:
+                type: standard_problem_solving
+                value: 0.5
+            - cost:
+                type: stress
+                value: 0.5
+        mtg_commander_night:
+            - description: Three hours playing MTG in person at commander night.
+            - impact:
+                type: discovery
+                value: 1
+            - impact:
+                type: enjoyment
+                value: 0.5
+            - impact:
+                type: impulse
+                value: 1.5
+            - cost:
+                type: high_intensity_problem_solving
+                value: 1.5
+            - cost:
+                type: stress
+                value: 1.5
+            - cost:
+                type: social_interaction
+                value: 3
+            - cost:
+                type: inertia
+                value: 0.25
+        play_rpg_in_person:
+            - description: >
+                Spend three hours finding a way to play a RPG in person and another
+                four on the actual session.
+            - impact:
+                type: discovery
+                value: 1.5
+            - impact:
+                type: enjoyment
+                value: 1
+            - impact:
+                type: impulse
+                value: 1
+            - impact:
+                type: pride
+                value: 0.5
+            - cost:
+                type: social_interaction
+                value: 3
+            - cost:
+                type: learning
+                value: 1
+            - cost:
+                type: stress
+                value: 1
+            - cost:
+                type: standard_problem_solving
+                value: 1
+            - cost:
+                type: inertia
+                value: 1
     video_games:
         elden_ring:
-            - impulse: 1.0
-            - time_effort: 50.
+            - description: An hour spent playing Elden Ring
+            - impact:
+                type: discovery
+                value: 0.25
+            - impact:
+                type: enjoyment
+                value: 0.5
+            - impact:
+                type: impulse
+                value: 0.25
+            - cost:
+                type: time_effort
+                value: 0.5
+            - cost:
+                type: standard_problem_solving
+                value: 20 / 30
+            - cost:
+                type: stress
+                value: 10 / 30
+        honkai_star_rail:
+            - description: An hour spent playing Honkai Star Rail.
         diablo_iv_new_expansion:
             - time_effort: 50.
         expedition_33:
