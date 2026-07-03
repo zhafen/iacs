@@ -417,16 +417,152 @@ activities:
                 value: 10 / 30
         honkai_star_rail:
             - description: An hour spent playing Honkai Star Rail.
-        diablo_iv_new_expansion:
-            - time_effort: 50.
+            - impact:
+                type: discovery
+                value: 0.2
+            - impact:
+                type: enjoyment
+                value: 0.4
+            - impact:
+                type: impulse
+                value: 0.4
+            - cost:
+                type: time_effort
+                value: 0.8
+            - cost:
+                type: boredom
+                value: 0.2
+        diablo_iv:
+            - description: An hour spent playing Diablo IV.
+            - impact:
+                type: discovery
+                value: 0.1
+            - impact:
+                type: enjoyment
+                value: 0.5
+            - impact:
+                type: impulse
+                value: 0.4
+            - cost:
+                type: time_effort
+                value: 0.5
+            - cost:
+                type: grinding
+                value: 0.5
         expedition_33:
-            - description: Final Fantasy turn-based in France.
-            - priority: 0.7
+            - description: An hour spent playing Expedition 33, described as Final
+                Fantasy turn-based in France.
+            - impact:
+                type: discovery
+                value: 0.75
+            - impact:
+                type: impulse
+                value: 0.25
+            - cost:
+                type: standard_problem_solving
+                value: 1
+            - cost:
+                type: usd
+                value: 40
         umamusume:
+            - description: "An hour spent playing Umamusume: Pretty Derby."
+            - impact:
+                type: enjoyment
+                value: 0.5
+            - impact:
+                type: impulse
+                value: 0.5
+            - cost:
+                type: time_effort
+                value: 0.9
+            - cost:
+                type: boredom
+                value: 0.1
         tryhard_umamusume:
-        honkai_star_rail_daily_pass:
-        honkai_star_rail_battle_pass:
+            - description: "An hour spent minmaxing Umamusume: Pretty Derby."
+            - impact:
+                type: enjoyment
+                value: 0.1
+            - impact:
+                type: impulse
+                value: 0.9
+            - cost:
+                type: standard_problem_solving
+                value: 0.9
+            - cost:
+                type: high_intensity_problem_solving
+                value: 0.1
         ffxiv:
+            cosmic_exploration:
+                - description: An hour spent crafting in FFXIV.
+                - impact:
+                    type: discovery
+                    value: 0.1
+                - impact:
+                    type: enjoyment
+                    value: 0.9
+                - cost:
+                    type: grinding
+                    value: 1
+            ex_trials:
+                - description: An hour spent doing/practicing extremes.
+                - impact:
+                    type: enjoyment
+                    value: 0.25
+                - impact:
+                    type: discovery
+                    value: 0.1
+                - impact:
+                    type: impulse
+                    value: 0.4
+                - impact:
+                    type: pride
+                    value: 0.25
+                - cost:
+                    type: time_effort
+                    value: 0.1
+                - cost:
+                    type: stress
+                    value: 0.5
+                - cost:
+                    type: social_interaction
+                    value: 0.2
+                - cost:
+                    type: high_intensity_problem_solving
+                    value: 0.2
     other:
         listen_to_magnus_archives:
-        transcribe_magnus_archives:
+            - description: An hour spent listening to the magnus archives with Tania.
+            - impact:
+                type: discovery
+                value: 0.2
+            - impact:
+                type: impulse
+                value: 0.3
+            - impact:
+                type: time_with_loved_ones
+                value: 0.5
+            - cost:
+                type: grinding
+                value: 0.5
+            - cost:
+                type: stress
+                value: 0.4
+            - cost:
+                type: social_interaction
+                value: 0.1
+        magnus_archives_transcript_analysis:
+            - description: An hour spent mining the magnus archives for hidden links and
+                meaning.
+            - impact:
+                type: discovery
+                value: 0.4
+            - impact:
+                type: impulse
+                value: 0.4
+            - impact:
+                type: pride
+                value: 0.2
+            - cost:
+                type: standard_problem_solving
+                value: 1
