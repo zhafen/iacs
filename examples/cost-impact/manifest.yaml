@@ -69,12 +69,12 @@ cost_budgets:
                     Time spent in hours, with very low mental intensity. One indicator
                     of grinding is that you can multitask.
                 normalized_value_per_unit: 0.5
-            standard_problem_solving:
+            concentration:
                 description: >
                     Time spent in hours on a task that requires concentration.
                 normalized_value_per_unit: 2
                 budget: 6
-            high_intensity_problem_solving:
+            intense_concentration:
                 description: >
                     Time spent in hours on a task that requires full concentration.
                 normalized_value_per_unit: 3
@@ -125,7 +125,7 @@ activities:
                 type: time_effort
             - cost:
                   value: 1
-                  type: standard_problem_solving
+                  type: concentration
         creating_and_playing_a_game:
             - description: 15 minutes playing a game for 1 hr 45 min of coding work.
             - impact:
@@ -142,10 +142,10 @@ activities:
                 type: discovery
             - cost:
                 value: 1
-                type: high_intensity_problem_solving
+                type: intense_concentration
             - cost:
                 value: 0.5
-                type: standard_problem_solving
+                type: concentration
             - cost:
                 value: 0.25
                 type:
@@ -178,10 +178,10 @@ activities:
                 type: inertia
                 value: 0.5
             - cost:
-                type: standard_problem_solving
+                type: concentration
                 value: 0.5
             - cost:
-                type: high_intensity_problem_solving
+                type: intense_concentration
                 value: 0.5
     reading:
         fantasy:
@@ -312,10 +312,10 @@ activities:
                 type: learning
                 value: 0.25
             - cost:
-                type: high_intensity_problem_solving
+                type: intense_concentration
                 value: 0.5
             - cost:
-                type: standard_problem_solving
+                type: concentration
                 value: 0.5
             - cost:
                 type: social_interaction
@@ -335,7 +335,7 @@ activities:
                 type: impulse
                 value: 0.5
             - cost:
-                type: standard_problem_solving
+                type: concentration
                 value: 0.5
             - cost:
                 type: stress
@@ -352,7 +352,7 @@ activities:
                 type: impulse
                 value: 1.5
             - cost:
-                type: high_intensity_problem_solving
+                type: intense_concentration
                 value: 1.5
             - cost:
                 type: stress
@@ -389,7 +389,7 @@ activities:
                 type: stress
                 value: 1
             - cost:
-                type: standard_problem_solving
+                type: concentration
                 value: 1
             - cost:
                 type: inertia
@@ -410,7 +410,7 @@ activities:
                 type: time_effort
                 value: 0.5
             - cost:
-                type: standard_problem_solving
+                type: concentration
                 value: 20 / 30
             - cost:
                 type: stress
@@ -459,7 +459,7 @@ activities:
                 type: impulse
                 value: 0.25
             - cost:
-                type: standard_problem_solving
+                type: concentration
                 value: 1
             - cost:
                 type: usd
@@ -487,10 +487,10 @@ activities:
                 type: impulse
                 value: 0.9
             - cost:
-                type: standard_problem_solving
+                type: concentration
                 value: 0.9
             - cost:
-                type: high_intensity_problem_solving
+                type: intense_concentration
                 value: 0.1
         ffxiv:
             cosmic_exploration:
@@ -528,7 +528,7 @@ activities:
                     type: social_interaction
                     value: 0.2
                 - cost:
-                    type: high_intensity_problem_solving
+                    type: intense_concentration
                     value: 0.2
     other:
         listen_to_magnus_archives:
@@ -564,5 +564,5 @@ activities:
                 type: pride
                 value: 0.2
             - cost:
-                type: standard_problem_solving
+                type: concentration
                 value: 1
