@@ -115,16 +115,22 @@ activities:
         work_on_iacs:
             - description: A two hour chunk of time spent working on iacs.
             - impact:
-                value: 1
-                type: impulse
+                type: discovery
+                value: 0.25
             - impact:
-                value: 2
+                type: impulse
+                value: 0.5
+            - impact:
+                type: enjoyment
+                value: 0.25
+            - impact:
                 type: pride
-            - cost:
                 value: 1
+            - cost:
+                value: 0.5
                 type: time_effort
             - cost:
-                  value: 1
+                  value: 1.5
                   type: concentration
         creating_and_playing_a_game:
             - description: 15 minutes playing a game for 1 hr 45 min of coding work.

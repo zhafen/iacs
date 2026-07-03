@@ -55,7 +55,10 @@ raw_entity_first_data = {
             {
                 "field": {
                     "name": {"description": "The cat's name.", "type": "str"},
-                    "breed": {"description": "The breed of the cat, e.g. orange.", "type": "str"},
+                    "breed": {
+                        "description": "The breed of the cat, e.g. orange.",
+                        "type": "str",
+                    },
                 }
             },
         ],
