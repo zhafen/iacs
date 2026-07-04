@@ -12,7 +12,7 @@ from hamilton.lifecycle import NodeExecutionHook
 
 from iacs.dataflows import base_etl
 from iacs.dataflows.etl import export_manifest
-from tests.test_dataflows.test_examples import _normalize_df
+from iacs.utils import dhash
 
 ROOT = Path(__file__).parent.parent
 EXAMPLES_DIR = ROOT / "examples"
@@ -185,6 +185,57 @@ def _assert_not_subset(var_name: str, expected_value, actual_value) -> None:
     )
 
 
+def _normalize_df(df: pd.DataFrame, entity_id_df: pd.DataFrame) -> pd.DataFrame:
+    """Replace entity_id hashes with within-file entity paths for cross-registry comparison.
+
+    Entity IDs are hashes of ``filepath:entity_path``.  Two registries loaded
+    from different directories produce different hashes for the same logical
+    entities, so we normalize by using only the within-file entity path.
+
+    Also handles *phantom parents*: entities that appear in the parent graph (e.g.
+    container entities with no own components like ``cat_food_supply``) have no row
+    in entity_id but do appear in derived tables.  We reconstruct their paths from
+    their children's paths so they normalize correctly across registries.
+
+    Also normalises ``*_eid`` and the primary ``entity_id`` column (entity ID references).
+    """
+    filepath_of = entity_id_df.set_index("value")["filepath"].to_dict()
+    path_of = entity_id_df.set_index("value")["path"].to_dict()
+
+    # Build extended map: include phantom ancestor paths derived from known entity paths
+    extra_filepath: dict[str, str] = {}
+    extra_path: dict[str, str] = {}
+    for eid, full_path in path_of.items():
+        fp = filepath_of.get(eid, "")
+        sep = full_path.find(":")
+        if sep == -1:
+            continue
+        name_part = full_path[sep + 1:]
+        while "." in name_part:
+            name_part = name_part.rsplit(".", 1)[0]
+            ancestor_full = f"{full_path[:sep]}:{name_part}"
+            ancestor_hash = dhash(ancestor_full)
+            if ancestor_hash not in path_of and ancestor_hash not in extra_path:
+                extra_filepath[ancestor_hash] = fp
+                extra_path[ancestor_hash] = ancestor_full
+
+    all_filepath = {**filepath_of, **extra_filepath}
+    all_path = {**path_of, **extra_path}
+
+    def hash_to_path(eid):
+        if pd.isna(eid):
+            return eid
+        fp = all_filepath.get(str(eid), "")
+        p = all_path.get(str(eid), str(eid))
+        return p[len(fp) + 1:] if fp and p.startswith(fp + ":") else p
+
+    df = df.copy()
+    for col in df.columns:
+        if col == "entity_id" or col.endswith("_eid"):
+            df[col] = df[col].map(hash_to_path)
+    return df
+
+
 def _assert_components_equal(
     comp: pd.DataFrame,
     loaded_comp: pd.DataFrame,
@@ -195,11 +246,19 @@ def _assert_components_equal(
     """Assert two component tables are equal after a round trip.
 
     Normalizes entity_id hashes to within-file entity paths (they differ
-    because example_dir and output_dir are different source paths) and
-    normalizes numeric-looking columns to float, since CSV-sourced values
-    round-tripped through YAML come back as strings (YAML's generic
-    entity-first pipeline stores all values as str; only direct CSV loading
-    preserves numeric dtypes).
+    because example_dir and output_dir are different source paths).
+
+    Also normalizes numeric-looking columns to float. This is needed
+    specifically for component types with no declared ``field`` schema (e.g.
+    the CSV-sourced ``orders``/``users``/``products`` types in the
+    relational_data example): base_etl's validate_components only casts a
+    column when a schema entity declares a type for it, so schema-less
+    columns keep whatever dtype their ingestion path produced — pandas'
+    CSV reader infers int64/float64 on first load, while the generic
+    entity-first YAML pipeline always stores values as str (see
+    ``_add_component_pairs`` in load_manifest.py). That divergence is a
+    property of the two ingestion paths, not something validate_components
+    is meant to reconcile, so we normalize it here for comparison purposes.
     """
     norm1 = _normalize_df(comp, eid_df)
     norm2 = _normalize_df(loaded_comp, reloaded_eid_df)
