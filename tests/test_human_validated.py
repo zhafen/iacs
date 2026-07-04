@@ -118,8 +118,10 @@ def _assert_manifest_subset(expected: dict, actual: dict, context: str = "") -> 
             continue
         act_val = actual[key]
         ctx = f"{context}.{key}" if context else key
+    # TODO: Link to the exact expected_values that would be incorrectly counted as wrong if we didn't have this
         if isinstance(exp_val, list) and isinstance(act_val, dict) and "data" in act_val:
             act_val = act_val["data"]
+    # TODO: Link to the exact expected_values that would be incorrectly counted as wrong if we didn't have this
         if isinstance(exp_val, list) and isinstance(act_val, list):
             for exp_item in exp_val:
                 found = any(_manifest_item_matches(exp_item, act_item) for act_item in act_val)
@@ -127,6 +129,7 @@ def _assert_manifest_subset(expected: dict, actual: dict, context: str = "") -> 
                     f"{ctx}: expected item {exp_item!r} not found in actual\n"
                     f"  Actual: {act_val!r}"
                 )
+    # TODO: Link to the exact expected_values that would be incorrectly counted as wrong if we didn't have this
         elif isinstance(exp_val, dict) and isinstance(act_val, dict):
             _assert_manifest_subset(exp_val, act_val, context=ctx)
         elif isinstance(exp_val, dict):
@@ -141,12 +144,15 @@ def _assert_subset(var_name: str, expected_value, actual_value) -> None:
     from iacs.registry import Registry
     if isinstance(expected_value, pd.DataFrame):
         _assert_df_rows_subset(expected_value, actual_value, context=var_name)
+
+    # TODO: Link to the exact expected_values that would be incorrectly counted as wrong if we didn't have this
     elif isinstance(expected_value, dict) and isinstance(actual_value, Registry):
         for key, exp_val in expected_value.items():
             if isinstance(exp_val, pd.DataFrame):
                 _assert_df_rows_subset(
                     exp_val, actual_value.view(key), context=f"{var_name}.view({key!r})"
                 )
+
     elif isinstance(expected_value, dict):
         assert isinstance(actual_value, dict), (
             f"'{var_name}': expected dict, got {type(actual_value)}"
@@ -174,7 +180,7 @@ class _ExpectedValueChecker(NodeExecutionHook):
         pass
 
     def run_after_node_execution(
-        self, *, node_name: str, node_tags: dict, result, success: bool, **kwargs
+        self, *, node_name: str, node_tags: dict, result, **kwargs
     ):
 
         source_module = node_tags.get("module")
@@ -205,6 +211,10 @@ class _ExpectedValueChecker(NodeExecutionHook):
         expected_value = getattr(expected_module, variable_name)
 
         _assert_subset(node_name, expected_value, result)
+
+        # TODO: Get this working
+        if hasattr(expected_module, "incorrect_" + variable_name):
+            _assert_not_subset(expected_value, actual_value)
 
 
 @pytest.mark.parametrize("example_dir", _example_dirs())
