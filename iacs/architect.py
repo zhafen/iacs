@@ -53,7 +53,7 @@ class Architect:
             manifest = [str(p) for p in manifest]
         result = driver.Driver(
             {}, base_etl, adapter=base.DictResult()
-        ).execute(["registry"], inputs={"input_dir": manifest})
+        ).execute(["registry"], inputs={"input_dirs": manifest})
         new_registry = result["registry"]
         self._registry.merge(new_registry)
         new_registry.close()
@@ -84,10 +84,10 @@ class Architect:
         full_name = f"{_DATAFLOW_BASE_PACKAGE}.{name}"
         try:
             module = importlib.import_module(full_name)
-        except ImportError:
+        except ImportError as e:
             raise ValueError(
                 f"No dataflow named {name!r} found (tried {full_name!r})"
-            )
+            ) from e
         self._dataflows.append(module)
         self._rebuild_driver()
 

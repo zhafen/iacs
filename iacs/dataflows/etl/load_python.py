@@ -76,7 +76,7 @@ def _extract_entities(tree: ast.Module, module_name: str) -> dict:
     return entities
 
 
-def raw_entity_first_data(input_dir: list[str]) -> dict:
+def raw_entity_first_data(input_dirs: list[str]) -> dict:
     """Load Python source files from a list of files or directories.
 
     Parses every ``.py`` file found and extracts entities from modules,
@@ -99,7 +99,7 @@ def raw_entity_first_data(input_dir: list[str]) -> dict:
     cwd = Path.cwd()
     all_files: list[tuple[Path, str]] = []
 
-    for item in input_dir:
+    for item in input_dirs:
         p = Path(item)
         if p.is_file() and p.suffix == ".py":
             try:

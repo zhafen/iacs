@@ -8,7 +8,7 @@ import yaml
 _BUILTINS_DIR = Path(__file__).parent.parent.parent / "builtins"
 
 
-def raw_entity_first_data(input_dir: list[str]) -> dict:
+def raw_entity_first_data(input_dirs: list[str]) -> dict:
     """Load EC files from a list of files or directories.
 
     Always includes all EC files from the builtins directory, each identified
@@ -17,7 +17,7 @@ def raw_entity_first_data(input_dir: list[str]) -> dict:
 
     Parameters
     ----------
-    input_dir : list[str]
+    input_dirs : list[str]
         A list of EC file paths or directory paths. Directories are searched
         recursively for EC files.
 
@@ -30,7 +30,7 @@ def raw_entity_first_data(input_dir: list[str]) -> dict:
     cwd = Path.cwd()
     all_files: list[tuple[Path, str]] = []
 
-    for item in input_dir:
+    for item in input_dirs:
         p = Path(item)
         if p.is_file() and p.suffix in (".yaml", ".yml"):
             try:

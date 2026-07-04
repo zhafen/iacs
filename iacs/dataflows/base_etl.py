@@ -7,7 +7,7 @@ from .etl import load_manifest
 from ..registry import Registry
 
 
-@subdag(load_manifest, inputs={"input_dir": source("input_dir")}, config={})
+@subdag(load_manifest, inputs={"input_dirs": source("input_dirs")}, config={})
 def loaded_registry(registry: Registry) -> Registry:
     return registry
 

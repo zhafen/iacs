@@ -23,7 +23,7 @@ from . import load_yaml, load_python
 
 @subdag(
     load_yaml,
-    inputs={"input_dir": source("input_dir")},
+    inputs={"input_dirs": source("input_dirs")},
     config={},
 )
 def yaml_entity_first_data(raw_entity_first_data: dict) -> dict:
@@ -32,7 +32,7 @@ def yaml_entity_first_data(raw_entity_first_data: dict) -> dict:
 
 @subdag(
     load_python,
-    inputs={"input_dir": source("input_dir")},
+    inputs={"input_dirs": source("input_dirs")},
     config={},
 )
 def python_entity_first_data(raw_entity_first_data: dict) -> dict:
@@ -51,16 +51,16 @@ def raw_entity_first_data(
 # CSV loading (stays inline — CSV doesn't fit the entity-first dict format)
 # ---------------------------------------------------------------------------
 
-def raw_csv_data(input_dir: list[str]) -> dict[str, pd.DataFrame]:
+def raw_csv_data(input_dirs: list[str]) -> dict[str, pd.DataFrame]:
     """Load CSV files from a list of files or directories (user-provided only, not builtins).
 
     The filename stem (without extension) of each CSV file becomes the component
     type for all rows in that file. Only directories and explicit CSV file paths
-    from ``input_dir`` are searched — the builtins directory is never included.
+    from ``input_dirs`` are searched — the builtins directory is never included.
 
     Parameters
     ----------
-    input_dir : list[str]
+    input_dirs : list[str]
         A list of CSV file paths or directory paths. Directories are searched
         recursively for CSV files.
 
@@ -73,7 +73,7 @@ def raw_csv_data(input_dir: list[str]) -> dict[str, pd.DataFrame]:
     cwd = Path.cwd()
     all_files: list[tuple[Path, str]] = []
 
-    for item in input_dir:
+    for item in input_dirs:
         p = Path(item)
         if p.is_file() and p.suffix == ".csv":
             try:

@@ -102,7 +102,7 @@ def _build_inputs_for(
     No dependency information is hardcoded — it is derived from the DAG signatures.
     ``extra_inputs`` (e.g. ``output_dir``) are merged into the base inputs pool.
     """
-    base_inputs = {"input_dir": [str(example_dir)], **(extra_inputs or {})}
+    base_inputs = {"input_dirs": [str(example_dir)], **(extra_inputs or {})}
 
     all_names = _discover_dataflow_module_names()
     # TODO: Why are the preceding mods just dataflow mods in alphabetical order? That shouldn't relate to what the current module needs.
