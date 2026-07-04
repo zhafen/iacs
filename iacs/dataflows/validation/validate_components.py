@@ -1,4 +1,5 @@
 import ast
+import operator
 
 import pandas as pd
 import pandera
@@ -9,12 +10,43 @@ import ibis.expr.datatypes as dt
 import ibis.expr.types as ir
 
 from ...registry import Registry
-from ...utils import eval_arithmetic_expr
 
 
 _INFRA_TYPES = frozenset({"entity_id", "component_type", "invalid_field", "schema", "parent", "field"})
 
 INPUT_COMPONENT_TYPES = ["entity_id"]
+
+_ARITHMETIC_OPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.USub: operator.neg,
+    ast.UAdd: operator.pos,
+}
+
+
+def _eval_arithmetic_expr(expr: str) -> float | None:
+    """Safely evaluate a simple numeric arithmetic expression string.
+
+    Supports ``+ - * /`` and parentheses over int/float literals, e.g.
+    ``"4 / 50"`` or ``"(1 + 2) * 3"``. Returns ``None`` if ``expr`` is not a
+    valid expression of that form (e.g. it references names or calls).
+    """
+    def _eval(node):
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+            return node.value
+        if isinstance(node, ast.BinOp) and type(node.op) in _ARITHMETIC_OPS:
+            return _ARITHMETIC_OPS[type(node.op)](_eval(node.left), _eval(node.right))
+        if isinstance(node, ast.UnaryOp) and type(node.op) in _ARITHMETIC_OPS:
+            return _ARITHMETIC_OPS[type(node.op)](_eval(node.operand))
+        raise ValueError(f"Unsupported expression node: {node!r}")
+
+    try:
+        tree = ast.parse(expr, mode="eval").body
+        return float(_eval(tree))
+    except (SyntaxError, ValueError, TypeError, ZeroDivisionError):
+        return None
 
 
 @extract_fields({ct: ir.Table for ct in INPUT_COMPONENT_TYPES})
@@ -101,7 +133,7 @@ def _resolve_numeric_string(val):
         return val
     except ValueError:
         pass
-    result = eval_arithmetic_expr(s)
+    result = _eval_arithmetic_expr(s)
     return val if result is None else str(result)
 
 
