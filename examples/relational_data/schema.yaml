@@ -1,0 +1,50 @@
+orders:
+    - description: Schema for CSV-sourced order records.
+    - field:
+        order_id:
+            description: Unique identifier for the order.
+            type: int
+        user_id:
+            description: The ordering user's ID.
+            type: int
+        product_id:
+            description: The ordered product's ID.
+            type: int
+        quantity:
+            description: Number of units ordered.
+            type: int
+        ordered_at:
+            description: Date the order was placed.
+            type: str
+
+users:
+    - description: Schema for CSV-sourced user records.
+    - field:
+        user_id:
+            description: Unique identifier for the user.
+            type: int
+        name:
+            description: The user's full name.
+            type: str
+        email:
+            description: The user's email address.
+            type: str
+        created_at:
+            description: Date the user was created.
+            type: str
+
+products:
+    - description: Schema for CSV-sourced product records.
+    - field:
+        product_id:
+            description: Unique identifier for the product.
+            type: int
+        name:
+            description: The product's name.
+            type: str
+        category:
+            description: The product's category.
+            type: str
+        price_usd:
+            description: The product's price in USD.
+            type: float

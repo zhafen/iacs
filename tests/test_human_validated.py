@@ -245,38 +245,17 @@ def _assert_components_equal(
 ) -> None:
     """Assert two component tables are equal after a round trip.
 
-    Normalizes entity_id hashes to within-file entity paths (they differ
-    because example_dir and output_dir are different source paths).
-
-    Also normalizes numeric-looking columns to float. This is needed
-    specifically for component types with no declared ``field`` schema (e.g.
-    the CSV-sourced ``orders``/``users``/``products`` types in the
-    relational_data example): base_etl's validate_components only casts a
-    column when a schema entity declares a type for it, so schema-less
-    columns keep whatever dtype their ingestion path produced — pandas'
-    CSV reader infers int64/float64 on first load, while the generic
-    entity-first YAML pipeline always stores values as str (see
-    ``_add_component_pairs`` in load_manifest.py). That divergence is a
-    property of the two ingestion paths, not something validate_components
-    is meant to reconcile, so we normalize it here for comparison purposes.
+    Normalizes entity_id hashes to within-file entity paths, since they are
+    hashes of the source filepath and example_dir/output_dir are different
+    paths.
     """
     norm1 = _normalize_df(comp, eid_df)
     norm2 = _normalize_df(loaded_comp, reloaded_eid_df)
 
     drop = {"component_index"}
     common_cols = sorted(set(norm1.columns) & set(norm2.columns) - drop)
-    norm1 = norm1[common_cols].copy()
-    norm2 = norm2[common_cols].copy()
-
-    for col in common_cols:
-        for frame in (norm1, norm2):
-            as_nullable = frame[col].replace("", pd.NA)
-            converted = pd.to_numeric(as_nullable, errors="coerce")
-            if converted.notna().sum() == as_nullable.notna().sum():
-                frame[col] = converted.astype(float)
-
-    norm1 = norm1.sort_values(common_cols, na_position="last").reset_index(drop=True)
-    norm2 = norm2.sort_values(common_cols, na_position="last").reset_index(drop=True)
+    norm1 = norm1[common_cols].sort_values(common_cols, na_position="last").reset_index(drop=True)
+    norm2 = norm2[common_cols].sort_values(common_cols, na_position="last").reset_index(drop=True)
 
     assert_frame_equal(
         norm1, norm2, check_dtype=False, obj=f"component_type={comp_type!r}"

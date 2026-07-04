@@ -580,12 +580,13 @@ def test_round_trip_consistency(example_dir: Path, tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("example_dir", _get_example_dirs_with_yaml(), ids=lambda d: d.name)
 def test_incremental_load_matches_directory(example_dir: Path) -> None:
-    """Loading each YAML file one at a time must produce the same registry as loading the directory."""
+    """Loading each YAML/CSV file one at a time must produce the same registry as loading the directory."""
     a_all = Architect.from_manifest(str(example_dir))
 
     a_inc = Architect()
-    for yaml_file in sorted(example_dir.rglob("*.yaml")):
-        a_inc.load_manifest(str(yaml_file))
+    source_files = sorted(example_dir.rglob("*.yaml")) + sorted(example_dir.rglob("*.csv"))
+    for source_file in source_files:
+        a_inc.load_manifest(str(source_file))
 
     assert set(a_all.registry.component_types) == set(a_inc.registry.component_types)
 
