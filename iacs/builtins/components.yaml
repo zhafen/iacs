@@ -539,3 +539,12 @@ iacs_component:
               iacs.dataflows.etl.derive_components.
         - component_type:
               derived: true
+
+    resolved_impact_cost:
+        - description: >
+              Normalized impact and cost totals (plus their diff and ratio) for
+              an entity, weighted by the matching impact_budget/cost_budget
+              normalized_value_per_unit. Derived from impact and cost components
+              by iacs.dataflows.derive.impact_cost.
+        - component_type:
+              derived: true

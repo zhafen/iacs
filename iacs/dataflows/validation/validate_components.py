@@ -9,6 +9,7 @@ import ibis.expr.datatypes as dt
 import ibis.expr.types as ir
 
 from ...registry import Registry
+from ...utils import eval_arithmetic_expr
 
 
 _INFRA_TYPES = frozenset({"entity_id", "component_type", "invalid_field", "schema", "parent", "field"})
@@ -84,6 +85,24 @@ def _parse_range(val):
             except (ValueError, SyntaxError):
                 pass
     return None
+
+
+def _resolve_numeric_string(val):
+    """Evaluate a numeric string that holds a simple arithmetic expression.
+
+    Leaves plain numbers, null, and non-arithmetic strings untouched so they
+    fall through to try_cast (which nulls invalid strings for later defaulting).
+    """
+    if not isinstance(val, str):
+        return val
+    s = val.strip()
+    try:
+        float(s)
+        return val
+    except ValueError:
+        pass
+    result = eval_arithmetic_expr(s)
+    return val if result is None else str(result)
 
 
 def _coerce_default(val, py_type: type):
@@ -187,6 +206,21 @@ def validated_components(
             if fname not in existing:
                 t = t.mutate(**{fname: ibis.null().cast(_IBIS_DTYPE[py_type])})
                 existing.add(fname)
+
+        # Resolve simple arithmetic expressions (e.g. "4 / 50") in numeric string
+        # columns before casting, so they evaluate instead of failing to null.
+        t_schema = t.schema()
+        arithmetic_cols = [
+            fname for fname, py_type in type_map.items()
+            if py_type in (float, int)
+            and fname in original_existing
+            and t_schema[fname].is_string()
+        ]
+        if arithmetic_cols:
+            df = t.to_pandas()
+            for fname in arithmetic_cols:
+                df[fname] = df[fname].map(_resolve_numeric_string)
+            t = ibis.memtable(df)
 
         # Cast typed columns; try_cast for numeric/bool strings so empty strings become NULL.
         # Pandera ibis does not support coerce for cross-type casting so we do this manually.
