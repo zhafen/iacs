@@ -109,8 +109,6 @@ def _assert_manifest_subset(expected: dict, actual: dict, context: str = "") -> 
     """Assert every entry in expected appears in actual with lenient subset semantics.
 
     - Top-level keys missing from actual are skipped.
-    - If expected value is a list but actual value is a dict with a "data" key,
-      the comparison uses actual["data"].
     - List item matching uses overlapping-field subset semantics.
     """
     for key, exp_val in expected.items():
@@ -118,19 +116,14 @@ def _assert_manifest_subset(expected: dict, actual: dict, context: str = "") -> 
             continue
         act_val = actual[key]
         ctx = f"{context}.{key}" if context else key
-        # Needed for e.g. raw_entity_first_data["core_requirement"] in
-        # tests/test_dataflows/expected/minimal2/etl/load_manifest.py, which is
-        # written as a plain list (the entity's own components only) even
-        # though the entity has children, so the actual value is a
-        # {"data": [...], <child>: ...} dict. Without the unwrap here, exp_val
-        # (a list) would be compared against act_val (a dict) below and every
-        # item would incorrectly be reported as missing.
-        if isinstance(exp_val, list) and isinstance(act_val, dict) and "data" in act_val:
-            act_val = act_val["data"]
-        # Needed for e.g. raw_entity_first_data["my_requirement"] in
-        # tests/test_dataflows/expected/minimal/etl/load_manifest.py, where both
-        # sides are plain lists of components — without this branch those
-        # per-component values would never be checked.
+        # Confirmed necessary by deleting this branch and running the suite:
+        # tests/test_dataflows/expected/example/etl/load_manifest.py alone has
+        # 9 sibling values (e.g. "adore_cats", "sift_cat_box") that are plain
+        # lists compared against plain lists — without this branch they are
+        # silently skipped (no assertion runs) rather than checked. It also
+        # makes the incorrect_raw_entity_first_data negative case in
+        # tests/test_dataflows/expected/minimal/etl/load_manifest.py silently
+        # match, which _assert_not_subset then reports as a failure.
         if isinstance(exp_val, list) and isinstance(act_val, list):
             for exp_item in exp_val:
                 found = any(_manifest_item_matches(exp_item, act_item) for act_item in act_val)
@@ -154,21 +147,8 @@ def _assert_manifest_subset(expected: dict, actual: dict, context: str = "") -> 
 
 def _assert_subset(var_name: str, expected_value, actual_value) -> None:
     """Assert expected_value is contained within actual_value using subset semantics."""
-    from iacs.registry import Registry
     if isinstance(expected_value, pd.DataFrame):
         _assert_df_rows_subset(expected_value, actual_value, context=var_name)
-
-    # Needed for e.g. the `registry` expected_value in
-    # tests/test_dataflows/expected/minimal2/etl/load_manifest.py, which checks
-    # a DataFrame against a live Registry (via `.view(...)`) rather than a
-    # plain dict — without this branch that DataFrame would never be checked
-    # against the corresponding Registry-typed node result.
-    elif isinstance(expected_value, dict) and isinstance(actual_value, Registry):
-        for key, exp_val in expected_value.items():
-            if isinstance(exp_val, pd.DataFrame):
-                _assert_df_rows_subset(
-                    exp_val, actual_value.view(key), context=f"{var_name}.view({key!r})"
-                )
 
     elif isinstance(expected_value, dict):
         assert isinstance(actual_value, dict), (
