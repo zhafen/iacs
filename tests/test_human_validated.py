@@ -118,10 +118,19 @@ def _assert_manifest_subset(expected: dict, actual: dict, context: str = "") -> 
             continue
         act_val = actual[key]
         ctx = f"{context}.{key}" if context else key
-    # TODO: Link to the exact expected_values that would be incorrectly counted as wrong if we didn't have this
+        # Needed for e.g. raw_entity_first_data["core_requirement"] in
+        # tests/test_dataflows/expected/minimal2/etl/load_manifest.py, which is
+        # written as a plain list (the entity's own components only) even
+        # though the entity has children, so the actual value is a
+        # {"data": [...], <child>: ...} dict. Without the unwrap here, exp_val
+        # (a list) would be compared against act_val (a dict) below and every
+        # item would incorrectly be reported as missing.
         if isinstance(exp_val, list) and isinstance(act_val, dict) and "data" in act_val:
             act_val = act_val["data"]
-    # TODO: Link to the exact expected_values that would be incorrectly counted as wrong if we didn't have this
+        # Needed for e.g. raw_entity_first_data["my_requirement"] in
+        # tests/test_dataflows/expected/minimal/etl/load_manifest.py, where both
+        # sides are plain lists of components — without this branch those
+        # per-component values would never be checked.
         if isinstance(exp_val, list) and isinstance(act_val, list):
             for exp_item in exp_val:
                 found = any(_manifest_item_matches(exp_item, act_item) for act_item in act_val)
@@ -129,7 +138,11 @@ def _assert_manifest_subset(expected: dict, actual: dict, context: str = "") -> 
                     f"{ctx}: expected item {exp_item!r} not found in actual\n"
                     f"  Actual: {act_val!r}"
                 )
-    # TODO: Link to the exact expected_values that would be incorrectly counted as wrong if we didn't have this
+        # Needed for e.g. raw_entity_first_data["make_cats_happy"] in
+        # tests/test_dataflows/expected/example/etl/load_manifest.py, which
+        # nests child entities ("feed_and_water_cats", etc.) inside their
+        # parent — without recursing here those nested expected values would
+        # never be checked against the actual nested dict.
         elif isinstance(exp_val, dict) and isinstance(act_val, dict):
             _assert_manifest_subset(exp_val, act_val, context=ctx)
         elif isinstance(exp_val, dict):
@@ -145,7 +158,11 @@ def _assert_subset(var_name: str, expected_value, actual_value) -> None:
     if isinstance(expected_value, pd.DataFrame):
         _assert_df_rows_subset(expected_value, actual_value, context=var_name)
 
-    # TODO: Link to the exact expected_values that would be incorrectly counted as wrong if we didn't have this
+    # Needed for e.g. the `registry` expected_value in
+    # tests/test_dataflows/expected/minimal2/etl/load_manifest.py, which checks
+    # a DataFrame against a live Registry (via `.view(...)`) rather than a
+    # plain dict — without this branch that DataFrame would never be checked
+    # against the corresponding Registry-typed node result.
     elif isinstance(expected_value, dict) and isinstance(actual_value, Registry):
         for key, exp_val in expected_value.items():
             if isinstance(exp_val, pd.DataFrame):
@@ -167,6 +184,18 @@ def _assert_subset(var_name: str, expected_value, actual_value) -> None:
                 _assert_df_rows_subset(exp_val, act_val, context=f"{var_name}[{key}]")
             elif isinstance(exp_val, dict) and isinstance(act_val, dict):
                 _assert_manifest_subset(exp_val, act_val, context=f"{var_name}[{key!r}]")
+
+
+def _assert_not_subset(var_name: str, expected_value, actual_value) -> None:
+    """Assert expected_value is NOT contained within actual_value."""
+    try:
+        _assert_subset(var_name, expected_value, actual_value)
+    except AssertionError:
+        return
+    pytest.fail(
+        f"'{var_name}' was declared as incorrect data but it matched the actual output — "
+        "the DAG should have produced different data."
+    )
 
 
 class _ExpectedValueChecker(NodeExecutionHook):
@@ -212,9 +241,10 @@ class _ExpectedValueChecker(NodeExecutionHook):
 
         _assert_subset(node_name, expected_value, result)
 
-        # TODO: Get this working
-        if hasattr(expected_module, "incorrect_" + variable_name):
-            _assert_not_subset(expected_value, actual_value)
+        incorrect_name = "incorrect_" + variable_name
+        if hasattr(expected_module, incorrect_name):
+            incorrect_value = getattr(expected_module, incorrect_name)
+            _assert_not_subset(node_name, incorrect_value, result)
 
 
 @pytest.mark.parametrize("example_dir", _example_dirs())

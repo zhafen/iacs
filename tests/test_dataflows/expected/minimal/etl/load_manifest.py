@@ -16,6 +16,17 @@ raw_entity_first_data = {
     },
 }
 
+# A negative case: this description appears nowhere in the actual data, so
+# _assert_not_subset should find that it does NOT match. Exercises the
+# `incorrect_` handling in _ExpectedValueChecker.run_after_node_execution.
+incorrect_raw_entity_first_data = {
+    "examples/minimal/minimal.yaml": {
+        "my_requirement": [
+            {"description": "This description does not appear anywhere in the actual data."},
+        ],
+    },
+}
+
 pathvalue_pairs = pd.DataFrame(
     [
         ["examples/minimal/minimal.yaml:my_requirement[0].description", "A task I need to complete."],
