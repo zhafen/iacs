@@ -12,7 +12,9 @@ from iacs.registry import Registry
 from iacs.utils import candidate_entity_ids
 
 
-INPUT_COMPONENT_TYPES = ["entity_id", "parent", "effort", "requirement"]
+INPUT_COMPONENT_TYPES = [
+    "entity_id", "parent", "effort", "requirement", "impact", "cost", "impact_budget", "cost_budget",
+]
 
 
 @extract_fields({ct: ir.Table for ct in INPUT_COMPONENT_TYPES})
@@ -220,17 +222,75 @@ def priority_product(parent: ir.Table, entity_id: ir.Table, requirement: ir.Tabl
     return pd.DataFrame(rows, columns=["entity_id", "priority_product"])
 
 
+def resolved_impact_cost(
+    impact: ir.Table,
+    cost: ir.Table,
+    impact_budget: ir.Table,
+    cost_budget: ir.Table,
+) -> pd.DataFrame:
+    """Compute normalized impact and cost totals for each entity.
+
+    Each impact/cost row's value is weighted by the ``normalized_value_per_unit``
+    of the matching ``impact_budget``/``cost_budget`` entry for its ``type``
+    (defaulting to 1 when no budget is defined for that type), then summed per
+    entity.
+
+    Parameters
+    ----------
+    impact : ir.Table
+        The impact component table from the registry.
+    cost : ir.Table
+        The cost component table from the registry.
+    impact_budget : ir.Table
+        The impact_budget component table from the registry.
+    cost_budget : ir.Table
+        The cost_budget component table from the registry.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns: entity_id, impact, cost, diff, ratio. One row per entity that
+        has at least one impact or cost component.
+    """
+    def _normalized_sum(df: pd.DataFrame, budget_df: pd.DataFrame) -> pd.Series:
+        if df.empty or "value" not in df.columns or "type" not in df.columns:
+            return pd.Series(dtype=float)
+        rate = (
+            budget_df.set_index("value")["normalized_value_per_unit"]
+            if not budget_df.empty
+            else pd.Series(dtype=float)
+        )
+        weight = df["type"].map(rate).fillna(1.0)
+        weighted = pd.to_numeric(df["value"], errors="coerce") * weight
+        return weighted.groupby(df["entity_id"]).sum()
+
+    impact_sum = _normalized_sum(impact.to_pandas(), impact_budget.to_pandas())
+    cost_sum = _normalized_sum(cost.to_pandas(), cost_budget.to_pandas())
+
+    result = pd.DataFrame({"impact": impact_sum, "cost": cost_sum}).fillna(0.0)
+    if result.empty:
+        return pd.DataFrame(columns=["entity_id", "impact", "cost", "diff", "ratio"])
+
+    result["diff"] = result["impact"] - result["cost"]
+    result["ratio"] = result["impact"] / result["cost"]
+    return result.rename_axis("entity_id").reset_index()[
+        ["entity_id", "impact", "cost", "diff", "ratio"]
+    ]
+
+
 def derived_registry(
     registry: Registry,
     entity_depth: pd.DataFrame,
     effort_total: pd.DataFrame,
     priority_product: pd.DataFrame,
+    resolved_impact_cost: pd.DataFrame,
 ) -> Registry:
     """Store all derived components back to the registry."""
     derived = {
         "entity_depth": entity_depth,
         "effort_total": effort_total,
         "priority_product": priority_product,
+        "resolved_impact_cost": resolved_impact_cost,
     }
     registry.update({k: v for k, v in derived.items() if not v.empty})
     return registry
