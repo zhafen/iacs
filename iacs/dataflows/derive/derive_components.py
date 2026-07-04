@@ -2,8 +2,8 @@ import ibis
 import pandas as pd
 from hamilton.function_modifiers import subdag, source
 
-from ..registry import Registry
-from .derive import impact_cost, inherit_components, resolve_paths
+from ...registry import Registry
+from . import impact_cost, inherit_components, resolve_paths
 
 
 @subdag(resolve_paths, inputs={"registry": source("registry")}, config={})

@@ -3,7 +3,7 @@
 import pandas as pd
 import ibis
 
-from iacs.dataflows.derive_components import stripped_registry
+from iacs.dataflows.derive.derive_components import stripped_registry
 from tests.conftest import make_registry
 
 

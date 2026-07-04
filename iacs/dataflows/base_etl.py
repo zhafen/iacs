@@ -1,7 +1,7 @@
 from hamilton.function_modifiers import subdag, source
 import ibis.expr.types as ir
 
-import iacs.dataflows.derive_components as _derive_components
+import iacs.dataflows.derive.derive_components as _derive_components
 import iacs.dataflows.validation.validate_components as _validate_components
 from .etl import load_manifest
 from ..registry import Registry
