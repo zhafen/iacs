@@ -5,15 +5,18 @@ from pathlib import Path
 from types import ModuleType
 
 import pandas as pd
+from pandas.testing import assert_frame_equal
 import pytest
 from hamilton.driver import Builder
 from hamilton.lifecycle import NodeExecutionHook
 
 from iacs.dataflows import base_etl
+from iacs.dataflows.etl import export_manifest
 
 ROOT = Path(__file__).parent.parent
 EXAMPLES_DIR = ROOT / "examples"
 EXPECTED_DIR = ROOT / "tests" / "test_dataflows" / "expected"
+TEMP_DIR = ROOT / "tests" / "test_dataflows" / "temp"
 DATAFLOWS_MODULE_PREFIX = "iacs.dataflows."
 
 
@@ -37,6 +40,7 @@ def _load_expected_module(expected_filepath: Path) -> ModuleType:
 
 # ─── Comparison helpers (copied from tests/test_dataflows/test_examples.py) ──
 
+
 def _to_pandas(value) -> pd.DataFrame | None:
     """Convert an ibis Table or pandas DataFrame to a pandas DataFrame."""
     if isinstance(value, pd.DataFrame):
@@ -53,9 +57,9 @@ def _assert_df_rows_subset(
     if expected.empty:
         return
     actual = _to_pandas(actual_value)
-    assert actual is not None, (
-        f"{context}: could not convert actual value to DataFrame (got {type(actual_value)})"
-    )
+    assert (
+        actual is not None
+    ), f"{context}: could not convert actual value to DataFrame (got {type(actual_value)})"
     common_cols = [c for c in expected.columns if c in actual.columns]
     if not common_cols:
         return
@@ -126,7 +130,9 @@ def _assert_manifest_subset(expected: dict, actual: dict, context: str = "") -> 
         # match, which _assert_not_subset then reports as a failure.
         if isinstance(exp_val, list) and isinstance(act_val, list):
             for exp_item in exp_val:
-                found = any(_manifest_item_matches(exp_item, act_item) for act_item in act_val)
+                found = any(
+                    _manifest_item_matches(exp_item, act_item) for act_item in act_val
+                )
                 assert found, (
                     f"{ctx}: expected item {exp_item!r} not found in actual\n"
                     f"  Actual: {act_val!r}"
@@ -151,19 +157,19 @@ def _assert_subset(var_name: str, expected_value, actual_value) -> None:
         _assert_df_rows_subset(expected_value, actual_value, context=var_name)
 
     elif isinstance(expected_value, dict):
-        assert isinstance(actual_value, dict), (
-            f"'{var_name}': expected dict, got {type(actual_value)}"
-        )
+        assert isinstance(
+            actual_value, dict
+        ), f"'{var_name}': expected dict, got {type(actual_value)}"
         for key in expected_value:
-            assert key in actual_value, (
-                f"'{var_name}': key '{key}' not found in actual"
-            )
+            assert key in actual_value, f"'{var_name}': key '{key}' not found in actual"
             exp_val = expected_value[key]
             act_val = actual_value[key]
             if isinstance(exp_val, pd.DataFrame):
                 _assert_df_rows_subset(exp_val, act_val, context=f"{var_name}[{key}]")
             elif isinstance(exp_val, dict) and isinstance(act_val, dict):
-                _assert_manifest_subset(exp_val, act_val, context=f"{var_name}[{key!r}]")
+                _assert_manifest_subset(
+                    exp_val, act_val, context=f"{var_name}[{key!r}]"
+                )
 
 
 def _assert_not_subset(var_name: str, expected_value, actual_value) -> None:
@@ -221,6 +227,7 @@ class _ExpectedValueChecker(NodeExecutionHook):
 
         _assert_subset(node_name, expected_value, result)
 
+        # Check we don't have incorrect values
         incorrect_name = "incorrect_" + variable_name
         if hasattr(expected_module, incorrect_name):
             incorrect_value = getattr(expected_module, incorrect_name)
@@ -228,11 +235,53 @@ class _ExpectedValueChecker(NodeExecutionHook):
 
 
 @pytest.mark.parametrize("example_dir", _example_dirs())
-def test_base_etl(example_dir: Path):
+def test_end_to_end(example_dir: Path):
+    """Thorough end to end test that:
+    1. Runs base_etl for each example manifest
+    2. Runs export_manifest on the loaded registry
+    3. Runs base_etl on the exported manifest
+
+    In terms of comparisons, for each executed DAG node the outputs are compared to
+    manually input expectations. At the end all components in the originally loaded
+    registry are compared to the components of the reloaded registry.
+    """
+
+    # Get the loaded registry, comparing outputs along the way
     dr = (
         Builder()
         .with_modules(base_etl)
         .with_adapters(_ExpectedValueChecker(example_dir))
         .build()
     )
-    dr.execute(["registry"], inputs={"input_dirs": [str(example_dir)]})
+    registry = dr.execute(["registry"], inputs={"input_dirs": [str(example_dir)]})
+
+    # Export back to manifest format, comparing outputs along the way
+    dr = (
+        Builder()
+        .with_modules(export_manifest)
+        .with_adapters(_ExpectedValueChecker(example_dir))
+        .build()
+    )
+    output_dir = TEMP_DIR / example_dir.name
+    dr.execute(
+        ["exported_manifest_filepaths"],
+        inputs={"registry": registry, "output_dir": output_dir},
+    )
+
+    # Reload
+    dr = (
+        Builder()
+        .with_modules(base_etl)
+        .with_adapters(_ExpectedValueChecker(example_dir))
+        .build()
+    )
+    reloaded_registry = dr.execute(
+        ["registry"], inputs={"input_dirs": [str(output_dir)]}
+    )
+
+    # Compare each component
+    for comp_type in registry.component_types:
+        comp = registry.get(comp_type).execute()
+        loaded_comp = reloaded_registry.get(comp_type).execute()
+
+        assert_frame_equal(comp, loaded_comp)
