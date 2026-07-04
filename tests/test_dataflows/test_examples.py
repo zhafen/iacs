@@ -55,14 +55,6 @@ def _get_dataflow_modules() -> list[tuple[str, ModuleType]]:
     ]
 
 
-def _get_example_dirs_with_manifest() -> list[Path]:
-    """Return sorted example directories that contain a manifest.yaml."""
-    return [
-        d for d in sorted(EXAMPLES_DIR.iterdir())
-        if d.is_dir() and (d / "manifest.yaml").exists()
-    ]
-
-
 # ─── Loading helpers ────────────────────────────────────────────────────────
 
 def _load_expected_for_dataflow(example_dir: Path, module_name: str) -> ModuleType:
@@ -113,6 +105,7 @@ def _build_inputs_for(
     base_inputs = {"input_dir": [str(example_dir)], **(extra_inputs or {})}
 
     all_names = _discover_dataflow_module_names()
+    # TODO: Why are the preceding mods just dataflow mods in alphabetical order? That shouldn't relate to what the current module needs.
     preceding_mods = []
     for name in all_names:
         if name == module_name:
