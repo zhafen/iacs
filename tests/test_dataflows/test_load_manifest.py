@@ -519,11 +519,11 @@ class TestCsvSpine:
         expected_id = dhash(file_id + ":0")
         assert df.iloc[0]["entity_id"] == expected_id
 
-    def test_entity_key_and_component_type_are_stem(self, tmp_path):
+    def test_entity_key_includes_index_component_type_is_stem(self, tmp_path):
         raw = self._make_raw(tmp_path, "requirement.csv", "text\nReq A\n")
         result = load_manifest.csv_spine(raw)
         df = result.to_pandas()
-        assert df.iloc[0]["entity_key"] == "requirement"
+        assert df.iloc[0]["entity_key"] == "requirement[0]"
         assert df.iloc[0]["component_type"] == "requirement"
 
     def test_path_format(self, tmp_path):
@@ -533,7 +533,7 @@ class TestCsvSpine:
         result = load_manifest.csv_spine(raw)
         df = result.to_pandas()
         file_id = next(iter(raw.keys()))
-        expected_path = f"{file_id}:task[0].task"
+        expected_path = f"{file_id}:task[0]"
         assert df.iloc[0]["path"] == expected_path
 
     def test_modifier_is_null(self, tmp_path):

@@ -12,7 +12,6 @@ from hamilton.lifecycle import NodeExecutionHook
 
 from iacs.dataflows import base_etl
 from iacs.dataflows.etl import export_manifest
-from iacs.utils import dhash
 
 ROOT = Path(__file__).parent.parent
 EXAMPLES_DIR = ROOT / "examples"
@@ -194,46 +193,17 @@ def _normalize_df(
     from different directories produce different hashes for the same logical
     entities, so we normalize by using only the within-file entity path.
 
-    Also handles *phantom parents*: entities referenced only via ``parent_eid``
-    that have no row of their own in entity_id.  This currently still occurs
-    for CSV-sourced rows, whose synthetic ``stem[index]`` path segment gets an
-    entity_id row when reloaded from the exported YAML but not on the
-    original CSV-direct load (see PR discussion for the open follow-up to fix
-    this asymmetry at the source instead). We reconstruct such parents'
-    paths from their children's paths so they normalize correctly across
-    registries.
-
     Normalises ``*_eid`` and the primary ``entity_id`` column (entity ID
     references), then sorts by ``common_cols`` for a stable row order.
     """
     filepath_of = entity_id_df.set_index("value")["filepath"].to_dict()
     path_of = entity_id_df.set_index("value")["path"].to_dict()
 
-    # Build extended map: include phantom ancestor paths derived from known entity paths
-    extra_filepath: dict[str, str] = {}
-    extra_path: dict[str, str] = {}
-    for eid, full_path in path_of.items():
-        fp = filepath_of.get(eid, "")
-        sep = full_path.find(":")
-        if sep == -1:
-            continue
-        name_part = full_path[sep + 1:]
-        while "." in name_part:
-            name_part = name_part.rsplit(".", 1)[0]
-            ancestor_full = f"{full_path[:sep]}:{name_part}"
-            ancestor_hash = dhash(ancestor_full)
-            if ancestor_hash not in path_of and ancestor_hash not in extra_path:
-                extra_filepath[ancestor_hash] = fp
-                extra_path[ancestor_hash] = ancestor_full
-
-    all_filepath = {**filepath_of, **extra_filepath}
-    all_path = {**path_of, **extra_path}
-
     def hash_to_path(eid):
         if pd.isna(eid):
             return eid
-        fp = all_filepath.get(str(eid), "")
-        p = all_path.get(str(eid), str(eid))
+        fp = filepath_of.get(str(eid), "")
+        p = path_of.get(str(eid), str(eid))
         return p[len(fp) + 1:] if fp and p.startswith(fp + ":") else p
 
     df = df[common_cols].copy()

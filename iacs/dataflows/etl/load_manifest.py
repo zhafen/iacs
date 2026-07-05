@@ -152,9 +152,15 @@ def csv_spine(raw_csv_data: dict[str, pd.DataFrame]) -> ir.Table:
 
     Each row in every CSV file contributes one spine row. The entity_id is
     ``dhash(file_path_id + ":" + str(row_index))``. The component_type is the
-    CSV filename stem. The path follows the pattern
-    ``file_path_id:stem[row_index].stem`` to remain consistent with the YAML
-    spine path convention.
+    CSV filename stem. The path is flat — ``file_path_id:stem[row_index]`` —
+    since each CSV row is exactly one entity with no enclosing container.
+
+    A prior version used a nested path (``stem[row_index].stem``) to mirror
+    the YAML spine convention, but that meant a CSV row's synthetic
+    ``stem[row_index]`` segment round-tripped through export/reimport as a
+    *real* YAML container entity that the original CSV load never had —
+    an asymmetry between the original and reloaded registries. The flat path
+    avoids manufacturing that container in the first place.
 
     Parameters
     ----------
@@ -174,14 +180,15 @@ def csv_spine(raw_csv_data: dict[str, pd.DataFrame]) -> ir.Table:
         stem = Path(file_id).stem
         for i in range(len(df)):
             entity_id = dhash(file_id + ":" + str(i))
+            entity_key = f"{stem}[{i}]"
             rows.append({
                 "entity_id": entity_id,
                 "component_index": 0,
-                "entity_key": stem,
+                "entity_key": entity_key,
                 "component_type": stem,
                 "modifier": pd.NA,
                 "filepath": file_id,
-                "path": f"{file_id}:{stem}[{i}].{stem}",
+                "path": f"{file_id}:{entity_key}",
             })
     spine_df = pd.DataFrame(rows, columns=[
         "entity_id", "component_index", "entity_key", "component_type",
