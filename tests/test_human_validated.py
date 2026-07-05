@@ -194,11 +194,14 @@ def _normalize_df(
     from different directories produce different hashes for the same logical
     entities, so we normalize by using only the within-file entity path.
 
-    Also handles *phantom parents*: entities that appear in the parent graph
-    (e.g. container entities with no own components like ``cat_food_supply``)
-    have no row in entity_id but do appear in the ``parent`` component table
-    as a ``parent_eid``.  We reconstruct their paths from their children's
-    paths so they normalize correctly across registries.
+    Also handles *phantom parents*: entities referenced only via ``parent_eid``
+    that have no row of their own in entity_id.  This currently still occurs
+    for CSV-sourced rows, whose synthetic ``stem[index]`` path segment gets an
+    entity_id row when reloaded from the exported YAML but not on the
+    original CSV-direct load (see PR discussion for the open follow-up to fix
+    this asymmetry at the source instead). We reconstruct such parents'
+    paths from their children's paths so they normalize correctly across
+    registries.
 
     Normalises ``*_eid`` and the primary ``entity_id`` column (entity ID
     references), then sorts by ``common_cols`` for a stable row order.

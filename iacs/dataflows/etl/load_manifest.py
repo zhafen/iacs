@@ -271,6 +271,57 @@ def _flatten_to_pathvalue(data: dict, parent_path: str = "") -> list[tuple[str, 
     return result
 
 
+def _collect_entity_paths(data: dict, parent_path: str = "") -> list[str]:
+    """Recursively collect every entity_path in entity-first data.
+
+    Mirrors the traversal in ``_flatten_to_pathvalue``, but records an entity's
+    path even when it has no components of its own — e.g. a pure container
+    like ``cat_food_supply`` that only exists to group child entities and has
+    no ``data`` list. Without this, such entities never appear in
+    ``pathvalue_pairs``/``keyvalue_store`` and so never get a row in
+    ``entity_id_table``, even though other entities (e.g. their children, via
+    ``parent_eid``) reference them by hash.
+    """
+    result = []
+    for entity_key, entity_value in data.items():
+        entity_path = f"{parent_path}.{entity_key}" if parent_path else entity_key
+        if isinstance(entity_value, list):
+            result.append(entity_path)
+        elif isinstance(entity_value, dict):
+            result.append(entity_path)
+            sub_entities = {k: v for k, v in entity_value.items() if k != "data"}
+            result.extend(_collect_entity_paths(sub_entities, entity_path))
+    return result
+
+
+def yaml_spine(raw_entity_first_data: dict) -> ir.Table:
+    """Build one spine row per YAML entity, including component-less containers.
+
+    Returns
+    -------
+    ir.Table
+        Columns: entity_id, entity_key, entity_path, filepath. Schema matches
+        the subset of ``keyvalue_store`` that ``entity_id_table`` used to
+        derive from, so it's a drop-in replacement that also covers entities
+        with no components.
+    """
+    rows = []
+    for file_id, entities in raw_entity_first_data.items():
+        for entity_path in _collect_entity_paths(entities):
+            rows.append({
+                "entity_id": dhash(f"{file_id}:{entity_path}"),
+                "entity_key": entity_path.rsplit(".", 1)[-1],
+                "entity_path": f"{file_id}:{entity_path}",
+                "filepath": file_id,
+            })
+    spine_df = pd.DataFrame(
+        rows, columns=["entity_id", "entity_key", "entity_path", "filepath"]
+    )
+    for col in spine_df.columns:
+        spine_df[col] = spine_df[col].astype(pd.StringDtype())
+    return ibis.memtable(spine_df)
+
+
 def pathvalue_pairs(raw_entity_first_data: dict) -> ir.Table:
     """Convert the raw entity-first data into a database table with two fields:
     path and value, both of type str. This is the first step in the transformation
@@ -363,8 +414,12 @@ def keyvalue_store(pathvalue_pairs: ir.Table) -> ir.Table:
     )
 
 
-def entity_id_table(keyvalue_store: ir.Table, csv_spine: ir.Table = None) -> ir.Table:
-    """Build one row per entity from the key-value store and optional CSV spine.
+def entity_id_table(yaml_spine: ir.Table, csv_spine: ir.Table = None) -> ir.Table:
+    """Build one row per entity from the YAML spine and optional CSV spine.
+
+    Uses ``yaml_spine`` (not ``keyvalue_store``) so that entities with no
+    components of their own — pure containers like ``cat_food_supply`` —
+    still get a row here.
 
     Returns
     -------
@@ -374,7 +429,7 @@ def entity_id_table(keyvalue_store: ir.Table, csv_spine: ir.Table = None) -> ir.
         entity_path; ``alias`` is the human-readable display ID (last two
         dot-segments of the entity path, or just entity_key for top-level).
     """
-    yaml_entities = keyvalue_store.select(
+    yaml_entities = yaml_spine.select(
         "entity_id", "entity_key", "entity_path", "filepath"
     ).distinct().to_pandas()
     yaml_entities = yaml_entities.rename(columns={"entity_id": "value", "entity_path": "path"})
