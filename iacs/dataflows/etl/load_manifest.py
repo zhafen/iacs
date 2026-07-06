@@ -98,14 +98,24 @@ def raw_csv_data(input_dirs: list[str]) -> dict[str, pd.DataFrame]:
 def csv_component_tables(raw_csv_data: dict[str, pd.DataFrame]) -> dict[str, ir.Table]:
     """Convert raw CSV data into component tables, one table per component type.
 
-    The stem of each CSV filename is the component type for every row in that
-    file. Each row receives a unique entity_id computed as
-    ``dhash(file_path_id + ":" + str(row_index))``, a fixed ``component_index``
-    of 0, a NULL ``modifier``, and one column per CSV column (the CSV column
-    names become field names, analogous to sub-field components in YAML).
+    Each CSV file is treated as a single entity (see ``csv_spine``); each row
+    in the file becomes one instance of a ``"{stem}_comp"`` component attached
+    to that entity, distinguished by ``component_index`` (the row's 0-based
+    position in the file). CSV column names become field names on the
+    component (analogous to sub-field components in YAML), so e.g.
+    ``users.csv`` exports as::
 
-    When multiple CSV files share the same stem (component type) their rows are
-    unioned into a single table.
+        users:
+        - users_comp:
+            user_id: 1
+            name: Alice Johnson
+        - users_comp:
+            user_id: 2
+            name: Bob Smith
+
+    When multiple CSV files share the same stem, their rows belong to their
+    own (per-file) entities but are unioned into the same ``"{stem}_comp"``
+    component-type table.
 
     Parameters
     ----------
@@ -116,19 +126,20 @@ def csv_component_tables(raw_csv_data: dict[str, pd.DataFrame]) -> dict[str, ir.
     Returns
     -------
     dict[str, ir.Table]
-        Keys are component types (CSV filename stems); each value is an ibis
+        Keys are ``"{stem}_comp"`` component types; each value is an ibis
         Table with columns: entity_id, component_index, modifier, and one
         column per CSV field.
     """
-    per_stem: dict[str, list[pd.DataFrame]] = {}
+    per_comp_type: dict[str, list[pd.DataFrame]] = {}
     for file_id, df in raw_csv_data.items():
         stem = Path(file_id).stem
+        entity_id = dhash(file_id)
+        comp_type = f"{stem}_comp"
         rows = []
         for i, row in df.iterrows():
-            entity_id = dhash(file_id + ":" + str(i))
             record = {
                 "entity_id": entity_id,
-                "component_index": 0,
+                "component_index": i,
                 "modifier": pd.NA,
             }
             for col in df.columns:
@@ -137,30 +148,31 @@ def csv_component_tables(raw_csv_data: dict[str, pd.DataFrame]) -> dict[str, ir.
         part_df = pd.DataFrame(rows)
         part_df["modifier"] = part_df["modifier"].astype(pd.StringDtype())
         part_df["component_index"] = part_df["component_index"].astype("int64")
-        per_stem.setdefault(stem, []).append(part_df)
+        per_comp_type.setdefault(comp_type, []).append(part_df)
 
     result = {}
-    for stem, dfs in per_stem.items():
+    for comp_type, dfs in per_comp_type.items():
         combined = pd.concat(dfs, ignore_index=True)
         combined["modifier"] = combined["modifier"].astype(pd.StringDtype())
-        result[stem] = ibis.memtable(combined)
+        result[comp_type] = ibis.memtable(combined)
     return result
 
 
 def csv_spine(raw_csv_data: dict[str, pd.DataFrame]) -> ir.Table:
-    """Build spine rows for entities sourced from CSV files.
+    """Build one spine row per CSV file (one entity per file, not per row).
 
-    Each row in every CSV file contributes one spine row. The entity_id is
-    ``dhash(file_path_id + ":" + str(row_index))``. The component_type is the
-    CSV filename stem. The path is flat — ``file_path_id:stem[row_index]`` —
-    since each CSV row is exactly one entity with no enclosing container.
+    Each CSV file is a single entity named after its filename stem — e.g.
+    ``orders.csv`` becomes entity ``orders`` — with entity_id
+    ``dhash(file_path_id)``. Each row in the file is a component instance
+    attached to that entity (see ``csv_component_tables``), not a separate
+    entity.
 
-    A prior version used a nested path (``stem[row_index].stem``) to mirror
-    the YAML spine convention, but that meant a CSV row's synthetic
-    ``stem[row_index]`` segment round-tripped through export/reimport as a
-    *real* YAML container entity that the original CSV load never had —
-    an asymmetry between the original and reloaded registries. The flat path
-    avoids manufacturing that container in the first place.
+    A prior version gave each CSV *row* its own entity (disambiguated with a
+    ``stem[row_index]`` name), but that meant every row's entity_key/alias
+    collided (all equal to the stem) and, once round-tripped through YAML
+    export/reimport, its synthetic ``[row_index]`` path segment came back as
+    a *real* container entity the original CSV load never had. Treating the
+    whole file as one entity avoids both problems.
 
     Parameters
     ----------
@@ -171,33 +183,23 @@ def csv_spine(raw_csv_data: dict[str, pd.DataFrame]) -> ir.Table:
     Returns
     -------
     ir.Table
-        Columns: entity_id, component_index, entity_key, component_type,
-        modifier, filepath, path.  Schema matches the YAML-derived spine so the
-        two can be unioned.
+        Columns: entity_id, entity_key, filepath, path. Schema matches the
+        subset of ``yaml_spine`` that ``entity_id_table`` derives from.
     """
     rows = []
-    for file_id, df in raw_csv_data.items():
+    for file_id in raw_csv_data:
         stem = Path(file_id).stem
-        for i in range(len(df)):
-            entity_id = dhash(file_id + ":" + str(i))
-            entity_key = f"{stem}[{i}]"
-            rows.append({
-                "entity_id": entity_id,
-                "component_index": 0,
-                "entity_key": entity_key,
-                "component_type": stem,
-                "modifier": pd.NA,
-                "filepath": file_id,
-                "path": f"{file_id}:{entity_key}",
-            })
-    spine_df = pd.DataFrame(rows, columns=[
-        "entity_id", "component_index", "entity_key", "component_type",
-        "modifier", "filepath", "path",
-    ])
-    for col in ("entity_id", "entity_key", "component_type", "filepath", "path"):
+        rows.append({
+            "entity_id": dhash(file_id),
+            "entity_key": stem,
+            "filepath": file_id,
+            "path": f"{file_id}:{stem}",
+        })
+    spine_df = pd.DataFrame(
+        rows, columns=["entity_id", "entity_key", "filepath", "path"]
+    )
+    for col in spine_df.columns:
         spine_df[col] = spine_df[col].astype(pd.StringDtype())
-    spine_df["modifier"] = spine_df["modifier"].astype(pd.StringDtype())
-    spine_df["component_index"] = spine_df["component_index"].astype("int64")
     return ibis.memtable(spine_df)
 
 
@@ -468,11 +470,20 @@ def entity_id_table(yaml_spine: ir.Table, csv_spine: ir.Table = None) -> ir.Tabl
 
 
 
-def component_type_table(keyvalue_store: ir.Table, csv_spine: ir.Table = None) -> ir.Table:
+def component_type_table(
+    keyvalue_store: ir.Table,
+    csv_component_tables: dict[str, ir.Table] = None,
+) -> ir.Table:
     """Build one row per component instance, including derived and skip_on_export flags.
 
     Reads explicit ``component_type`` component entries from the keyvalue_store to
     populate ``derived`` and ``skip_on_export`` columns on the metadata table.
+
+    CSV-derived metadata comes from ``csv_component_tables`` (one row per CSV
+    row, i.e. one row per ``"{stem}_comp"`` component instance) rather than
+    ``csv_spine`` (one row per *file*/entity) — the two are no longer the same
+    granularity now that a whole CSV file is a single entity with many
+    component instances attached.
 
     Returns
     -------
@@ -509,13 +520,19 @@ def component_type_table(keyvalue_store: ir.Table, csv_spine: ir.Table = None) -
     meta_df["modifier"] = meta_df["modifier"].astype(pd.StringDtype())
     yaml_ct = ibis.memtable(meta_df)
 
-    if csv_spine is None:
+    if not csv_component_tables:
         return yaml_ct
 
-    csv_df = csv_spine.to_pandas()[["entity_id", "component_index", "component_type", "modifier"]].copy()
+    csv_rows = []
+    for comp_type, table in csv_component_tables.items():
+        cdf = table.to_pandas()[["entity_id", "component_index", "modifier"]].copy()
+        cdf["component_type"] = comp_type
+        csv_rows.append(cdf)
+    csv_df = pd.concat(csv_rows, ignore_index=True)
     csv_df["derived"] = False
     csv_df["skip_on_export"] = False
     csv_df["modifier"] = csv_df["modifier"].astype(pd.StringDtype())
+    csv_df["component_type"] = csv_df["component_type"].astype(pd.StringDtype())
     return ibis.union(yaml_ct, ibis.memtable(csv_df))
 
 

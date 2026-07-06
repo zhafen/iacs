@@ -1,4 +1,4 @@
-orders:
+orders_comp:
     - description: Schema for CSV-sourced order records.
     - field:
         order_id:
@@ -17,7 +17,7 @@ orders:
             description: Date the order was placed.
             type: str
 
-users:
+users_comp:
     - description: Schema for CSV-sourced user records.
     - field:
         user_id:
@@ -33,7 +33,7 @@ users:
             description: Date the user was created.
             type: str
 
-products:
+products_comp:
     - description: Schema for CSV-sourced product records.
     - field:
         product_id:
