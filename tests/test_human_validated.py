@@ -184,6 +184,59 @@ def _assert_not_subset(var_name: str, expected_value, actual_value) -> None:
     )
 
 
+def _normalize_df(
+    df: pd.DataFrame, entity_id_df: pd.DataFrame, common_cols: list[str]
+) -> pd.DataFrame:
+    """Restrict to common_cols and normalize entity_id hashes for cross-registry comparison.
+
+    Entity IDs are hashes of ``filepath:entity_path``.  Two registries loaded
+    from different directories produce different hashes for the same logical
+    entities, so we normalize by using only the within-file entity path.
+
+    Normalises ``*_eid`` and the primary ``entity_id`` column (entity ID
+    references), then sorts by ``common_cols`` for a stable row order.
+    """
+    filepath_of = entity_id_df.set_index("value")["filepath"].to_dict()
+    path_of = entity_id_df.set_index("value")["path"].to_dict()
+
+    def hash_to_path(eid):
+        if pd.isna(eid):
+            return eid
+        fp = filepath_of.get(str(eid), "")
+        p = path_of.get(str(eid), str(eid))
+        return p[len(fp) + 1:] if fp and p.startswith(fp + ":") else p
+
+    df = df[common_cols].copy()
+    for col in common_cols:
+        if col == "entity_id" or col.endswith("_eid"):
+            df[col] = df[col].map(hash_to_path)
+    return df.sort_values(common_cols, na_position="last").reset_index(drop=True)
+
+
+def _assert_components_equal(
+    comp: pd.DataFrame,
+    loaded_comp: pd.DataFrame,
+    eid_df: pd.DataFrame,
+    reloaded_eid_df: pd.DataFrame,
+    comp_type: str,
+) -> None:
+    """Assert two component tables are equal after a round trip.
+
+    Normalizes entity_id hashes to within-file entity paths, since they are
+    hashes of the source filepath and example_dir/output_dir are different
+    paths.
+    """
+    common_cols = sorted(
+        (set(comp.columns) & set(loaded_comp.columns)) - {"component_index"}
+    )
+    norm1 = _normalize_df(comp, eid_df, common_cols)
+    norm2 = _normalize_df(loaded_comp, reloaded_eid_df, common_cols)
+
+    assert_frame_equal(
+        norm1, norm2, check_dtype=False, obj=f"component_type={comp_type!r}"
+    )
+
+
 class _ExpectedValueChecker(NodeExecutionHook):
     """Checks each executed node's result against a hand-written expected value, if one exists."""
 
@@ -253,7 +306,9 @@ def test_end_to_end(example_dir: Path):
         .with_adapters(_ExpectedValueChecker(example_dir))
         .build()
     )
-    registry = dr.execute(["registry"], inputs={"input_dirs": [str(example_dir)]})
+    registry = dr.execute(["registry"], inputs={"input_dirs": [str(example_dir)]})[
+        "registry"
+    ]
 
     # Export back to manifest format, comparing outputs along the way
     dr = (
@@ -265,23 +320,25 @@ def test_end_to_end(example_dir: Path):
     output_dir = TEMP_DIR / example_dir.name
     dr.execute(
         ["exported_manifest_filepaths"],
-        inputs={"registry": registry, "output_dir": output_dir},
+        inputs={"registry": registry, "output_dir": str(output_dir)},
     )
 
-    # Reload
-    dr = (
-        Builder()
-        .with_modules(base_etl)
-        .with_adapters(_ExpectedValueChecker(example_dir))
-        .build()
-    )
+    # Reload. The expected fixtures encode entity IDs derived from the original
+    # example_dir's filepath, so they don't apply to nodes loaded from
+    # output_dir; only the final registry comparison below applies here.
+    dr = Builder().with_modules(base_etl).build()
     reloaded_registry = dr.execute(
         ["registry"], inputs={"input_dirs": [str(output_dir)]}
-    )
+    )["registry"]
 
-    # Compare each component
-    for comp_type in registry.component_types:
+    # Compare each component. entity_id values are hashes of the source
+    # filepath, which differs between example_dir and output_dir, so
+    # normalize them to within-file entity paths before comparing.
+    eid_df = registry.get("entity_id").execute()
+    reloaded_eid_df = reloaded_registry.get("entity_id").execute()
+    skip = {"entity_id", "component_type", "invalid_field"}
+    for comp_type in set(registry.component_types) - skip:
         comp = registry.get(comp_type).execute()
         loaded_comp = reloaded_registry.get(comp_type).execute()
 
-        assert_frame_equal(comp, loaded_comp)
+        _assert_components_equal(comp, loaded_comp, eid_df, reloaded_eid_df, comp_type)

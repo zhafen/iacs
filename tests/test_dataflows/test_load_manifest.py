@@ -427,44 +427,50 @@ class TestCsvComponentTables:
         for val in result.values():
             assert isinstance(val, ibis.Table)
 
-    def test_stem_is_key(self, tmp_path):
+    def test_stem_plus_comp_suffix_is_key(self, tmp_path):
         raw = self._make_raw(tmp_path, "requirement.csv", "text\nReq A\n")
         result = load_manifest.csv_component_tables(raw)
-        assert "requirement" in result
+        assert "requirement_comp" in result
 
     def test_entity_id_column_present(self, tmp_path):
         raw = self._make_raw(tmp_path, "task.csv", "name\nalpha\n")
         result = load_manifest.csv_component_tables(raw)
-        df = result["task"].to_pandas()
+        df = result["task_comp"].to_pandas()
         assert "entity_id" in df.columns
 
-    def test_entity_id_is_dhash(self, tmp_path):
+    def test_entity_id_is_dhash_of_file_id(self, tmp_path):
         csv_file = tmp_path / "task.csv"
         csv_file.write_text("name\nalpha\n")
-        file_id = str(csv_file.relative_to(Path.cwd())) if csv_file.is_relative_to(Path.cwd()) else str(csv_file)
         raw = load_manifest.raw_csv_data([str(csv_file)])
         result = load_manifest.csv_component_tables(raw)
-        df = result["task"].to_pandas()
-        actual_file_id = next(iter(raw.keys()))
-        expected_id = dhash(actual_file_id + ":0")
+        df = result["task_comp"].to_pandas()
+        file_id = next(iter(raw.keys()))
+        expected_id = dhash(file_id)
         assert df.iloc[0]["entity_id"] == expected_id
 
-    def test_component_index_is_zero(self, tmp_path):
+    def test_all_rows_of_one_file_share_entity_id(self, tmp_path):
+        """Every row in a CSV file is a component of the *same* file-level entity."""
         raw = self._make_raw(tmp_path, "task.csv", "name\nalpha\nbeta\n")
         result = load_manifest.csv_component_tables(raw)
-        df = result["task"].to_pandas()
-        assert (df["component_index"] == 0).all()
+        df = result["task_comp"].to_pandas()
+        assert df["entity_id"].nunique() == 1
+
+    def test_component_index_is_row_position(self, tmp_path):
+        raw = self._make_raw(tmp_path, "task.csv", "name\nalpha\nbeta\n")
+        result = load_manifest.csv_component_tables(raw)
+        df = result["task_comp"].to_pandas()
+        assert sorted(df["component_index"].tolist()) == [0, 1]
 
     def test_modifier_is_null(self, tmp_path):
         raw = self._make_raw(tmp_path, "task.csv", "name\nalpha\n")
         result = load_manifest.csv_component_tables(raw)
-        df = result["task"].to_pandas()
+        df = result["task_comp"].to_pandas()
         assert df["modifier"].isna().all()
 
     def test_csv_columns_become_fields(self, tmp_path):
         raw = self._make_raw(tmp_path, "req.csv", "title,priority\nReq A,1\n")
         result = load_manifest.csv_component_tables(raw)
-        df = result["req"].to_pandas()
+        df = result["req_comp"].to_pandas()
         assert "title" in df.columns
         assert "priority" in df.columns
 
@@ -477,8 +483,10 @@ class TestCsvComponentTables:
         (f2 / "task.csv").write_text("name\nbeta\n")
         raw = load_manifest.raw_csv_data([str(tmp_path)])
         result = load_manifest.csv_component_tables(raw)
-        df = result["task"].to_pandas()
+        df = result["task_comp"].to_pandas()
         assert len(df) == 2
+        # Rows come from two different files, so they belong to two entities.
+        assert df["entity_id"].nunique() == 2
 
 
 # ---------------------------------------------------------------------------
@@ -500,31 +508,29 @@ class TestCsvSpine:
     def test_has_required_columns(self, tmp_path):
         raw = self._make_raw(tmp_path, "task.csv", "name\nalpha\n")
         result = load_manifest.csv_spine(raw)
-        for col in ["entity_id", "component_index", "entity_key", "component_type",
-                    "modifier", "filepath", "path"]:
+        for col in ["entity_id", "entity_key", "filepath", "path"]:
             assert col in result.columns
 
-    def test_one_row_per_csv_row(self, tmp_path):
+    def test_one_row_per_file_not_per_csv_row(self, tmp_path):
         raw = self._make_raw(tmp_path, "req.csv", "text\nA\nB\nC\n")
         result = load_manifest.csv_spine(raw)
-        assert len(result.to_pandas()) == 3
+        assert len(result.to_pandas()) == 1
 
-    def test_entity_id_uses_dhash(self, tmp_path):
+    def test_entity_id_uses_dhash_of_file_id(self, tmp_path):
         csv_file = tmp_path / "task.csv"
         csv_file.write_text("name\nalpha\n")
         raw = load_manifest.raw_csv_data([str(csv_file)])
         result = load_manifest.csv_spine(raw)
         df = result.to_pandas()
         file_id = next(iter(raw.keys()))
-        expected_id = dhash(file_id + ":0")
+        expected_id = dhash(file_id)
         assert df.iloc[0]["entity_id"] == expected_id
 
-    def test_entity_key_and_component_type_are_stem(self, tmp_path):
+    def test_entity_key_is_stem(self, tmp_path):
         raw = self._make_raw(tmp_path, "requirement.csv", "text\nReq A\n")
         result = load_manifest.csv_spine(raw)
         df = result.to_pandas()
         assert df.iloc[0]["entity_key"] == "requirement"
-        assert df.iloc[0]["component_type"] == "requirement"
 
     def test_path_format(self, tmp_path):
         csv_file = tmp_path / "task.csv"
@@ -533,14 +539,8 @@ class TestCsvSpine:
         result = load_manifest.csv_spine(raw)
         df = result.to_pandas()
         file_id = next(iter(raw.keys()))
-        expected_path = f"{file_id}:task[0].task"
+        expected_path = f"{file_id}:task"
         assert df.iloc[0]["path"] == expected_path
-
-    def test_modifier_is_null(self, tmp_path):
-        raw = self._make_raw(tmp_path, "task.csv", "name\nalpha\n")
-        result = load_manifest.csv_spine(raw)
-        df = result.to_pandas()
-        assert df["modifier"].isna().all()
 
     def test_filepath_is_file_id(self, tmp_path):
         csv_file = tmp_path / "task.csv"
@@ -559,7 +559,7 @@ class TestCsvSpine:
 class TestComponentTablesWithCsv:
 
     def test_csv_only_type_included(self, tmp_path):
-        """CSV-only component types appear in the result."""
+        """CSV-only component types (named "{stem}_comp") appear in the result."""
         csv_file = tmp_path / "task.csv"
         csv_file.write_text("name\nalpha\n")
         raw = load_manifest.raw_csv_data([str(csv_file)])
@@ -570,18 +570,19 @@ class TestComponentTablesWithCsv:
         kvs = load_manifest.keyvalue_store(pvp)
         result = load_manifest.component_tables(kvs, csv_ct)
         assert "description" in result
-        assert "task" in result
+        assert "task_comp" in result
 
     def test_shared_type_rows_merged(self, tmp_path):
-        """When both YAML and CSV have the same component type, rows are concatenated."""
+        """When YAML and CSV component types coincide (both "description_comp"), rows are concatenated."""
         csv_file = tmp_path / "description.csv"
         csv_file.write_text("value\nCSV description\n")
         raw = load_manifest.raw_csv_data([str(csv_file)])
         csv_ct = load_manifest.csv_component_tables(raw)
+        assert "description_comp" in csv_ct
 
-        pairs = [("file.yaml:entity[0].description", "YAML description.")]
+        pairs = [("file.yaml:entity[0].description_comp", "YAML description.")]
         pvp = ibis.memtable(pd.DataFrame(pairs, columns=["path", "value"]))
         kvs = load_manifest.keyvalue_store(pvp)
         result = load_manifest.component_tables(kvs, csv_ct)
-        df = result["description"].to_pandas()
+        df = result["description_comp"].to_pandas()
         assert len(df) == 2

@@ -1,14 +1,14 @@
 import pandas as pd
 
 component_tables = {
-    "users": pd.DataFrame(
+    "users_comp": pd.DataFrame(
         [
             {"user_id": 1, "name": "Alice Johnson", "email": "alice@example.com", "created_at": "2023-01-15"},
             {"user_id": 2, "name": "Bob Smith", "email": "bob@example.com", "created_at": "2023-02-20"},
             {"user_id": 3, "name": "Carol White", "email": "carol@example.com", "created_at": "2023-03-05"},
         ]
     ),
-    "orders": pd.DataFrame(
+    "orders_comp": pd.DataFrame(
         [
             {"order_id": 101, "user_id": 1, "product_id": 42, "quantity": 2, "ordered_at": "2023-04-01"},
             {"order_id": 102, "user_id": 2, "product_id": 17, "quantity": 1, "ordered_at": "2023-04-03"},
@@ -16,7 +16,7 @@ component_tables = {
             {"order_id": 104, "user_id": 3, "product_id": 42, "quantity": 1, "ordered_at": "2023-04-10"},
         ]
     ),
-    "products": pd.DataFrame(
+    "products_comp": pd.DataFrame(
         [
             {"product_id": 17, "name": "Widget A", "category": "hardware", "price_usd": 9.99},
             {"product_id": 42, "name": "Widget B", "category": "hardware", "price_usd": 24.99},
