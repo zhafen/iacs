@@ -193,3 +193,48 @@ class TestRegistryViewMultipleComponents:
         result = multi_component_registry.view_df(["description"])
         assert isinstance(result, pd.DataFrame)
         assert "description.value" in result.columns
+
+
+class TestRegistryDatabaseRoundTrip:
+    """Tests for exporting/loading a Registry to/from a database via ibis.connect."""
+
+    @pytest.fixture
+    def sample_registry(self):
+        conn = ibis.duckdb.connect()
+        conn.create_table(
+            "description",
+            {"entity_id": ["iacs", "registry"], "value": ["A tool for architects", "Stores ECS data"]},
+        )
+        conn.create_table(
+            "requirement",
+            {"entity_id": ["iacs"], "type": ["functional"], "value": [1.0]},
+        )
+        components = {
+            "description": conn.table("description"),
+            "requirement": conn.table("requirement"),
+        }
+        return Registry(conn, components)
+
+    def test_to_database_creates_duckdb_file(self, sample_registry, tmp_path):
+        db_path = tmp_path / "registry.duckdb"
+        sample_registry.to_database(db_path)
+        assert db_path.exists()
+
+    def test_from_database_recovers_component_types(self, sample_registry, tmp_path):
+        db_path = tmp_path / "registry.duckdb"
+        sample_registry.to_database(db_path)
+
+        loaded = Registry.from_database(db_path)
+
+        assert set(loaded.component_types) == set(sample_registry.component_types)
+
+    def test_from_database_recovers_data(self, sample_registry, tmp_path):
+        db_path = tmp_path / "registry.duckdb"
+        sample_registry.to_database(db_path)
+
+        loaded = Registry.from_database(db_path)
+
+        pd.testing.assert_frame_equal(
+            loaded.get("description").execute().sort_values("entity_id").reset_index(drop=True),
+            sample_registry.get("description").execute().sort_values("entity_id").reset_index(drop=True),
+        )

@@ -26,6 +26,21 @@ class Architect:
         a.load_manifest(manifest)
         return a
 
+    @classmethod
+    def load(cls, path: str | Path) -> Architect:
+        """Create an Architect from a database written by ``save``.
+
+        This is a straight export/import of the component tables — no ETL or
+        transformation is performed. The backend is inferred from ``path``
+        (see ``Registry.from_database``); a plain ``.duckdb`` path uses
+        DuckDB, but any ``ibis.connect``-resolvable URL works.
+
+        Args:
+            path: A URL or filesystem path resolvable by ``ibis.connect``.
+        """
+        from iacs.registry import Registry
+        return cls(Registry.from_database(path))
+
     def __init__(self, registry: Registry | None = None):
         if registry is None:
             import ibis
@@ -57,6 +72,19 @@ class Architect:
         new_registry = result["registry"]
         self._registry.merge(new_registry)
         new_registry.close()
+
+    def save(self, path: str | Path) -> None:
+        """Export the current registry as-is to a database.
+
+        This is a straight export — no ETL or transformation is performed.
+        The backend is inferred from ``path`` (see ``Registry.to_database``);
+        a plain ``.duckdb`` path uses DuckDB, but any ``ibis.connect``-
+        resolvable URL works.
+
+        Args:
+            path: A URL or filesystem path resolvable by ``ibis.connect``.
+        """
+        self._registry.to_database(path)
 
     def _rebuild_driver(self) -> None:
         from hamilton import driver, base

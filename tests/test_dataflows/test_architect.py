@@ -168,6 +168,47 @@ class TestArchitectUX:
         )
 
 
+class TestSaveAndLoadDatabase:
+    """Tests for exporting/loading an Architect's registry via a database file."""
+
+    def test_save_creates_file(self, tmp_path):
+        a = Architect(_sample_registry())
+        db_path = tmp_path / "registry.duckdb"
+        a.save(db_path)
+        assert db_path.exists()
+
+    def test_load_recovers_component_types(self, tmp_path):
+        a = Architect(_sample_registry())
+        db_path = tmp_path / "registry.duckdb"
+        a.save(db_path)
+
+        a2 = Architect.load(db_path)
+
+        assert set(a2.registry.component_types) == set(a.registry.component_types)
+
+    def test_load_recovers_data(self, tmp_path):
+        a = Architect(_sample_registry())
+        db_path = tmp_path / "registry.duckdb"
+        a.save(db_path)
+
+        a2 = Architect.load(db_path)
+
+        pd.testing.assert_frame_equal(
+            a2.registry.get("description").execute().sort_values("entity_id").reset_index(drop=True),
+            a.registry.get("description").execute().sort_values("entity_id").reset_index(drop=True),
+        )
+
+    def test_save_then_from_manifest_roundtrip_via_example(self, tmp_path):
+        """Saving a manifest-loaded registry and reloading should preserve data."""
+        a = Architect.from_manifest("examples/example")
+        db_path = tmp_path / "registry.duckdb"
+        a.save(db_path)
+
+        a2 = Architect.load(db_path)
+
+        assert set(a2.registry.component_types) == set(a.registry.component_types)
+
+
 class TestLoadManifest:
     def test_load_each_yaml_matches_directory(self, tmp_path):
         """Loading YAML files one at a time should match loading the directory."""
