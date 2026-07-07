@@ -1,4 +1,7 @@
 """ECS Registry for storing and accessing component data."""
+from __future__ import annotations
+
+from pathlib import Path
 
 import ibis
 import pandas as pd
@@ -90,6 +93,35 @@ class Registry:
                 self._con.drop_table(tmp)
             else:
                 self.update({comp_type: arrow_data})
+
+    def to_database(self, path: str | Path) -> None:
+        """Export all component tables as-is to a database.
+
+        Uses ``ibis.connect`` so the backend is inferred from ``path``: a
+        plain filesystem path with a ``.duckdb`` extension connects via
+        DuckDB, while a URL such as ``"sqlite:///registry.db"`` or
+        ``"postgres://user:pass@host/db"`` connects to that backend instead.
+
+        Args:
+            path: A URL or filesystem path resolvable by ``ibis.connect``.
+        """
+        out_con = ibis.connect(str(path))
+        for comp_type in self._component_types:
+            out_con.create_table(
+                comp_type, self.get(comp_type).to_pyarrow(), overwrite=True
+            )
+        out_con.disconnect()
+
+    @classmethod
+    def from_database(cls, path: str | Path) -> "Registry":
+        """Load a Registry from a database written by ``to_database``.
+
+        Args:
+            path: A URL or filesystem path resolvable by ``ibis.connect``.
+        """
+        con = ibis.connect(str(path))
+        components = {name: con.table(name) for name in con.list_tables()}
+        return cls(con, components)
 
     def close(self) -> None:
         """Close the underlying database connection."""
