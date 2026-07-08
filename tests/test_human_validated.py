@@ -4,6 +4,7 @@ import importlib.util
 from pathlib import Path
 from types import ModuleType
 
+import ibis
 import pandas as pd
 from pandas.testing import assert_frame_equal
 import pytest
@@ -360,13 +361,13 @@ def test_incremental_load_is_consistent():
         "registry"
     ]
 
-    incremental_registry = Registry()
+    incremental_registry = Registry(ibis.duckdb.connect(), {})
     source_files = sorted(example_dir.rglob("*.yaml")) + sorted(
         example_dir.rglob("*.csv")
     )
     for source_file in source_files:
         new_registry = dr.execute(
-            ["registry"], inputs={"input_dirs": str(source_file)}
+            ["registry"], inputs={"input_dirs": [str(source_file)]}
         )["registry"]
         incremental_registry.merge(new_registry)
         new_registry.close()
