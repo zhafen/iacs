@@ -72,12 +72,14 @@ def _extract_entities(tree: ast.Module, module_name: str) -> dict:
     return entities
 
 
-def raw_python_strings(input_dirs: list[str], python_strings: dict[str, str] = None) -> dict[str, str]:
+def raw_python_strings(
+    input_dirs: list[str | Path], python_strings: dict[str, str] = None
+) -> dict[str, str]:
     """Read Python source file contents as raw text, combined with directly-provided strings.
 
     Parameters
     ----------
-    input_dirs : list[str]
+    input_dirs : list[str | Path]
         A list of Python file paths or directory paths. Directories are
         searched recursively for .py files.
     python_strings : dict[str, str], optional

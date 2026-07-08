@@ -136,6 +136,13 @@ class TestRawPythonStrings:
         entities = load_python.raw_entity_first_data(raw)
         assert {"description": "Inline module doc."} in entities["inline_mod"]["inline_mod"]
 
+    def test_accepts_path_objects_directly(self, tmp_path):
+        """input_dirs entries may be Path objects, not just strings."""
+        _write(tmp_path, "mod.py", '"""A module."""\n')
+        result = load_python.raw_python_strings([tmp_path])
+        entities = load_python.raw_entity_first_data(result)
+        assert any(k.endswith("mod") for k in _all_entities(entities))
+
 
 # ---------------------------------------------------------------------------
 # Entity extraction

@@ -8,7 +8,9 @@ import yaml
 _BUILTINS_DIR = Path(__file__).parent.parent.parent / "builtins"
 
 
-def raw_yaml_strings(input_dirs: list[str], yaml_strings: dict[str, str] = None) -> dict[str, str]:
+def raw_yaml_strings(
+    input_dirs: list[str | Path], yaml_strings: dict[str, str] = None
+) -> dict[str, str]:
     """Read EC file contents as raw text, combined with directly-provided YAML strings.
 
     Always includes all EC files from the builtins directory, each identified
@@ -17,7 +19,7 @@ def raw_yaml_strings(input_dirs: list[str], yaml_strings: dict[str, str] = None)
 
     Parameters
     ----------
-    input_dirs : list[str]
+    input_dirs : list[str | Path]
         A list of EC file paths or directory paths. Directories are searched
         recursively for EC files.
     yaml_strings : dict[str, str], optional

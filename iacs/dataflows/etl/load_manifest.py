@@ -67,7 +67,7 @@ def raw_entity_first_data(
 # CSV loading (stays inline — CSV doesn't fit the entity-first dict format)
 # ---------------------------------------------------------------------------
 
-def raw_csv_data(input_dirs: list[str]) -> dict[str, pd.DataFrame]:
+def raw_csv_data(input_dirs: list[str | Path]) -> dict[str, pd.DataFrame]:
     """Load CSV files from a list of files or directories (user-provided only, not builtins).
 
     The filename stem (without extension) of each CSV file becomes the component
@@ -76,7 +76,7 @@ def raw_csv_data(input_dirs: list[str]) -> dict[str, pd.DataFrame]:
 
     Parameters
     ----------
-    input_dirs : list[str]
+    input_dirs : list[str | Path]
         A list of CSV file paths or directory paths. Directories are searched
         recursively for CSV files.
 

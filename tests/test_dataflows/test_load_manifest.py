@@ -108,6 +108,13 @@ class TestRawEntityFirstData:
 
 class TestRawYamlStrings:
 
+    def _all_entities(self, result: dict) -> dict:
+        merged = {}
+        for entities in result.values():
+            if isinstance(entities, dict):
+                merged.update(entities)
+        return merged
+
     def test_returns_dict_of_strings(self, minimal_yaml_dir):
         result = load_yaml.raw_yaml_strings([minimal_yaml_dir])
         assert isinstance(result, dict)
@@ -130,6 +137,13 @@ class TestRawYamlStrings:
         raw = load_yaml.raw_yaml_strings([], given)
         entities = load_yaml.raw_entity_first_data(raw)
         assert entities["inline"] == {"my_entity": [{"description": "Inline thing."}]}
+
+    def test_accepts_path_objects_directly(self, tmp_path):
+        """input_dirs entries may be Path objects, not just strings."""
+        (tmp_path / "minimal.yaml").write_text("my_task:\n- description: A task.\n")
+        result = load_yaml.raw_yaml_strings([tmp_path])
+        entities = load_yaml.raw_entity_first_data(result)
+        assert "my_task" in self._all_entities(entities)
 
 
 # ---------------------------------------------------------------------------
@@ -456,6 +470,12 @@ class TestRawCsvData:
         """Directory with no CSV files returns an empty dict."""
         result = load_manifest.raw_csv_data([str(tmp_path)])
         assert result == {}
+
+    def test_accepts_path_objects_directly(self, tmp_path):
+        """input_dirs entries may be Path objects, not just strings."""
+        (tmp_path / "task.csv").write_text("name\nalpha\n")
+        result = load_manifest.raw_csv_data([tmp_path])
+        assert len(result) == 1
 
     def test_recursive_subdirectory(self, tmp_path):
         """CSV files in subdirectories are discovered recursively."""
