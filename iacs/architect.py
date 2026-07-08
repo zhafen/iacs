@@ -62,7 +62,7 @@ class Architect:
 
         if isinstance(manifest, (str, Path)):
             manifest = [manifest]
-        new_registry = self._etl.execute(base_etl, input_dirs=list(manifest))
+        new_registry = self._etl.execute(base_etl, input_dirs=manifest)
         self._registry.merge(new_registry)
         new_registry.close()
 
