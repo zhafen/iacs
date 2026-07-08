@@ -216,3 +216,6 @@ package-lock.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Test scratch output
+tests/test_dataflows/temp/
