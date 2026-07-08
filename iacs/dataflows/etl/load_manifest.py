@@ -698,3 +698,6 @@ def registry(
         conn.create_table(comp_type, table.to_pandas(), overwrite=True)
         components[comp_type] = conn.table(comp_type)
     return Registry(conn, components)
+
+
+FINAL_VAR = "registry"

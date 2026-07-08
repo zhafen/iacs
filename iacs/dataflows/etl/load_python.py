@@ -104,3 +104,6 @@ def raw_entity_first_data(raw_python_strings: dict[str, str]) -> dict:
             result[file_id] = entities
 
     return result
+
+
+FINAL_VAR = "raw_entity_first_data"

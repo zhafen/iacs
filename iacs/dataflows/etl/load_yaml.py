@@ -21,3 +21,6 @@ def raw_entity_first_data(raw_yaml_strings: dict[str, str]) -> dict:
     for file_id, content in raw_yaml_strings.items():
         result[file_id] = yaml.safe_load(content) or {}
     return result
+
+
+FINAL_VAR = "raw_entity_first_data"
