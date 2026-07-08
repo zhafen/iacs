@@ -21,9 +21,22 @@ from . import load_yaml, load_python
 # Source subdags — each produces raw_entity_first_data keyed by file_id
 # ---------------------------------------------------------------------------
 
+def yaml_strings_input(yaml_strings: dict[str, str] = None) -> dict[str, str]:
+    """Raw YAML strings supplied directly by the caller (merged with ``input_dirs``)."""
+    return yaml_strings or {}
+
+
+def python_strings_input(python_strings: dict[str, str] = None) -> dict[str, str]:
+    """Raw Python strings supplied directly by the caller (merged with ``input_dirs``)."""
+    return python_strings or {}
+
+
 @subdag(
     load_yaml,
-    inputs={"input_dirs": source("input_dirs")},
+    inputs={
+        "input_dirs": source("input_dirs"),
+        "yaml_strings": source("yaml_strings_input"),
+    },
     config={},
 )
 def yaml_entity_first_data(raw_entity_first_data: dict) -> dict:
@@ -32,7 +45,10 @@ def yaml_entity_first_data(raw_entity_first_data: dict) -> dict:
 
 @subdag(
     load_python,
-    inputs={"input_dirs": source("input_dirs")},
+    inputs={
+        "input_dirs": source("input_dirs"),
+        "python_strings": source("python_strings_input"),
+    },
     config={},
 )
 def python_entity_first_data(raw_entity_first_data: dict) -> dict:

@@ -61,45 +61,116 @@ class TestRawEntityFirstData:
         return merged
 
     def test_loads_single_yaml_file(self, minimal_yaml_dir):
-        result = load_yaml.raw_entity_first_data([minimal_yaml_dir])
+        result = load_yaml.raw_entity_first_data(load_yaml.raw_yaml_strings([minimal_yaml_dir]))
         assert isinstance(result, dict)
         assert "my_task" in self._all_entities(result)
 
     def test_loads_multiple_yaml_files(self, multi_file_yaml_dir):
-        result = load_yaml.raw_entity_first_data([multi_file_yaml_dir])
+        result = load_yaml.raw_entity_first_data(load_yaml.raw_yaml_strings([multi_file_yaml_dir]))
         entities = self._all_entities(result)
         assert "my_task" in entities
         assert "my_infra" in entities
 
     def test_loads_yaml_from_subdirectories(self, multi_file_yaml_dir):
-        result = load_yaml.raw_entity_first_data([multi_file_yaml_dir])
+        result = load_yaml.raw_entity_first_data(load_yaml.raw_yaml_strings([multi_file_yaml_dir]))
         assert "my_infra" in self._all_entities(result)
 
     def test_empty_dir_has_only_builtin(self, tmp_path):
-        result = load_yaml.raw_entity_first_data([str(tmp_path)])
+        result = load_yaml.raw_entity_first_data(load_yaml.raw_yaml_strings([str(tmp_path)]))
         assert "builtins.components" in result
         assert len(result) == 1
 
     def test_always_includes_builtin(self, minimal_yaml_dir):
-        result = load_yaml.raw_entity_first_data([minimal_yaml_dir])
+        result = load_yaml.raw_entity_first_data(load_yaml.raw_yaml_strings([minimal_yaml_dir]))
         assert "builtins.components" in result
 
     def test_preserves_raw_structure(self, minimal_yaml_dir):
-        result = load_yaml.raw_entity_first_data([minimal_yaml_dir])
+        result = load_yaml.raw_entity_first_data(load_yaml.raw_yaml_strings([minimal_yaml_dir]))
         entities = self._all_entities(result)
         assert isinstance(entities["my_task"], list)
         assert {"description": "A task I need to complete."} in entities["my_task"]
 
     def test_keyed_by_file_path(self, minimal_yaml_dir):
-        result = load_yaml.raw_entity_first_data([minimal_yaml_dir])
+        result = load_yaml.raw_entity_first_data(load_yaml.raw_yaml_strings([minimal_yaml_dir]))
         user_keys = [k for k in result if k != "builtins.components"]
         assert any(k.endswith("minimal.yaml") for k in user_keys)
 
     def test_accepts_single_file_path(self, tmp_path):
         yaml_file = tmp_path / "single.yaml"
         yaml_file.write_text("my_entity:\n- description: A thing.\n")
-        result = load_yaml.raw_entity_first_data([str(yaml_file)])
+        result = load_yaml.raw_entity_first_data(load_yaml.raw_yaml_strings([str(yaml_file)]))
         assert "my_entity" in self._all_entities(result)
+
+
+# ---------------------------------------------------------------------------
+# raw_yaml_strings — combining input_dirs with directly-provided strings
+# ---------------------------------------------------------------------------
+
+class TestRawYamlStrings:
+
+    def test_returns_dict_of_strings(self, minimal_yaml_dir):
+        result = load_yaml.raw_yaml_strings([minimal_yaml_dir])
+        assert isinstance(result, dict)
+        assert all(isinstance(v, str) for v in result.values())
+
+    def test_no_input_dirs_returns_only_given_strings_plus_builtins(self):
+        given = {"inline": "my_entity:\n- description: Inline.\n"}
+        result = load_yaml.raw_yaml_strings([], given)
+        assert result["inline"] == given["inline"]
+        assert "builtins.components" in result
+
+    def test_combines_input_dirs_with_given_strings(self, minimal_yaml_dir):
+        given = {"inline": "my_other_task:\n- description: Also inline.\n"}
+        result = load_yaml.raw_yaml_strings([minimal_yaml_dir], given)
+        assert "inline" in result
+        assert any(k.endswith("minimal.yaml") for k in result)
+
+    def test_given_strings_parse_correctly_downstream(self):
+        given = {"inline": "my_entity:\n- description: Inline thing.\n"}
+        raw = load_yaml.raw_yaml_strings([], given)
+        entities = load_yaml.raw_entity_first_data(raw)
+        assert entities["inline"] == {"my_entity": [{"description": "Inline thing."}]}
+
+
+# ---------------------------------------------------------------------------
+# load_manifest — accepting yaml/python strings directly via the Hamilton driver
+# ---------------------------------------------------------------------------
+
+class TestLoadManifestAcceptsStrings:
+
+    def _driver(self):
+        from hamilton import driver, base
+        return driver.Driver({}, load_manifest, adapter=base.DictResult())
+
+    def test_yaml_strings_without_input_dirs(self):
+        dr = self._driver()
+        result = dr.execute(
+            ["raw_entity_first_data"],
+            inputs={
+                "input_dirs": [],
+                "yaml_strings": {"inline": "my_entity:\n- description: Inline.\n"},
+            },
+        )["raw_entity_first_data"]
+        assert "my_entity" in result["inline"]
+
+    def test_python_strings_without_input_dirs(self):
+        dr = self._driver()
+        result = dr.execute(
+            ["raw_entity_first_data"],
+            inputs={
+                "input_dirs": [],
+                "python_strings": {"inline_mod": '"""Inline module doc."""\n'},
+            },
+        )["raw_entity_first_data"]
+        assert {"description": "Inline module doc."} in result["inline_mod"]["inline_mod"]
+
+    def test_defaults_to_empty_when_strings_omitted(self, minimal_yaml_dir):
+        dr = self._driver()
+        result = dr.execute(
+            ["raw_entity_first_data"], inputs={"input_dirs": [minimal_yaml_dir]}
+        )["raw_entity_first_data"]
+        user_keys = [k for k in result if not k.startswith("builtins.")]
+        assert any(k.endswith("minimal.yaml") for k in user_keys)
 
 
 # ---------------------------------------------------------------------------

@@ -8,8 +8,8 @@ import yaml
 _BUILTINS_DIR = Path(__file__).parent.parent.parent / "builtins"
 
 
-def raw_entity_first_data(input_dirs: list[str]) -> dict:
-    """Load EC files from a list of files or directories.
+def raw_yaml_strings(input_dirs: list[str], yaml_strings: dict[str, str] = None) -> dict[str, str]:
+    """Read EC file contents as raw text, combined with directly-provided YAML strings.
 
     Always includes all EC files from the builtins directory, each identified
     as "builtins.<stem>". User-provided files are identified by their path
@@ -20,12 +20,16 @@ def raw_entity_first_data(input_dirs: list[str]) -> dict:
     input_dirs : list[str]
         A list of EC file paths or directory paths. Directories are searched
         recursively for EC files.
+    yaml_strings : dict[str, str], optional
+        A dict keyed by identifier of raw YAML text to merge in directly,
+        without reading from disk. Keys read from ``input_dirs`` take
+        precedence over identical keys in ``yaml_strings``.
 
     Returns
     -------
-    dict
-        A dict keyed by file identifier, where each value is the dict of
-        entities loaded from that file.
+    dict[str, str]
+        A dict keyed by file identifier, where each value is the raw YAML
+        text for that file.
     """
     cwd = Path.cwd()
     all_files: list[tuple[Path, str]] = []
@@ -52,9 +56,27 @@ def raw_entity_first_data(input_dirs: list[str]) -> dict:
             builtin_id = f"builtins.{f.stem}"
             all_files.append((f, builtin_id))
 
-    result = {}
+    result = dict(yaml_strings) if yaml_strings else {}
     for file_path, file_id in all_files:
-        with open(file_path, "r", encoding="utf-8") as fh:
-            data = yaml.safe_load(fh) or {}
-        result[file_id] = data
+        result[file_id] = file_path.read_text(encoding="utf-8")
+    return result
+
+
+def raw_entity_first_data(raw_yaml_strings: dict[str, str]) -> dict:
+    """Parse raw YAML text into entity-first dicts, keyed by file identifier.
+
+    Parameters
+    ----------
+    raw_yaml_strings : dict[str, str]
+        A dict keyed by file identifier, where each value is raw YAML text.
+
+    Returns
+    -------
+    dict
+        A dict keyed by file identifier, where each value is the dict of
+        entities loaded from that file's YAML text.
+    """
+    result = {}
+    for file_id, content in raw_yaml_strings.items():
+        result[file_id] = yaml.safe_load(content) or {}
     return result
