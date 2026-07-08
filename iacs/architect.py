@@ -1,15 +1,13 @@
 """Base class for iacs systems."""
 from __future__ import annotations
 
-import importlib
 from pathlib import Path
-from types import ModuleType
 from typing import TYPE_CHECKING, Any
+
+from iacs.etl_system import ETLSystem
 
 if TYPE_CHECKING:
     from iacs.registry import Registry
-
-_DATAFLOW_BASE_PACKAGE = "iacs.dataflows"
 
 
 class Architect:
@@ -47,8 +45,7 @@ class Architect:
             from iacs.registry import Registry
             registry = Registry(ibis.duckdb.connect(), {})
         self._registry = registry
-        self._dataflows: list[ModuleType] = []
-        self._rebuild_driver()
+        self._etl = ETLSystem({"registry": self._registry})
 
     def load_manifest(self, manifest: str | Path | list[str | Path]) -> None:
         """Load a manifest and merge it into the current registry.
@@ -59,17 +56,15 @@ class Architect:
         Args:
             manifest: A file path, directory path, or list of either.
         """
-        from hamilton import driver, base
         from iacs.dataflows import base_etl
 
         if isinstance(manifest, (str, Path)):
             manifest = [str(manifest)]
         else:
             manifest = [str(p) for p in manifest]
-        result = driver.Driver(
-            {}, base_etl, adapter=base.DictResult()
-        ).execute(["registry"], inputs={"input_dirs": manifest})
-        new_registry = result["registry"]
+        new_registry = ETLSystem(dataflows=[base_etl]).execute(
+            ["registry"], input_dirs=manifest
+        )["registry"]
         self._registry.merge(new_registry)
         new_registry.close()
 
@@ -86,14 +81,6 @@ class Architect:
         """
         self._registry.to_database(path)
 
-    def _rebuild_driver(self) -> None:
-        from hamilton import driver, base
-        self._driver = driver.Driver(
-            {"registry": self._registry},
-            *self._dataflows, adapter=base.DictResult(),
-            allow_module_overrides=True,
-        )
-
     def load_dataflow(self, name: str) -> None:
         """Load a dataflow module by name and attach it to the driver.
 
@@ -109,15 +96,7 @@ class Architect:
         Raises:
             ValueError: If no matching module is found.
         """
-        full_name = f"{_DATAFLOW_BASE_PACKAGE}.{name}"
-        try:
-            module = importlib.import_module(full_name)
-        except ImportError as e:
-            raise ValueError(
-                f"No dataflow named {name!r} found (tried {full_name!r})"
-            ) from e
-        self._dataflows.append(module)
-        self._rebuild_driver()
+        self._etl.load_dataflow(name)
 
     @property
     def registry(self) -> Registry:
@@ -141,28 +120,8 @@ class Architect:
             **inputs: Additional inputs forwarded to the Hamilton driver (e.g.
                 ``output_dir="..."``) to satisfy external-input nodes.
         """
-        if isinstance(final_vars, str):
-            full_name = f"{_DATAFLOW_BASE_PACKAGE}.{final_vars}"
-            try:
-                module = importlib.import_module(full_name)
-                if module not in self._dataflows:
-                    self._dataflows.append(module)
-                    self._rebuild_driver()
-                final_vars = [
-                    v.name for v in self._driver.list_available_variables()
-                    if not v.is_external_input
-                ]
-            except ImportError:
-                final_vars = [final_vars]
-
-        if not final_vars:
-            return {}
-        return self._driver.execute(final_vars, inputs=inputs or None)
+        return self._etl.execute(final_vars, **inputs)
 
     @property
     def outputs(self) -> list[str]:
-        return [
-            v.name
-            for v in self._driver.list_available_variables()
-            if not v.is_external_input
-        ]
+        return self._etl.outputs

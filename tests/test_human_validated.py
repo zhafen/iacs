@@ -7,11 +7,11 @@ from types import ModuleType
 import pandas as pd
 from pandas.testing import assert_frame_equal
 import pytest
-from hamilton.driver import Builder
 from hamilton.lifecycle import NodeExecutionHook
 
 from iacs.dataflows import base_etl
 from iacs.dataflows.etl import export_manifest
+from iacs.etl_system import ETLSystem
 from iacs.registry import Registry
 
 ROOT = Path(__file__).parent.parent
@@ -315,36 +315,24 @@ def test_end_to_end(example_dir: Path):
     registry are compared to the components of the reloaded registry.
     """
 
+    checker = _ExpectedValueChecker(example_dir)
+
     # Get the loaded registry, comparing outputs along the way
-    dr = (
-        Builder()
-        .with_modules(base_etl)
-        .with_adapters(_ExpectedValueChecker(example_dir))
-        .build()
-    )
-    registry = dr.execute(["registry"], inputs={"input_dirs": [str(example_dir)]})[
-        "registry"
-    ]
+    etl = ETLSystem(dataflows=[base_etl], adapters=[checker])
+    registry = etl.execute(["registry"], input_dirs=[str(example_dir)])["registry"]
 
     # Export back to manifest format, comparing outputs along the way
-    dr = (
-        Builder()
-        .with_modules(export_manifest)
-        .with_adapters(_ExpectedValueChecker(example_dir))
-        .build()
-    )
     output_dir = TEMP_DIR / example_dir.name
-    dr.execute(
-        ["exported_manifest_filepaths"],
-        inputs={"registry": registry, "output_dir": str(output_dir)},
+    export_etl = ETLSystem(dataflows=[export_manifest], adapters=[checker])
+    export_etl.execute(
+        ["exported_manifest_filepaths"], registry=registry, output_dir=str(output_dir)
     )
 
     # Reload. The expected fixtures encode entity IDs derived from the original
     # example_dir's filepath, so they don't apply to nodes loaded from
     # output_dir; only the final registry comparison below applies here.
-    dr = Builder().with_modules(base_etl).build()
-    reloaded_registry = dr.execute(
-        ["registry"], inputs={"input_dirs": [str(output_dir)]}
+    reloaded_registry = ETLSystem(dataflows=[base_etl]).execute(
+        ["registry"], input_dirs=[str(output_dir)]
     )["registry"]
 
     _assert_registries_equal(registry, reloaded_registry)
@@ -355,19 +343,17 @@ def test_incremental_load_is_consistent():
     example_dir = EXAMPLES_DIR / "example"
 
     # Get the loaded registry
-    dr = Builder().with_modules(base_etl).build()
-    registry = dr.execute(["registry"], inputs={"input_dirs": [str(example_dir)]})[
-        "registry"
-    ]
+    etl = ETLSystem(dataflows=[base_etl])
+    registry = etl.execute(["registry"], input_dirs=[str(example_dir)])["registry"]
 
     incremental_registry = Registry()
     source_files = sorted(example_dir.rglob("*.yaml")) + sorted(
         example_dir.rglob("*.csv")
     )
     for source_file in source_files:
-        new_registry = dr.execute(
-            ["registry"], inputs={"input_dirs": str(source_file)}
-        )["registry"]
+        new_registry = etl.execute(["registry"], input_dirs=str(source_file))[
+            "registry"
+        ]
         incremental_registry.merge(new_registry)
         new_registry.close()
 
