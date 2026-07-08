@@ -8,11 +8,11 @@ import ibis
 import pandas as pd
 from pandas.testing import assert_frame_equal
 import pytest
-from hamilton.driver import Builder
 from hamilton.lifecycle import NodeExecutionHook
 
 from iacs.dataflows import base_etl
 from iacs.dataflows.etl import export_manifest
+from iacs.etl_system import ETLSystem
 from iacs.registry import Registry
 
 ROOT = Path(__file__).parent.parent
@@ -315,37 +315,22 @@ def test_end_to_end(example_dir: Path, tmp_path: Path):
     registry are compared to the components of the reloaded registry.
     """
 
+    checker = _ExpectedValueChecker(example_dir)
+    etl = ETLSystem()
+
     # Get the loaded registry, comparing outputs along the way
-    dr = (
-        Builder()
-        .with_modules(base_etl)
-        .with_adapters(_ExpectedValueChecker(example_dir))
-        .build()
-    )
-    registry = dr.execute(["registry"], inputs={"input_dirs": [str(example_dir)]})[
-        "registry"
-    ]
+    registry = etl.execute(base_etl, adapters=[checker], input_dirs=[str(example_dir)])
 
     # Export back to manifest format, comparing outputs along the way
-    dr = (
-        Builder()
-        .with_modules(export_manifest)
-        .with_adapters(_ExpectedValueChecker(example_dir))
-        .build()
-    )
     output_dir = tmp_path / example_dir.name
-    dr.execute(
-        ["exported_manifest_filepaths"],
-        inputs={"registry": registry, "output_dir": str(output_dir)},
+    etl.execute(
+        export_manifest, adapters=[checker], registry=registry, output_dir=str(output_dir)
     )
 
     # Reload. The expected fixtures encode entity IDs derived from the original
     # example_dir's filepath, so they don't apply to nodes loaded from
     # output_dir; only the final registry comparison below applies here.
-    dr = Builder().with_modules(base_etl).build()
-    reloaded_registry = dr.execute(
-        ["registry"], inputs={"input_dirs": [str(output_dir)]}
-    )["registry"]
+    reloaded_registry = etl.execute(base_etl, input_dirs=[str(output_dir)])
 
     _assert_registries_equal(registry, reloaded_registry)
 
@@ -353,21 +338,17 @@ def test_end_to_end(example_dir: Path, tmp_path: Path):
 def test_incremental_load_is_consistent():
 
     example_dir = EXAMPLES_DIR / "example"
+    etl = ETLSystem()
 
     # Get the loaded registry
-    dr = Builder().with_modules(base_etl).build()
-    registry = dr.execute(["registry"], inputs={"input_dirs": [str(example_dir)]})[
-        "registry"
-    ]
+    registry = etl.execute(base_etl, input_dirs=[str(example_dir)])
 
     incremental_registry = Registry(ibis.duckdb.connect(), {})
     source_files = sorted(example_dir.rglob("*.yaml")) + sorted(
         example_dir.rglob("*.csv")
     )
     for source_file in source_files:
-        new_registry = dr.execute(
-            ["registry"], inputs={"input_dirs": [str(source_file)]}
-        )["registry"]
+        new_registry = etl.execute(base_etl, input_dirs=[str(source_file)])
         incremental_registry.merge(new_registry)
         new_registry.close()
 

@@ -355,3 +355,6 @@ def validated_registry(
     """Store validated components and constraint violations back into the registry."""
     registry.update({**validation_result, "invalid_field": invalid_field})
     return registry
+
+
+FINAL_VAR = "validated_registry"

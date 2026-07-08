@@ -514,3 +514,6 @@ def exported_manifest_filepaths(hierarchical_entity_first_data: dict, output_dir
             yaml.dump(entities, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
         saved.append(str(dest))
     return sorted(saved)
+
+
+FINAL_VAR = "exported_manifest_filepaths"

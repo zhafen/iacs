@@ -24,7 +24,6 @@ def _architect_with_test_dataflow():
     """Return an Architect with the test dataflow module loaded directly."""
     a = Architect(_sample_registry())
     a._dataflows = [dataflow]
-    a._rebuild_driver()
     return a
 
 

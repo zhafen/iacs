@@ -60,3 +60,6 @@ def updated_registry(registry: Registry, traceability: ibis.expr.types.Table) ->
     """Store the traceability audit result as a component in the registry."""
     registry.update({"traceability": traceability})
     return registry
+
+
+FINAL_VAR = "traceability"

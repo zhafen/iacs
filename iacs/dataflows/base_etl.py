@@ -63,3 +63,6 @@ def validated_registry(validated_registry: Registry) -> Registry:
 def registry(validated_registry: Registry) -> Registry:
     """Expose the fully derived and validated registry for downstream modules."""
     return validated_registry
+
+
+FINAL_VAR = "registry"

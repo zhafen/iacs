@@ -44,3 +44,6 @@ def updated_registry(registry: Registry, todo: ibis.expr.types.Table) -> Registr
     """Store the todo audit result as a component in the registry."""
     registry.update({"todo": todo})
     return registry
+
+
+FINAL_VAR = "todo"
