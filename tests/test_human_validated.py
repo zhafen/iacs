@@ -4,6 +4,7 @@ import importlib.util
 from pathlib import Path
 from types import ModuleType
 
+import ibis
 import pandas as pd
 from pandas.testing import assert_frame_equal
 import pytest
@@ -17,7 +18,6 @@ from iacs.registry import Registry
 ROOT = Path(__file__).parent.parent
 EXAMPLES_DIR = ROOT / "examples"
 EXPECTED_DIR = ROOT / "tests" / "test_dataflows" / "expected"
-TEMP_DIR = ROOT / "tests" / "test_dataflows" / "temp"
 DATAFLOWS_MODULE_PREFIX = "iacs.dataflows."
 
 
@@ -304,7 +304,7 @@ class _ExpectedValueChecker(NodeExecutionHook):
 
 
 @pytest.mark.parametrize("example_dir", _example_dirs())
-def test_end_to_end(example_dir: Path):
+def test_end_to_end(example_dir: Path, tmp_path: Path):
     """Thorough end to end test that:
     1. Runs base_etl for each example manifest
     2. Runs export_manifest on the loaded registry
@@ -333,7 +333,7 @@ def test_end_to_end(example_dir: Path):
         .with_adapters(_ExpectedValueChecker(example_dir))
         .build()
     )
-    output_dir = TEMP_DIR / example_dir.name
+    output_dir = tmp_path / example_dir.name
     dr.execute(
         ["exported_manifest_filepaths"],
         inputs={"registry": registry, "output_dir": str(output_dir)},
@@ -360,13 +360,13 @@ def test_incremental_load_is_consistent():
         "registry"
     ]
 
-    incremental_registry = Registry()
+    incremental_registry = Registry(ibis.duckdb.connect(), {})
     source_files = sorted(example_dir.rglob("*.yaml")) + sorted(
         example_dir.rglob("*.csv")
     )
     for source_file in source_files:
         new_registry = dr.execute(
-            ["registry"], inputs={"input_dirs": str(source_file)}
+            ["registry"], inputs={"input_dirs": [str(source_file)]}
         )["registry"]
         incremental_registry.merge(new_registry)
         new_registry.close()
