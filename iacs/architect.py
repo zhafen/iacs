@@ -63,12 +63,10 @@ class Architect:
         from iacs.dataflows import base_etl
 
         if isinstance(manifest, (str, Path)):
-            manifest = [str(manifest)]
-        else:
-            manifest = [str(p) for p in manifest]
+            manifest = [manifest]
         result = driver.Driver(
             {}, base_etl, adapter=base.DictResult()
-        ).execute(["registry"], inputs={"input_dirs": manifest})
+        ).execute(["registry"], inputs={"input_dirs": list(manifest)})
         new_registry = result["registry"]
         self._registry.merge(new_registry)
         new_registry.close()

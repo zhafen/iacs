@@ -236,3 +236,28 @@ class TestLoadManifest:
                 df_inc.reindex(columns=df_all.columns).sort_values(sort_by, na_position="last").reset_index(drop=True),
                 check_dtype=False,
             )
+
+    def test_accepts_path_object_directly(self, tmp_path):
+        """load_manifest/from_manifest accept a Path without the caller converting to str."""
+        (tmp_path / "requirements.yaml").write_text(
+            "req_a:\n- description: Requirement A\n- requirement\n"
+        )
+
+        a = Architect.from_manifest(tmp_path)
+        assert "requirement" in a.registry.component_types
+
+        a2 = Architect()
+        a2.load_manifest(tmp_path)
+        assert "requirement" in a2.registry.component_types
+
+    def test_accepts_list_of_mixed_str_and_path(self, tmp_path):
+        """A list of manifest paths may mix str and Path entries."""
+        sub = tmp_path / "sub"
+        sub.mkdir()
+        (tmp_path / "requirements.yaml").write_text(
+            "req_a:\n- description: Requirement A\n- requirement\n"
+        )
+        (sub / "solutions.yaml").write_text("sol_a:\n- description: Solution A\n")
+
+        a = Architect.from_manifest([str(tmp_path / "requirements.yaml"), sub])
+        assert "requirement" in a.registry.component_types
