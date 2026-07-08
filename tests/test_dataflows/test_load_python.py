@@ -4,21 +4,15 @@ from pathlib import Path
 
 import pytest
 
-_IACS_SRC = str(Path(__file__).parent.parent.parent / "iacs")
+_IACS_SRC = Path(__file__).parent.parent.parent / "iacs"
 
+import iacs.dataflows.etl.load_manifest as load_manifest
 import iacs.dataflows.etl.load_python as load_python
-from iacs.utils import dhash
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _write(tmp_path, filename, content):
-    f = tmp_path / filename
-    f.write_text(content)
-    return str(tmp_path)
-
 
 def _all_entities(result: dict) -> dict:
     merged = {}
@@ -62,47 +56,32 @@ class TestFindIacsMeta:
 
 
 # ---------------------------------------------------------------------------
-# raw_entity_first_data — file discovery
+# raw_entity_first_data — parsing a dict of raw Python source
 # ---------------------------------------------------------------------------
 
-class TestFileDiscovery:
+class TestRawEntityFirstData:
 
-    def test_loads_py_files_from_directory(self, tmp_path):
-        _write(tmp_path, "mod.py", '"""A module."""\n')
-        result = load_python.raw_entity_first_data([str(tmp_path)])
-        assert isinstance(result, dict)
-        assert any(k.endswith("mod.py") for k in result)
+    def test_empty_dict_returns_empty(self):
+        assert load_python.raw_entity_first_data({}) == {}
 
-    def test_loads_explicit_py_file(self, tmp_path):
-        f = tmp_path / "mod.py"
-        f.write_text('"""A module."""\n')
-        result = load_python.raw_entity_first_data([str(f)])
-        assert any(k.endswith("mod.py") for k in result)
-
-    def test_recursive_subdirectory(self, tmp_path):
-        sub = tmp_path / "sub"
-        sub.mkdir()
-        (sub / "deep.py").write_text('"""Deep module."""\n')
-        result = load_python.raw_entity_first_data([str(tmp_path)])
-        assert any(k.endswith("deep.py") for k in result)
-
-    def test_ignores_yaml_files(self, tmp_path):
-        (tmp_path / "data.yaml").write_text("key: value\n")
-        result = load_python.raw_entity_first_data([str(tmp_path)])
+    def test_skips_entries_with_syntax_errors(self):
+        result = load_python.raw_entity_first_data({"bad.py": "def (:\n"})
         assert result == {}
 
-    def test_skips_files_with_syntax_errors(self, tmp_path):
-        (tmp_path / "bad.py").write_text("def (:\n")
-        result = load_python.raw_entity_first_data([str(tmp_path)])
+    def test_entries_without_docstring_or_iacs_produce_no_entities(self):
+        result = load_python.raw_entity_first_data({"empty.py": "x = 1\n"})
         assert result == {}
 
-    def test_empty_directory_returns_empty(self, tmp_path):
-        result = load_python.raw_entity_first_data([str(tmp_path)])
-        assert result == {}
+    def test_multiple_entries_produce_separate_keys(self):
+        result = load_python.raw_entity_first_data({
+            "a.py": '"""Module A."""\n',
+            "b.py": '"""Module B."""\n',
+        })
+        assert set(result.keys()) == {"a.py", "b.py"}
 
-    def test_file_without_docstring_or_iacs_produces_no_entities(self, tmp_path):
-        _write(tmp_path, "empty.py", "x = 1\n")
-        result = load_python.raw_entity_first_data([str(tmp_path)])
+    def test_ignores_files_without_python_content(self):
+        """A non-Python value (e.g. accidentally-included YAML text) just fails to parse."""
+        result = load_python.raw_entity_first_data({"data.yaml": "key: value\n"})
         assert result == {}
 
 
@@ -112,76 +91,72 @@ class TestFileDiscovery:
 
 class TestModuleEntity:
 
-    def test_module_docstring_becomes_description(self, tmp_path):
-        _write(tmp_path, "mod.py", '"""A module docstring."""\n')
-        entities = _all_entities(load_python.raw_entity_first_data([str(tmp_path)]))
+    def test_module_docstring_becomes_description(self):
+        entities = _all_entities(load_python.raw_entity_first_data({"mod.py": '"""A module docstring."""\n'}))
         key = next(k for k in entities if k.endswith("mod"))
         comps = entities[key]
         assert any(c.get("description", "").startswith("A module docstring") for c in comps)
 
-    def test_module_iacs_meta_becomes_component(self, tmp_path):
-        _write(tmp_path, "mod.py", '"""Doc."""\n__iacs__ = {"solution of": "some_req"}\n')
-        entities = _all_entities(load_python.raw_entity_first_data([str(tmp_path)]))
+    def test_module_iacs_meta_becomes_component(self):
+        src = '"""Doc."""\n__iacs__ = {"solution of": "some_req"}\n'
+        entities = _all_entities(load_python.raw_entity_first_data({"mod.py": src}))
         key = next(k for k in entities if k.endswith("mod"))
         comps = entities[key]
         assert {"solution of": "some_req"} in comps
 
-    def test_module_without_docstring_but_with_iacs(self, tmp_path):
-        _write(tmp_path, "mod.py", '__iacs__ = {"solution of": "req"}\n')
-        entities = _all_entities(load_python.raw_entity_first_data([str(tmp_path)]))
+    def test_module_without_docstring_but_with_iacs(self):
+        src = '__iacs__ = {"solution of": "req"}\n'
+        entities = _all_entities(load_python.raw_entity_first_data({"mod.py": src}))
         assert any(k.endswith("mod") for k in entities)
 
 
 class TestFunctionEntity:
 
-    def test_function_docstring_becomes_description(self, tmp_path):
-        _write(tmp_path, "mod.py", 'def foo():\n    """Foo does things."""\n    pass\n')
-        entities = _all_entities(load_python.raw_entity_first_data([str(tmp_path)]))
+    def test_function_docstring_becomes_description(self):
+        src = 'def foo():\n    """Foo does things."""\n    pass\n'
+        entities = _all_entities(load_python.raw_entity_first_data({"mod.py": src}))
         key = next(k for k in entities if k.endswith(".foo"))
         comps = entities[key]
         assert any("Foo does things" in c.get("description", "") for c in comps)
 
-    def test_function_iacs_in_body(self, tmp_path):
+    def test_function_iacs_in_body(self):
         src = (
             'def foo():\n'
             '    """Doc."""\n'
             '    __iacs__ = {"solution of": "req"}\n'
         )
-        _write(tmp_path, "mod.py", src)
-        entities = _all_entities(load_python.raw_entity_first_data([str(tmp_path)]))
+        entities = _all_entities(load_python.raw_entity_first_data({"mod.py": src}))
         key = next(k for k in entities if k.endswith(".foo"))
         assert {"solution of": "req"} in entities[key]
 
-    def test_function_without_docstring_excluded(self, tmp_path):
-        _write(tmp_path, "mod.py", 'def foo():\n    pass\n')
-        entities = _all_entities(load_python.raw_entity_first_data([str(tmp_path)]))
+    def test_function_without_docstring_excluded(self):
+        src = 'def foo():\n    pass\n'
+        entities = _all_entities(load_python.raw_entity_first_data({"mod.py": src}))
         assert not any(k.endswith(".foo") for k in entities)
 
 
 class TestClassEntity:
 
-    def test_class_docstring_becomes_description(self, tmp_path):
-        _write(tmp_path, "mod.py", 'class MyClass:\n    """A class."""\n    pass\n')
-        entities = _all_entities(load_python.raw_entity_first_data([str(tmp_path)]))
+    def test_class_docstring_becomes_description(self):
+        src = 'class MyClass:\n    """A class."""\n    pass\n'
+        entities = _all_entities(load_python.raw_entity_first_data({"mod.py": src}))
         key = next(k for k in entities if k.endswith(".MyClass"))
         assert any("A class" in c.get("description", "") for c in entities[key])
 
-    def test_class_iacs_in_body(self, tmp_path):
+    def test_class_iacs_in_body(self):
         src = 'class MyClass:\n    __iacs__ = {"solution of": "req"}\n'
-        _write(tmp_path, "mod.py", src)
-        entities = _all_entities(load_python.raw_entity_first_data([str(tmp_path)]))
+        entities = _all_entities(load_python.raw_entity_first_data({"mod.py": src}))
         key = next(k for k in entities if k.endswith(".MyClass"))
         assert {"solution of": "req"} in entities[key]
 
-    def test_method_uses_full_qualified_path(self, tmp_path):
+    def test_method_uses_full_qualified_path(self):
         src = (
             'class MyClass:\n'
             '    def my_method(self):\n'
             '        """Method doc."""\n'
             '        __iacs__ = {"solution of": "req"}\n'
         )
-        _write(tmp_path, "mod.py", src)
-        entities = _all_entities(load_python.raw_entity_first_data([str(tmp_path)]))
+        entities = _all_entities(load_python.raw_entity_first_data({"mod.py": src}))
         assert any(k.endswith(".MyClass.my_method") for k in entities)
         key = next(k for k in entities if k.endswith(".MyClass.my_method"))
         assert {"solution of": "req"} in entities[key]
@@ -193,17 +168,14 @@ class TestClassEntity:
 
 class TestEntityIdStability:
 
-    def test_same_file_produces_same_keys(self, tmp_path):
-        _write(tmp_path, "mod.py", '"""Doc."""\n')
-        r1 = _all_entities(load_python.raw_entity_first_data([str(tmp_path)]))
-        r2 = _all_entities(load_python.raw_entity_first_data([str(tmp_path)]))
+    def test_same_source_produces_same_keys(self):
+        python_strings = {"mod.py": '"""Doc."""\n'}
+        r1 = _all_entities(load_python.raw_entity_first_data(python_strings))
+        r2 = _all_entities(load_python.raw_entity_first_data(python_strings))
         assert set(r1.keys()) == set(r2.keys())
 
-    def test_entity_key_uses_dotted_module_path(self, tmp_path):
-        sub = tmp_path / "pkg"
-        sub.mkdir()
-        (sub / "mod.py").write_text('"""Doc."""\n')
-        entities = _all_entities(load_python.raw_entity_first_data([str(tmp_path)]))
+    def test_entity_key_uses_dotted_module_path(self):
+        entities = _all_entities(load_python.raw_entity_first_data({"pkg/mod.py": '"""Doc."""\n'}))
         assert any("pkg.mod" in k for k in entities)
 
 
@@ -213,30 +185,26 @@ class TestEntityIdStability:
 
 class TestIntegrationWithPipeline:
 
-    def test_entity_first_dict_feeds_pathvalue_pairs(self, tmp_path):
+    def test_entity_first_dict_feeds_pathvalue_pairs(self):
         """Python entities flow through pathvalue_pairs without error."""
-        import iacs.dataflows.etl.load_manifest as load_manifest
         src = (
             '"""Module doc."""\n'
             '__iacs__ = {"solution of": "some_req"}\n'
         )
-        _write(tmp_path, "mod.py", src)
-        py_data = load_python.raw_entity_first_data([str(tmp_path)])
+        py_data = load_python.raw_entity_first_data({"mod.py": src})
         pvp = load_manifest.pathvalue_pairs(py_data)
         df = pvp.to_pandas()
         assert len(df) > 0
         assert "path" in df.columns
         assert "value" in df.columns
 
-    def test_solution_component_survives_pipeline(self, tmp_path):
+    def test_solution_component_survives_pipeline(self):
         """A __iacs__ solution component is present after keyvalue_store."""
-        import iacs.dataflows.etl.load_manifest as load_manifest
         src = (
             '"""Module doc."""\n'
             '__iacs__ = {"solution of": "some_req"}\n'
         )
-        _write(tmp_path, "mod.py", src)
-        py_data = load_python.raw_entity_first_data([str(tmp_path)])
+        py_data = load_python.raw_entity_first_data({"mod.py": src})
         pvp = load_manifest.pathvalue_pairs(py_data)
         kvs = load_manifest.keyvalue_store(pvp)
         ct = load_manifest.component_tables(kvs)
@@ -255,7 +223,8 @@ class TestLoadIacsPackage:
 
     @pytest.fixture(scope="class")
     def iacs_result(self):
-        return load_python.raw_entity_first_data([_IACS_SRC])
+        python_strings = load_manifest.raw_strings([_IACS_SRC])["raw_python_strings"]
+        return load_python.raw_entity_first_data(python_strings)
 
     @pytest.fixture(scope="class")
     def all_entities(self, iacs_result):
@@ -309,7 +278,6 @@ class TestLoadIacsPackage:
                 assert isinstance(comp, dict), f"component in {key} should be a dict"
 
     def test_flows_through_pipeline_without_error(self, iacs_result):
-        import iacs.dataflows.etl.load_manifest as load_manifest
         pvp = load_manifest.pathvalue_pairs(iacs_result)
         kvs = load_manifest.keyvalue_store(pvp)
         ct = load_manifest.component_tables(kvs)

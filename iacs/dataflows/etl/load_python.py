@@ -4,13 +4,9 @@ import ast
 from pathlib import Path
 
 
-def _module_qualified_name(file_path: Path, cwd: Path) -> str:
-    """Derive a dotted module name from a file path relative to cwd."""
-    try:
-        rel = file_path.relative_to(cwd)
-    except ValueError:
-        rel = file_path
-    parts = list(rel.with_suffix("").parts)
+def _module_qualified_name(file_id: str) -> str:
+    """Derive a dotted module name from a file identifier."""
+    parts = list(Path(file_id).with_suffix("").parts)
     return ".".join(parts)
 
 
@@ -76,53 +72,33 @@ def _extract_entities(tree: ast.Module, module_name: str) -> dict:
     return entities
 
 
-def raw_entity_first_data(input_dirs: list[str]) -> dict:
-    """Load Python source files from a list of files or directories.
+def raw_entity_first_data(raw_python_strings: dict[str, str]) -> dict:
+    """Parse raw Python source text into entity-first dicts, keyed by file identifier.
 
-    Parses every ``.py`` file found and extracts entities from modules,
-    classes, and functions that have a docstring or ``__iacs__`` metadata.
-    Entity keys are fully-qualified dotted names derived from the file path
-    (e.g. ``iacs.dataflows.etl.load_manifest.raw_entity_first_data``).
+    Parses every source string and extracts entities from modules, classes,
+    and functions that have a docstring or ``__iacs__`` metadata. Entity keys
+    are fully-qualified dotted names derived from the file identifier (e.g.
+    ``iacs.dataflows.etl.load_manifest.raw_entity_first_data``).
 
     Parameters
     ----------
-    input_dir : list[str]
-        A list of Python file paths or directory paths. Directories are
-        searched recursively for .py files.
+    raw_python_strings : dict[str, str]
+        A dict keyed by file identifier, where each value is raw Python
+        source text.
 
     Returns
     -------
     dict
         A dict keyed by file identifier, where each value is the entity-first
-        dict of entities extracted from that file.
+        dict of entities extracted from that source.
     """
-    cwd = Path.cwd()
-    all_files: list[tuple[Path, str]] = []
-
-    for item in input_dirs:
-        p = Path(item)
-        if p.is_file() and p.suffix == ".py":
-            try:
-                file_id = str(p.relative_to(cwd))
-            except ValueError:
-                file_id = str(p)
-            all_files.append((p, file_id))
-        elif p.is_dir():
-            for f in sorted(p.rglob("*.py")):
-                try:
-                    file_id = str(f.relative_to(cwd))
-                except ValueError:
-                    file_id = str(f)
-                all_files.append((f, file_id))
-
     result = {}
-    for file_path, file_id in all_files:
+    for file_id, source in raw_python_strings.items():
         try:
-            source = file_path.read_text(encoding="utf-8")
-            tree = ast.parse(source, filename=str(file_path))
-        except (SyntaxError, OSError):
+            tree = ast.parse(source, filename=file_id)
+        except SyntaxError:
             continue
-        module_name = _module_qualified_name(file_path, cwd)
+        module_name = _module_qualified_name(file_id)
         entities = _extract_entities(tree, module_name)
         if entities:
             result[file_id] = entities
