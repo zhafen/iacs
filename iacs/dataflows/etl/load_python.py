@@ -72,55 +72,6 @@ def _extract_entities(tree: ast.Module, module_name: str) -> dict:
     return entities
 
 
-def raw_python_strings(
-    input_dirs: list[str | Path], python_strings: dict[str, str] = None
-) -> dict[str, str]:
-    """Read Python source file contents as raw text, combined with directly-provided strings.
-
-    Parameters
-    ----------
-    input_dirs : list[str | Path]
-        A list of Python file paths or directory paths. Directories are
-        searched recursively for .py files.
-    python_strings : dict[str, str], optional
-        A dict keyed by identifier of raw Python source text to merge in
-        directly, without reading from disk. Keys read from ``input_dirs``
-        take precedence over identical keys in ``python_strings``.
-
-    Returns
-    -------
-    dict[str, str]
-        A dict keyed by file identifier, where each value is the raw Python
-        source text for that file.
-    """
-    cwd = Path.cwd()
-    all_files: list[tuple[Path, str]] = []
-
-    for item in input_dirs:
-        p = Path(item)
-        if p.is_file() and p.suffix == ".py":
-            try:
-                file_id = str(p.relative_to(cwd))
-            except ValueError:
-                file_id = str(p)
-            all_files.append((p, file_id))
-        elif p.is_dir():
-            for f in sorted(p.rglob("*.py")):
-                try:
-                    file_id = str(f.relative_to(cwd))
-                except ValueError:
-                    file_id = str(f)
-                all_files.append((f, file_id))
-
-    result = dict(python_strings) if python_strings else {}
-    for file_path, file_id in all_files:
-        try:
-            result[file_id] = file_path.read_text(encoding="utf-8")
-        except OSError:
-            continue
-    return result
-
-
 def raw_entity_first_data(raw_python_strings: dict[str, str]) -> dict:
     """Parse raw Python source text into entity-first dicts, keyed by file identifier.
 

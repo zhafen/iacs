@@ -10,33 +10,102 @@ from pathlib import Path
 import ibis
 import ibis.expr.types as ir
 import pandas as pd
-from hamilton.function_modifiers import subdag, source
+from hamilton.function_modifiers import extract_fields, subdag, source
 
 from ...registry import Registry
 from ...utils import dhash
 from . import load_yaml, load_python
 
 
+_BUILTINS_DIR = Path(__file__).parent.parent.parent / "builtins"
+
+
 # ---------------------------------------------------------------------------
 # Source subdags — each produces raw_entity_first_data keyed by file_id
 # ---------------------------------------------------------------------------
 
-def yaml_strings_input(yaml_strings: dict[str, str] = None) -> dict[str, str]:
-    """Raw YAML strings supplied directly by the caller (merged with ``input_dirs``)."""
-    return yaml_strings or {}
+def _file_id(path: Path, cwd: Path) -> str:
+    """Identify a file by its path relative to cwd, falling back to the full path."""
+    try:
+        return str(path.relative_to(cwd))
+    except ValueError:
+        return str(path)
 
 
-def python_strings_input(python_strings: dict[str, str] = None) -> dict[str, str]:
-    """Raw Python strings supplied directly by the caller (merged with ``input_dirs``)."""
-    return python_strings or {}
+@extract_fields(["raw_python_strings", "raw_yaml_strings"])
+def raw_strings(
+    input_dirs: list[str | Path],
+    python_strings: dict[str, str] = None,
+    yaml_strings: dict[str, str] = None,
+) -> dict[str, dict[str, str]]:
+    """Read raw YAML and Python source text from input_dirs, combined with directly-provided strings.
+
+    Always includes all EC files from the builtins directory in the YAML
+    output, each identified as "builtins.<stem>". User-provided files are
+    identified by their path relative to the current working directory.
+
+    Parameters
+    ----------
+    input_dirs : list[str | Path]
+        A list of file or directory paths. Directories are searched
+        recursively for both EC (``.yaml``/``.yml``) and Python (``.py``) files.
+    python_strings : dict[str, str], optional
+        A dict keyed by identifier of raw Python source text to merge in
+        directly, without reading from disk. Keys read from ``input_dirs``
+        take precedence over identical keys in ``python_strings``.
+    yaml_strings : dict[str, str], optional
+        A dict keyed by identifier of raw YAML text to merge in directly,
+        without reading from disk. Keys read from ``input_dirs`` take
+        precedence over identical keys in ``yaml_strings``.
+
+    Returns
+    -------
+    dict[str, dict[str, str]]
+        A dict with keys ``"raw_python_strings"`` and ``"raw_yaml_strings"``,
+        each keyed by file identifier with raw source text as values.
+    """
+    cwd = Path.cwd()
+    yaml_files: list[tuple[Path, str]] = []
+    python_files: list[tuple[Path, str]] = []
+
+    for item in input_dirs:
+        p = Path(item)
+        if p.is_file():
+            if p.suffix in (".yaml", ".yml"):
+                yaml_files.append((p, _file_id(p, cwd)))
+            elif p.suffix == ".py":
+                python_files.append((p, _file_id(p, cwd)))
+        elif p.is_dir():
+            for f in sorted(p.rglob("*.y*ml")):
+                if f.suffix in (".yaml", ".yml"):
+                    yaml_files.append((f, _file_id(f, cwd)))
+            for f in sorted(p.rglob("*.py")):
+                python_files.append((f, _file_id(f, cwd)))
+
+    for f in sorted(_BUILTINS_DIR.rglob("*.y*ml")):
+        if f.suffix in (".yaml", ".yml"):
+            yaml_files.append((f, f"builtins.{f.stem}"))
+
+    resolved_yaml_strings = dict(yaml_strings) if yaml_strings else {}
+    for file_path, file_id in yaml_files:
+        resolved_yaml_strings[file_id] = file_path.read_text(encoding="utf-8")
+
+    resolved_python_strings = dict(python_strings) if python_strings else {}
+    for file_path, file_id in python_files:
+        try:
+            resolved_python_strings[file_id] = file_path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+
+    return {
+        "raw_python_strings": resolved_python_strings,
+        "raw_yaml_strings": resolved_yaml_strings,
+    }
 
 
 @subdag(
     load_yaml,
-    inputs={
-        "input_dirs": source("input_dirs"),
-        "yaml_strings": source("yaml_strings_input"),
-    },
+    inputs={"raw_yaml_strings": source("raw_yaml_strings")},
     config={},
 )
 def yaml_entity_first_data(raw_entity_first_data: dict) -> dict:
@@ -45,10 +114,7 @@ def yaml_entity_first_data(raw_entity_first_data: dict) -> dict:
 
 @subdag(
     load_python,
-    inputs={
-        "input_dirs": source("input_dirs"),
-        "python_strings": source("python_strings_input"),
-    },
+    inputs={"raw_python_strings": source("raw_python_strings")},
     config={},
 )
 def python_entity_first_data(raw_entity_first_data: dict) -> dict:
@@ -92,18 +158,10 @@ def raw_csv_data(input_dirs: list[str | Path]) -> dict[str, pd.DataFrame]:
     for item in input_dirs:
         p = Path(item)
         if p.is_file() and p.suffix == ".csv":
-            try:
-                file_id = str(p.relative_to(cwd))
-            except ValueError:
-                file_id = str(p)
-            all_files.append((p, file_id))
+            all_files.append((p, _file_id(p, cwd)))
         elif p.is_dir():
             for f in sorted(p.rglob("*.csv")):
-                try:
-                    file_id = str(f.relative_to(cwd))
-                except ValueError:
-                    file_id = str(f)
-                all_files.append((f, file_id))
+                all_files.append((f, _file_id(f, cwd)))
 
     result = {}
     for file_path, file_id in all_files:
