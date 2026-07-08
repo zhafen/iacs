@@ -12,6 +12,7 @@ from hamilton.lifecycle import NodeExecutionHook
 
 from iacs.dataflows import base_etl
 from iacs.dataflows.etl import export_manifest
+from iacs.registry import Registry
 
 ROOT = Path(__file__).parent.parent
 EXAMPLES_DIR = ROOT / "examples"
@@ -204,7 +205,7 @@ def _normalize_df(
             return eid
         fp = filepath_of.get(str(eid), "")
         p = path_of.get(str(eid), str(eid))
-        return p[len(fp) + 1:] if fp and p.startswith(fp + ":") else p
+        return p[len(fp) + 1 :] if fp and p.startswith(fp + ":") else p
 
     df = df[common_cols].copy()
     for col in common_cols:
@@ -235,6 +236,21 @@ def _assert_components_equal(
     assert_frame_equal(
         norm1, norm2, check_dtype=False, obj=f"component_type={comp_type!r}"
     )
+
+
+def _assert_registries_equal(registry_a: Registry, registry_b: Registry) -> None:
+    """Compare each component. entity_id values are hashes of the source
+    filepath, which differs between example_dir and output_dir, so
+    normalize them to within-file entity paths before comparing.
+    """
+
+    eid_df_a = registry_a.get("entity_id").execute()
+    eid_df_b = registry_b.get("entity_id").execute()
+    skip = {"entity_id", "component_type", "invalid_field"}
+    for comp_type in set(registry_a.component_types) - skip:
+        comp = registry_a.get(comp_type).execute()
+        loaded_comp = registry_b.get(comp_type).execute()
+        _assert_components_equal(comp, loaded_comp, eid_df_a, eid_df_b, comp_type)
 
 
 class _ExpectedValueChecker(NodeExecutionHook):
@@ -331,14 +347,28 @@ def test_end_to_end(example_dir: Path):
         ["registry"], inputs={"input_dirs": [str(output_dir)]}
     )["registry"]
 
-    # Compare each component. entity_id values are hashes of the source
-    # filepath, which differs between example_dir and output_dir, so
-    # normalize them to within-file entity paths before comparing.
-    eid_df = registry.get("entity_id").execute()
-    reloaded_eid_df = reloaded_registry.get("entity_id").execute()
-    skip = {"entity_id", "component_type", "invalid_field"}
-    for comp_type in set(registry.component_types) - skip:
-        comp = registry.get(comp_type).execute()
-        loaded_comp = reloaded_registry.get(comp_type).execute()
+    _assert_registries_equal(registry, reloaded_registry)
 
-        _assert_components_equal(comp, loaded_comp, eid_df, reloaded_eid_df, comp_type)
+
+def test_incremental_load_is_consistent():
+
+    example_dir = EXAMPLES_DIR / "example"
+
+    # Get the loaded registry
+    dr = Builder().with_modules(base_etl).build()
+    registry = dr.execute(["registry"], inputs={"input_dirs": [str(example_dir)]})[
+        "registry"
+    ]
+
+    incremental_registry = Registry()
+    source_files = sorted(example_dir.rglob("*.yaml")) + sorted(
+        example_dir.rglob("*.csv")
+    )
+    for source_file in source_files:
+        new_registry = dr.execute(
+            ["registry"], inputs={"input_dirs": str(source_file)}
+        )["registry"]
+        incremental_registry.merge(new_registry)
+        new_registry.close()
+
+    _assert_registries_equal(registry, incremental_registry)
