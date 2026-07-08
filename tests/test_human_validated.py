@@ -316,24 +316,21 @@ def test_end_to_end(example_dir: Path):
     """
 
     checker = _ExpectedValueChecker(example_dir)
+    etl = ETLSystem()
 
     # Get the loaded registry, comparing outputs along the way
-    etl = ETLSystem(dataflows=[base_etl], adapters=[checker])
-    registry = etl.execute(["registry"], input_dirs=[str(example_dir)])["registry"]
+    registry = etl.execute(base_etl, adapters=[checker], input_dirs=[str(example_dir)])
 
     # Export back to manifest format, comparing outputs along the way
     output_dir = TEMP_DIR / example_dir.name
-    export_etl = ETLSystem(dataflows=[export_manifest], adapters=[checker])
-    export_etl.execute(
-        ["exported_manifest_filepaths"], registry=registry, output_dir=str(output_dir)
+    etl.execute(
+        export_manifest, adapters=[checker], registry=registry, output_dir=str(output_dir)
     )
 
     # Reload. The expected fixtures encode entity IDs derived from the original
     # example_dir's filepath, so they don't apply to nodes loaded from
     # output_dir; only the final registry comparison below applies here.
-    reloaded_registry = ETLSystem(dataflows=[base_etl]).execute(
-        ["registry"], input_dirs=[str(output_dir)]
-    )["registry"]
+    reloaded_registry = etl.execute(base_etl, input_dirs=[str(output_dir)])
 
     _assert_registries_equal(registry, reloaded_registry)
 
@@ -341,19 +338,17 @@ def test_end_to_end(example_dir: Path):
 def test_incremental_load_is_consistent():
 
     example_dir = EXAMPLES_DIR / "example"
+    etl = ETLSystem()
 
     # Get the loaded registry
-    etl = ETLSystem(dataflows=[base_etl])
-    registry = etl.execute(["registry"], input_dirs=[str(example_dir)])["registry"]
+    registry = etl.execute(base_etl, input_dirs=[str(example_dir)])
 
     incremental_registry = Registry()
     source_files = sorted(example_dir.rglob("*.yaml")) + sorted(
         example_dir.rglob("*.csv")
     )
     for source_file in source_files:
-        new_registry = etl.execute(["registry"], input_dirs=str(source_file))[
-            "registry"
-        ]
+        new_registry = etl.execute(base_etl, input_dirs=str(source_file))
         incremental_registry.merge(new_registry)
         new_registry.close()
 

@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import ModuleType
 from typing import TYPE_CHECKING, Any
 
-from iacs.etl_system import ETLSystem
+from iacs.etl_system import ETLSystem, resolve_dataflow
 
 if TYPE_CHECKING:
     from iacs.registry import Registry
@@ -46,6 +47,7 @@ class Architect:
             registry = Registry(ibis.duckdb.connect(), {})
         self._registry = registry
         self._etl = ETLSystem({"registry": self._registry})
+        self._dataflows: list[ModuleType] = []
 
     def load_manifest(self, manifest: str | Path | list[str | Path]) -> None:
         """Load a manifest and merge it into the current registry.
@@ -62,9 +64,7 @@ class Architect:
             manifest = [str(manifest)]
         else:
             manifest = [str(p) for p in manifest]
-        new_registry = ETLSystem(dataflows=[base_etl]).execute(
-            ["registry"], input_dirs=manifest
-        )["registry"]
+        new_registry = ETLSystem().execute(base_etl, input_dirs=manifest)
         self._registry.merge(new_registry)
         new_registry.close()
 
@@ -96,7 +96,9 @@ class Architect:
         Raises:
             ValueError: If no matching module is found.
         """
-        self._etl.load_dataflow(name)
+        module = resolve_dataflow(name)
+        if module not in self._dataflows:
+            self._dataflows.append(module)
 
     @property
     def registry(self) -> Registry:
@@ -120,8 +122,20 @@ class Architect:
             **inputs: Additional inputs forwarded to the Hamilton driver (e.g.
                 ``output_dir="..."``) to satisfy external-input nodes.
         """
-        return self._etl.execute(final_vars, **inputs)
+        if isinstance(final_vars, str):
+            try:
+                module = resolve_dataflow(final_vars)
+            except ValueError:
+                final_vars = [final_vars]
+            else:
+                if module not in self._dataflows:
+                    self._dataflows.append(module)
+                final_vars = self._etl.outputs(self._dataflows)
+
+        if not final_vars:
+            return {}
+        return self._etl.execute(self._dataflows, final_vars, **inputs)
 
     @property
     def outputs(self) -> list[str]:
-        return self._etl.outputs
+        return self._etl.outputs(self._dataflows)

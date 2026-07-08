@@ -23,8 +23,7 @@ def _sample_registry():
 def _architect_with_test_dataflow():
     """Return an Architect with the test dataflow module loaded directly."""
     a = Architect(_sample_registry())
-    a._etl._dataflows = [dataflow]
-    a._etl._rebuild_driver()
+    a._dataflows = [dataflow]
     return a
 
 
@@ -93,14 +92,14 @@ class TestLoadDataflow:
     def test_load_top_level_dataflow(self):
         a = Architect(_sample_registry())
         a.load_dataflow("etl.export_manifest")
-        assert any(m.__name__ == "iacs.dataflows.etl.export_manifest" for m in a._etl._dataflows)
+        assert any(m.__name__ == "iacs.dataflows.etl.export_manifest" for m in a._dataflows)
 
     def test_load_subpackage_dataflow(self):
         a = Architect(_sample_registry())
         a.load_dataflow("audit.requirement_coverage")
         assert any(
             m.__name__ == "iacs.dataflows.audit.requirement_coverage"
-            for m in a._etl._dataflows
+            for m in a._dataflows
         )
 
     def test_load_dataflow_adds_outputs(self):
