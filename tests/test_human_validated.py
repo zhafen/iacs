@@ -18,7 +18,6 @@ from iacs.registry import Registry
 ROOT = Path(__file__).parent.parent
 EXAMPLES_DIR = ROOT / "examples"
 EXPECTED_DIR = ROOT / "tests" / "test_dataflows" / "expected"
-TEMP_DIR = ROOT / "tests" / "test_dataflows" / "temp"
 DATAFLOWS_MODULE_PREFIX = "iacs.dataflows."
 
 
@@ -305,7 +304,7 @@ class _ExpectedValueChecker(NodeExecutionHook):
 
 
 @pytest.mark.parametrize("example_dir", _example_dirs())
-def test_end_to_end(example_dir: Path):
+def test_end_to_end(example_dir: Path, tmp_path: Path):
     """Thorough end to end test that:
     1. Runs base_etl for each example manifest
     2. Runs export_manifest on the loaded registry
@@ -334,7 +333,7 @@ def test_end_to_end(example_dir: Path):
         .with_adapters(_ExpectedValueChecker(example_dir))
         .build()
     )
-    output_dir = TEMP_DIR / example_dir.name
+    output_dir = tmp_path / example_dir.name
     dr.execute(
         ["exported_manifest_filepaths"],
         inputs={"registry": registry, "output_dir": str(output_dir)},
