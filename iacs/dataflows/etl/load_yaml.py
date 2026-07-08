@@ -58,3 +58,6 @@ def raw_entity_first_data(input_dirs: list[str]) -> dict:
             data = yaml.safe_load(fh) or {}
         result[file_id] = data
     return result
+
+
+FINAL_VAR = "raw_entity_first_data"

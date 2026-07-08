@@ -46,7 +46,7 @@ class Architect:
             from iacs.registry import Registry
             registry = Registry(ibis.duckdb.connect(), {})
         self._registry = registry
-        self._etl = ETLSystem({"registry": self._registry})
+        self._etl = ETLSystem()
         self._dataflows: list[ModuleType] = []
 
     def load_manifest(self, manifest: str | Path | list[str | Path]) -> None:
@@ -64,7 +64,7 @@ class Architect:
             manifest = [str(manifest)]
         else:
             manifest = [str(p) for p in manifest]
-        new_registry = ETLSystem().execute(base_etl, input_dirs=manifest)
+        new_registry = self._etl.execute(base_etl, input_dirs=manifest)
         self._registry.merge(new_registry)
         new_registry.close()
 
@@ -134,7 +134,9 @@ class Architect:
 
         if not final_vars:
             return {}
-        return self._etl.execute(self._dataflows, final_vars, **inputs)
+        return self._etl.execute(
+            self._dataflows, final_vars, registry=self._registry, **inputs
+        )
 
     @property
     def outputs(self) -> list[str]:

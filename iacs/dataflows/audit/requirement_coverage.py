@@ -53,3 +53,6 @@ def updated_registry(registry: Registry, requirement_coverage: ir.Table) -> Regi
     """Store the requirement coverage audit result as a component in the registry."""
     registry.update({"requirement_coverage": requirement_coverage})
     return registry
+
+
+FINAL_VAR = "requirement_coverage"

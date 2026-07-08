@@ -63,3 +63,6 @@ def field_derived_registry(derived_registry: Registry) -> Registry:
 )
 def derived_registry(derived_registry: Registry) -> Registry:
     return derived_registry
+
+
+FINAL_VAR = "derived_registry"

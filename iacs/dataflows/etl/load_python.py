@@ -128,3 +128,6 @@ def raw_entity_first_data(input_dirs: list[str]) -> dict:
             result[file_id] = entities
 
     return result
+
+
+FINAL_VAR = "raw_entity_first_data"

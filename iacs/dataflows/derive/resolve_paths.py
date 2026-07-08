@@ -210,3 +210,6 @@ def resolved_registry(
     """Store resolved paths and updated parent back into the registry."""
     registry.update({**components_with_resolved_paths, "parent": updated_parent})
     return registry
+
+
+FINAL_VAR = "resolved_registry"

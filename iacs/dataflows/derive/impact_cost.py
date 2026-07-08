@@ -296,3 +296,6 @@ def derived_registry(
     return registry
 
 
+FINAL_VAR = "derived_registry"
+
+

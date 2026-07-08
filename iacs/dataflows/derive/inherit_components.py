@@ -112,3 +112,6 @@ def derived_registry(registry: Registry, derived_field: ir.Table) -> Registry:
     """Store the inherited field table in the registry as derived_field."""
     registry.update({"derived_field": derived_field})
     return registry
+
+
+FINAL_VAR = "derived_registry"
