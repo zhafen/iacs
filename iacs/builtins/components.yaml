@@ -180,6 +180,10 @@ data_structure:
                   description: >
                       A data structure specifying the allowed values for the field. If a
                       list, then the type should be categorical or a child of that type.
+              units:
+                  description: >
+                      Units used for the field, if they exist.
+                  type: str
               time_dimension:
                   description: >
                     Whether or not this field is a time dimension, for use in slowly
