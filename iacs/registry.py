@@ -9,6 +9,20 @@ import pandas as pd
 _TABLE_META_COLS = {"entity_id", "component_index", "modifier"}
 
 
+def _is_truthy(val) -> bool:
+    """Interpret a raw (possibly string) boolean-ish value as a bool."""
+    if isinstance(val, bool):
+        return val
+    if val is None:
+        return False
+    try:
+        if pd.isna(val):
+            return False
+    except (TypeError, ValueError):
+        pass
+    return str(val).strip().lower() in ("true", "1", "yes")
+
+
 class Registry:
     """A registry that stores ECS component data as ibis tables.
 
@@ -169,6 +183,28 @@ class Registry:
         Raises:
             KeyError: If a component type doesn't exist in the registry.
         """
+        return self._view(component_type, self._con.table)
+
+    def view_current(self, component_type: str | list[str]) -> ibis.Table:
+        """Like ``view``, but collapsed to the most recent version of each record.
+
+        For any component type with fields flagged ``time_dimension: true`` in
+        its schema (directly or via inheritance), only the row with the
+        maximum time_dimension value is kept per (entity_id, component_index,
+        modifier) group — i.e. the current version of a slowly changing
+        dimension. When more than one time_dimension field is present, ties
+        are broken by ordering all of them, most recent first. Component
+        types with no time_dimension fields are returned unchanged.
+
+        Args:
+            component_type: Same as ``view``.
+
+        Raises:
+            KeyError: If a component type doesn't exist in the registry.
+        """
+        return self._view(component_type, self._current_table)
+
+    def _view(self, component_type: str | list[str], table_fn) -> ibis.Table:
         if isinstance(component_type, str):
             component_type = [component_type]
 
@@ -184,7 +220,7 @@ class Registry:
             if "." not in ct:
                 if ct not in self._con.list_tables():
                     raise KeyError(ct)
-                t = self._con.table(ct)
+                t = table_fn(ct)
                 skip = _TABLE_META_COLS | ({"value"} if ct == "entity_id" else set())
                 expanded.extend(f"{ct}.{f}" for f in t.columns if f not in skip)
             else:
@@ -196,7 +232,7 @@ class Registry:
             table_name, field = ct.split(".", 1)
             if table_name not in self._con.list_tables():
                 raise KeyError(table_name)
-            t = self._con.table(table_name)
+            t = table_fn(table_name)
             if table_name == "entity_id":
                 t = t.select([t["value"].name("entity_id"), t[field].name(ct)])
             else:
@@ -208,6 +244,77 @@ class Registry:
             result = result.inner_join(t, "entity_id")
 
         return result
+
+    def _current_table(self, table_name: str) -> ibis.Table:
+        """Return ``table_name`` collapsed to the latest row per (entity_id,
+        component_index, modifier) group, using its time_dimension field(s).
+
+        Tables with no time_dimension fields are returned unchanged.
+        """
+        t = self._con.table(table_name)
+        time_fields = [f for f in self._time_dimension_fields(table_name) if f in t.columns]
+        key_cols = [c for c in ("entity_id", "component_index", "modifier") if c in t.columns]
+        if not time_fields or not key_cols:
+            return t
+
+        order_by = [t[f].desc(nulls_first=False) for f in time_fields]
+        ranked = t.mutate(
+            _scd_rank=ibis.row_number().over(group_by=key_cols, order_by=order_by)
+        )
+        return ranked.filter(ranked["_scd_rank"] == 0).drop("_scd_rank")
+
+    def _time_dimension_fields(self, component_type: str) -> list[str]:
+        """Return field names flagged ``time_dimension: true`` for a component type."""
+        field_table = self._components.get("derived_field", self._components.get("field"))
+        entity_id_table = self._components.get("entity_id")
+        if field_table is None or entity_id_table is None:
+            return []
+
+        df_field = field_table.execute()
+        if "time_dimension" not in df_field.columns or "value" not in df_field.columns:
+            return []
+
+        df_entity = entity_id_table.execute()
+        def_eids = set(df_entity.loc[df_entity["entity_key"] == component_type, "value"])
+        if not def_eids:
+            return []
+
+        matches = df_field[df_field["entity_id"].isin(def_eids)]
+        return [
+            str(row["value"])
+            for _, row in matches.iterrows()
+            if pd.notna(row["value"]) and _is_truthy(row["time_dimension"])
+        ]
+
+    def fill_time_dimension(self, time) -> None:
+        """Fill null time_dimension-flagged fields across all component tables with ``time``.
+
+        Used when loading a manifest that represents a snapshot as of a known
+        point in time: any field flagged ``time_dimension: true`` in its
+        component type's schema that is still null after loading is set to
+        ``time``. Fields that already have a value are left untouched.
+
+        Args:
+            time: The value to fill in, e.g. a timestamp or date string.
+        """
+        updated = {}
+        for comp_type in self._component_types:
+            table = self._components[comp_type]
+            cols = [f for f in self._time_dimension_fields(comp_type) if f in table.columns]
+            if not cols:
+                continue
+
+            df = table.execute()
+            changed = False
+            for col in cols:
+                if df[col].isna().any():
+                    df[col] = df[col].fillna(time)
+                    changed = True
+            if changed:
+                updated[comp_type] = ibis.memtable(df)
+
+        if updated:
+            self.update(updated)
 
     def view_df(self, component_type: str | list[str]) -> pd.DataFrame:
         """Convenience method to return the view as a DataFrame."""

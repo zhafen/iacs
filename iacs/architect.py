@@ -15,14 +15,18 @@ class Architect:
     """Base class for iacs systems that operate on infrastructure data."""
 
     @classmethod
-    def from_manifest(cls, manifest: str | Path | list[str | Path]) -> Architect:
+    def from_manifest(cls, manifest: str | Path | list[str | Path], time: Any = None) -> Architect:
         """Create an Architect with a registry loaded and validated from a manifest.
 
         Args:
             manifest: A directory path (or list of paths) making up the manifest.
+            time: The point in time this manifest represents, e.g. a
+                timestamp or date string. If given, any field flagged
+                ``time_dimension: true`` that is still null after loading is
+                filled with this value. See ``load_manifest``.
         """
         a = cls()
-        a.load_manifest(manifest)
+        a.load_manifest(manifest, time=time)
         return a
 
     @classmethod
@@ -49,7 +53,9 @@ class Architect:
         self._etl = ETLSystem()
         self._dataflows: list[ModuleType] = []
 
-    def load_manifest(self, manifest: str | Path | list[str | Path]) -> None:
+    def load_manifest(
+        self, manifest: str | Path | list[str | Path], time: Any = None
+    ) -> None:
         """Load a manifest and merge it into the current registry.
 
         Runs the full ETL pipeline (load, validate, derive) on the given paths
@@ -57,12 +63,21 @@ class Architect:
 
         Args:
             manifest: A file path, directory path, or list of either.
+            time: The point in time this manifest represents, e.g. a
+                timestamp or date string. If given, any field flagged
+                ``time_dimension: true`` in its component type's schema that
+                is still null after loading is filled with this value, so
+                that ``view_current`` can pick the most recent version of a
+                slowly changing dimension. Only null values in the newly
+                loaded components are filled; existing data is untouched.
         """
         from iacs.dataflows import base_etl
 
         if isinstance(manifest, (str, Path)):
             manifest = [manifest]
         new_registry = self._etl.execute(base_etl, input_dirs=manifest)
+        if time is not None:
+            new_registry.fill_time_dimension(time)
         self._registry.merge(new_registry)
         new_registry.close()
 
@@ -105,6 +120,10 @@ class Architect:
     @property
     def view(self):
         return self._registry.view
+
+    @property
+    def view_current(self):
+        return self._registry.view_current
 
     @property
     def get(self):

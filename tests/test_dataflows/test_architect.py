@@ -208,6 +208,95 @@ class TestSaveAndLoadDatabase:
         assert set(a2.registry.component_types) == set(a.registry.component_types)
 
 
+class TestLoadManifestWithTime:
+    """Tests for load_manifest's time-associated slowly changing dimension support."""
+
+    _SCHEMA = (
+        "status_reading:\n"
+        "    data:\n"
+        "        - description: A slowly changing status reading.\n"
+        "        - field:\n"
+        "              as_of:\n"
+        "                  type: str\n"
+        "                  time_dimension: true\n"
+        "              status:\n"
+        "                  type: str\n"
+    )
+
+    def _write(self, dir_path, filename, content):
+        (dir_path / filename).write_text(content)
+
+    def test_null_time_dimension_field_filled_with_load_time(self, tmp_path):
+        self._write(tmp_path, "schema.yaml", self._SCHEMA)
+        self._write(tmp_path, "reading.yaml", "cat_status:\n- status_reading:\n    status: open\n")
+
+        a = Architect()
+        a.load_manifest(tmp_path, time="2024-01-01")
+
+        df = a.registry.get("status_reading").execute()
+        assert df.iloc[0]["as_of"] == "2024-01-01"
+
+    def test_explicit_time_dimension_value_not_overwritten(self, tmp_path):
+        self._write(tmp_path, "schema.yaml", self._SCHEMA)
+        self._write(
+            tmp_path, "reading.yaml",
+            "cat_status:\n- status_reading:\n    status: open\n    as_of: explicit-time\n",
+        )
+
+        a = Architect()
+        a.load_manifest(tmp_path, time="2024-01-01")
+
+        df = a.registry.get("status_reading").execute()
+        assert df.iloc[0]["as_of"] == "explicit-time"
+
+    def test_no_time_given_leaves_field_null(self, tmp_path):
+        self._write(tmp_path, "schema.yaml", self._SCHEMA)
+        self._write(tmp_path, "reading.yaml", "cat_status:\n- status_reading:\n    status: open\n")
+
+        a = Architect()
+        a.load_manifest(tmp_path)
+
+        df = a.registry.get("status_reading").execute()
+        assert pd.isna(df.iloc[0]["as_of"])
+
+    def test_view_current_returns_latest_version_across_loads(self, tmp_path):
+        self._write(tmp_path, "schema.yaml", self._SCHEMA)
+        self._write(tmp_path, "reading.yaml", "cat_status:\n- status_reading:\n    status: open\n")
+
+        a = Architect()
+        a.load_manifest(tmp_path, time="2024-01-01")
+
+        self._write(tmp_path, "reading.yaml", "cat_status:\n- status_reading:\n    status: closed\n")
+        a.load_manifest(tmp_path, time="2024-06-01")
+
+        df = a.view_current("status_reading").execute()
+        assert len(df) == 1
+        assert df.iloc[0]["status_reading.status"] == "closed"
+        assert df.iloc[0]["status_reading.as_of"] == "2024-06-01"
+
+    def test_view_still_shows_full_history(self, tmp_path):
+        self._write(tmp_path, "schema.yaml", self._SCHEMA)
+        self._write(tmp_path, "reading.yaml", "cat_status:\n- status_reading:\n    status: open\n")
+
+        a = Architect()
+        a.load_manifest(tmp_path, time="2024-01-01")
+
+        self._write(tmp_path, "reading.yaml", "cat_status:\n- status_reading:\n    status: closed\n")
+        a.load_manifest(tmp_path, time="2024-06-01")
+
+        df = a.registry.get("status_reading").execute()
+        assert len(df) == 2
+
+    def test_from_manifest_accepts_time(self, tmp_path):
+        self._write(tmp_path, "schema.yaml", self._SCHEMA)
+        self._write(tmp_path, "reading.yaml", "cat_status:\n- status_reading:\n    status: open\n")
+
+        a = Architect.from_manifest(tmp_path, time="2024-01-01")
+
+        df = a.registry.get("status_reading").execute()
+        assert df.iloc[0]["as_of"] == "2024-01-01"
+
+
 class TestLoadManifest:
     def test_load_each_yaml_matches_directory(self, tmp_path):
         """Loading YAML files one at a time should match loading the directory."""
