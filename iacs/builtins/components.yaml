@@ -180,6 +180,13 @@ data_structure:
                   description: >
                       A data structure specifying the allowed values for the field. If a
                       list, then the type should be categorical or a child of that type.
+              time_dimension:
+                  description: >
+                    Whether or not this field is a time dimension, for use in slowly
+                    changing dimensions.
+                  type: bool
+                  default: false
+                  nullable: false
         - todo: >
               We are going to track derived vs source at a schema level, but we can also
               record this at a field level.
