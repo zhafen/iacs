@@ -75,9 +75,7 @@ class Architect:
 
         if isinstance(manifest, (str, Path)):
             manifest = [manifest]
-        new_registry = self._etl.execute(base_etl, input_dirs=manifest)
-        if time is not None:
-            new_registry.fill_time_dimension(time)
+        new_registry = self._etl.execute(base_etl, input_dirs=manifest, load_time=time)
         self._registry.merge(new_registry)
         new_registry.close()
 

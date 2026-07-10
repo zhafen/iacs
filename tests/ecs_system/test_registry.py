@@ -195,6 +195,44 @@ class TestRegistryViewMultipleComponents:
         assert "description.value" in result.columns
 
 
+class TestRegistryViewDoesNotCrossJoinSameTable:
+    """A component type with multiple rows per entity_id must not self-cross-join
+    when several of its fields are requested together."""
+
+    @pytest.fixture
+    def multi_row_registry(self):
+        conn = ibis.duckdb.connect()
+        conn.create_table(
+            "entity_id",
+            {"value": ["a"], "alias": ["a"], "path": ["test:a"],
+             "entity_key": ["a"], "filepath": ["test"]},
+        )
+        conn.create_table(
+            "reading",
+            {"entity_id": ["a", "a"], "component_index": [0, 1],
+             "modifier": pd.array([None, None], dtype=pd.StringDtype()),
+             "as_of": ["2024-01-01", "2024-06-01"],
+             "status": ["open", "closed"]},
+        )
+        components = {
+            "entity_id": conn.table("entity_id"),
+            "reading": conn.table("reading"),
+        }
+        return Registry(conn, components)
+
+    def test_bare_component_type_keeps_rows_correlated(self, multi_row_registry):
+        df = multi_row_registry.view("reading").execute()
+        assert len(df) == 2
+        pairs = set(zip(df["reading.as_of"], df["reading.status"]))
+        assert pairs == {("2024-01-01", "open"), ("2024-06-01", "closed")}
+
+    def test_explicit_dotted_fields_keep_rows_correlated(self, multi_row_registry):
+        df = multi_row_registry.view(["reading.as_of", "reading.status"]).execute()
+        assert len(df) == 2
+        pairs = set(zip(df["reading.as_of"], df["reading.status"]))
+        assert pairs == {("2024-01-01", "open"), ("2024-06-01", "closed")}
+
+
 class TestRegistryViewCurrent:
     """Tests for view_current(), which collapses slowly changing dimensions."""
 
@@ -209,7 +247,7 @@ class TestRegistryViewCurrent:
              "entity_key": ["status_reading", "e1", "e2"], "filepath": ["test", "test", "test"]},
         )
         conn.create_table(
-            "field",
+            "derived_field",
             {"entity_id": ["def1", "def1"], "value": ["as_of", "status"],
              "time_dimension": [True, False]},
         )
@@ -223,16 +261,29 @@ class TestRegistryViewCurrent:
         )
         components = {
             "entity_id": conn.table("entity_id"),
-            "field": conn.table("field"),
+            "derived_field": conn.table("derived_field"),
             "status_reading": conn.table("status_reading"),
         }
         return Registry(conn, components)
 
-    def test_time_dimension_fields_detected(self, scd_registry):
-        assert scd_registry._time_dimension_fields("status_reading") == ["as_of"]
+    def test_time_dimension_field_detected(self, scd_registry):
+        assert scd_registry._time_dimension_field("status_reading") == "as_of"
 
-    def test_non_time_dimension_component_has_no_fields(self, scd_registry):
-        assert scd_registry._time_dimension_fields("entity_id") == []
+    def test_non_time_dimension_component_has_no_field(self, scd_registry):
+        assert scd_registry._time_dimension_field("entity_id") is None
+
+    def test_multiple_time_dimension_fields_raises(self, scd_registry):
+        """Only one time_dimension field is allowed per component type."""
+        conn = scd_registry._con
+        conn.create_table(
+            "derived_field",
+            {"entity_id": ["def1", "def1"], "value": ["as_of", "also_as_of"],
+             "time_dimension": [True, True]},
+            overwrite=True,
+        )
+        scd_registry._components["derived_field"] = conn.table("derived_field")
+        with pytest.raises(ValueError, match="status_reading"):
+            scd_registry._time_dimension_field("status_reading")
 
     def test_view_current_keeps_one_row_per_entity(self, scd_registry):
         df = scd_registry.view_current("status_reading").execute()
@@ -255,12 +306,17 @@ class TestRegistryViewCurrent:
             scd_registry.view_current("nonexistent")
 
     def test_view_current_component_without_time_dimension_is_unchanged(self):
-        """Component types with no time_dimension fields are returned as-is."""
+        """Component types with no time_dimension field are returned as-is."""
         conn = ibis.duckdb.connect()
         conn.create_table(
             "entity_id",
             {"value": ["e1"], "alias": ["e1"], "path": ["test:e1"],
              "entity_key": ["e1"], "filepath": ["test"]},
+        )
+        # No "time_dimension" column at all — no field anywhere sets it.
+        conn.create_table(
+            "derived_field",
+            {"entity_id": ["e1"], "value": ["value"]},
         )
         conn.create_table(
             "description",
@@ -270,6 +326,7 @@ class TestRegistryViewCurrent:
         )
         registry = Registry(conn, {
             "entity_id": conn.table("entity_id"),
+            "derived_field": conn.table("derived_field"),
             "description": conn.table("description"),
         })
         df = registry.view_current("description").execute()
@@ -288,7 +345,7 @@ class TestRegistryFillTimeDimension:
              "entity_key": ["status_reading"], "filepath": ["test"]},
         )
         conn.create_table(
-            "field",
+            "derived_field",
             {"entity_id": ["def1", "def1"], "value": ["as_of", "status"],
              "time_dimension": [True, False]},
         )
@@ -302,7 +359,7 @@ class TestRegistryFillTimeDimension:
         )
         components = {
             "entity_id": conn.table("entity_id"),
-            "field": conn.table("field"),
+            "derived_field": conn.table("derived_field"),
             "status_reading": conn.table("status_reading"),
         }
         return Registry(conn, components)

@@ -1,3 +1,5 @@
+from typing import Any
+
 from hamilton.function_modifiers import subdag, source
 import ibis.expr.types as ir
 
@@ -60,8 +62,17 @@ def validated_registry(validated_registry: Registry) -> Registry:
     return validated_registry
 
 
-def registry(validated_registry: Registry) -> Registry:
-    """Expose the fully derived and validated registry for downstream modules."""
+def registry(validated_registry: Registry, load_time: Any = None) -> Registry:
+    """Expose the fully derived and validated registry for downstream modules.
+
+    Args:
+        validated_registry: The fully derived and validated registry.
+        load_time: The point in time this load represents. If given, any
+            field flagged ``time_dimension: true`` that is still null is
+            backfilled with this value (see ``Registry.fill_time_dimension``).
+    """
+    if load_time is not None:
+        validated_registry.fill_time_dimension(load_time)
     return validated_registry
 
 
