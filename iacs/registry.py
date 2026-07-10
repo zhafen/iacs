@@ -312,32 +312,6 @@ class Registry:
             )
         return fields[0] if fields else None
 
-    def fill_time_dimension(self, time) -> None:
-        """Fill the null time_dimension field across all component tables with ``time``.
-
-        Used when loading a manifest that represents a snapshot as of a known
-        point in time: the field flagged ``time_dimension: true`` in a
-        component type's schema is set to ``time`` wherever it is still null.
-        Values that are already set are left untouched.
-
-        Args:
-            time: The value to fill in, e.g. a timestamp or date string.
-        """
-        updated = {}
-        for comp_type in self._component_types:
-            field = self._time_dimension_field(comp_type)
-            table = self._components[comp_type]
-            if field is None or field not in table.columns:
-                continue
-
-            df = table.execute()
-            if df[field].isna().any():
-                df[field] = df[field].fillna(time)
-                updated[comp_type] = ibis.memtable(df)
-
-        if updated:
-            self.update(updated)
-
     def view_df(self, component_type: str | list[str]) -> pd.DataFrame:
         """Convenience method to return the view as a DataFrame."""
         result = self.view(component_type)
