@@ -316,3 +316,103 @@ class TestTimeFilledComponents:
             validate_components.time_filled_components(
                 components, field, entity_id, load_time="2024-12-25"
             )
+
+
+class TestFieldValidationResults:
+    """Tests for field_validation_results, which validates ((field)) against
+    its own self-referential schema, prior to field being used to validate
+    every other component."""
+
+    def _entity_id_row(self, entity_id, entity_key):
+        return {"value": entity_id, "entity_key": entity_key, "path": f"test:{entity_key}", "alias": entity_key}
+
+    def _meta_row(self, entity_id, attr_name, field_type=None, nullable=None, default=None, field_range=None, **attrs):
+        """A field row defining one of field's own meta-attributes (attached to the entity that defines "field")."""
+        return {
+            "entity_id": entity_id,
+            "component_index": 0,
+            "value": attr_name,
+            "type": field_type,
+            "nullable": nullable,
+            "default": default,
+            "range": field_range,
+            **attrs,
+        }
+
+    def _instance_row(self, entity_id, field_name, **attrs):
+        """A regular field row (defines a field for some other component type), with meta-attribute values to validate."""
+        return {"entity_id": entity_id, "component_index": 0, "value": field_name, **attrs}
+
+    def _call(self, field_rows, entity_id_rows):
+        field = _make_field_table(field_rows)
+        entity_id = _make_entity_id_table(entity_id_rows)
+        return validate_components.field_validation_results(field, entity_id)
+
+    def test_returns_tuple(self):
+        entity_id_rows = [self._entity_id_row("eid_field", "field")]
+        field_rows = [self._meta_row("eid_field", "value", field_type="str")]
+        validated, invalid = self._call(field_rows, entity_id_rows)
+        assert isinstance(validated, ibis.Table)
+        assert isinstance(invalid, ibis.Table)
+
+    def test_no_self_schema_passes_through_unchanged(self):
+        """When field has no schema defined for itself, field passes through as-is."""
+        field_rows = [self._meta_row("eid_other", "name", field_type="str")]
+        entity_id_rows = [self._entity_id_row("eid_other", "other")]  # entity_key != "field"
+        validated, invalid = self._call(field_rows, entity_id_rows)
+        df = validated.execute()
+        assert len(df) == 1
+        assert invalid.execute().empty
+
+    def test_coerces_own_bool_attribute_on_every_row(self):
+        """field's own bool-typed meta-attribute is coerced for every row of field,
+        not just the rows that define the meta-schema."""
+        entity_id_rows = [self._entity_id_row("eid_field", "field")]
+        field_rows = [
+            self._meta_row("eid_field", "time_dimension", field_type="bool", default=False),
+            self._instance_row("eid_status_reading", "as_of", time_dimension="True"),
+            self._instance_row("eid_status_reading", "status", time_dimension="False"),
+        ]
+        validated, invalid = self._call(field_rows, entity_id_rows)
+        df = validated.execute().set_index("value")
+        assert bool(df.loc["as_of", "time_dimension"]) is True
+        assert bool(df.loc["status", "time_dimension"]) is False
+        assert invalid.execute().empty
+
+    def test_missing_bool_attribute_gets_default(self):
+        """A row that never set the meta-attribute is filled with its declared default."""
+        entity_id_rows = [self._entity_id_row("eid_field", "field")]
+        field_rows = [
+            self._meta_row("eid_field", "time_dimension", field_type="bool", default=False),
+            self._instance_row("eid_status_reading", "status"),
+        ]
+        validated, _ = self._call(field_rows, entity_id_rows)
+        df = validated.execute().set_index("value")
+        assert bool(df.loc["status", "time_dimension"]) is False
+
+    def test_nullable_violation_collected(self):
+        """A null meta-attribute with no default and nullable=False is reported."""
+        entity_id_rows = [self._entity_id_row("eid_field", "field")]
+        field_rows = [
+            self._meta_row("eid_field", "units", field_type="str", nullable=False, units="n/a"),
+            self._instance_row("eid_status_reading", "as_of"),
+        ]
+        validated, invalid = self._call(field_rows, entity_id_rows)
+        df = invalid.execute()
+        assert len(df) == 1
+        assert df.iloc[0]["component_type"] == "field"
+        assert df.iloc[0]["field"] == "units"
+        assert df.iloc[0]["error_type"] == "nullable"
+
+    def test_range_violation_collected(self):
+        """A meta-attribute value outside its declared range is reported."""
+        entity_id_rows = [self._entity_id_row("eid_field", "field")]
+        field_rows = [
+            self._meta_row("eid_field", "format", field_type="str", field_range=["str", "epoch_time"], format="str"),
+            self._instance_row("eid_status_reading", "as_of", format="unparseable"),
+        ]
+        validated, invalid = self._call(field_rows, entity_id_rows)
+        df = invalid.execute()
+        assert len(df) == 1
+        assert df.iloc[0]["error_type"] == "range"
+        assert df.iloc[0]["value"] == "unparseable"
