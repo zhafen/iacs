@@ -148,28 +148,18 @@ def _coerce_default(val, py_type: type):
         return val
 
 
-@unpack_fields("validation_result", "invalid_field")
-def validated_components(
-    user_components: dict, field: ir.Table, entity_id: ir.Table,
-) -> tuple[dict, ir.Table]:
-    """Use the schemas defined by the ((field)) component to validate and coerce
-    the data in each component.
-
-    Materialise only the schema-defining rows (O(fields) records per component
-    type), build ibis mutate chains for column addition, type casting, and
-    default filling, then validate types, nullable constraints, and categorical
-    ranges with :mod:`pandera.ibis` in a single lazy pass.  Constraint
-    violations are collected from the raised :class:`pandera.errors.SchemaErrors`
-    and unioned into ``invalid_field`` without pulling component data into memory.
-
-    This is a simplified version of ``validated_data`` in ``validate_registry``
-    that uses the raw ``field`` table rather than the inheritance-resolved
-    ``derived_field``.
+def _build_component_schemas(
+    ctypes, field: ir.Table, entity_id: ir.Table,
+) -> dict[str, dict]:
+    """Build a per-component-type schema dict from ((field)) rows.
 
     Parameters
     ----------
-    components : dict
-        Dict of component_type -> ibis Table.
+    ctypes : Iterable[str]
+        Component type names to build schemas for (usually the keys of
+        ``user_components``, but any component type with field definitions
+        works — including "field" itself, which defines its own schema the
+        same way it defines every other component type's schema).
     field : ir.Table
         The ``field`` component table from the registry.
     entity_id : ir.Table
@@ -178,10 +168,9 @@ def validated_components(
 
     Returns
     -------
-    tuple[dict, ir.Table]
-        ``(validated_components, invalid_field)`` where ``validated_components``
-        is a dict of component_type -> coerced ibis Table, and ``invalid_field``
-        is an ibis Table of rows that failed nullable or range constraints.
+    dict[str, dict]
+        Dict of component_type -> {field_name: {type, nullable, default, range}}.
+        Component types with no field definitions are omitted.
     """
     df_field = field.execute()
     df_entity = entity_id.execute()
@@ -194,9 +183,8 @@ def validated_components(
         if eid in field_entity_ids:
             key_to_eids.setdefault(ekey, []).append(eid)
 
-    # Build per-component-type schema from field rows
     component_schemas: dict[str, dict] = {}
-    for ctype in user_components:
+    for ctype in ctypes:
         schema: dict[str, dict] = {}
         for eid in key_to_eids.get(ctype, []):
             for _, row in df_field[df_field["entity_id"] == eid].iterrows():
@@ -213,128 +201,154 @@ def validated_components(
                 }
         if schema:
             component_schemas[ctype] = schema
+    return component_schemas
 
-    validated_comps: dict = {}
+
+def _validate_component(ctype: str, table: ir.Table, schema: dict) -> tuple[ir.Table, list[ir.Table]]:
+    """Validate and coerce a single component table against its schema.
+
+    Build ibis mutate chains for column addition, type casting, and default
+    filling, then validate types, nullable constraints, and categorical
+    ranges with :mod:`pandera.ibis` in a single lazy pass. Constraint
+    violations are collected from the raised :class:`pandera.errors.SchemaErrors`
+    without pulling component data into memory.
+
+    Parameters
+    ----------
+    ctype : str
+        The component type name (used to label any violation rows).
+    table : ir.Table
+        The component's data table.
+    schema : dict
+        Schema for this component type, as built by ``_build_component_schemas``.
+        An empty schema means the table passes through unchanged.
+
+    Returns
+    -------
+    tuple[ir.Table, list[ir.Table]]
+        The coerced table, and a list of violation sub-tables (each with
+        columns entity_id, component_index, component_type, field, value,
+        error_type) — empty if there were no constraint violations.
+    """
+    t = table
     violation_tables: list[ir.Table] = []
 
-    for ctype, table in user_components.items():
-        t = table
-        schema = component_schemas.get(ctype, {})
+    if not schema:
+        return t, violation_tables
 
-        if not schema:
-            validated_comps[ctype] = t
+    existing = set(t.columns)
+    original_existing = set(existing)
+    type_map = {
+        fname: _IACS_TO_PYTHON_TYPE[fschema["type"]]
+        for fname, fschema in schema.items()
+        if fschema["type"] in _IACS_TO_PYTHON_TYPE
+    }
+
+    # Add missing typed columns as null
+    for fname, py_type in type_map.items():
+        if fname not in existing:
+            t = t.mutate(**{fname: ibis.null().cast(_IBIS_DTYPE[py_type])})
+            existing.add(fname)
+
+    # Resolve simple arithmetic expressions (e.g. "4 / 50") in numeric string
+    # columns before casting, so they evaluate instead of failing to null.
+    t_schema = t.schema()
+    arithmetic_cols = [
+        fname for fname, py_type in type_map.items()
+        if py_type in (float, int)
+        and fname in original_existing
+        and t_schema[fname].is_string()
+    ]
+    if arithmetic_cols:
+        df = t.to_pandas()
+        for fname in arithmetic_cols:
+            df[fname] = df[fname].map(_resolve_numeric_string)
+        t = ibis.memtable(df)
+
+    # Cast typed columns; try_cast for numeric/bool strings so empty strings become NULL.
+    # Pandera ibis does not support coerce for cross-type casting so we do this manually.
+    t_schema = t.schema()
+    for fname, py_type in type_map.items():
+        expr = t[fname]
+        if py_type in (bool, float, int) and fname in original_existing and t_schema[fname].is_string():
+            t = t.mutate(**{fname: expr.try_cast(_IBIS_DTYPE[py_type])})
+        else:
+            t = t.mutate(**{fname: expr.cast(_IBIS_DTYPE[py_type])})
+
+    # Apply defaults after casting so literal types match
+    for fname, fschema in schema.items():
+        default = fschema["default"]
+        if default is None or fname not in existing:
             continue
+        py_type = type_map.get(fname)
+        if py_type is not None:
+            lit = ibis.literal(_coerce_default(default, py_type)).cast(_IBIS_DTYPE[py_type])
+        else:
+            lit = ibis.literal(str(default))
+        col = t[fname]
+        if fschema["type"] == "str":
+            col = col.nullif("")
+        t = t.mutate(**{fname: col.fill_null(lit)})
 
-        existing = set(t.columns)
-        original_existing = set(existing)
-        type_map = {
-            fname: _IACS_TO_PYTHON_TYPE[fschema["type"]]
-            for fname, fschema in schema.items()
-            if fschema["type"] in _IACS_TO_PYTHON_TYPE
-        }
+    # Build a pandera schema with nullable and isin constraints, then validate lazily.
+    # A single validate(lazy=True) call collects all constraint violations at once
+    # rather than raising on the first failure.
+    pa_columns = {}
+    for fname, fschema in schema.items():
+        if fname not in existing:
+            continue
+        ibis_type = _IACS_TO_IBIS_TYPE.get(fschema["type"])
+        checks = []
+        frange = fschema["range"]
+        if fschema["type"] == "str" and isinstance(frange, list):
+            checks.append(pa.Check.isin(frange))
+        pa_columns[fname] = pa.Column(
+            ibis_type,
+            nullable=fschema["nullable"],
+            checks=checks or None,
+        )
 
-        # Add missing typed columns as null
-        for fname, py_type in type_map.items():
-            if fname not in existing:
-                t = t.mutate(**{fname: ibis.null().cast(_IBIS_DTYPE[py_type])})
-                existing.add(fname)
-
-        # Resolve simple arithmetic expressions (e.g. "4 / 50") in numeric string
-        # columns before casting, so they evaluate instead of failing to null.
-        t_schema = t.schema()
-        arithmetic_cols = [
-            fname for fname, py_type in type_map.items()
-            if py_type in (float, int)
-            and fname in original_existing
-            and t_schema[fname].is_string()
-        ]
-        if arithmetic_cols:
-            df = t.to_pandas()
-            for fname in arithmetic_cols:
-                df[fname] = df[fname].map(_resolve_numeric_string)
-            t = ibis.memtable(df)
-
-        # Cast typed columns; try_cast for numeric/bool strings so empty strings become NULL.
-        # Pandera ibis does not support coerce for cross-type casting so we do this manually.
-        t_schema = t.schema()
-        for fname, py_type in type_map.items():
-            expr = t[fname]
-            if py_type in (bool, float, int) and fname in original_existing and t_schema[fname].is_string():
-                t = t.mutate(**{fname: expr.try_cast(_IBIS_DTYPE[py_type])})
-            else:
-                t = t.mutate(**{fname: expr.cast(_IBIS_DTYPE[py_type])})
-
-        # Apply defaults after casting so literal types match
-        for fname, fschema in schema.items():
-            default = fschema["default"]
-            if default is None or fname not in existing:
-                continue
-            py_type = type_map.get(fname)
-            if py_type is not None:
-                lit = ibis.literal(_coerce_default(default, py_type)).cast(_IBIS_DTYPE[py_type])
-            else:
-                lit = ibis.literal(str(default))
-            col = t[fname]
-            if fschema["type"] == "str":
-                col = col.nullif("")
-            t = t.mutate(**{fname: col.fill_null(lit)})
-
-        # Build a pandera schema with nullable and isin constraints, then validate lazily.
-        # A single validate(lazy=True) call collects all constraint violations at once
-        # rather than raising on the first failure.
-        pa_columns = {}
-        for fname, fschema in schema.items():
-            if fname not in existing:
-                continue
-            ibis_type = _IACS_TO_IBIS_TYPE.get(fschema["type"])
-            checks = []
-            frange = fschema["range"]
-            if fschema["type"] == "str" and isinstance(frange, list):
-                checks.append(pa.Check.isin(frange))
-            pa_columns[fname] = pa.Column(
-                ibis_type,
-                nullable=fschema["nullable"],
-                checks=checks or None,
-            )
-
-        if pa_columns:
-            pa_schema = pa.DataFrameSchema(pa_columns)
-            try:
-                t = pa_schema.validate(t, lazy=True)
-            except pandera.errors.SchemaErrors as exc:
-                for err in exc.schema_errors:
-                    col_name = getattr(err.schema, "name", None)
-                    if col_name not in existing:
-                        continue
-                    reason = err.reason_code
-                    if reason == pandera.errors.SchemaErrorReason.SERIES_CONTAINS_NULLS:
-                        # check_output is a boolean column aligned with t: True means null
-                        violation_tables.append(
-                            t.filter(err.check_output).select(
-                                t["entity_id"],
-                                t["component_index"],
-                                ibis.literal(ctype).name("component_type"),
-                                ibis.literal(col_name).name("field"),
-                                ibis.null().cast("string").name("value"),
-                                ibis.literal("nullable").name("error_type"),
-                            )
+    if pa_columns:
+        pa_schema = pa.DataFrameSchema(pa_columns)
+        try:
+            t = pa_schema.validate(t, lazy=True)
+        except pandera.errors.SchemaErrors as exc:
+            for err in exc.schema_errors:
+                col_name = getattr(err.schema, "name", None)
+                if col_name not in existing:
+                    continue
+                reason = err.reason_code
+                if reason == pandera.errors.SchemaErrorReason.SERIES_CONTAINS_NULLS:
+                    # check_output is a boolean column aligned with t: True means null
+                    violation_tables.append(
+                        t.filter(err.check_output).select(
+                            t["entity_id"],
+                            t["component_index"],
+                            ibis.literal(ctype).name("component_type"),
+                            ibis.literal(col_name).name("field"),
+                            ibis.null().cast("string").name("value"),
+                            ibis.literal("nullable").name("error_type"),
                         )
-                    elif reason == pandera.errors.SchemaErrorReason.DATAFRAME_CHECK:
-                        # isin violation: filter rows where value is not in the allowed set
-                        frange = schema[col_name]["range"]
-                        violation_tables.append(
-                            t.filter(t[col_name].notnull() & ~t[col_name].isin(frange)).select(
-                                t["entity_id"],
-                                t["component_index"],
-                                ibis.literal(ctype).name("component_type"),
-                                ibis.literal(col_name).name("field"),
-                                t[col_name].cast("string").name("value"),
-                                ibis.literal("range").name("error_type"),
-                            )
+                    )
+                elif reason == pandera.errors.SchemaErrorReason.DATAFRAME_CHECK:
+                    # isin violation: filter rows where value is not in the allowed set
+                    frange = schema[col_name]["range"]
+                    violation_tables.append(
+                        t.filter(t[col_name].notnull() & ~t[col_name].isin(frange)).select(
+                            t["entity_id"],
+                            t["component_index"],
+                            ibis.literal(ctype).name("component_type"),
+                            ibis.literal(col_name).name("field"),
+                            t[col_name].cast("string").name("value"),
+                            ibis.literal("range").name("error_type"),
                         )
+                    )
 
-        validated_comps[ctype] = t
+    return t, violation_tables
 
+
+def _union_violations(violation_tables: list[ir.Table]) -> ir.Table:
+    """Union violation sub-tables into one, or an empty table with the right schema."""
     if violation_tables:
         invalid_table = violation_tables[0]
         for vt in violation_tables[1:]:
@@ -343,17 +357,105 @@ def validated_components(
         invalid_table = ibis.memtable(
             pd.DataFrame(columns=_INVALID_COLS).astype(_INVALID_DTYPES)
         )
+    return invalid_table
 
-    return validated_comps, invalid_table
+
+@unpack_fields("validated_field", "invalid_field_schema")
+def field_validation_results(field: ir.Table, entity_id: ir.Table) -> tuple[ir.Table, ir.Table]:
+    """Validate and coerce the ((field)) component's own rows against its self-referential schema.
+
+    The ((field)) component type defines its own schema (value, description,
+    type, nullable, unique, default, range, units, time_dimension) the same
+    way it defines the schema for every other component type: via ``field``
+    sub-entries attached to the entity with ``entity_key == "field"`` (see
+    ``data_structure.field`` in builtins). This validates and type-coerces
+    ``field`` against that self-referential schema *before* ``field`` is used
+    to validate every other component (see ``validated_components``), so e.g.
+    ``time_dimension``/``nullable``/``unique`` are real booleans rather than
+    raw strings by the time downstream consumers read them.
+
+    Mirrors ``validated_components``'s per-table validation exactly (see
+    ``_build_component_schemas``/``_validate_component``), just scoped to the
+    single "field" component type instead of every user-defined type.
+
+    Parameters
+    ----------
+    field : ir.Table
+        The raw ``field`` component table from the registry.
+    entity_id : ir.Table
+        One row per entity (value, path, alias, entity_key, filepath),
+        used to map entity_key -> entity_id for schema lookup.
+
+    Returns
+    -------
+    tuple[ir.Table, ir.Table]
+        ``(validated_field, invalid_field_schema)`` where ``validated_field``
+        is the ``field`` table with its own attributes type-coerced, and
+        ``invalid_field_schema`` is an ibis Table of rows that failed
+        nullable or range constraints.
+    """
+    schemas = _build_component_schemas(["field"], field, entity_id)
+    validated, violations = _validate_component("field", field, schemas.get("field", {}))
+    return validated, _union_violations(violations)
+
+
+@unpack_fields("validation_result", "invalid_field")
+def validated_components(
+    user_components: dict, validated_field: ir.Table, entity_id: ir.Table,
+) -> tuple[dict, ir.Table]:
+    """Use the schemas defined by the ((field)) component to validate and coerce
+    the data in each component.
+
+    Materialise only the schema-defining rows (O(fields) records per component
+    type), then delegate to ``_validate_component`` for the actual coercion and
+    constraint checking, matching exactly what ``field_validation_results`` does
+    to validate ``field`` against itself.
+
+    This is a simplified version of ``validated_data`` in ``validate_registry``
+    that uses the raw ``field`` table rather than the inheritance-resolved
+    ``derived_field``.
+
+    Parameters
+    ----------
+    components : dict
+        Dict of component_type -> ibis Table.
+    validated_field : ir.Table
+        The ``field`` component table, already validated and type-coerced
+        against its own schema by ``field_validation_results``.
+    entity_id : ir.Table
+        One row per entity (value, path, alias, entity_key, filepath),
+        used to map entity_key -> entity_id for schema lookup.
+
+    Returns
+    -------
+    tuple[dict, ir.Table]
+        ``(validated_components, invalid_field)`` where ``validated_components``
+        is a dict of component_type -> coerced ibis Table, and ``invalid_field``
+        is an ibis Table of rows that failed nullable or range constraints.
+    """
+    component_schemas = _build_component_schemas(user_components.keys(), validated_field, entity_id)
+
+    validated_comps: dict = {}
+    violation_tables: list[ir.Table] = []
+    for ctype, table in user_components.items():
+        t, v = _validate_component(ctype, table, component_schemas.get(ctype, {}))
+        validated_comps[ctype] = t
+        violation_tables.extend(v)
+
+    return validated_comps, _union_violations(violation_tables)
 
 
 def validated_registry(
     registry: Registry,
     validation_result: dict,
     invalid_field: ir.Table,
+    invalid_field_schema: ir.Table,
 ) -> Registry:
     """Store validated components and constraint violations back into the registry."""
-    registry.update({**validation_result, "invalid_field": invalid_field})
+    registry.update({
+        **validation_result,
+        "invalid_field": invalid_field.union(invalid_field_schema),
+    })
     return registry
 
 
