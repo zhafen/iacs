@@ -254,7 +254,12 @@ class TestRegistryViewCurrent:
         conn.create_table(
             "status_reading",
             {"entity_id": ["e1", "e1", "e2"],
-             "component_index": [0, 0, 0],
+             # e1's two rows deliberately differ in component_index: SCD
+             # history commonly comes from separate writes that each compute
+             # their own component_index from scratch (e.g. independent
+             # merges), so it isn't a stable key to group by — only
+             # entity_id is guaranteed unique per point in time.
+             "component_index": [0, 1, 0],
              "modifier": pd.array([None, None, None], dtype=pd.StringDtype()),
              "as_of": ["2024-01-01", "2024-06-01", "2024-03-01"],
              "status": ["open", "closed", "open"]},
