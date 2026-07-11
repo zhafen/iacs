@@ -9,20 +9,6 @@ import pandas as pd
 _TABLE_META_COLS = {"entity_id", "component_index", "modifier"}
 
 
-def _is_truthy(val) -> bool:
-    """Interpret a raw (possibly string) boolean-ish value as a bool."""
-    if isinstance(val, bool):
-        return val
-    if val is None:
-        return False
-    try:
-        if pd.isna(val):
-            return False
-    except (TypeError, ValueError):
-        pass
-    return str(val).strip().lower() in ("true", "1", "yes")
-
-
 class Registry:
     """A registry that stores ECS component data as ibis tables.
 
@@ -300,10 +286,12 @@ class Registry:
         def_eids = df_entity.loc[df_entity["entity_key"] == component_type, "value"]
 
         matches = df_field[df_field["entity_id"].isin(def_eids)]
+        is_time_dimension = matches["time_dimension"].map(
+            lambda v: str(v).strip().lower() == "true" if pd.notna(v) else False
+        )
         fields = sorted({
             str(row["value"])
-            for _, row in matches.iterrows()
-            if _is_truthy(row["time_dimension"])
+            for _, row in matches[is_time_dimension].iterrows()
         })
         if len(fields) > 1:
             raise ValueError(

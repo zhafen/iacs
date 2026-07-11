@@ -1,5 +1,6 @@
 import ast
 import operator
+from typing import Any
 
 import pandas as pd
 import pandera
@@ -148,8 +149,8 @@ def _coerce_default(val, py_type: type):
         return val
 
 
-@unpack_fields("validation_result", "invalid_field")
-def validated_components(
+@unpack_fields("validated_components", "invalid_field")
+def validated_results(
     user_components: dict, field: ir.Table, entity_id: ir.Table,
 ) -> tuple[dict, ir.Table]:
     """Use the schemas defined by the ((field)) component to validate and coerce
@@ -347,13 +348,93 @@ def validated_components(
     return validated_comps, invalid_table
 
 
+def time_filled_components(
+    validated_components: dict,
+    field: ir.Table,
+    entity_id: ir.Table,
+    load_time: Any = None,
+) -> dict:
+    """Backfill null time_dimension fields in validated_components with load_time.
+
+    Used when loading a manifest that represents a snapshot as of a known
+    point in time: the field flagged ``time_dimension: true`` in a component
+    type's schema is set to ``load_time`` wherever it is still null. Values
+    that are already set are left untouched. A no-op when ``load_time`` is
+    not given.
+
+    Parameters
+    ----------
+    validated_components : dict
+        Dict of component_type -> validated ibis Table.
+    field : ir.Table
+        The ``field`` component table used to look up each component type's
+        time_dimension field, if any.
+    entity_id : ir.Table
+        One row per entity, used to map entity_key -> entity_id for schema
+        lookup (see ``validated_results``).
+    load_time : Any, optional
+        The point in time this load represents, e.g. a timestamp or date
+        string.
+
+    Returns
+    -------
+    dict
+        ``validated_components``, with time_dimension fields backfilled.
+
+    Raises
+    ------
+    ValueError
+        If a component type has more than one time_dimension field.
+    """
+    if load_time is None:
+        return validated_components
+
+    df_field = field.execute()
+    if "time_dimension" not in df_field.columns:
+        return validated_components
+
+    df_entity = entity_id.execute()
+    key_by_eid = df_entity.set_index("value")["entity_key"]
+
+    time_fields: dict[str, str] = {}
+    for _, row in df_field.iterrows():
+        if _isnull(row.get("time_dimension")) or not _coerce_default(row["time_dimension"], bool):
+            continue
+        fname = row.get("value")
+        if _isnull(fname):
+            continue
+        ctype = key_by_eid.get(row["entity_id"])
+        if ctype is None:
+            continue
+        fname = str(fname)
+        existing = time_fields.get(ctype)
+        if existing is not None and existing != fname:
+            raise ValueError(
+                f"Component type {ctype!r} has multiple time_dimension "
+                f"fields {sorted({existing, fname})}; only one is allowed."
+            )
+        time_fields[ctype] = fname
+
+    updated = dict(validated_components)
+    for ctype, fname in time_fields.items():
+        table = validated_components.get(ctype)
+        if table is None or fname not in table.columns:
+            continue
+        df = table.execute()
+        if df[fname].isna().any():
+            df[fname] = df[fname].fillna(load_time)
+            updated[ctype] = ibis.memtable(df)
+
+    return updated
+
+
 def validated_registry(
     registry: Registry,
-    validation_result: dict,
+    time_filled_components: dict,
     invalid_field: ir.Table,
 ) -> Registry:
     """Store validated components and constraint violations back into the registry."""
-    registry.update({**validation_result, "invalid_field": invalid_field})
+    registry.update({**time_filled_components, "invalid_field": invalid_field})
     return registry
 
 
