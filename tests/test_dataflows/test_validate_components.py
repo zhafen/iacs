@@ -257,8 +257,8 @@ class TestTimeFilledComponents:
 
     def _field_and_entity_id(self):
         field = _make_field_table([
-            self._field_row("def1", "as_of", time_dimension="True"),
-            self._field_row("def1", "status", time_dimension="False"),
+            self._field_row("def1", "as_of", time_dimension=True),
+            self._field_row("def1", "status", time_dimension=False),
         ])
         entity_id = _make_entity_id_table([self._entity_id_row("def1", "status_reading")])
         return field, entity_id
@@ -308,8 +308,8 @@ class TestTimeFilledComponents:
     def test_multiple_time_dimension_fields_raises(self):
         components = {"status_reading": self._status_reading_table()}
         field = _make_field_table([
-            self._field_row("def1", "as_of", time_dimension="True"),
-            self._field_row("def1", "also_as_of", time_dimension="True"),
+            self._field_row("def1", "as_of", time_dimension=True),
+            self._field_row("def1", "also_as_of", time_dimension=True),
         ])
         entity_id = _make_entity_id_table([self._entity_id_row("def1", "status_reading")])
         with pytest.raises(ValueError, match="status_reading"):

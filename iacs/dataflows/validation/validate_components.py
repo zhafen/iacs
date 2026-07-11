@@ -448,7 +448,7 @@ def validated_results(
 
 def time_filled_components(
     validated_components: dict,
-    field: ir.Table,
+    validated_field: ir.Table,
     entity_id: ir.Table,
     load_time: Any = None,
 ) -> dict:
@@ -464,9 +464,10 @@ def time_filled_components(
     ----------
     validated_components : dict
         Dict of component_type -> validated ibis Table.
-    field : ir.Table
-        The ``field`` component table used to look up each component type's
-        time_dimension field, if any.
+    validated_field : ir.Table
+        The ``field`` component table, already validated and type-coerced
+        against its own schema by ``field_validation_results`` — so
+        ``time_dimension`` is a real bool here, not a raw string.
     entity_id : ir.Table
         One row per entity, used to map entity_key -> entity_id for schema
         lookup (see ``validated_results``).
@@ -487,7 +488,7 @@ def time_filled_components(
     if load_time is None:
         return validated_components
 
-    df_field = field.execute()
+    df_field = validated_field.execute()
     if "time_dimension" not in df_field.columns:
         return validated_components
 
@@ -496,7 +497,7 @@ def time_filled_components(
 
     time_fields: dict[str, str] = {}
     for _, row in df_field.iterrows():
-        if _isnull(row.get("time_dimension")) or not _coerce_default(row["time_dimension"], bool):
+        if not row["time_dimension"]:
             continue
         fname = row.get("value")
         if _isnull(fname):

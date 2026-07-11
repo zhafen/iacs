@@ -272,7 +272,14 @@ class Registry:
         """Return the field flagged ``time_dimension: true`` for a component type, if any.
 
         Assumes the registry was produced by ``base_etl``, so ``derived_field``
-        and ``entity_id`` are present.
+        and ``entity_id`` are present, and ``derived_field["time_dimension"]``
+        is already a real bool — ``field`` is validated against its own
+        schema (see ``validate_components.field_validation_results``) as
+        part of ``validate_registry``, and all data is expected to reach the
+        registry only by going through that pass. If this raises or behaves
+        unexpectedly, the registry likely didn't go through the full
+        pipeline (e.g. component tables inserted directly) — that's a bug in
+        the caller, not something to work around here.
 
         Raises:
             ValueError: If more than one field is flagged time_dimension for
@@ -286,12 +293,10 @@ class Registry:
         def_eids = df_entity.loc[df_entity["entity_key"] == component_type, "value"]
 
         matches = df_field[df_field["entity_id"].isin(def_eids)]
-        is_time_dimension = matches["time_dimension"].map(
-            lambda v: str(v).strip().lower() == "true" if pd.notna(v) else False
-        )
         fields = sorted({
             str(row["value"])
-            for _, row in matches[is_time_dimension].iterrows()
+            for _, row in matches.iterrows()
+            if row["time_dimension"]
         })
         if len(fields) > 1:
             raise ValueError(

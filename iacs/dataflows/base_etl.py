@@ -56,7 +56,16 @@ def derived_field(derived_registry: Registry) -> ir.Table:
     inputs={"registry": source("derived_registry"), "field": source("derived_field")},
     config={},
 )
-def validated_registry(validated_registry: Registry) -> Registry:
+def validated_registry(validated_registry: Registry, validated_field: ir.Table) -> Registry:
+    """Store the validated, type-coerced field table back as "derived_field".
+
+    "field" itself is intentionally left untouched here: this is the final
+    validation pass (field=derived_field, the complete inheritance-resolved
+    table), whereas the first pass only sees builtin_field, a builtins-only
+    subset — overwriting "field" there would drop user-defined field rows
+    before derive_components runs its inheritance BFS over them.
+    """
+    validated_registry.update({"derived_field": validated_field})
     return validated_registry
 
 
