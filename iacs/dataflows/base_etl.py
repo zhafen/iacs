@@ -1,5 +1,5 @@
-from hamilton.function_modifiers import subdag, source
 import ibis.expr.types as ir
+from hamilton.function_modifiers import subdag, source
 
 import iacs.dataflows.derive.derive_components as _derive_components
 import iacs.dataflows.validation.validate_components as _validate_components
@@ -60,9 +60,4 @@ def validated_registry(validated_registry: Registry) -> Registry:
     return validated_registry
 
 
-def registry(validated_registry: Registry) -> Registry:
-    """Expose the fully derived and validated registry for downstream modules."""
-    return validated_registry
-
-
-FINAL_VAR = "registry"
+FINAL_VAR = "validated_registry"

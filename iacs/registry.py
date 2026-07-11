@@ -169,6 +169,28 @@ class Registry:
         Raises:
             KeyError: If a component type doesn't exist in the registry.
         """
+        return self._view(component_type, self._con.table)
+
+    def view_current(self, component_type: str | list[str]) -> ibis.Table:
+        """Like ``view``, but collapsed to the most recent version of each record.
+
+        For any component type with a field flagged ``time_dimension: true`` in
+        its schema (directly or via inheritance), only the row with the
+        maximum time_dimension value is kept per (entity_id, component_index,
+        modifier) group — i.e. the current version of a slowly changing
+        dimension. Component types with no time_dimension field are returned
+        unchanged.
+
+        Args:
+            component_type: Same as ``view``.
+
+        Raises:
+            KeyError: If a component type doesn't exist in the registry.
+            ValueError: If a component type has more than one time_dimension field.
+        """
+        return self._view(component_type, self._current_table)
+
+    def _view(self, component_type: str | list[str], table_fn) -> ibis.Table:
         if isinstance(component_type, str):
             component_type = [component_type]
 
@@ -178,36 +200,110 @@ class Registry:
         ):
             component_type = ["entity_id.alias"] + list(component_type)
 
-        # Expand plain table names to "table.field" dotted entries
-        expanded = []
+        # Resolve each entry to a (table_name, field) pair, expanding bare
+        # table names to all of their non-meta fields.
+        pairs: list[tuple[str, str]] = []
         for ct in component_type:
             if "." not in ct:
                 if ct not in self._con.list_tables():
                     raise KeyError(ct)
-                t = self._con.table(ct)
+                t = table_fn(ct)
                 skip = _TABLE_META_COLS | ({"value"} if ct == "entity_id" else set())
-                expanded.extend(f"{ct}.{f}" for f in t.columns if f not in skip)
+                pairs.extend((ct, f) for f in t.columns if f not in skip)
             else:
-                expanded.append(ct)
+                table_name, field = ct.split(".", 1)
+                if table_name not in self._con.list_tables():
+                    raise KeyError(table_name)
+                pairs.append((table_name, field))
 
-        # Build one sub-table per dotted entry and inner-join on entity_id
+        # Group fields by table so that multiple fields from the same table
+        # are selected together in a single pass. Joining separately-selected
+        # single-field sub-tables back together on entity_id alone would
+        # cross-join any table with more than one row per entity_id (e.g. a
+        # component with several instances, or SCD history), decorrelating
+        # fields that belong to the same row.
+        fields_by_table: dict[str, list[str]] = {}
+        for table_name, field in pairs:
+            fields = fields_by_table.setdefault(table_name, [])
+            if field not in fields:
+                fields.append(field)
+
         tables_to_join = []
-        for ct in expanded:
-            table_name, field = ct.split(".", 1)
-            if table_name not in self._con.list_tables():
-                raise KeyError(table_name)
-            t = self._con.table(table_name)
+        for table_name, fields in fields_by_table.items():
+            t = table_fn(table_name)
             if table_name == "entity_id":
-                t = t.select([t["value"].name("entity_id"), t[field].name(ct)])
+                cols = [t["value"].name("entity_id")]
             else:
-                t = t.select(["entity_id", t[field].name(ct)])
-            tables_to_join.append(t)
+                cols = ["entity_id"]
+            cols += [t[f].name(f"{table_name}.{f}") for f in fields]
+            tables_to_join.append(t.select(cols))
 
         result = tables_to_join[0]
         for t in tables_to_join[1:]:
             result = result.inner_join(t, "entity_id")
 
         return result
+
+    def _current_table(self, table_name: str) -> ibis.Table:
+        """Return ``table_name`` collapsed to the latest row per (entity_id,
+        component_index, modifier) group, using its time_dimension field.
+
+        Assumes the registry was produced by ``base_etl`` (``derived_field``
+        and ``entity_id`` are present). Tables with no time_dimension field
+        are returned unchanged.
+
+        Raises:
+            ValueError: If ``table_name`` has more than one time_dimension field.
+        """
+        t = self._con.table(table_name)
+        time_field = self._time_dimension_field(table_name)
+        if time_field is None or time_field not in t.columns:
+            return t
+
+        key_cols = list(_TABLE_META_COLS)
+        ranked = t.mutate(
+            _scd_rank=ibis.row_number().over(
+                group_by=key_cols, order_by=t[time_field].desc(nulls_first=False)
+            )
+        )
+        return ranked.filter(ranked["_scd_rank"] == 0).drop("_scd_rank")
+
+    def _time_dimension_field(self, component_type: str) -> str | None:
+        """Return the field flagged ``time_dimension: true`` for a component type, if any.
+
+        Assumes the registry was produced by ``base_etl``, so ``derived_field``
+        and ``entity_id`` are present, and ``derived_field["time_dimension"]``
+        is already a real bool — ``field`` is validated against its own
+        schema (see ``validate_components.field_validation_results``) as
+        part of ``validate_registry``, and all data is expected to reach the
+        registry only by going through that pass. If this raises or behaves
+        unexpectedly, the registry likely didn't go through the full
+        pipeline (e.g. component tables inserted directly) — that's a bug in
+        the caller, not something to work around here.
+
+        Raises:
+            ValueError: If more than one field is flagged time_dimension for
+                this component type — only one is allowed.
+        """
+        df_field = self._components["derived_field"].execute()
+        if "time_dimension" not in df_field.columns:
+            return None
+
+        df_entity = self._components["entity_id"].execute()
+        def_eids = df_entity.loc[df_entity["entity_key"] == component_type, "value"]
+
+        matches = df_field[df_field["entity_id"].isin(def_eids)]
+        fields = sorted({
+            str(row["value"])
+            for _, row in matches.iterrows()
+            if row["time_dimension"]
+        })
+        if len(fields) > 1:
+            raise ValueError(
+                f"Component type {component_type!r} has multiple time_dimension "
+                f"fields {fields}; only one is allowed."
+            )
+        return fields[0] if fields else None
 
     def view_df(self, component_type: str | list[str]) -> pd.DataFrame:
         """Convenience method to return the view as a DataFrame."""
