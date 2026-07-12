@@ -108,16 +108,39 @@ def _generate_dag_image(module_path: str, short_name: str) -> Path | None:
         return None
 
 
+_TOP_LEVEL_GROUP = "(top-level)"
+
+
+def _group(short_name: str) -> str:
+    """The dataflow subpackage a module belongs to, mirroring iacs/dataflows/ on disk."""
+    if "." not in short_name:
+        return _TOP_LEVEL_GROUP
+    return short_name.rsplit(".", 1)[0]
+
+
 def _generate_index(entries: list[tuple[str, str]]) -> None:
     lines = [
         "# Dataflow DAGs\n\n",
-        "Hamilton DAG visualizations for iacs dataflows.\n",
+        "Hamilton DAG visualizations for iacs dataflows, grouped by the\n",
+        "subpackage each module lives in under `iacs/dataflows/`.\n",
         "Regenerate with: `uv run python docs/gen_dag_images.py`\n\n",
     ]
+
+    groups: dict[str, list[tuple[str, str]]] = {}
     for module_path, short_name in entries:
-        filename = short_name.replace(".", "_")
-        lines.append(f"---\n\n## `{short_name}`\n\n")
-        lines.append(f"![{short_name} DAG](img/{filename}.png)\n\n")
+        groups.setdefault(_group(short_name), []).append((module_path, short_name))
+
+    ordered_groups = sorted(groups, key=lambda g: (g == _TOP_LEVEL_GROUP, g))
+    for group_index, group in enumerate(ordered_groups):
+        if group_index > 0:
+            lines.append("---\n\n")
+        heading = "Top-level" if group == _TOP_LEVEL_GROUP else f"`{group}/`"
+        lines.append(f"## {heading}\n\n")
+        for module_path, short_name in sorted(groups[group], key=lambda e: e[1]):
+            filename = short_name.replace(".", "_")
+            lines.append(f"### `{short_name}`\n\n")
+            lines.append(f"![{short_name} DAG](img/{filename}.png)\n\n")
+
     INDEX_PATH.write_text("".join(lines))
     print(f"  Updated {INDEX_PATH.name}")
 
