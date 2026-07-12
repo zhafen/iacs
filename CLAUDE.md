@@ -8,8 +8,6 @@ iacs (Infrastructure-as-Code Sketch) is an ECS-based system for documenting and 
 
 ### Git Workflow
 
-- **Do not commit changes without explicit user approval.** Always wait for the user to approve before running `git commit`.
-- Do not push to remote unless explicitly requested.
 - Use `uv` for Python package management.
 
 ### Testing
