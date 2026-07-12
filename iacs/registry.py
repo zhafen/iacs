@@ -176,10 +176,18 @@ class Registry:
 
         For any component type with a field flagged ``time_dimension: true`` in
         its schema (directly or via inheritance), only the row with the
-        maximum time_dimension value is kept per (entity_id, component_index,
-        modifier) group — i.e. the current version of a slowly changing
-        dimension. Component types with no time_dimension field are returned
-        unchanged.
+        maximum time_dimension value is kept per entity_id — i.e. the current
+        version of a slowly changing dimension. Component types with no
+        time_dimension field are returned unchanged.
+
+        Grouped by entity_id alone, not (entity_id, component_index,
+        modifier): a component_index/modifier isn't guaranteed stable across
+        the separate writes that accumulate one entity's SCD history (e.g.
+        independent merges each computing their own component_index from
+        scratch), so grouping on it risks splitting one entity's history into
+        multiple unrelated "current" rows. SCD data is expected to be unique
+        per entity per point in time, so entity_id is the only key that's
+        safe to rely on.
 
         Args:
             component_type: Same as ``view``.
@@ -245,8 +253,8 @@ class Registry:
         return result
 
     def _current_table(self, table_name: str) -> ibis.Table:
-        """Return ``table_name`` collapsed to the latest row per (entity_id,
-        component_index, modifier) group, using its time_dimension field.
+        """Return ``table_name`` collapsed to the latest row per entity_id,
+        using its time_dimension field.
 
         Assumes the registry was produced by ``base_etl`` (``derived_field``
         and ``entity_id`` are present). Tables with no time_dimension field
@@ -260,10 +268,9 @@ class Registry:
         if time_field is None or time_field not in t.columns:
             return t
 
-        key_cols = list(_TABLE_META_COLS)
         ranked = t.mutate(
             _scd_rank=ibis.row_number().over(
-                group_by=key_cols, order_by=t[time_field].desc(nulls_first=False)
+                group_by="entity_id", order_by=t[time_field].desc(nulls_first=False)
             )
         )
         return ranked.filter(ranked["_scd_rank"] == 0).drop("_scd_rank")
