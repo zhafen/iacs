@@ -110,6 +110,10 @@ def _generate_dag_image(module_path: str, short_name: str) -> Path | None:
 
 _TOP_LEVEL_GROUP = "(top-level)"
 
+# Pipeline order: base_etl composes etl -> validation -> derive -> validation,
+# then audits run last, consuming the final validated registry.
+_GROUP_ORDER = [_TOP_LEVEL_GROUP, "etl", "validation", "derive", "audit"]
+
 
 def _group(short_name: str) -> str:
     """The dataflow subpackage a module belongs to, mirroring iacs/dataflows/ on disk."""
@@ -122,7 +126,8 @@ def _generate_index(entries: list[tuple[str, str]]) -> None:
     lines = [
         "# Dataflow DAGs\n\n",
         "Hamilton DAG visualizations for iacs dataflows, grouped by the\n",
-        "subpackage each module lives in under `iacs/dataflows/`.\n",
+        "subpackage each module lives in under `iacs/dataflows/` and ordered\n",
+        "to reflect the order in which they run.\n",
         "Regenerate with: `uv run python docs/gen_dag_images.py`\n\n",
     ]
 
@@ -130,7 +135,13 @@ def _generate_index(entries: list[tuple[str, str]]) -> None:
     for module_path, short_name in entries:
         groups.setdefault(_group(short_name), []).append((module_path, short_name))
 
-    ordered_groups = sorted(groups, key=lambda g: (g == _TOP_LEVEL_GROUP, g))
+    def _group_key(g: str) -> tuple[int, str]:
+        try:
+            return (_GROUP_ORDER.index(g), "")
+        except ValueError:
+            return (len(_GROUP_ORDER), g)
+
+    ordered_groups = sorted(groups, key=_group_key)
     for group_index, group in enumerate(ordered_groups):
         if group_index > 0:
             lines.append("---\n\n")

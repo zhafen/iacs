@@ -1,42 +1,15 @@
 # Dataflow DAGs
 
 Hamilton DAG visualizations for iacs dataflows, grouped by the
-subpackage each module lives in under `iacs/dataflows/`.
+subpackage each module lives in under `iacs/dataflows/` and ordered
+to reflect the order in which they run.
 Regenerate with: `uv run python docs/gen_dag_images.py`
 
-## `audit/`
+## Top-level
 
-### `audit.requirement_coverage`
+### `base_etl`
 
-![audit.requirement_coverage DAG](img/audit_requirement_coverage.png)
-
-### `audit.todo`
-
-![audit.todo DAG](img/audit_todo.png)
-
-### `audit.traceability`
-
-![audit.traceability DAG](img/audit_traceability.png)
-
----
-
-## `derive/`
-
-### `derive.derive_components`
-
-![derive.derive_components DAG](img/derive_derive_components.png)
-
-### `derive.impact_cost`
-
-![derive.impact_cost DAG](img/derive_impact_cost.png)
-
-### `derive.inherit_components`
-
-![derive.inherit_components DAG](img/derive_inherit_components.png)
-
-### `derive.resolve_paths`
-
-![derive.resolve_paths DAG](img/derive_resolve_paths.png)
+![base_etl DAG](img/base_etl.png)
 
 ---
 
@@ -68,9 +41,37 @@ Regenerate with: `uv run python docs/gen_dag_images.py`
 
 ---
 
-## Top-level
+## `derive/`
 
-### `base_etl`
+### `derive.derive_components`
 
-![base_etl DAG](img/base_etl.png)
+![derive.derive_components DAG](img/derive_derive_components.png)
+
+### `derive.impact_cost`
+
+![derive.impact_cost DAG](img/derive_impact_cost.png)
+
+### `derive.inherit_components`
+
+![derive.inherit_components DAG](img/derive_inherit_components.png)
+
+### `derive.resolve_paths`
+
+![derive.resolve_paths DAG](img/derive_resolve_paths.png)
+
+---
+
+## `audit/`
+
+### `audit.requirement_coverage`
+
+![audit.requirement_coverage DAG](img/audit_requirement_coverage.png)
+
+### `audit.todo`
+
+![audit.todo DAG](img/audit_todo.png)
+
+### `audit.traceability`
+
+![audit.traceability DAG](img/audit_traceability.png)
 
