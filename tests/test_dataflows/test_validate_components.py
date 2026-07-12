@@ -266,45 +266,52 @@ class TestTimeFilledComponents:
         return _make_entity_id_table([self._entity_id_row("def1", "status_reading")])
 
     def test_no_load_time_is_noop(self):
-        components = {"status_reading": self._status_reading_table(), "field": self._field_table()}
-        entity_id = self._entity_id()
-        result = validate_components.time_filled_components(components, entity_id, load_time=None)
+        components = {
+            "status_reading": self._status_reading_table(),
+            "field": self._field_table(),
+            "entity_id": self._entity_id(),
+        }
+        result = validate_components.time_filled_components(components, load_time=None)
         assert result is components
 
     def test_fills_null_time_dimension_values(self):
-        components = {"status_reading": self._status_reading_table(), "field": self._field_table()}
-        entity_id = self._entity_id()
-        result = validate_components.time_filled_components(
-            components, entity_id, load_time="2024-12-25"
-        )
+        components = {
+            "status_reading": self._status_reading_table(),
+            "field": self._field_table(),
+            "entity_id": self._entity_id(),
+        }
+        result = validate_components.time_filled_components(components, load_time="2024-12-25")
         df = result["status_reading"].execute()
         assert df.set_index("entity_id").loc["e1", "as_of"] == "2024-12-25"
 
     def test_does_not_overwrite_existing_values(self):
-        components = {"status_reading": self._status_reading_table(), "field": self._field_table()}
-        entity_id = self._entity_id()
-        result = validate_components.time_filled_components(
-            components, entity_id, load_time="2024-12-25"
-        )
+        components = {
+            "status_reading": self._status_reading_table(),
+            "field": self._field_table(),
+            "entity_id": self._entity_id(),
+        }
+        result = validate_components.time_filled_components(components, load_time="2024-12-25")
         df = result["status_reading"].execute()
         assert df.set_index("entity_id").loc["e2", "as_of"] == "2024-01-01"
 
     def test_leaves_non_time_dimension_fields_untouched(self):
-        components = {"status_reading": self._status_reading_table(), "field": self._field_table()}
-        entity_id = self._entity_id()
-        result = validate_components.time_filled_components(
-            components, entity_id, load_time="2024-12-25"
-        )
+        components = {
+            "status_reading": self._status_reading_table(),
+            "field": self._field_table(),
+            "entity_id": self._entity_id(),
+        }
+        result = validate_components.time_filled_components(components, load_time="2024-12-25")
         df = result["status_reading"].execute()
         assert df.set_index("entity_id").loc["e1", "status"] == "open"
 
     def test_no_time_dimension_column_is_noop(self):
         field = _make_field_table([{"entity_id": "def1", "component_index": 0, "value": "as_of"}])
-        components = {"status_reading": self._status_reading_table(), "field": field}
-        entity_id = self._entity_id()
-        result = validate_components.time_filled_components(
-            components, entity_id, load_time="2024-12-25"
-        )
+        components = {
+            "status_reading": self._status_reading_table(),
+            "field": field,
+            "entity_id": self._entity_id(),
+        }
+        result = validate_components.time_filled_components(components, load_time="2024-12-25")
         assert result is components
 
     def test_multiple_time_dimension_fields_raises(self):
@@ -312,12 +319,13 @@ class TestTimeFilledComponents:
             self._field_row("def1", "as_of", time_dimension=True),
             self._field_row("def1", "also_as_of", time_dimension=True),
         ])
-        components = {"status_reading": self._status_reading_table(), "field": field}
-        entity_id = self._entity_id()
+        components = {
+            "status_reading": self._status_reading_table(),
+            "field": field,
+            "entity_id": self._entity_id(),
+        }
         with pytest.raises(ValueError, match="status_reading"):
-            validate_components.time_filled_components(
-                components, entity_id, load_time="2024-12-25"
-            )
+            validate_components.time_filled_components(components, load_time="2024-12-25")
 
 
 class TestFieldValidationResults:
@@ -351,7 +359,7 @@ class TestFieldValidationResults:
         components = {"field": field}
         if derived_field_rows is not None:
             components["derived_field"] = _make_field_table(derived_field_rows)
-        return validate_components.field_validation_results(components, field, entity_id)
+        return validate_components.field_validation_results(components, entity_id, field)
 
     def test_returns_tuple(self):
         entity_id_rows = [self._entity_id_row("eid_field", "field")]
@@ -360,6 +368,16 @@ class TestFieldValidationResults:
         assert isinstance(field_components, dict)
         assert isinstance(field_components["field"], ibis.Table)
         assert isinstance(invalid, ibis.Table)
+
+    def test_field_defaults_to_components_field(self):
+        """When ``field`` is omitted, the schema lookup falls back to components["field"]."""
+        entity_id_rows = [self._entity_id_row("eid_field", "field")]
+        field_rows = [self._meta_row("eid_field", "value", field_type="str", nullable=False)]
+        components = {"field": _make_field_table(field_rows)}
+        entity_id = _make_entity_id_table(entity_id_rows)
+        field_components, invalid = validate_components.field_validation_results(components, entity_id)
+        assert isinstance(field_components["field"], ibis.Table)
+        assert invalid.execute().empty
 
     def test_no_self_schema_passes_through_unchanged(self):
         """When field has no schema defined for itself, field passes through as-is."""

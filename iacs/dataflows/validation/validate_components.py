@@ -363,7 +363,7 @@ def _union_violations(violation_tables: list[ir.Table]) -> ir.Table:
 
 @unpack_fields("field_components", "invalid_field_schema")
 def field_validation_results(
-    components: dict, field: ir.Table, entity_id: ir.Table,
+    components: dict, entity_id: ir.Table, field: ir.Table | None = None,
 ) -> tuple[dict, ir.Table]:
     """Validate and coerce ((field)) and ((derived_field)) against field's own self-referential schema.
 
@@ -399,12 +399,17 @@ def field_validation_results(
         All of the registry's component tables (see ``components`` above),
         including infrastructure types like "field" that ``user_components``
         excludes.
-    field : ir.Table
-        A ``field`` table used only to look up field's own schema — may be
-        a filtered subset (e.g. ``builtin_field``).
     entity_id : ir.Table
         One row per entity (value, path, alias, entity_key, filepath),
         used to map entity_key -> entity_id for schema lookup.
+    field : ir.Table, optional
+        A ``field`` table used only to look up field's own schema — may be
+        a filtered subset (e.g. ``builtin_field`` in the first validation
+        pass, where using a builtins-only subset avoids false positives on
+        schema fields that only exist after derivation). Defaults to
+        ``components["field"]`` (the complete field table) when not given,
+        which is correct for every pass after the first, since by then
+        ``field`` is never anything other than ``components["field"]``.
 
     Returns
     -------
@@ -415,6 +420,8 @@ def field_validation_results(
         ``invalid_field_schema`` is an ibis Table of rows that failed
         nullable or range constraints.
     """
+    if field is None:
+        field = components["field"]
     schema = _build_component_schemas(["field"], field, entity_id).get("field", {})
 
     field_components: dict = {}
@@ -471,6 +478,7 @@ def validated_results(
     component_schemas = _build_component_schemas(user_components.keys(), validated_field, entity_id)
 
     validated_comps: dict = dict(field_components)
+    validated_comps["entity_id"] = entity_id
     violation_tables: list[ir.Table] = []
     for ctype, table in user_components.items():
         t, v = _validate_component(ctype, table, component_schemas.get(ctype, {}))
@@ -482,7 +490,6 @@ def validated_results(
 
 def time_filled_components(
     validated_components: dict,
-    entity_id: ir.Table,
     load_time: Any = None,
 ) -> dict:
     """Backfill null time_dimension fields in validated_components with load_time.
@@ -499,10 +506,9 @@ def time_filled_components(
         Dict of component_type -> validated ibis Table, including "field"
         (already validated and type-coerced against its own schema by
         ``field_validation_results``, so ``time_dimension`` is a real bool
-        here, not a raw string).
-    entity_id : ir.Table
-        One row per entity, used to map entity_key -> entity_id for schema
-        lookup (see ``validated_results``).
+        here, not a raw string) and "entity_id" (entity_id is itself a
+        component table, so it is read from here rather than as a separate
+        input; see ``validated_results``).
     load_time : Any, optional
         The point in time this load represents, e.g. a timestamp or date
         string.
@@ -524,7 +530,7 @@ def time_filled_components(
     if "time_dimension" not in df_field.columns:
         return validated_components
 
-    df_entity = entity_id.execute()
+    df_entity = validated_components["entity_id"].execute()
     key_by_eid = df_entity.set_index("value")["entity_key"]
 
     time_fields: dict[str, str] = {}

@@ -46,14 +46,9 @@ def derived_registry(derived_registry: Registry) -> Registry:
     return derived_registry
 
 
-def derived_field(derived_registry: Registry) -> ir.Table:
-    """Full field table from the derived registry, including inherited field definitions."""
-    return derived_registry._components["field"]
-
-
 @subdag(
     _validate_components,
-    inputs={"registry": source("derived_registry"), "field": source("derived_field")},
+    inputs={"registry": source("derived_registry")},
     config={},
 )
 def validated_registry(validated_registry: Registry) -> Registry:
