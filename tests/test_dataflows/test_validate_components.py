@@ -359,7 +359,7 @@ class TestFieldValidationResults:
         components = {"field": field}
         if derived_field_rows is not None:
             components["derived_field"] = _make_field_table(derived_field_rows)
-        return validate_components.field_validation_results(components, entity_id, field)
+        return validate_components.field_validation_results(components, entity_id)
 
     def test_returns_tuple(self):
         entity_id_rows = [self._entity_id_row("eid_field", "field")]
@@ -368,16 +368,6 @@ class TestFieldValidationResults:
         assert isinstance(field_components, dict)
         assert isinstance(field_components["field"], ibis.Table)
         assert isinstance(invalid, ibis.Table)
-
-    def test_field_defaults_to_components_field(self):
-        """When ``field`` is omitted, the schema lookup falls back to components["field"]."""
-        entity_id_rows = [self._entity_id_row("eid_field", "field")]
-        field_rows = [self._meta_row("eid_field", "value", field_type="str", nullable=False)]
-        components = {"field": _make_field_table(field_rows)}
-        entity_id = _make_entity_id_table(entity_id_rows)
-        field_components, invalid = validate_components.field_validation_results(components, entity_id)
-        assert isinstance(field_components["field"], ibis.Table)
-        assert invalid.execute().empty
 
     def test_no_self_schema_passes_through_unchanged(self):
         """When field has no schema defined for itself, field passes through as-is."""

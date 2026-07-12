@@ -363,7 +363,7 @@ def _union_violations(violation_tables: list[ir.Table]) -> ir.Table:
 
 @unpack_fields("field_components", "invalid_field_schema")
 def field_validation_results(
-    components: dict, entity_id: ir.Table, field: ir.Table | None = None,
+    components: dict, entity_id: ir.Table,
 ) -> tuple[dict, ir.Table]:
     """Validate and coerce ((field)) and ((derived_field)) against field's own self-referential schema.
 
@@ -378,16 +378,12 @@ def field_validation_results(
     ``time_dimension``/``nullable``/``unique`` are real booleans rather than
     raw strings by the time downstream consumers read them.
 
-    Note the rows validated/coerced come from ``components`` (the registry's
-    actual, complete "field"/"derived_field" tables), not from the ``field``
-    argument — that argument may be a filtered subset (``builtin_field`` in
-    the first validation pass) used only to look up field's own schema. Since
-    field is never itself subclassed/extended by users, its schema is always
-    fully defined in builtins, so a builtins-only subset is sufficient for
-    that lookup even in the first pass. This means the complete, validated
-    field/derived_field tables can safely be written straight back into the
-    registry in every pass (see ``validated_results``), without risking the
-    data loss a filtered subset would cause.
+    Field's own schema is looked up from ``components["field"]`` directly.
+    This is safe even before ``derive_components`` has run, because field is
+    never itself subclassed/extended by users — its schema (value, type,
+    nullable, etc.) is always fully defined in builtins (see
+    ``data_structure.field``), not inherited, so it needs no derivation step
+    to be complete.
 
     Mirrors ``validated_results``'s per-table validation exactly (see
     ``_build_component_schemas``/``_validate_component``), just scoped to
@@ -402,14 +398,6 @@ def field_validation_results(
     entity_id : ir.Table
         One row per entity (value, path, alias, entity_key, filepath),
         used to map entity_key -> entity_id for schema lookup.
-    field : ir.Table, optional
-        A ``field`` table used only to look up field's own schema — may be
-        a filtered subset (e.g. ``builtin_field`` in the first validation
-        pass, where using a builtins-only subset avoids false positives on
-        schema fields that only exist after derivation). Defaults to
-        ``components["field"]`` (the complete field table) when not given,
-        which is correct for every pass after the first, since by then
-        ``field`` is never anything other than ``components["field"]``.
 
     Returns
     -------
@@ -420,9 +408,7 @@ def field_validation_results(
         ``invalid_field_schema`` is an ibis Table of rows that failed
         nullable or range constraints.
     """
-    if field is None:
-        field = components["field"]
-    schema = _build_component_schemas(["field"], field, entity_id).get("field", {})
+    schema = _build_component_schemas(["field"], components["field"], entity_id).get("field", {})
 
     field_components: dict = {}
     violation_tables: list[ir.Table] = []
