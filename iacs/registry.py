@@ -53,6 +53,59 @@ class Registry:
             if comp_type not in self._component_types and comp_type != "schema":
                 self._component_types.append(comp_type)
 
+    def entity_id_for_alias(self, alias: str) -> str:
+        """Return the entity_id already registered for `alias`.
+
+        Args:
+            alias: An entity's human-readable display ID, as computed by
+                ``load_manifest.entity_id_table`` (the last one or two
+                dot-segments of its entity path, or its ``entity_key`` for a
+                top-level entity).
+
+        Raises:
+            KeyError: If no entity in this registry has that alias yet.
+        """
+        df = self.get("entity_id").execute()
+        matches = df.loc[df["alias"] == alias, "value"]
+        if matches.empty:
+            raise KeyError(alias)
+        return matches.iloc[0]
+
+    def set_tag(self, component_type: str, aliases: "list[str] | set[str]") -> None:
+        """Overwrite `component_type` as a bare tag on exactly these existing entities.
+
+        `entity_id` is scoped by source file, not alias alone (two entities
+        sharing an alias but loaded from different files/sources get
+        different `entity_id`s — see ``load_manifest.keyvalue_store``), so
+        naively writing a tag for `alias` via a fresh, separately-sourced
+        component table would mint a new, disconnected `entity_id` under
+        that source rather than reusing the one `alias` already has here.
+        Resolving each alias to its existing `entity_id` via
+        `entity_id_for_alias` first means the tag lands on the same
+        identity every other component for that entity already uses.
+
+        Rebuilt from scratch and overwritten (not merged) every call, since
+        `merge` only unions rows in and can't drop the tag from an entity no
+        longer in `aliases`.
+
+        Args:
+            component_type: Name of the tag-only component (no fields) to write.
+            aliases: The complete set of aliases that should carry the tag;
+                an alias omitted this call loses the tag if a previous call
+                had set it.
+
+        Raises:
+            KeyError: If any alias in `aliases` isn't a known entity yet.
+        """
+        entity_ids = [self.entity_id_for_alias(alias) for alias in sorted(set(aliases))]
+        df = pd.DataFrame({
+            "entity_id": pd.array(entity_ids, dtype=pd.StringDtype()),
+            "component_index": pd.array([0] * len(entity_ids), dtype="int64"),
+            "modifier": pd.array([None] * len(entity_ids), dtype=pd.StringDtype()),
+            "value": pd.array([""] * len(entity_ids), dtype=pd.StringDtype()),
+        })
+        self.update({component_type: ibis.memtable(df)})
+
     def merge(self, other: "Registry") -> None:
         """Union all component tables from another registry into this one.
 
