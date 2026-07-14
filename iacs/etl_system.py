@@ -58,7 +58,6 @@ class ETLSystem:
             **inputs: Runtime inputs forwarded to the Hamilton driver (e.g.
                 ``registry=...``, ``input_dirs=...``).
         """
-        inputs.setdefault("input_dirs", [])
         modules = self._resolve_all(dataflows)
 
         if final_vars is None:

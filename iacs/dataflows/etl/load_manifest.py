@@ -34,10 +34,9 @@ def _file_id(path: Path, cwd: Path) -> str:
 
 @extract_fields(["raw_python_strings", "raw_yaml_strings"])
 def raw_strings(
-    input_dirs: list[str | Path] = None,
+    input_dirs: list[str | Path],
     python_strings: dict[str, str] = None,
     yaml_strings: dict[str, str] = None,
-    input_yaml: str = None,
 ) -> dict[str, dict[str, str]]:
     """Read raw YAML and Python source text from input_dirs, combined with directly-provided strings.
 
@@ -47,10 +46,9 @@ def raw_strings(
 
     Parameters
     ----------
-    input_dirs : list[str | Path], optional
+    input_dirs : list[str | Path]
         A list of file or directory paths. Directories are searched
         recursively for both EC (``.yaml``/``.yml``) and Python (``.py``) files.
-        Omittable when the only YAML source is ``yaml_strings``/``input_yaml``.
     python_strings : dict[str, str], optional
         A dict keyed by identifier of raw Python source text to merge in
         directly, without reading from disk. Keys read from ``input_dirs``
@@ -59,11 +57,6 @@ def raw_strings(
         A dict keyed by identifier of raw YAML text to merge in directly,
         without reading from disk. Keys read from ``input_dirs`` take
         precedence over identical keys in ``yaml_strings``.
-    input_yaml : str, optional
-        A single raw YAML string, merged in under the fixed identifier
-        ``"input_yaml"`` — a convenience for callers with just one string
-        who'd otherwise have to wrap it in a single-entry ``yaml_strings``
-        dict themselves.
 
     Returns
     -------
@@ -75,7 +68,7 @@ def raw_strings(
     yaml_files: list[tuple[Path, str]] = []
     python_files: list[tuple[Path, str]] = []
 
-    for item in input_dirs or []:
+    for item in input_dirs:
         p = Path(item)
         if p.is_file():
             if p.suffix in (".yaml", ".yml"):
@@ -94,8 +87,6 @@ def raw_strings(
             yaml_files.append((f, f"builtins.{f.stem}"))
 
     resolved_yaml_strings = dict(yaml_strings) if yaml_strings else {}
-    if input_yaml is not None:
-        resolved_yaml_strings["input_yaml"] = input_yaml
     for file_path, file_id in yaml_files:
         resolved_yaml_strings[file_id] = file_path.read_text(encoding="utf-8")
 
@@ -142,7 +133,7 @@ def raw_entity_first_data(
 # CSV loading (stays inline — CSV doesn't fit the entity-first dict format)
 # ---------------------------------------------------------------------------
 
-def raw_csv_data(input_dirs: list[str | Path] = None) -> dict[str, pd.DataFrame]:
+def raw_csv_data(input_dirs: list[str | Path]) -> dict[str, pd.DataFrame]:
     """Load CSV files from a list of files or directories (user-provided only, not builtins).
 
     The filename stem (without extension) of each CSV file becomes the component
@@ -151,9 +142,9 @@ def raw_csv_data(input_dirs: list[str | Path] = None) -> dict[str, pd.DataFrame]
 
     Parameters
     ----------
-    input_dirs : list[str | Path], optional
+    input_dirs : list[str | Path]
         A list of CSV file paths or directory paths. Directories are searched
-        recursively for CSV files. Omittable when there's no CSV source.
+        recursively for CSV files.
 
     Returns
     -------
@@ -164,7 +155,7 @@ def raw_csv_data(input_dirs: list[str | Path] = None) -> dict[str, pd.DataFrame]
     cwd = Path.cwd()
     all_files: list[tuple[Path, str]] = []
 
-    for item in input_dirs or []:
+    for item in input_dirs:
         p = Path(item)
         if p.is_file() and p.suffix == ".csv":
             all_files.append((p, _file_id(p, cwd)))
@@ -572,16 +563,20 @@ def keyvalue_store(pathvalue_pairs: ir.Table, entity_id_overrides: dict[str, str
     t = t.mutate(
         field=ibis.ifelse(t["field"] == "", ibis.literal("value"), t["field"])
     )
-    result = t.select(
+    if entity_id_overrides:
+        overrides_tbl = ibis.memtable(
+            pd.DataFrame({
+                "entity_path": list(entity_id_overrides.keys()),
+                "_override_entity_id": list(entity_id_overrides.values()),
+            })
+        )
+        t = t.left_join(overrides_tbl, "entity_path")
+        t = t.mutate(entity_id=ibis.coalesce(t["_override_entity_id"], t["entity_id"]))
+    return t.select(
         "entity_id", "entity_key", "entity_path", "filepath",
         "component_index", "component_type", "modifier",
         "spine_path", "field", "value",
     )
-    if entity_id_overrides:
-        df = result.to_pandas()
-        df["entity_id"] = df["entity_path"].map(entity_id_overrides).fillna(df["entity_id"])
-        result = ibis.memtable(df)
-    return result
 
 
 def entity_id_table(yaml_spine: ir.Table, csv_spine: ir.Table = None) -> ir.Table:

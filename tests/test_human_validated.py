@@ -381,7 +381,10 @@ def test_scd_support():
             z: 5
     """
     new_registry = etl.execute(
-        base_etl, input_dirs=[str(example_dir)], input_yaml=input_yaml, load_time=1
+        base_etl,
+        input_dirs=[str(example_dir)],
+        yaml_strings={"scd_update": input_yaml},
+        load_time=1,
     )
     registry.merge(new_registry)
     new_registry.close()
