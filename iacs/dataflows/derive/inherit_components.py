@@ -109,15 +109,13 @@ def derived_field(field: ir.Table, parent: ir.Table) -> ir.Table:
 
 
 def derived_registry(registry: Registry, derived_field: ir.Table) -> Registry:
-    """Store the inheritance-resolved field table as both "field" and "derived_field".
+    """Store the inheritance-resolved field table as "field".
 
-    "field" is overwritten here (not just "derived_field") so that anything
-    reading "field" downstream — including base_etl's own derived_field(),
-    which already documents itself as "the full field table ... including
-    inherited field definitions" — actually gets the inheritance-resolved
-    set, not just each entity's own directly-declared fields.
+    "field" is overwritten here so that anything reading "field" downstream
+    gets the inheritance-resolved set, not just each entity's own
+    directly-declared fields.
     """
-    registry.update({"field": derived_field, "derived_field": derived_field})
+    registry.update({"field": derived_field})
     return registry
 
 

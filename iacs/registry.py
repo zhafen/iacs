@@ -256,8 +256,8 @@ class Registry:
         """Return ``table_name`` collapsed to the latest row per entity_id,
         using its time_dimension field.
 
-        Assumes the registry was produced by ``base_etl`` (``derived_field``
-        and ``entity_id`` are present). Tables with no time_dimension field
+        Assumes the registry was produced by ``base_etl`` (``field`` and
+        ``entity_id`` are present). Tables with no time_dimension field
         are returned unchanged.
 
         Raises:
@@ -278,11 +278,12 @@ class Registry:
     def _time_dimension_field(self, component_type: str) -> str | None:
         """Return the field flagged ``time_dimension: true`` for a component type, if any.
 
-        Assumes the registry was produced by ``base_etl``, so ``derived_field``
-        and ``entity_id`` are present, and ``derived_field["time_dimension"]``
-        is already a real bool — ``field`` is validated against its own
-        schema (see ``validate_components.field_validation_results``) as
-        part of ``validate_registry``, and all data is expected to reach the
+        Assumes the registry was produced by ``base_etl``, so ``field``
+        (inheritance-resolved, see ``inherit_components.derived_registry``)
+        and ``entity_id`` are present, and ``field["time_dimension"]`` is
+        already a real bool — ``field`` is validated against its own schema
+        (see ``validate_components.field_validation_results``) as part of
+        ``validate_registry``, and all data is expected to reach the
         registry only by going through that pass. If this raises or behaves
         unexpectedly, the registry likely didn't go through the full
         pipeline (e.g. component tables inserted directly) — that's a bug in
@@ -292,7 +293,7 @@ class Registry:
             ValueError: If more than one field is flagged time_dimension for
                 this component type — only one is allowed.
         """
-        df_field = self._components["derived_field"].execute()
+        df_field = self._components["field"].execute()
         if "time_dimension" not in df_field.columns:
             return None
 

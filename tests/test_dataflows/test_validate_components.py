@@ -2,7 +2,6 @@
 
 import ibis
 import pandas as pd
-import pytest
 
 import iacs.dataflows.validation.validate_components as validate_components
 
@@ -28,13 +27,12 @@ def _make_component_table(rows: list[dict]) -> ibis.Table:
 
 
 def _call(components, field_rows, entity_id_rows):
-    field = _make_field_table(field_rows)
+    validated_field = _make_field_table(field_rows)
     entity_id = _make_entity_id_table(entity_id_rows)
-    field_components = {"field": field}
-    return validate_components.validated_results(components, field_components, entity_id)
+    return validate_components.validation_results(components, validated_field, entity_id)
 
 
-class TestValidatedComponents:
+class TestValidationResults:
 
     def _entity_id_row(self, entity_id, entity_key):
         return {"value": entity_id, "entity_key": entity_key, "path": f"test:{entity_key}", "alias": entity_key}
@@ -235,97 +233,32 @@ class TestValidatedComponents:
         assert df.iloc[0]["value"] == "x"
         assert invalid.execute().empty
 
+    def test_formerly_infra_type_is_validated(self):
+        """Component types that used to be excluded as "infrastructure" (e.g. "parent")
+        are now validated like any other component, since users can add invalid
+        records to them too."""
+        components = {"parent": _make_component_table([
+            {"entity_id": "e1", "component_index": 0, "parent_eid": None},
+        ])}
+        field_rows = [self._field_row("eid_parent", "parent_eid", field_type="str", nullable=False)]
+        entity_id_rows = [self._entity_id_row("eid_parent", "parent")]
+        _, invalid = _call(components, field_rows, entity_id_rows)
+        df = invalid.execute()
+        assert len(df) == 1
+        assert df.iloc[0]["component_type"] == "parent"
+        assert df.iloc[0]["error_type"] == "nullable"
 
-class TestTimeFilledComponents:
-    """Tests for time_filled_components, which backfills time_dimension fields."""
-
-    def _entity_id_row(self, entity_id, entity_key):
-        return {"value": entity_id, "entity_key": entity_key, "path": f"test:{entity_key}", "alias": entity_key}
-
-    def _field_row(self, entity_id, field_name, time_dimension=None):
-        return {
-            "entity_id": entity_id,
-            "component_index": 0,
-            "value": field_name,
-            "time_dimension": time_dimension,
-        }
-
-    def _status_reading_table(self):
-        return _make_component_table([
-            {"entity_id": "e1", "component_index": 0, "as_of": None, "status": "open"},
-            {"entity_id": "e2", "component_index": 0, "as_of": "2024-01-01", "status": "closed"},
-        ])
-
-    def _field_table(self):
-        return _make_field_table([
-            self._field_row("def1", "as_of", time_dimension=True),
-            self._field_row("def1", "status", time_dimension=False),
-        ])
-
-    def _entity_id(self):
-        return _make_entity_id_table([self._entity_id_row("def1", "status_reading")])
-
-    def test_no_load_time_is_noop(self):
-        components = {
-            "status_reading": self._status_reading_table(),
-            "field": self._field_table(),
-            "entity_id": self._entity_id(),
-        }
-        result = validate_components.time_filled_components(components, load_time=None)
-        assert result is components
-
-    def test_fills_null_time_dimension_values(self):
-        components = {
-            "status_reading": self._status_reading_table(),
-            "field": self._field_table(),
-            "entity_id": self._entity_id(),
-        }
-        result = validate_components.time_filled_components(components, load_time="2024-12-25")
-        df = result["status_reading"].execute()
-        assert df.set_index("entity_id").loc["e1", "as_of"] == "2024-12-25"
-
-    def test_does_not_overwrite_existing_values(self):
-        components = {
-            "status_reading": self._status_reading_table(),
-            "field": self._field_table(),
-            "entity_id": self._entity_id(),
-        }
-        result = validate_components.time_filled_components(components, load_time="2024-12-25")
-        df = result["status_reading"].execute()
-        assert df.set_index("entity_id").loc["e2", "as_of"] == "2024-01-01"
-
-    def test_leaves_non_time_dimension_fields_untouched(self):
-        components = {
-            "status_reading": self._status_reading_table(),
-            "field": self._field_table(),
-            "entity_id": self._entity_id(),
-        }
-        result = validate_components.time_filled_components(components, load_time="2024-12-25")
-        df = result["status_reading"].execute()
-        assert df.set_index("entity_id").loc["e1", "status"] == "open"
-
-    def test_no_time_dimension_column_is_noop(self):
-        field = _make_field_table([{"entity_id": "def1", "component_index": 0, "value": "as_of"}])
-        components = {
-            "status_reading": self._status_reading_table(),
-            "field": field,
-            "entity_id": self._entity_id(),
-        }
-        result = validate_components.time_filled_components(components, load_time="2024-12-25")
-        assert result is components
-
-    def test_multiple_time_dimension_fields_raises(self):
-        field = _make_field_table([
-            self._field_row("def1", "as_of", time_dimension=True),
-            self._field_row("def1", "also_as_of", time_dimension=True),
-        ])
-        components = {
-            "status_reading": self._status_reading_table(),
-            "field": field,
-            "entity_id": self._entity_id(),
-        }
-        with pytest.raises(ValueError, match="status_reading"):
-            validate_components.time_filled_components(components, load_time="2024-12-25")
+    def test_field_itself_not_double_validated(self):
+        """"field" in the result is folded straight in from the validated_field
+        argument, not re-derived from components["field"] a second time here."""
+        components = {"field": _make_field_table([
+            {"entity_id": "eid_x", "component_index": 0, "value": "raw_unvalidated_row"},
+        ])}
+        field_rows = [self._field_row("eid_x", "already_validated_row")]
+        validated, _ = _call(components, field_rows, [])
+        df = validated["field"].execute()
+        assert len(df) == 1
+        assert df.iloc[0]["value"] == "already_validated_row"
 
 
 class TestFieldValidationResults:
@@ -353,28 +286,25 @@ class TestFieldValidationResults:
         """A regular field row (defines a field for some other component type), with meta-attribute values to validate."""
         return {"entity_id": entity_id, "component_index": 0, "value": field_name, **attrs}
 
-    def _call(self, field_rows, entity_id_rows, derived_field_rows=None):
+    def _call(self, field_rows, entity_id_rows):
         field = _make_field_table(field_rows)
         entity_id = _make_entity_id_table(entity_id_rows)
         components = {"field": field}
-        if derived_field_rows is not None:
-            components["derived_field"] = _make_field_table(derived_field_rows)
-        return validate_components.field_validation_results(components, entity_id)
+        return validate_components.field_validation_results(components, field, entity_id)
 
     def test_returns_tuple(self):
         entity_id_rows = [self._entity_id_row("eid_field", "field")]
         field_rows = [self._meta_row("eid_field", "value", field_type="str")]
-        field_components, invalid = self._call(field_rows, entity_id_rows)
-        assert isinstance(field_components, dict)
-        assert isinstance(field_components["field"], ibis.Table)
+        validated_field, invalid = self._call(field_rows, entity_id_rows)
+        assert isinstance(validated_field, ibis.Table)
         assert isinstance(invalid, ibis.Table)
 
     def test_no_self_schema_passes_through_unchanged(self):
         """When field has no schema defined for itself, field passes through as-is."""
         field_rows = [self._meta_row("eid_other", "name", field_type="str")]
         entity_id_rows = [self._entity_id_row("eid_other", "other")]  # entity_key != "field"
-        field_components, invalid = self._call(field_rows, entity_id_rows)
-        df = field_components["field"].execute()
+        validated_field, invalid = self._call(field_rows, entity_id_rows)
+        df = validated_field.execute()
         assert len(df) == 1
         assert invalid.execute().empty
 
@@ -387,8 +317,8 @@ class TestFieldValidationResults:
             self._instance_row("eid_status_reading", "as_of", time_dimension="True"),
             self._instance_row("eid_status_reading", "status", time_dimension="False"),
         ]
-        field_components, invalid = self._call(field_rows, entity_id_rows)
-        df = field_components["field"].execute().set_index("value")
+        validated_field, invalid = self._call(field_rows, entity_id_rows)
+        df = validated_field.execute().set_index("value")
         assert bool(df.loc["as_of", "time_dimension"]) is True
         assert bool(df.loc["status", "time_dimension"]) is False
         assert invalid.execute().empty
@@ -400,8 +330,8 @@ class TestFieldValidationResults:
             self._meta_row("eid_field", "time_dimension", field_type="bool", default=False),
             self._instance_row("eid_status_reading", "status"),
         ]
-        field_components, _ = self._call(field_rows, entity_id_rows)
-        df = field_components["field"].execute().set_index("value")
+        validated_field, _ = self._call(field_rows, entity_id_rows)
+        df = validated_field.execute().set_index("value")
         assert bool(df.loc["status", "time_dimension"]) is False
 
     def test_nullable_violation_collected(self):
@@ -411,7 +341,7 @@ class TestFieldValidationResults:
             self._meta_row("eid_field", "units", field_type="str", nullable=False, units="n/a"),
             self._instance_row("eid_status_reading", "as_of"),
         ]
-        field_components, invalid = self._call(field_rows, entity_id_rows)
+        _, invalid = self._call(field_rows, entity_id_rows)
         df = invalid.execute()
         assert len(df) == 1
         assert df.iloc[0]["component_type"] == "field"
@@ -425,26 +355,8 @@ class TestFieldValidationResults:
             self._meta_row("eid_field", "format", field_type="str", field_range=["str", "epoch_time"], format="str"),
             self._instance_row("eid_status_reading", "as_of", format="unparseable"),
         ]
-        field_components, invalid = self._call(field_rows, entity_id_rows)
+        _, invalid = self._call(field_rows, entity_id_rows)
         df = invalid.execute()
         assert len(df) == 1
         assert df.iloc[0]["error_type"] == "range"
         assert df.iloc[0]["value"] == "unparseable"
-
-    def test_derived_field_absent_is_skipped(self):
-        """When "derived_field" isn't in components yet (first validation pass), only "field" is validated."""
-        entity_id_rows = [self._entity_id_row("eid_field", "field")]
-        field_rows = [self._meta_row("eid_field", "value", field_type="str")]
-        field_components, _ = self._call(field_rows, entity_id_rows)
-        assert set(field_components) == {"field"}
-
-    def test_derived_field_validated_when_present(self):
-        """When "derived_field" is present (second validation pass), it's validated too."""
-        entity_id_rows = [self._entity_id_row("eid_field", "field")]
-        field_rows = [self._meta_row("eid_field", "time_dimension", field_type="bool", default=False)]
-        derived_field_rows = [self._instance_row("eid_status_reading", "as_of", time_dimension="True")]
-        field_components, invalid = self._call(field_rows, entity_id_rows, derived_field_rows)
-        assert set(field_components) == {"field", "derived_field"}
-        df = field_components["derived_field"].execute().set_index("value")
-        assert bool(df.loc["as_of", "time_dimension"]) is True
-        assert invalid.execute().empty
