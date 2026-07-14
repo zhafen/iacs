@@ -34,9 +34,10 @@ def _file_id(path: Path, cwd: Path) -> str:
 
 @extract_fields(["raw_python_strings", "raw_yaml_strings"])
 def raw_strings(
-    input_dirs: list[str | Path],
+    input_dirs: list[str | Path] = None,
     python_strings: dict[str, str] = None,
     yaml_strings: dict[str, str] = None,
+    input_yaml: str = None,
 ) -> dict[str, dict[str, str]]:
     """Read raw YAML and Python source text from input_dirs, combined with directly-provided strings.
 
@@ -46,9 +47,10 @@ def raw_strings(
 
     Parameters
     ----------
-    input_dirs : list[str | Path]
+    input_dirs : list[str | Path], optional
         A list of file or directory paths. Directories are searched
         recursively for both EC (``.yaml``/``.yml``) and Python (``.py``) files.
+        Omittable when the only YAML source is ``yaml_strings``/``input_yaml``.
     python_strings : dict[str, str], optional
         A dict keyed by identifier of raw Python source text to merge in
         directly, without reading from disk. Keys read from ``input_dirs``
@@ -57,6 +59,11 @@ def raw_strings(
         A dict keyed by identifier of raw YAML text to merge in directly,
         without reading from disk. Keys read from ``input_dirs`` take
         precedence over identical keys in ``yaml_strings``.
+    input_yaml : str, optional
+        A single raw YAML string, merged in under the fixed identifier
+        ``"input_yaml"`` — a convenience for callers with just one string
+        who'd otherwise have to wrap it in a single-entry ``yaml_strings``
+        dict themselves.
 
     Returns
     -------
@@ -68,7 +75,7 @@ def raw_strings(
     yaml_files: list[tuple[Path, str]] = []
     python_files: list[tuple[Path, str]] = []
 
-    for item in input_dirs:
+    for item in input_dirs or []:
         p = Path(item)
         if p.is_file():
             if p.suffix in (".yaml", ".yml"):
@@ -87,6 +94,8 @@ def raw_strings(
             yaml_files.append((f, f"builtins.{f.stem}"))
 
     resolved_yaml_strings = dict(yaml_strings) if yaml_strings else {}
+    if input_yaml is not None:
+        resolved_yaml_strings["input_yaml"] = input_yaml
     for file_path, file_id in yaml_files:
         resolved_yaml_strings[file_id] = file_path.read_text(encoding="utf-8")
 
@@ -133,7 +142,7 @@ def raw_entity_first_data(
 # CSV loading (stays inline — CSV doesn't fit the entity-first dict format)
 # ---------------------------------------------------------------------------
 
-def raw_csv_data(input_dirs: list[str | Path]) -> dict[str, pd.DataFrame]:
+def raw_csv_data(input_dirs: list[str | Path] = None) -> dict[str, pd.DataFrame]:
     """Load CSV files from a list of files or directories (user-provided only, not builtins).
 
     The filename stem (without extension) of each CSV file becomes the component
@@ -142,9 +151,9 @@ def raw_csv_data(input_dirs: list[str | Path]) -> dict[str, pd.DataFrame]:
 
     Parameters
     ----------
-    input_dirs : list[str | Path]
+    input_dirs : list[str | Path], optional
         A list of CSV file paths or directory paths. Directories are searched
-        recursively for CSV files.
+        recursively for CSV files. Omittable when there's no CSV source.
 
     Returns
     -------
@@ -155,7 +164,7 @@ def raw_csv_data(input_dirs: list[str | Path]) -> dict[str, pd.DataFrame]:
     cwd = Path.cwd()
     all_files: list[tuple[Path, str]] = []
 
-    for item in input_dirs:
+    for item in input_dirs or []:
         p = Path(item)
         if p.is_file() and p.suffix == ".csv":
             all_files.append((p, _file_id(p, cwd)))
@@ -354,6 +363,64 @@ def _flatten_to_pathvalue(data: dict, parent_path: str = "") -> list[tuple[str, 
     return result
 
 
+def _has_entity_id_override(components: list) -> bool:
+    """Return True if a component list declares a bare ``entity_id`` override.
+
+    ``{entity_id: <hash>}`` in an entity's component list isn't an ordinary
+    component — see ``_collect_entity_id_overrides`` — so callers that walk
+    entities (``_collect_entity_paths``) use this to recognize one.
+    """
+    return any(
+        isinstance(component, dict)
+        and set(component) == {"entity_id"}
+        and not isinstance(component["entity_id"], (list, dict))
+        for component in components
+    )
+
+
+def _collect_entity_id_overrides(data: dict, parent_path: str = "") -> dict[str, str]:
+    """Recursively collect entities' declared ``entity_id`` overrides.
+
+    An entity may declare its own identity directly via a bare ``entity_id``
+    component (``{entity_id: <hash>}``) instead of letting one be derived
+    from its file + path — e.g. to attach a new position to a player entity
+    that already exists (with its own hash) elsewhere in the registry,
+    without re-deriving a disconnected identity for it. Mirrors the
+    traversal in ``_flatten_to_pathvalue``/``_collect_entity_paths``, keyed
+    by entity_path (no file_id prefix — callers add that).
+    """
+    result = {}
+    for entity_key, entity_value in data.items():
+        entity_path = f"{parent_path}.{entity_key}" if parent_path else entity_key
+        if isinstance(entity_value, list):
+            components = entity_value
+        elif isinstance(entity_value, dict):
+            components = entity_value.get("data", [])
+            sub_entities = {k: v for k, v in entity_value.items() if k != "data"}
+            result.update(_collect_entity_id_overrides(sub_entities, entity_path))
+        else:
+            continue
+        if _has_entity_id_override(components):
+            override = next(
+                c["entity_id"] for c in components
+                if isinstance(c, dict) and set(c) == {"entity_id"}
+            )
+            result[entity_path] = str(override)
+    return result
+
+
+def entity_id_overrides(raw_entity_first_data: dict) -> dict[str, str]:
+    """Map each entity's full ``file_id:entity_path`` to its declared entity_id override, if any.
+
+    See ``_collect_entity_id_overrides``.
+    """
+    overrides = {}
+    for file_id, entities in raw_entity_first_data.items():
+        for entity_path, override in _collect_entity_id_overrides(entities).items():
+            overrides[f"{file_id}:{entity_path}"] = override
+    return overrides
+
+
 def _collect_entity_paths(data: dict, parent_path: str = "") -> list[str]:
     """Recursively collect every entity_path in entity-first data.
 
@@ -364,14 +431,23 @@ def _collect_entity_paths(data: dict, parent_path: str = "") -> list[str]:
     ``pathvalue_pairs``/``keyvalue_store`` and so never get a row in
     ``entity_id_table``, even though other entities (e.g. their children, via
     ``parent_eid``) reference them by hash.
+
+    An entity that declares an ``entity_id`` override (see
+    ``_collect_entity_id_overrides``) gets no spine/alias row of its own here
+    — it attaches new component data to an existing entity rather than
+    introducing a new one, so it shouldn't mint a second alias for the same
+    identity (which would make every join through ``entity_id.alias`` fan
+    out across both aliases).
     """
     result = []
     for entity_key, entity_value in data.items():
         entity_path = f"{parent_path}.{entity_key}" if parent_path else entity_key
         if isinstance(entity_value, list):
-            result.append(entity_path)
+            if not _has_entity_id_override(entity_value):
+                result.append(entity_path)
         elif isinstance(entity_value, dict):
-            result.append(entity_path)
+            if not _has_entity_id_override(entity_value.get("data", [])):
+                result.append(entity_path)
             sub_entities = {k: v for k, v in entity_value.items() if k != "data"}
             result.extend(_collect_entity_paths(sub_entities, entity_path))
     return result
@@ -450,11 +526,17 @@ def _with_spine_path(t: ir.Table) -> ir.Table:
     return t.mutate(spine_path=t["_prefix"] + "[" + t["_idx"] + "]." + t["_ctf"])
 
 
-def keyvalue_store(pathvalue_pairs: ir.Table) -> ir.Table:
+def keyvalue_store(pathvalue_pairs: ir.Table, entity_id_overrides: dict[str, str] = None) -> ir.Table:
     """Parse path-value pairs into a structured long-format table.
 
     One row per (entity, component, field). Centralises all path-parsing so
     that ``spine`` and ``component_tables`` are simple derivations.
+
+    Every row's ``entity_id`` is normally a hash of its own ``entity_path``;
+    rows belonging to an entity in ``entity_id_overrides`` (see
+    ``_collect_entity_id_overrides``) get that override's value instead, so
+    e.g. a new position component attaches to an existing entity's identity
+    rather than a fresh one derived from this row's own file/path.
 
     Returns
     -------
@@ -490,11 +572,16 @@ def keyvalue_store(pathvalue_pairs: ir.Table) -> ir.Table:
     t = t.mutate(
         field=ibis.ifelse(t["field"] == "", ibis.literal("value"), t["field"])
     )
-    return t.select(
+    result = t.select(
         "entity_id", "entity_key", "entity_path", "filepath",
         "component_index", "component_type", "modifier",
         "spine_path", "field", "value",
     )
+    if entity_id_overrides:
+        df = result.to_pandas()
+        df["entity_id"] = df["entity_path"].map(entity_id_overrides).fillna(df["entity_id"])
+        result = ibis.memtable(df)
+    return result
 
 
 def entity_id_table(yaml_spine: ir.Table, csv_spine: ir.Table = None) -> ir.Table:
@@ -695,6 +782,8 @@ def registry(
     for comp_type, table in component_tables.items():
         if comp_type == "component_type":
             continue  # flags already incorporated into component_type_table
+        if comp_type == "entity_id":
+            continue  # identity overrides already incorporated into entity_id_table
         conn.create_table(comp_type, table.to_pandas(), overwrite=True)
         components[comp_type] = conn.table(comp_type)
     return Registry(conn, components)
