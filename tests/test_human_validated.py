@@ -324,7 +324,10 @@ def test_end_to_end(example_dir: Path, tmp_path: Path):
     # Export back to manifest format, comparing outputs along the way
     output_dir = tmp_path / example_dir.name
     etl.execute(
-        export_manifest, adapters=[checker], registry=registry, output_dir=str(output_dir)
+        export_manifest,
+        adapters=[checker],
+        registry=registry,
+        output_dir=str(output_dir),
     )
 
     # Reload. The expected fixtures encode entity IDs derived from the original
@@ -353,3 +356,41 @@ def test_incremental_load_is_consistent():
         new_registry.close()
 
     _assert_registries_equal(registry, incremental_registry)
+
+
+def test_scd_support():
+
+    # Initial registry
+    example_dir = EXAMPLES_DIR / "game_data"
+    etl = ETLSystem()
+    registry = etl.execute(base_etl, input_dirs=[str(example_dir)])
+
+    # Get the entity_id for the player
+    eids = registry.get("entity_id")
+    player_eid = (
+        eids.filter(eids["alias"].contains("player")).execute().iloc[0]["value"]
+    )
+
+    # Add new player position
+    input_yaml = f"""
+    updated_player_position:
+        - entity_id: {player_eid}
+        - position:
+            x: 5
+            y: 5
+            z: 5
+    """
+    new_registry = etl.execute(
+        base_etl,
+        input_dirs=[str(example_dir)],
+        yaml_strings={"scd_update": input_yaml},
+        load_time=1,
+    )
+    registry.merge(new_registry)
+    new_registry.close()
+
+    # Check the current position of the player and the dimensions of the position table
+    positions = registry.view_current("position")
+    assert positions.count().execute() == 1
+    assert list(positions.execute().iloc[0][["position.x", "position.y", "position.z"]]) == [5, 5, 5]
+
