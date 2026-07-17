@@ -1,4 +1,3 @@
-import ibis.expr.types as ir
 from hamilton.function_modifiers import subdag, source
 
 import iacs.dataflows.derive.derive_components as _derive_components
@@ -12,25 +11,9 @@ def loaded_registry(registry: Registry) -> Registry:
     return registry
 
 
-def builtin_field(loaded_registry: Registry) -> ir.Table:
-    """Field table limited to schemas defined in the built-in components file.
-
-    At load time the full derived field schema is not yet available.  Using only
-    the built-in schemas (not user-defined extensions) avoids false positives on
-    fields that only exist after derivation while still typing and defaulting the
-    built-in component fields (effort.unit, priority.value, etc.) so the derive
-    step has properly-typed data.
-    """
-    comps = loaded_registry._components
-    f = comps["field"]
-    eid = comps["entity_id"]
-    builtin_eids = eid.filter(eid["filepath"] == "builtins.components").select("value")
-    return f.filter(f["entity_id"].isin(builtin_eids["value"]))
-
-
 @subdag(
     _validate_components,
-    inputs={"registry": source("loaded_registry"), "field": source("builtin_field")},
+    inputs={"registry": source("loaded_registry")},
     config={},
 )
 def initial_validated_registry(validated_registry: Registry) -> Registry:
@@ -46,14 +29,9 @@ def derived_registry(derived_registry: Registry) -> Registry:
     return derived_registry
 
 
-def derived_field(derived_registry: Registry) -> ir.Table:
-    """Full field table from the derived registry, including inherited field definitions."""
-    return derived_registry._components["field"]
-
-
 @subdag(
     _validate_components,
-    inputs={"registry": source("derived_registry"), "field": source("derived_field")},
+    inputs={"registry": source("derived_registry")},
     config={},
 )
 def validated_registry(validated_registry: Registry) -> Registry:

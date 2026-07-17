@@ -247,7 +247,7 @@ class TestRegistryViewCurrent:
              "entity_key": ["status_reading", "e1", "e2"], "filepath": ["test", "test", "test"]},
         )
         conn.create_table(
-            "derived_field",
+            "field",
             {"entity_id": ["def1", "def1"], "value": ["as_of", "status"],
              "time_dimension": [True, False]},
         )
@@ -266,7 +266,7 @@ class TestRegistryViewCurrent:
         )
         components = {
             "entity_id": conn.table("entity_id"),
-            "derived_field": conn.table("derived_field"),
+            "field": conn.table("field"),
             "status_reading": conn.table("status_reading"),
         }
         return Registry(conn, components)
@@ -281,12 +281,12 @@ class TestRegistryViewCurrent:
         """Only one time_dimension field is allowed per component type."""
         conn = scd_registry._con
         conn.create_table(
-            "derived_field",
+            "field",
             {"entity_id": ["def1", "def1"], "value": ["as_of", "also_as_of"],
              "time_dimension": [True, True]},
             overwrite=True,
         )
-        scd_registry._components["derived_field"] = conn.table("derived_field")
+        scd_registry._components["field"] = conn.table("field")
         with pytest.raises(ValueError, match="status_reading"):
             scd_registry._time_dimension_field("status_reading")
 
@@ -320,7 +320,7 @@ class TestRegistryViewCurrent:
         )
         # No "time_dimension" column at all — no field anywhere sets it.
         conn.create_table(
-            "derived_field",
+            "field",
             {"entity_id": ["e1"], "value": ["value"]},
         )
         conn.create_table(
@@ -331,7 +331,7 @@ class TestRegistryViewCurrent:
         )
         registry = Registry(conn, {
             "entity_id": conn.table("entity_id"),
-            "derived_field": conn.table("derived_field"),
+            "field": conn.table("field"),
             "description": conn.table("description"),
         })
         df = registry.view_current("description").execute()

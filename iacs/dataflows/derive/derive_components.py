@@ -1,3 +1,5 @@
+from typing import Any
+
 import ibis
 import pandas as pd
 from hamilton.function_modifiers import subdag, source
@@ -56,9 +58,83 @@ def field_derived_registry(derived_registry: Registry) -> Registry:
     return derived_registry
 
 
+def time_filled_registry(field_derived_registry: Registry, load_time: Any = None) -> Registry:
+    """Backfill null time_dimension fields with load_time.
+
+    Used when loading a manifest that represents a snapshot as of a known
+    point in time: the field flagged ``time_dimension: true`` in a component
+    type's schema is set to ``load_time`` wherever it is still null. Values
+    that are already set are left untouched. A no-op when ``load_time`` is
+    not given.
+
+    Parameters
+    ----------
+    field_derived_registry : Registry
+        The inheritance-resolved registry, with "field" already validated
+        and type-coerced against its own schema (so ``time_dimension`` is a
+        real bool, not a raw string) by the preceding validate_components
+        pass.
+    load_time : Any, optional
+        The point in time this load represents, e.g. a timestamp or date
+        string.
+
+    Returns
+    -------
+    Registry
+        ``field_derived_registry``, with time_dimension fields backfilled.
+
+    Raises
+    ------
+    ValueError
+        If a component type has more than one time_dimension field.
+    """
+    if load_time is None:
+        return field_derived_registry
+
+    components = field_derived_registry._components
+    df_field = components["field"].execute()
+    if "time_dimension" not in df_field.columns:
+        return field_derived_registry
+
+    df_entity = components["entity_id"].execute()
+    key_by_eid = df_entity.set_index("value")["entity_key"]
+
+    time_fields: dict[str, str] = {}
+    for _, row in df_field.iterrows():
+        if not row["time_dimension"]:
+            continue
+        fname = row.get("value")
+        if pd.isna(fname):
+            continue
+        ctype = key_by_eid.get(row["entity_id"])
+        if ctype is None:
+            continue
+        fname = str(fname)
+        existing = time_fields.get(ctype)
+        if existing is not None and existing != fname:
+            raise ValueError(
+                f"Component type {ctype!r} has multiple time_dimension "
+                f"fields {sorted({existing, fname})}; only one is allowed."
+            )
+        time_fields[ctype] = fname
+
+    updated: dict = {}
+    for ctype, fname in time_fields.items():
+        table = components.get(ctype)
+        if table is None or fname not in table.columns:
+            continue
+        df = table.execute()
+        if df[fname].isna().any():
+            df[fname] = df[fname].fillna(load_time)
+            updated[ctype] = ibis.memtable(df)
+
+    field_derived_registry.update(updated)
+    return field_derived_registry
+
+
 @subdag(
     impact_cost,
-    inputs={"registry": source("field_derived_registry")},
+    inputs={"registry": source("time_filled_registry")},
     config={},
 )
 def derived_registry(derived_registry: Registry) -> Registry:
