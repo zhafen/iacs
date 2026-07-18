@@ -92,7 +92,7 @@ def test_mcp_server_startup_time(isolated_venv):
     """Time the full MCP server startup (lifespan) in the isolated env.
 
     Mirrors what happens when Claude Desktop launches iacs-mcp: the process
-    starts, the lifespan runs Architect.from_manifest(), and the server becomes
+    starts, the lifespan runs Registrar.from_manifest(), and the server becomes
     ready to accept requests. We measure time until the process prints its
     ready-signal to stderr and then exits cleanly.
     """

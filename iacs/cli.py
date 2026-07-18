@@ -13,7 +13,7 @@ from iacs.commands import (
     cmd_view_component,
     cmd_view_entity,
     get_manifest_path_str,
-    make_architect,
+    make_registrar,
     parse_manifest_env,
     validate_yaml_string,
 )
@@ -147,30 +147,30 @@ def main() -> None:
         return
 
     manifest_paths = _resolve_manifest_paths(args)
-    arch = make_architect(manifest_paths)
+    reg = make_registrar(manifest_paths)
 
     if args.command == "refresh":
-        print(cmd_refresh(arch))
+        print(cmd_refresh(reg))
 
     elif args.command == "list-types":
-        print(cmd_list_component_types(arch))
+        print(cmd_list_component_types(reg))
 
     elif args.command == "view-component":
-        print(cmd_view_component(arch, args.component_type, args.format))
+        print(cmd_view_component(reg, args.component_type, args.format))
 
     elif args.command == "view-entity":
-        print(cmd_view_entity(arch, args.entity_id, args.format))
+        print(cmd_view_entity(reg, args.entity_id, args.format))
 
     elif args.command == "run-dataflow":
-        before = set(arch.registry.component_types)
-        arch.execute(args.name)
-        after = set(arch.registry.component_types)
+        before = set(reg.registry.component_types)
+        reg.execute(args.name)
+        after = set(reg.registry.component_types)
         added = sorted(after - before)
         if added:
             print(f"Dataflow {args.name!r} complete. New component types: {added}\n")
             for comp_type in added:
                 print(f"=== {comp_type} ===")
-                print(cmd_view_component(arch, comp_type, args.format))
+                print(cmd_view_component(reg, comp_type, args.format))
         else:
             print(f"Dataflow {args.name!r} complete. No new component types added.")
 

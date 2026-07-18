@@ -10,7 +10,7 @@ def test_iacs_submodules_importable():
     """All public sub-packages must be importable from a clean Python process."""
     modules = [
         "iacs",
-        "iacs.architect",
+        "iacs.registrar",
         "iacs.registry",
         "iacs.utils",
         "iacs.dataflows",

@@ -1,4 +1,4 @@
-"""Generic Hamilton-based dataflow execution, decoupled from Architect."""
+"""Generic Hamilton-based dataflow execution, decoupled from Registrar."""
 from __future__ import annotations
 
 import importlib

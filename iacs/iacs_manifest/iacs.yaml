@@ -1225,7 +1225,7 @@ ecs_framework:
                     - weight: 0.5
                 con_dynamic_plugin_architecture_incompatible:
                     - description: >
-                        Architect.load_dataflow() attaches audit/export modules at
+                        Registrar.load_dataflow() attaches audit/export modules at
                         runtime. SQLMesh requires all models to be statically declared
                         at project initialization. This architectural pattern would
                         need a fundamental redesign.
