@@ -363,7 +363,7 @@ def test_scd_support():
     # Initial registry
     example_dir = EXAMPLES_DIR / "game_data"
     etl = ETLSystem()
-    registry = etl.execute(base_etl, input_dirs=[str(example_dir)])
+    registry = etl.execute_base_etl(input_dirs=[example_dir])
 
     # Get the entity_id for the player
     eids = registry.get("entity_id")
@@ -380,17 +380,15 @@ def test_scd_support():
             y: 5
             z: 5
     """
-    new_registry = etl.execute(
-        base_etl,
-        input_dirs=[str(example_dir)],
+    updated_registry = etl.execute_base_etl(
+        input_dirs=[example_dir],
         yaml_strings={"scd_update": input_yaml},
         load_time=1,
+        target_registry=registry
     )
-    registry.merge(new_registry)
-    new_registry.close()
 
     # Check the current position of the player and the dimensions of the position table
-    positions = registry.view_current("position")
+    positions = updated_registry.view_current("position")
     assert positions.count().execute() == 1
     assert list(positions.execute().iloc[0][["position.x", "position.y", "position.z"]]) == [5, 5, 5]
 
