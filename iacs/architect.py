@@ -71,13 +71,11 @@ class Architect:
                 slowly changing dimension. Only null values in the newly
                 loaded components are filled; existing data is untouched.
         """
-        from iacs.dataflows import base_etl
-
         if isinstance(manifest, (str, Path)):
             manifest = [manifest]
-        new_registry = self._etl.execute(base_etl, input_dirs=manifest, load_time=time)
-        self._registry.merge(new_registry)
-        new_registry.close()
+        self._etl.execute_base_etl(
+            input_dirs=manifest, load_time=time, target_registry=self._registry
+        )
 
     def save(self, path: str | Path) -> None:
         """Export the current registry as-is to a database.
