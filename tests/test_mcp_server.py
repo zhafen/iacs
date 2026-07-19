@@ -10,7 +10,7 @@ from iacs.mcp_server import (
     _BUILTINS_DIR,
     _IACS_MANIFEST_DIR,
     _MANIFEST_ENV_VAR,
-    _architects,
+    _registrars,
     _available_audit_components,
     _build_format_description,
     _parse_manifest_env,
@@ -271,16 +271,16 @@ class TestLoadManifest:
         result = load_manifest([str(_IACS_MANIFEST_DIR)], ctx)
         assert "Component types:" in result
 
-    def test_stores_architect_for_session(self):
+    def test_stores_registrar_for_session(self):
         ctx = _make_ctx()
         load_manifest([str(_IACS_MANIFEST_DIR)], ctx)
-        assert ctx.request_context.session in _architects
+        assert ctx.request_context.session in _registrars
 
-    def test_loaded_architect_has_component_types(self):
+    def test_loaded_registrar_has_component_types(self):
         ctx = _make_ctx()
         load_manifest([str(_IACS_MANIFEST_DIR)], ctx)
-        arch = _architects[ctx.request_context.session]
-        assert len(arch.registry.component_types) > 0
+        reg = _registrars[ctx.request_context.session]
+        assert len(reg.registry.component_types) > 0
 
     def test_multiple_paths_are_merged(self, tmp_path):
         """Loading two dirs should merge entities from both into one registry."""
@@ -289,8 +289,8 @@ class TestLoadManifest:
         )
         ctx = _make_ctx()
         load_manifest([str(_IACS_MANIFEST_DIR), str(tmp_path)], ctx)
-        arch = _architects[ctx.request_context.session]
-        desc = arch.registry.get("description").execute()
+        reg = _registrars[ctx.request_context.session]
+        desc = reg.registry.get("description").execute()
         assert any("From extra dir" in str(v) for v in desc["value"])
 
     def test_env_var_reported_by_get_manifest_path(self, monkeypatch):
@@ -400,8 +400,8 @@ class TestRunDataflow:
         ctx = _make_ctx()
         load_manifest([str(_EXAMPLE_MANIFEST)], ctx)
         run_dataflow("audit.requirement_coverage", ctx)
-        arch = _architects[ctx.request_context.session]
-        assert "requirement_coverage" in arch.registry.component_types
+        reg = _registrars[ctx.request_context.session]
+        assert "requirement_coverage" in reg.registry.component_types
 
     def test_new_component_types_listed_in_result(self):
         ctx = _make_ctx()

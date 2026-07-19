@@ -19,22 +19,22 @@ from iacs.commands import (
     cmd_view_component,
     cmd_view_entity,
     get_manifest_path_str,
-    make_architect,
+    make_registrar,
     parse_manifest_env as _parse_manifest_env,
     validate_yaml_string as _validate_yaml_string,
 )
 
 if TYPE_CHECKING:
-    from iacs.architect import Architect
+    from iacs.registrar import Registrar
 
-_architects: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
+_registrars: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 
 
-def _get_architect(ctx: Context) -> "Architect":
+def _get_registrar(ctx: Context) -> "Registrar":
     session = ctx.request_context.session
-    if session not in _architects:
-        _architects[session] = make_architect(_parse_manifest_env())
-    return _architects[session]
+    if session not in _registrars:
+        _registrars[session] = make_registrar(_parse_manifest_env())
+    return _registrars[session]
 
 
 server = FastMCP(
@@ -66,10 +66,10 @@ def load_manifest(manifest_paths: list[str], ctx: Context) -> str:
     Args:
         manifest_paths: List of paths to manifest directories.
     """
-    arch = make_architect(manifest_paths)
-    _architects[ctx.request_context.session] = arch
+    reg = make_registrar(manifest_paths)
+    _registrars[ctx.request_context.session] = reg
     paths_str = ", ".join(repr(p) for p in manifest_paths)
-    return f"Loaded manifest from {paths_str}. Component types: {arch.registry.component_types}"
+    return f"Loaded manifest from {paths_str}. Component types: {reg.registry.component_types}"
 
 
 @server.tool()
@@ -80,7 +80,7 @@ def list_component_types(ctx: Context) -> str:
     view_entity. Audit components listed as "available" are not yet in the
     registry and must first be generated with run_dataflow.
     """
-    return cmd_list_component_types(_get_architect(ctx))
+    return cmd_list_component_types(_get_registrar(ctx))
 
 
 @server.tool()
@@ -92,7 +92,7 @@ def view_component(component_type: str, ctx: Context, format: str = "csv") -> st
         format: Output format — "csv" (default) or "markdown" for a
             human-readable table.
     """
-    return cmd_view_component(_get_architect(ctx), component_type, format)
+    return cmd_view_component(_get_registrar(ctx), component_type, format)
 
 
 @server.tool()
@@ -104,7 +104,7 @@ def view_entity(entity_id: str, ctx: Context, format: str = "markdown") -> str:
             "feeding_system.feed_cats").
         format: Output format — "markdown" (default) or "csv".
     """
-    return cmd_view_entity(_get_architect(ctx), entity_id, format)
+    return cmd_view_entity(_get_registrar(ctx), entity_id, format)
 
 
 @server.tool()
@@ -119,7 +119,7 @@ def run_dataflow(name: str, ctx: Context) -> str:
         name: Dotted module path relative to iacs.dataflows
             (e.g. "audit.requirement_coverage").
     """
-    return cmd_run_dataflow(_get_architect(ctx), name)
+    return cmd_run_dataflow(_get_registrar(ctx), name)
 
 
 @server.tool()
@@ -133,7 +133,7 @@ def refresh(ctx: Context) -> str:
 
     Returns a summary listing each file that was written.
     """
-    return cmd_refresh(_get_architect(ctx))
+    return cmd_refresh(_get_registrar(ctx))
 
 
 @server.tool()

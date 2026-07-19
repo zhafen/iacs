@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import yaml
 
 if TYPE_CHECKING:
-    from iacs.architect import Architect
+    from iacs.registrar import Registrar
 
 MANIFEST_ENV_VAR = "IACS_MANIFEST"
 EXAMPLE_MANIFEST = Path(__file__).parent.parent / "examples" / "example"
@@ -46,15 +46,15 @@ def get_manifest_path_str(manifest_paths: list[str] | None = None) -> str:
     return f"Manifest path(s): {paths_str} ({source})"
 
 
-def make_architect(manifest_paths: list[str]) -> "Architect":
-    """Create an Architect loaded from the given manifest directory paths."""
-    from iacs.architect import Architect
-    return Architect.from_manifest(manifest_paths)
+def make_registrar(manifest_paths: list[str]) -> "Registrar":
+    """Create a Registrar loaded from the given manifest directory paths."""
+    from iacs.registrar import Registrar
+    return Registrar.from_manifest(manifest_paths)
 
 
-def cmd_list_component_types(arch: "Architect") -> str:
+def cmd_list_component_types(reg: "Registrar") -> str:
     """Return a summary of loaded and available-but-ungenerated component types."""
-    loaded = arch.registry.component_types
+    loaded = reg.registry.component_types
     audit_map = available_audit_components()
     unloaded = {ct: df for ct, df in audit_map.items() if ct not in loaded}
     lines = [f"Loaded component types: {loaded}"]
@@ -65,31 +65,31 @@ def cmd_list_component_types(arch: "Architect") -> str:
     return "\n".join(lines)
 
 
-def cmd_view_component(arch: "Architect", component_type: str, format: str = "csv") -> str:
+def cmd_view_component(reg: "Registrar", component_type: str, format: str = "csv") -> str:
     """Return all data for a component type as CSV or markdown."""
-    df = arch.registry.view_df(component_type).reset_index()
+    df = reg.view_df(component_type).reset_index()
     if format == "markdown":
         return df.to_markdown(index=False)
     return df.to_csv(index=False)
 
 
-def cmd_view_entity(arch: "Architect", entity_id: str, format: str = "markdown") -> str:
+def cmd_view_entity(reg: "Registrar", entity_id: str, format: str = "markdown") -> str:
     """Return all component data for a specific entity."""
-    return arch.registry.view_entity(entity_id, format=format)
+    return reg.view_entity(entity_id, format=format)
 
 
-def cmd_run_dataflow(arch: "Architect", name: str) -> str:
+def cmd_run_dataflow(reg: "Registrar", name: str) -> str:
     """Execute a dataflow, returning a status string listing any new component types."""
-    before = set(arch.registry.component_types)
-    arch.execute(name)
-    after = set(arch.registry.component_types)
+    before = set(reg.registry.component_types)
+    reg.execute(name)
+    after = set(reg.registry.component_types)
     added = sorted(after - before)
     if added:
         return f"Dataflow {name!r} complete. New component types: {added}"
     return f"Dataflow {name!r} complete. No new component types added."
 
 
-def cmd_refresh(arch: "Architect") -> str:
+def cmd_refresh(reg: "Registrar") -> str:
     """Run the ETL export and write normalised YAML back to the original source paths.
 
     Executes the etl.export_manifest dataflow against the already-loaded
@@ -97,8 +97,7 @@ def cmd_refresh(arch: "Architect") -> str:
     each file to its original location, effectively round-tripping the
     manifest through the pipeline.
     """
-    result = arch.execute("etl.export_manifest")
-    saved: list[str] = result.get("exported_manifest_filepaths", [])
+    saved = reg.export_manifest()
     if not saved:
         return "No EC files to refresh."
     lines = [f"Refreshed {len(saved)} file(s):"]
@@ -221,12 +220,12 @@ def validate_yaml_string(yaml_string: str) -> str:
         yaml_file = Path(tmp_dir) / "input.yaml"
         yaml_file.write_text(yaml_string, encoding="utf-8")
         try:
-            from iacs.architect import Architect
-            arch = Architect.from_manifest(tmp_dir)
+            from iacs.registrar import Registrar
+            reg = Registrar.from_manifest(tmp_dir)
         except Exception:
             return f"Validation error:\n{traceback.format_exc()}"
 
-    types = arch.registry.component_types
+    types = reg.registry.component_types
     return f"Valid. Component types found: {types}"
 
 

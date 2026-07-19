@@ -2,7 +2,7 @@
 
 import yaml
 
-from iacs.architect import Architect
+from iacs.registrar import Registrar
 
 
 class TestExportManifestSplitsByFile:
@@ -12,7 +12,7 @@ class TestExportManifestSplitsByFile:
         input_dir = "examples/networks"
         output_dir = str(tmp_path)
 
-        a = Architect.from_manifest(input_dir)
+        a = Registrar.from_manifest(input_dir)
         a.execute("etl.export_manifest", output_dir=output_dir)
 
         # One file per original source (builtins excluded)

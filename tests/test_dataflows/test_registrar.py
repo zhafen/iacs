@@ -1,4 +1,6 @@
-"""Tests for the Architect base class."""
+"""Tests for the Registrar base class."""
+
+from pathlib import Path
 
 import pytest
 import pandas as pd
@@ -6,7 +8,7 @@ import ibis
 
 from tests.conftest import make_registry
 from tests.test_dataflows.dags import dataflow, dataflow_b
-from iacs.architect import Architect
+from iacs.registrar import Registrar
 
 
 def _sample_registry():
@@ -20,43 +22,43 @@ def _sample_registry():
     )
 
 
-def _architect_with_test_dataflow():
-    """Return an Architect with the test dataflow module loaded directly."""
-    a = Architect(_sample_registry())
+def _registrar_with_test_dataflow():
+    """Return a Registrar with the test dataflow module loaded directly."""
+    a = Registrar(_sample_registry())
     a._dataflows = [dataflow]
     return a
 
 
-class TestArchitectConstruction:
+class TestRegistrarConstruction:
     def test_can_create_with_registry(self):
         registry = _sample_registry()
-        a = Architect(registry)
+        a = Registrar(registry)
         assert a is not None
 
     def test_registry_property(self):
         registry = _sample_registry()
-        a = Architect(registry)
+        a = Registrar(registry)
         assert a.registry is registry
 
 
-class TestArchitectExecute:
+class TestRegistrarExecute:
     def test_execute_returns_dict(self):
-        a = _architect_with_test_dataflow()
+        a = _registrar_with_test_dataflow()
         result = a.execute(["entity_summary"])
         assert isinstance(result, dict)
 
     def test_execute_result_contains_requested_keys(self):
-        a = _architect_with_test_dataflow()
+        a = _registrar_with_test_dataflow()
         result = a.execute(["entity_summary"])
         assert "entity_summary" in result
 
     def test_execute_result_value_is_ibis_table(self):
-        a = _architect_with_test_dataflow()
+        a = _registrar_with_test_dataflow()
         result = a.execute(["entity_summary"])
         assert isinstance(result["entity_summary"], ibis.expr.types.Table)
 
     def test_execute_result_has_expected_data(self):
-        a = _architect_with_test_dataflow()
+        a = _registrar_with_test_dataflow()
         result = a.execute(["entity_summary"])
         df = result["entity_summary"].execute()
         assert len(df) == 2
@@ -64,38 +66,38 @@ class TestArchitectExecute:
         assert "description" in df.columns
 
     def test_execute_multiple_nodes(self):
-        a = _architect_with_test_dataflow()
+        a = _registrar_with_test_dataflow()
         result = a.execute(["description_table", "entity_summary"])
         assert "description_table" in result
         assert "entity_summary" in result
 
     def test_execute_empty_list_returns_empty_dict(self):
-        a = _architect_with_test_dataflow()
+        a = _registrar_with_test_dataflow()
         result = a.execute([])
         assert result == {}
 
 
-class TestArchitectOutputs:
+class TestRegistrarOutputs:
     def test_outputs_lists_available_nodes(self):
-        a = _architect_with_test_dataflow()
+        a = _registrar_with_test_dataflow()
         outputs = a.outputs
         assert "entity_summary" in outputs
         assert "description_table" in outputs
 
     def test_outputs_does_not_include_input_nodes(self):
-        a = _architect_with_test_dataflow()
+        a = _registrar_with_test_dataflow()
         outputs = a.outputs
         assert "registry" not in outputs
 
 
 class TestLoadDataflow:
     def test_load_top_level_dataflow(self):
-        a = Architect(_sample_registry())
+        a = Registrar(_sample_registry())
         a.load_dataflow("etl.export_manifest")
         assert any(m.__name__ == "iacs.dataflows.etl.export_manifest" for m in a._dataflows)
 
     def test_load_subpackage_dataflow(self):
-        a = Architect(_sample_registry())
+        a = Registrar(_sample_registry())
         a.load_dataflow("audit.requirement_coverage")
         assert any(
             m.__name__ == "iacs.dataflows.audit.requirement_coverage"
@@ -103,19 +105,19 @@ class TestLoadDataflow:
         )
 
     def test_load_dataflow_adds_outputs(self):
-        a = Architect(_sample_registry())
+        a = Registrar(_sample_registry())
         a.load_dataflow("audit.traceability")
         assert "traceability" in a.outputs
 
     def test_load_multiple_dataflows(self):
-        a = Architect(_sample_registry())
+        a = Registrar(_sample_registry())
         a.load_dataflow("audit.traceability")
         a.load_dataflow("audit.todo")
         assert "traceability" in a.outputs
         assert "todo" in a.outputs
 
     def test_load_unknown_dataflow_raises(self):
-        a = Architect(_sample_registry())
+        a = Registrar(_sample_registry())
         with pytest.raises(ValueError, match="nonexistent"):
             a.load_dataflow("nonexistent")
 
@@ -134,19 +136,19 @@ class TestFromManifestRunsDeriveComponents:
             return original_execute(self, final_vars, **kwargs)
 
         with patch.object(hamilton_driver.Driver, "execute", capture_execute):
-            Architect.from_manifest("examples/example")
+            Registrar.from_manifest("examples/example")
 
         assert "validated_registry" in executed_vars, (
             "derive_components was not executed during from_manifest"
         )
 
 
-class TestArchitectUX:
-    """This class tests Architect as we expect to use it."""
+class TestRegistrarUX:
+    """This class tests Registrar as we expect to use it."""
 
     def test_setup_and_inspect(self):
 
-        a = Architect.from_manifest("examples/example")
+        a = Registrar.from_manifest("examples/example")
         a.view("entity_id")
         assert a.get("component_type") == a.registry.get("component_type")
 
@@ -156,11 +158,11 @@ class TestArchitectUX:
         output_dir = str(tmp_path)
 
         # Export
-        a = Architect.from_manifest(input_dir)
+        a = Registrar.from_manifest(input_dir)
         a.execute("etl.export_manifest", output_dir=output_dir)
 
         # Reload and check
-        a2 = Architect.from_manifest(output_dir)
+        a2 = Registrar.from_manifest(output_dir)
         pd.testing.assert_allclose(
             a.view("component_type"),
             a2.view("component_type"),
@@ -168,29 +170,29 @@ class TestArchitectUX:
 
 
 class TestSaveAndLoadDatabase:
-    """Tests for exporting/loading an Architect's registry via a database file."""
+    """Tests for exporting/loading a Registrar's registry via a database file."""
 
     def test_save_creates_file(self, tmp_path):
-        a = Architect(_sample_registry())
+        a = Registrar(_sample_registry())
         db_path = tmp_path / "registry.duckdb"
         a.save(db_path)
         assert db_path.exists()
 
     def test_load_recovers_component_types(self, tmp_path):
-        a = Architect(_sample_registry())
+        a = Registrar(_sample_registry())
         db_path = tmp_path / "registry.duckdb"
         a.save(db_path)
 
-        a2 = Architect.load(db_path)
+        a2 = Registrar.load(db_path)
 
         assert set(a2.registry.component_types) == set(a.registry.component_types)
 
     def test_load_recovers_data(self, tmp_path):
-        a = Architect(_sample_registry())
+        a = Registrar(_sample_registry())
         db_path = tmp_path / "registry.duckdb"
         a.save(db_path)
 
-        a2 = Architect.load(db_path)
+        a2 = Registrar.load(db_path)
 
         pd.testing.assert_frame_equal(
             a2.registry.get("description").execute().sort_values("entity_id").reset_index(drop=True),
@@ -199,11 +201,11 @@ class TestSaveAndLoadDatabase:
 
     def test_save_then_from_manifest_roundtrip_via_example(self, tmp_path):
         """Saving a manifest-loaded registry and reloading should preserve data."""
-        a = Architect.from_manifest("examples/example")
+        a = Registrar.from_manifest("examples/example")
         db_path = tmp_path / "registry.duckdb"
         a.save(db_path)
 
-        a2 = Architect.load(db_path)
+        a2 = Registrar.load(db_path)
 
         assert set(a2.registry.component_types) == set(a.registry.component_types)
 
@@ -230,7 +232,7 @@ class TestLoadManifestWithTime:
         self._write(tmp_path, "schema.yaml", self._SCHEMA)
         self._write(tmp_path, "reading.yaml", "cat_status:\n- status_reading:\n    status: open\n")
 
-        a = Architect()
+        a = Registrar()
         a.load_manifest(tmp_path, time="2024-01-01")
 
         df = a.registry.get("status_reading").execute()
@@ -243,7 +245,7 @@ class TestLoadManifestWithTime:
             "cat_status:\n- status_reading:\n    status: open\n    as_of: explicit-time\n",
         )
 
-        a = Architect()
+        a = Registrar()
         a.load_manifest(tmp_path, time="2024-01-01")
 
         df = a.registry.get("status_reading").execute()
@@ -253,7 +255,7 @@ class TestLoadManifestWithTime:
         self._write(tmp_path, "schema.yaml", self._SCHEMA)
         self._write(tmp_path, "reading.yaml", "cat_status:\n- status_reading:\n    status: open\n")
 
-        a = Architect()
+        a = Registrar()
         a.load_manifest(tmp_path)
 
         df = a.registry.get("status_reading").execute()
@@ -263,7 +265,7 @@ class TestLoadManifestWithTime:
         self._write(tmp_path, "schema.yaml", self._SCHEMA)
         self._write(tmp_path, "reading.yaml", "cat_status:\n- status_reading:\n    status: open\n")
 
-        a = Architect()
+        a = Registrar()
         a.load_manifest(tmp_path, time="2024-01-01")
 
         self._write(tmp_path, "reading.yaml", "cat_status:\n- status_reading:\n    status: closed\n")
@@ -278,7 +280,7 @@ class TestLoadManifestWithTime:
         self._write(tmp_path, "schema.yaml", self._SCHEMA)
         self._write(tmp_path, "reading.yaml", "cat_status:\n- status_reading:\n    status: open\n")
 
-        a = Architect()
+        a = Registrar()
         a.load_manifest(tmp_path, time="2024-01-01")
 
         self._write(tmp_path, "reading.yaml", "cat_status:\n- status_reading:\n    status: closed\n")
@@ -291,7 +293,7 @@ class TestLoadManifestWithTime:
         self._write(tmp_path, "schema.yaml", self._SCHEMA)
         self._write(tmp_path, "reading.yaml", "cat_status:\n- status_reading:\n    status: open\n")
 
-        a = Architect.from_manifest(tmp_path, time="2024-01-01")
+        a = Registrar.from_manifest(tmp_path, time="2024-01-01")
 
         df = a.registry.get("status_reading").execute()
         assert df.iloc[0]["as_of"] == "2024-01-01"
@@ -307,9 +309,9 @@ class TestLoadManifest:
             "sol_a:\n- description: Solution A\n"
         )
 
-        a_all = Architect.from_manifest(str(tmp_path))
+        a_all = Registrar.from_manifest(str(tmp_path))
 
-        a_inc = Architect()
+        a_inc = Registrar()
         for yaml_file in sorted(tmp_path.rglob("*.yaml")):
             a_inc.load_manifest(str(yaml_file))
 
@@ -331,10 +333,10 @@ class TestLoadManifest:
             "req_a:\n- description: Requirement A\n- requirement\n"
         )
 
-        a = Architect.from_manifest(tmp_path)
+        a = Registrar.from_manifest(tmp_path)
         assert "requirement" in a.registry.component_types
 
-        a2 = Architect()
+        a2 = Registrar()
         a2.load_manifest(tmp_path)
         assert "requirement" in a2.registry.component_types
 
@@ -347,5 +349,106 @@ class TestLoadManifest:
         )
         (sub / "solutions.yaml").write_text("sol_a:\n- description: Solution A\n")
 
-        a = Architect.from_manifest([str(tmp_path / "requirements.yaml"), sub])
+        a = Registrar.from_manifest([str(tmp_path / "requirements.yaml"), sub])
         assert "requirement" in a.registry.component_types
+
+
+class TestUpdate:
+    """Tests for `update`, the general-purpose incremental-merge method."""
+
+    def test_load_manifest_is_a_thin_wrapper_around_update(self, tmp_path):
+        (tmp_path / "requirements.yaml").write_text(
+            "req_a:\n- description: Requirement A\n- requirement\n"
+        )
+        r = Registrar()
+        r.load_manifest(tmp_path)
+        assert "requirement" in r.registry.component_types
+
+    def test_update_accepts_yaml_strings_without_input_dirs(self):
+        r = Registrar()
+        r.update(yaml_strings={
+            "req": "req_a:\n- description: Requirement A\n- requirement\n"
+        })
+        assert "requirement" in r.registry.component_types
+
+    def test_update_merges_yaml_strings_into_existing_registry(self):
+        """An SCD-style update: attach a new position to an entity already in the registry."""
+        example_dir = Path("examples/game_data")
+        r = Registrar.from_manifest(example_dir)
+
+        eids = r.registry.get("entity_id")
+        player_eid = (
+            eids.filter(eids["alias"].contains("player")).execute().iloc[0]["value"]
+        )
+
+        input_yaml = f"""
+        updated_player_position:
+            - entity_id: {player_eid}
+            - position:
+                x: 5
+                y: 5
+                z: 5
+        """
+        r.update(
+            input_dirs=[example_dir],
+            yaml_strings={"scd_update": input_yaml},
+            time=1,
+        )
+
+        positions = r.view_current("position")
+        assert positions.count().execute() == 1
+        assert list(
+            positions.execute().iloc[0][["position.x", "position.y", "position.z"]]
+        ) == [5, 5, 5]
+
+
+class TestExportManifestMethod:
+    """Tests for the `export_manifest` convenience method."""
+
+    def test_export_manifest_writes_to_output_dir(self, tmp_path):
+        input_dir = "examples/example"
+        output_dir = str(tmp_path)
+
+        r = Registrar.from_manifest(input_dir)
+        saved = r.export_manifest(output_dir)
+
+        assert saved
+        assert all(Path(p).exists() for p in saved)
+
+    def test_export_manifest_refreshes_in_place_without_output_dir(self, tmp_path):
+        (tmp_path / "requirements.yaml").write_text(
+            "req_a:\n- description: Requirement A\n- requirement\n"
+        )
+        r = Registrar.from_manifest(tmp_path)
+
+        saved = r.export_manifest()
+
+        assert saved
+        assert all(Path(p).exists() for p in saved)
+
+
+class TestViewProxies:
+    """Tests that Registrar exposes the same view helpers as Registry, without `.registry`."""
+
+    @staticmethod
+    def _registrar():
+        return Registrar.from_manifest("examples/example")
+
+    def test_view_df_matches_registry_view_df(self):
+        r = self._registrar()
+        pd.testing.assert_frame_equal(
+            r.view_df("description"), r.registry.view_df("description")
+        )
+
+    def test_view_entity_matches_registry_view_entity(self):
+        r = self._registrar()
+        entity_id = r.registry.get("entity_id").execute().iloc[0]["value"]
+        assert r.view_entity(entity_id) == r.registry.view_entity(entity_id)
+
+    def test_view_entity_df_matches_registry_view_entity_df(self):
+        r = self._registrar()
+        entity_id = r.registry.get("entity_id").execute().iloc[0]["value"]
+        assert (
+            r.view_entity_df(entity_id).keys()
+            == r.registry.view_entity_df(entity_id).keys()
+        )

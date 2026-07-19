@@ -4,14 +4,14 @@ from collections import defaultdict
 
 import networkx as nx
 
-from iacs.architect import Architect
+from iacs.registrar import Registrar
 
 
-def build_requirement_tree(architect: Architect, ancestor_key: str) -> dict:
+def build_requirement_tree(registrar: Registrar, ancestor_key: str) -> dict:
     """Return nested {name, priority, children} dict for D3 hierarchy.
 
     Args:
-        architect: An Architect instance with loaded registry data.
+        registrar: A Registrar instance with loaded registry data.
         ancestor_key: The entity_key of the root entity for the tree.
 
     Returns:
@@ -20,9 +20,9 @@ def build_requirement_tree(architect: Architect, ancestor_key: str) -> dict:
     Raises:
         ValueError: If no entity is found with the given ancestor_key.
     """
-    entity_ids_pd = architect.get("entity_id").to_pandas()
-    parents_pd = architect.get("parent").to_pandas()
-    reqs_pd = architect.get("requirement").to_pandas()
+    entity_ids_pd = registrar.get("entity_id").to_pandas()
+    parents_pd = registrar.get("parent").to_pandas()
+    reqs_pd = registrar.get("requirement").to_pandas()
 
     id_to_key = entity_ids_pd.set_index("value")["entity_key"].to_dict()
     req_ids = set(reqs_pd["entity_id"].unique())

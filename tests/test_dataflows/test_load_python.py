@@ -242,14 +242,14 @@ class TestLoadIacsPackage:
     def test_keyed_by_py_file_path(self, iacs_result):
         assert all(k.endswith(".py") for k in iacs_result)
 
-    def test_architect_module_entity_present(self, all_entities):
-        assert "iacs.architect" in all_entities
+    def test_registrar_module_entity_present(self, all_entities):
+        assert "iacs.registrar" in all_entities
 
-    def test_architect_class_entity_present(self, all_entities):
-        assert "iacs.architect.Architect" in all_entities
+    def test_registrar_class_entity_present(self, all_entities):
+        assert "iacs.registrar.Registrar" in all_entities
 
-    def test_architect_method_entity_present(self, all_entities):
-        assert "iacs.architect.Architect.from_manifest" in all_entities
+    def test_registrar_method_entity_present(self, all_entities):
+        assert "iacs.registrar.Registrar.from_manifest" in all_entities
 
     def test_load_manifest_module_entity_present(self, all_entities):
         assert "iacs.dataflows.etl.load_manifest" in all_entities
@@ -285,10 +285,10 @@ class TestLoadIacsPackage:
         df = ct["description"].to_pandas()
         assert len(df) >= 50
 
-    def test_architect_from_manifest_includes_python_entities(self):
-        """Architect.from_manifest on a dir with .py files registers Python entities."""
-        from iacs.architect import Architect
-        a = Architect.from_manifest(_IACS_SRC)
+    def test_registrar_from_manifest_includes_python_entities(self):
+        """Registrar.from_manifest on a dir with .py files registers Python entities."""
+        from iacs.registrar import Registrar
+        a = Registrar.from_manifest(_IACS_SRC)
         desc = a.registry.get("description").execute()
         py_entities = desc[desc["entity_id"].isin(
             a.registry.get("entity_id").execute()
