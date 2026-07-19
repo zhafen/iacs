@@ -10,8 +10,10 @@ from pandas.testing import assert_frame_equal
 import pytest
 from hamilton.lifecycle import NodeExecutionHook
 
+from iacs.dataflows import base_etl
 from iacs.dataflows.etl import export_manifest
 from iacs.etl_system import ETLSystem
+from iacs.registrar import Registrar
 from iacs.registry import Registry
 
 ROOT = Path(__file__).parent.parent
@@ -318,7 +320,7 @@ def test_end_to_end(example_dir: Path, tmp_path: Path):
     etl = ETLSystem()
 
     # Get the loaded registry, comparing outputs along the way
-    registry = etl.execute_base_etl(adapters=[checker], input_dirs=[str(example_dir)])
+    registry = etl.execute(base_etl, adapters=[checker], input_dirs=[str(example_dir)])
 
     # Export back to manifest format, comparing outputs along the way
     output_dir = tmp_path / example_dir.name
@@ -332,7 +334,7 @@ def test_end_to_end(example_dir: Path, tmp_path: Path):
     # Reload. The expected fixtures encode entity IDs derived from the original
     # example_dir's filepath, so they don't apply to nodes loaded from
     # output_dir; only the final registry comparison below applies here.
-    reloaded_registry = etl.execute_base_etl(input_dirs=[str(output_dir)])
+    reloaded_registry = etl.execute(base_etl, input_dirs=[str(output_dir)])
 
     _assert_registries_equal(registry, reloaded_registry)
 
@@ -343,14 +345,14 @@ def test_incremental_load_is_consistent():
     etl = ETLSystem()
 
     # Get the loaded registry
-    registry = etl.execute_base_etl(input_dirs=[str(example_dir)])
+    registry = etl.execute(base_etl, input_dirs=[str(example_dir)])
 
     incremental_registry = Registry(ibis.duckdb.connect(), {})
     source_files = sorted(example_dir.rglob("*.yaml")) + sorted(
         example_dir.rglob("*.csv")
     )
     for source_file in source_files:
-        new_registry = etl.execute_base_etl(input_dirs=[str(source_file)])
+        new_registry = etl.execute(base_etl, input_dirs=[str(source_file)])
         incremental_registry.merge(new_registry)
         new_registry.close()
 
@@ -361,11 +363,10 @@ def test_scd_support():
 
     # Initial registry
     example_dir = EXAMPLES_DIR / "game_data"
-    etl = ETLSystem()
-    registry = etl.execute_base_etl(input_dirs=[example_dir])
+    registrar = Registrar.from_manifest(example_dir)
 
     # Get the entity_id for the player
-    eids = registry.get("entity_id")
+    eids = registrar.get("entity_id")
     player_eid = (
         eids.filter(eids["alias"].contains("player")).execute().iloc[0]["value"]
     )
@@ -379,15 +380,14 @@ def test_scd_support():
             y: 5
             z: 5
     """
-    updated_registry = etl.execute_base_etl(
+    registrar.update(
         input_dirs=[example_dir],
         yaml_strings={"scd_update": input_yaml},
-        load_time=1,
-        target_registry=registry
+        time=1,
     )
 
     # Check the current position of the player and the dimensions of the position table
-    positions = updated_registry.view_current("position")
+    positions = registrar.view_current("position")
     assert positions.count().execute() == 1
     assert list(positions.execute().iloc[0][["position.x", "position.y", "position.z"]]) == [5, 5, 5]
 

@@ -3,10 +3,7 @@ from __future__ import annotations
 
 import importlib
 from types import ModuleType
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from iacs.registry import Registry
+from typing import Any
 
 _DATAFLOW_BASE_PACKAGE = "iacs.dataflows"
 
@@ -79,36 +76,6 @@ class ETLSystem:
         drv = self._build_driver(modules, adapters)
         result = drv.execute(names, inputs=inputs or None)
         return result[names[0]] if unwrap else result
-
-    def execute_base_etl(
-        self,
-        adapters: list | None = None,
-        target_registry: Registry | None = None,
-        **inputs,
-    ) -> Registry:
-        """Run the ``base_etl`` dataflow and return the resulting registry.
-
-        Convenience wrapper around ``execute(base_etl, ...)``. If
-        ``target_registry`` is given, the newly loaded registry is merged
-        into it (and closed) and ``target_registry`` is returned instead —
-        useful for incrementally loading updates (e.g. SCD updates) into an
-        existing registry.
-
-        Args:
-            adapters: Extra Hamilton lifecycle adapters (e.g. for testing).
-            target_registry: An existing registry to merge the newly loaded
-                registry into, instead of returning it standalone.
-            **inputs: Runtime inputs forwarded to ``base_etl`` (e.g.
-                ``input_dirs=...``).
-        """
-        from iacs.dataflows import base_etl
-
-        new_registry = self.execute(base_etl, adapters=adapters, **inputs)
-        if target_registry is not None:
-            target_registry.merge(new_registry)
-            new_registry.close()
-            return target_registry
-        return new_registry
 
     def outputs(self, dataflows: ModuleType | str | list[ModuleType | str]) -> list[str]:
         """List the non-input node names available across the given dataflows."""

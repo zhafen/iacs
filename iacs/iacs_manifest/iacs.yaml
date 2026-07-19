@@ -638,6 +638,18 @@ iacs:
                           All existing manifests, the load/export pipeline, and tooling
                           use the classic list-based format. Migration would require
                           converting every file and rewriting the core ETL path.
+        inline_imports_discussion:
+            - description: >
+                  Several classes (e.g. Registrar) import modules such as ibis
+                  inside methods rather than at the top of the file, primarily
+                  to keep expensive imports out of light-weight import paths
+                  such as the MCP server (see tests/test_startup_performance.py,
+                  which enforces an import-time threshold).
+            - todo: >
+                  Re-evaluate the inline imports in iacs/registrar.py and
+                  elsewhere: confirm each one is still needed for startup
+                  performance or to avoid a circular import, and move any that
+                  aren't back to the top of the file.
 
 ecs_framework:
     data:

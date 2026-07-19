@@ -83,14 +83,15 @@ class Registrar:
                 ``yaml_strings={"key": "raw yaml text"}`` or
                 ``python_strings={...}``.
         """
+        from iacs.dataflows import base_etl
+
         if isinstance(input_dirs, (str, Path)):
             input_dirs = [input_dirs]
-        self._etl.execute_base_etl(
-            input_dirs=input_dirs or [],
-            load_time=time,
-            target_registry=self._registry,
-            **inputs,
+        new_registry = self._etl.execute(
+            base_etl, input_dirs=input_dirs or [], load_time=time, **inputs
         )
+        self._registry.merge(new_registry)
+        new_registry.close()
 
     def load_manifest(
         self, manifest: str | Path | list[str | Path], time: Any = None
