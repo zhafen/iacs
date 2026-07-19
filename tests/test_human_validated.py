@@ -4,17 +4,12 @@ import importlib.util
 from pathlib import Path
 from types import ModuleType
 
-import ibis
 import pandas as pd
 from pandas.testing import assert_frame_equal
 import pytest
 from hamilton.lifecycle import NodeExecutionHook
 
-from iacs.dataflows import base_etl
-from iacs.dataflows.etl import export_manifest
-from iacs.etl_system import ETLSystem
 from iacs.registrar import Registrar
-from iacs.registry import Registry
 
 ROOT = Path(__file__).parent.parent
 EXAMPLES_DIR = ROOT / "examples"
@@ -239,18 +234,18 @@ def _assert_components_equal(
     )
 
 
-def _assert_registries_equal(registry_a: Registry, registry_b: Registry) -> None:
+def _assert_registries_equal(registrar_a: Registrar, registrar_b: Registrar) -> None:
     """Compare each component. entity_id values are hashes of the source
     filepath, which differs between example_dir and output_dir, so
     normalize them to within-file entity paths before comparing.
     """
 
-    eid_df_a = registry_a.get("entity_id").execute()
-    eid_df_b = registry_b.get("entity_id").execute()
+    eid_df_a = registrar_a.get("entity_id").execute()
+    eid_df_b = registrar_b.get("entity_id").execute()
     skip = {"entity_id", "component_type", "invalid_field"}
-    for comp_type in set(registry_a.component_types) - skip:
-        comp = registry_a.get(comp_type).execute()
-        loaded_comp = registry_b.get(comp_type).execute()
+    for comp_type in set(registrar_a.registry.component_types) - skip:
+        comp = registrar_a.get(comp_type).execute()
+        loaded_comp = registrar_b.get(comp_type).execute()
         _assert_components_equal(comp, loaded_comp, eid_df_a, eid_df_b, comp_type)
 
 
@@ -317,46 +312,43 @@ def test_end_to_end(example_dir: Path, tmp_path: Path):
     """
 
     checker = _ExpectedValueChecker(example_dir)
-    etl = ETLSystem()
+    registrar = Registrar()
 
     # Get the loaded registry, comparing outputs along the way
-    registry = etl.execute(base_etl, adapters=[checker], input_dirs=[str(example_dir)])
+    registrar.update(input_dirs=[str(example_dir)], adapters=[checker])
 
     # Export back to manifest format, comparing outputs along the way
     output_dir = tmp_path / example_dir.name
-    etl.execute(
-        export_manifest,
+    registrar.execute(
+        "etl.export_manifest",
         adapters=[checker],
-        registry=registry,
         output_dir=str(output_dir),
     )
 
     # Reload. The expected fixtures encode entity IDs derived from the original
     # example_dir's filepath, so they don't apply to nodes loaded from
     # output_dir; only the final registry comparison below applies here.
-    reloaded_registry = etl.execute(base_etl, input_dirs=[str(output_dir)])
+    reloaded_registrar = Registrar()
+    reloaded_registrar.update(input_dirs=[str(output_dir)])
 
-    _assert_registries_equal(registry, reloaded_registry)
+    _assert_registries_equal(registrar, reloaded_registrar)
 
 
 def test_incremental_load_is_consistent():
 
     example_dir = EXAMPLES_DIR / "example"
-    etl = ETLSystem()
 
     # Get the loaded registry
-    registry = etl.execute(base_etl, input_dirs=[str(example_dir)])
+    registrar = Registrar.from_manifest(str(example_dir))
 
-    incremental_registry = Registry(ibis.duckdb.connect(), {})
+    incremental_registrar = Registrar()
     source_files = sorted(example_dir.rglob("*.yaml")) + sorted(
         example_dir.rglob("*.csv")
     )
     for source_file in source_files:
-        new_registry = etl.execute(base_etl, input_dirs=[str(source_file)])
-        incremental_registry.merge(new_registry)
-        new_registry.close()
+        incremental_registrar.update(input_dirs=[str(source_file)])
 
-    _assert_registries_equal(registry, incremental_registry)
+    _assert_registries_equal(registrar, incremental_registrar)
 
 
 def test_scd_support():
