@@ -51,6 +51,22 @@ entity_first_yaml_format:
               by substring matching:
                   - solution of: my_requirement.sub_requirement
 
+              ## Targeting an existing entity
+
+              To attach new component data to an entity that already exists in
+              the registry being updated into (e.g. an SCD-style position
+              update) instead of creating a new, unrelated entity, add a
+              ``same_as`` component pointing at it — by path (substring
+              matched, same as any entity_ref) or, if the path is ambiguous or
+              unknown, by its exact entity_id:
+                  - same_as:
+                        value: my_player
+                  - position: {x: 5, y: 5, z: 5}
+
+                  - same_as:
+                        target_entity_id: 3f9c1a0b2d4e
+                  - position: {x: 5, y: 5, z: 5}
+
               ## Multiple component instances
 
               An entity may have multiple instances of the same component type.

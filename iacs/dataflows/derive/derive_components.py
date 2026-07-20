@@ -5,10 +5,14 @@ import pandas as pd
 from hamilton.function_modifiers import subdag, source
 
 from ...registry import Registry
-from . import impact_cost, inherit_components, resolve_paths
+from . import impact_cost, inherit_components, resolve_paths, resolve_same_as
 
 
-@subdag(resolve_paths, inputs={"registry": source("registry")}, config={})
+def same_as_resolved_registry(registry: Registry, existing_registry: Registry = None) -> Registry:
+    return resolve_same_as.same_as_resolved_registry(registry, existing_registry)
+
+
+@subdag(resolve_paths, inputs={"registry": source("same_as_resolved_registry")}, config={})
 def resolved_registry(resolved_registry: Registry) -> Registry:
     return resolved_registry
 

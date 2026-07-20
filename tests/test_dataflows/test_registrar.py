@@ -383,7 +383,8 @@ class TestUpdate:
 
         input_yaml = f"""
         updated_player_position:
-            - entity_id: {player_eid}
+            - same_as:
+                target_entity_id: {player_eid}
             - position:
                 x: 5
                 y: 5
@@ -400,6 +401,35 @@ class TestUpdate:
         assert list(
             positions.execute().iloc[0][["position.x", "position.y", "position.z"]]
         ) == [5, 5, 5]
+
+    def test_same_as_by_path_targets_entity_from_a_prior_update(self):
+        """same_as's path-based `value` can target an entity registered by an
+        earlier, separate `update()` call, not just one in the same batch —
+        the existing registry's entity_id table is passed into derive.
+        """
+        r = Registrar()
+        r.update(yaml_strings={
+            "req": "req_a:\n- description: Requirement A\n- requirement\n"
+        })
+        eids = r.registry.get("entity_id")
+        req_eid = eids.filter(eids["alias"] == "req_a").execute().iloc[0]["value"]
+
+        r.update(yaml_strings={
+            "extra": (
+                "req_a_update:\n"
+                "    - same_as:\n"
+                "        value: req_a\n"
+                "    - todo: Double check requirement A\n"
+            )
+        })
+
+        todos = r.view("todo").execute()
+        new_todo = todos[todos["todo.value"] == "Double check requirement A"]
+        assert len(new_todo) == 1
+        assert new_todo.iloc[0]["entity_id"] == req_eid
+        # No disconnected second entity was minted for req_a_update.
+        assert eids.filter(eids["alias"] == "req_a_update").count().execute() == 0
+        assert r.registry.get("requirement").count().execute() == 1
 
 
 class TestExportManifestMethod:
