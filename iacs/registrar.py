@@ -68,7 +68,10 @@ class Registrar:
         SCD-style position update), or both. Runs the full ETL pipeline
         (load, validate, derive); existing component types are unioned and
         deduplicated with the newly loaded data, new component types are
-        added directly.
+        added directly. The current registry is also passed into derive as
+        ``existing_registry``, so a ``same_as`` component in the new data can
+        target (and have its other components rebased onto) an entity from a
+        prior update, not just one in this same batch.
 
         Args:
             input_dirs: A file path, directory path, or list of either.
@@ -88,7 +91,11 @@ class Registrar:
         if isinstance(input_dirs, (str, Path)):
             input_dirs = [input_dirs]
         new_registry = self._etl.execute(
-            base_etl, input_dirs=input_dirs or [], load_time=time, **inputs
+            base_etl,
+            input_dirs=input_dirs or [],
+            load_time=time,
+            existing_registry=self._registry,
+            **inputs,
         )
         self._registry.merge(new_registry)
         new_registry.close()

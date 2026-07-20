@@ -263,6 +263,37 @@ iacs_component:
                   description: >
                       A readable version of the entity_id.
                   type: str
+    same_as:
+        - description: >
+              Declares that the owner entity is the same underlying entity as
+              the one referenced by ((same_as)).value (or, exactly, by
+              ((same_as)).target_entity_id) — an entity already present in the
+              registry being updated into. All of the owner's other component
+              data is rebased onto that entity's identity instead of minting a
+              new, disconnected one. This is the standard way to target an
+              existing entity when updating the registry, e.g. an SCD-style
+              position update. Resolved during derive by
+              iacs.dataflows.derive.resolve_same_as, which runs before all
+              other derive steps.
+        - parent: relation
+        - component_type:
+              skip_on_export: true
+        - field:
+              value:
+                  description: >
+                      Path (or partial path) to the existing entity this one
+                      is the same as, resolved by substring matching like any
+                      entity_ref. Ignored if target_entity_id is given.
+                  type: entity_ref
+              target_entity_id:
+                  description: >
+                      Exact entity_id hash of the existing entity, for when
+                      the path is ambiguous or unknown. Takes precedence over
+                      value when given. Named target_entity_id (not
+                      entity_id) so it doesn't collide with the component
+                      table's own entity_id meta column.
+                  type: entity_id
+                  nullable: true
     impact:
         data:
             - description: >

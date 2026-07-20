@@ -366,7 +366,8 @@ def test_scd_support():
     # Add new player position
     input_yaml = f"""
     updated_player_position:
-        - entity_id: {player_eid}
+        - same_as:
+            target_entity_id: {player_eid}
         - position:
             x: 5
             y: 5
