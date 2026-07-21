@@ -423,10 +423,44 @@ def field_validation_results(
     return validated_field, _union_violations(violations)
 
 
-@unpack_fields("validated_components", "invalid_field")
+def _empty_component_schema(fields: dict) -> ibis.Schema:
+    """Build the schema an empty table of a declared-but-dataless component
+    type would have: its own typed fields if it has any, or the generic
+    ``value`` string column a fieldless (tag) component type like ``active``
+    is given by the loader instead.
+    """
+    cols = {"entity_id": "string", "component_index": "int64", "modifier": "string"}
+    if fields:
+        for fname, fschema in fields.items():
+            py_type = _IACS_TO_PYTHON_TYPE.get(fschema["type"])
+            cols[fname] = _IBIS_DTYPE.get(py_type, "string")
+    else:
+        cols["value"] = "string"
+    return ibis.schema(cols)
+
+
+def _declared_component_types(components: dict, entity_id: ir.Table) -> set[str]:
+    """Return every component type name declared via a ``component_type`` tag.
+
+    A component type is declared by attaching a bare ``component_type`` tag
+    to its own defining entity (see ``iacs_component`` in builtins) — the
+    same mechanism ``active``, with no fields of its own, is declared by.
+    This is a broader net than ``_build_component_schemas``, which only
+    finds types that also have ``field`` sub-entries; a fieldless tag type
+    like ``active`` has none, but is still a legitimate component type.
+    """
+    if "component_type" not in components:
+        return set()
+    eids = set(components["component_type"].execute()["entity_id"].dropna().astype(str))
+    df_entity = entity_id.execute()
+    matches = df_entity[df_entity["value"].isin(eids)]
+    return set(matches["entity_key"].dropna().astype(str))
+
+
+@unpack_fields("validated_components", "invalid_field", "declared_schemas")
 def validation_results(
     components: dict, validated_field: ir.Table, entity_id: ir.Table,
-) -> tuple[dict, ir.Table]:
+) -> tuple[dict, ir.Table, dict]:
     """Use the schemas defined by the ((field)) component to validate and coerce
     the data in each component, including component types that used to be
     excluded as "infrastructure" (entity_id, parent, component_type,
@@ -458,10 +492,17 @@ def validation_results(
 
     Returns
     -------
-    tuple[dict, ir.Table]
-        ``(validated_components, invalid_field)`` where ``validated_components``
-        is a dict of component_type -> coerced ibis Table, and ``invalid_field``
-        is an ibis Table of rows that failed nullable or range constraints.
+    tuple[dict, ir.Table, dict]
+        ``(validated_components, invalid_field, declared_schemas)`` where
+        ``validated_components`` is a dict of component_type -> coerced ibis
+        Table, ``invalid_field`` is an ibis Table of rows that failed
+        nullable or range constraints, and ``declared_schemas`` is a dict of
+        component_type -> ``ibis.Schema`` for every declared component type
+        (see ``_declared_component_types``) that has no data in this batch —
+        e.g. ``active`` before anything has been tagged with it — for
+        ``validated_registry`` to register via ``Registry.declare_schema``,
+        so ``get``/``view``/``view_current`` can return an empty,
+        correctly-typed result for it instead of raising.
     """
     component_schemas = _build_component_schemas(components.keys(), validated_field, entity_id)
 
@@ -474,7 +515,13 @@ def validation_results(
         validated_comps[ctype] = t
         violation_tables.extend(v)
 
-    return validated_comps, _union_violations(violation_tables)
+    declared_schemas = {
+        ctype: _empty_component_schema(component_schemas.get(ctype, {}))
+        for ctype in _declared_component_types(components, entity_id)
+        if ctype not in components
+    }
+
+    return validated_comps, _union_violations(violation_tables), declared_schemas
 
 
 def validated_registry(
@@ -482,12 +529,15 @@ def validated_registry(
     validated_components: dict,
     invalid_field: ir.Table,
     invalid_field_schema: ir.Table,
+    declared_schemas: dict,
 ) -> Registry:
     """Store validated components and constraint violations back into the registry."""
     registry.update({
         **validated_components,
         "invalid_field": invalid_field.union(invalid_field_schema),
     })
+    for ctype, schema in declared_schemas.items():
+        registry.declare_schema(ctype, schema)
     return registry
 
 

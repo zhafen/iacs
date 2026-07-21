@@ -53,6 +53,25 @@ class Registry:
             if comp_type not in self._component_types and comp_type != "schema":
                 self._component_types.append(comp_type)
 
+    def declare_schema(self, component_type: str, schema: ibis.Schema) -> None:
+        """Register `component_type`'s schema without creating a physical table.
+
+        Lets `get`/`view`/`view_current` return an empty, correctly-typed
+        result for a component type that's declared (e.g. via a
+        `component_type` tag in a loaded manifest) but has no data yet, the
+        same way they already do for one that was created and later
+        emptied. A no-op if a physical table for `component_type` already
+        exists: real data's own schema always takes precedence over a
+        merely declared one.
+
+        Args:
+            component_type: The component type this schema describes.
+            schema: The columns/dtypes an empty table of this type would have.
+        """
+        if component_type in self._component_types:
+            return
+        self._schemas[component_type] = schema
+
     def merge(self, other: "Registry") -> None:
         """Union all component tables from another registry into this one.
 
@@ -93,6 +112,16 @@ class Registry:
                 self._con.drop_table(tmp)
             else:
                 self.update({comp_type: arrow_data})
+
+        # Carry forward any of other's declared-but-dataless schemas (see
+        # declare_schema) too, not just its physical tables, so a component
+        # type declared once (e.g. by a manifest loaded in one update) stays
+        # known on self across every later update that merges this one in —
+        # merge is the only path new schema knowledge has into a Registrar's
+        # long-lived registry.
+        for comp_type, schema in other._schemas.items():
+            if comp_type not in other.component_types:
+                self.declare_schema(comp_type, schema)
 
     def to_database(self, path: str | Path) -> None:
         """Export all component tables as-is to a database.
@@ -169,7 +198,7 @@ class Registry:
         Raises:
             KeyError: If a component type doesn't exist in the registry.
         """
-        return self._view(component_type, self._con.table)
+        return self._view(component_type, self._table_or_declared)
 
     def view_current(self, component_type: str | list[str]) -> ibis.Table:
         """Like ``view``, but collapsed to the most recent version of each record.
@@ -198,6 +227,23 @@ class Registry:
         """
         return self._view(component_type, self._current_table)
 
+    def _known(self, table_name: str) -> bool:
+        """True if `table_name` has a physical table or a declared schema."""
+        return table_name in self._con.list_tables() or table_name in self._schemas
+
+    def _table_or_declared(self, table_name: str) -> ibis.Table:
+        """`table_name`'s physical table, or an empty one from its declared schema.
+
+        Lets `view`/`view_current` work for a component type that's
+        declared (see `declare_schema`) but has no data yet, the same way
+        `get` already does — inner-joining against an always-empty table
+        naturally yields the right answer (no rows) for a field that lives
+        on a component type nothing has been written for.
+        """
+        if table_name in self._con.list_tables():
+            return self._con.table(table_name)
+        return self.get(table_name)
+
     def _view(self, component_type: str | list[str], table_fn) -> ibis.Table:
         if isinstance(component_type, str):
             component_type = [component_type]
@@ -213,14 +259,14 @@ class Registry:
         pairs: list[tuple[str, str]] = []
         for ct in component_type:
             if "." not in ct:
-                if ct not in self._con.list_tables():
+                if not self._known(ct):
                     raise KeyError(ct)
                 t = table_fn(ct)
                 skip = _TABLE_META_COLS | ({"value"} if ct == "entity_id" else set())
                 pairs.extend((ct, f) for f in t.columns if f not in skip)
             else:
                 table_name, field = ct.split(".", 1)
-                if table_name not in self._con.list_tables():
+                if not self._known(table_name):
                     raise KeyError(table_name)
                 pairs.append((table_name, field))
 
@@ -263,7 +309,7 @@ class Registry:
         Raises:
             ValueError: If ``table_name`` has more than one time_dimension field.
         """
-        t = self._con.table(table_name)
+        t = self._table_or_declared(table_name)
         time_field = self._time_dimension_field(table_name)
         if time_field is None or time_field not in t.columns:
             return t
