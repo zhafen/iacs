@@ -381,3 +381,79 @@ class TestRegistryDatabaseRoundTrip:
             loaded.get("description").execute().sort_values("entity_id").reset_index(drop=True),
             sample_registry.get("description").execute().sort_values("entity_id").reset_index(drop=True),
         )
+
+
+class TestRegistryDeclareSchema:
+    """Tests for declare_schema and the get/view/view_current fallback it enables."""
+
+    @pytest.fixture
+    def sample_registry(self):
+        conn = ibis.duckdb.connect()
+        conn.create_table(
+            "entity_id",
+            {"value": ["e1"], "alias": ["e1"], "path": ["test:e1"], "entity_key": ["e1"], "filepath": ["test"]},
+        )
+        # An empty (but correctly-columned) "field" table, so
+        # _time_dimension_field -- which view_current always consults --
+        # finds no time_dimension field rather than a missing "field" key.
+        conn.create_table(
+            "field",
+            pd.DataFrame(columns=["entity_id", "value", "time_dimension"]).astype(
+                {"entity_id": "string", "value": "string", "time_dimension": "boolean"}
+            ),
+        )
+        components = {"entity_id": conn.table("entity_id"), "field": conn.table("field")}
+        return Registry(conn, components)
+
+    def test_get_returns_declared_schema_when_no_physical_table(self, sample_registry):
+        schema = ibis.schema({"entity_id": "string", "component_index": "int64", "modifier": "string", "x": "float64"})
+        sample_registry.declare_schema("position", schema)
+        result = sample_registry.get("position").execute()
+        assert result.empty
+        assert set(result.columns) == {"entity_id", "component_index", "modifier", "x"}
+
+    def test_view_returns_empty_result_when_no_physical_table(self, sample_registry):
+        schema = ibis.schema({"entity_id": "string", "component_index": "int64", "modifier": "string", "x": "float64"})
+        sample_registry.declare_schema("position", schema)
+        result = sample_registry.view("position.x").execute()
+        assert result.empty
+        assert "position.x" in result.columns
+
+    def test_view_current_returns_empty_result_when_no_physical_table(self, sample_registry):
+        schema = ibis.schema({"entity_id": "string", "component_index": "int64", "modifier": "string", "x": "float64"})
+        sample_registry.declare_schema("position", schema)
+        result = sample_registry.view_current("position.x").execute()
+        assert result.empty
+
+    def test_view_still_raises_keyerror_for_undeclared_type(self, sample_registry):
+        with pytest.raises(KeyError):
+            sample_registry.view("nonexistent")
+
+    def test_declare_schema_is_noop_when_physical_table_exists(self, sample_registry):
+        """Real data's own schema always wins over a merely declared one."""
+        conn = sample_registry._con
+        conn.create_table("position", {"entity_id": ["e1"], "x": [1.0]})
+        sample_registry.update({"position": conn.table("position")})
+        original_schema = sample_registry.get("position").schema()
+
+        sample_registry.declare_schema("position", ibis.schema({"entity_id": "string", "y": "float64"}))
+
+        assert sample_registry.get("position").schema() == original_schema
+
+    def test_merge_propagates_declared_schemas(self, sample_registry):
+        """A schema declared on the source registry is still known on self
+        after merge, even though it has no physical table on either side."""
+        other_conn = ibis.duckdb.connect()
+        other_conn.create_table(
+            "entity_id",
+            {"value": ["e2"], "alias": ["e2"], "path": ["test:e2"], "entity_key": ["e2"], "filepath": ["test"]},
+        )
+        other = Registry(other_conn, {"entity_id": other_conn.table("entity_id")})
+        schema = ibis.schema({"entity_id": "string", "component_index": "int64", "modifier": "string", "x": "float64"})
+        other.declare_schema("position", schema)
+
+        sample_registry.merge(other)
+
+        result = sample_registry.get("position").execute()
+        assert result.empty
+        assert set(result.columns) == {"entity_id", "component_index", "modifier", "x"}

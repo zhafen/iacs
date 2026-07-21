@@ -504,7 +504,14 @@ def validation_results(
         so ``get``/``view``/``view_current`` can return an empty,
         correctly-typed result for it instead of raising.
     """
-    component_schemas = _build_component_schemas(components.keys(), validated_field, entity_id)
+    declared_types = _declared_component_types(components, entity_id)
+    # Built for every declared type, not just ones with data this batch: a
+    # type can be fully declared (its "field" definitions loaded) with zero
+    # rows of its own yet, and declared_schemas below still needs its real,
+    # typed fields rather than falling back to a generic "value" column.
+    component_schemas = _build_component_schemas(
+        set(components.keys()) | declared_types, validated_field, entity_id
+    )
 
     validated_comps: dict = {"field": validated_field}
     violation_tables: list[ir.Table] = []
@@ -517,7 +524,7 @@ def validation_results(
 
     declared_schemas = {
         ctype: _empty_component_schema(component_schemas.get(ctype, {}))
-        for ctype in _declared_component_types(components, entity_id)
+        for ctype in declared_types
         if ctype not in components
     }
 
