@@ -29,7 +29,8 @@ def _make_component_table(rows: list[dict]) -> ibis.Table:
 def _call(components, field_rows, entity_id_rows):
     validated_field = _make_field_table(field_rows)
     entity_id = _make_entity_id_table(entity_id_rows)
-    return validate_components.validation_results(components, validated_field, entity_id)
+    validated, invalid, _ = validate_components.validation_results(components, validated_field, entity_id)
+    return validated, invalid
 
 
 class TestValidationResults:
@@ -259,6 +260,82 @@ class TestValidationResults:
         df = validated["field"].execute()
         assert len(df) == 1
         assert df.iloc[0]["value"] == "already_validated_row"
+
+
+class TestValidationResultsDeclaredSchemas:
+    """Tests for the declared_schemas output: schemas for component types
+    declared via a `component_type` tag but with no data rows this batch."""
+
+    def _entity_id_row(self, entity_id, entity_key):
+        return {"value": entity_id, "entity_key": entity_key, "path": f"test:{entity_key}", "alias": entity_key}
+
+    def _field_row(self, entity_id, field_name, field_type=None, nullable=None, default=None, field_range=None):
+        return {
+            "entity_id": entity_id,
+            "component_index": 0,
+            "value": field_name,
+            "type": field_type,
+            "nullable": nullable,
+            "default": default,
+            "range": field_range,
+        }
+
+    def _component_type_row(self, entity_id):
+        return {"entity_id": entity_id, "component_index": 0, "value": None}
+
+    def _call(self, components, field_rows, entity_id_rows):
+        validated_field = _make_field_table(field_rows)
+        entity_id = _make_entity_id_table(entity_id_rows)
+        return validate_components.validation_results(components, validated_field, entity_id)
+
+    def test_dataless_typed_component_gets_its_own_field_schema(self):
+        """A component_type-tagged type with declared fields but no rows this
+        batch gets a schema with its real, typed field columns -- not the
+        generic fallback a fieldless tag type gets."""
+        components = {
+            "component_type": _make_component_table([self._component_type_row("eid_position")]),
+        }
+        field_rows = [
+            self._field_row("eid_position", "x", field_type="float"),
+            self._field_row("eid_position", "y", field_type="float"),
+        ]
+        entity_id_rows = [self._entity_id_row("eid_position", "position")]
+        _, _, declared_schemas = self._call(components, field_rows, entity_id_rows)
+        assert "position" in declared_schemas
+        schema = declared_schemas["position"]
+        assert schema["x"] == ibis.dtype("float64")
+        assert schema["y"] == ibis.dtype("float64")
+        assert "value" not in schema
+
+    def test_dataless_fieldless_component_gets_generic_value_column(self):
+        """A component_type-tagged type with no field definitions at all (a
+        bare tag, e.g. "active") falls back to a generic `value` column,
+        matching what the loader gives such a type when it does have rows."""
+        components = {
+            "component_type": _make_component_table([self._component_type_row("eid_active")]),
+        }
+        entity_id_rows = [self._entity_id_row("eid_active", "active")]
+        _, _, declared_schemas = self._call(components, [], entity_id_rows)
+        assert "active" in declared_schemas
+        assert set(declared_schemas["active"].names) == {"entity_id", "component_index", "modifier", "value"}
+
+    def test_component_type_with_data_this_batch_not_declared(self):
+        """A component type that already has rows this batch is skipped --
+        declared_schemas is only for types with no data of their own yet."""
+        components = {
+            "component_type": _make_component_table([self._component_type_row("eid_active")]),
+            "active": _make_component_table([{"entity_id": "e1", "component_index": 0, "value": None}]),
+        }
+        entity_id_rows = [self._entity_id_row("eid_active", "active")]
+        _, _, declared_schemas = self._call(components, [], entity_id_rows)
+        assert "active" not in declared_schemas
+
+    def test_no_component_type_table_returns_no_declared_schemas(self):
+        """Without a component_type table at all (e.g. a bare validation
+        call), there's nothing to declare."""
+        components = {"desc": _make_component_table([{"entity_id": "e1", "component_index": 0, "value": "hi"}])}
+        _, _, declared_schemas = self._call(components, [], [])
+        assert declared_schemas == {}
 
 
 class TestFieldValidationResults:
