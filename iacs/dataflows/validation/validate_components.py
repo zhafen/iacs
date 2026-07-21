@@ -152,6 +152,7 @@ def _coerce_default(val, py_type: type):
 
 def _build_component_schemas(
     ctypes, field: ir.Table, entity_id: ir.Table,
+    existing_field: ir.Table = None, existing_entity_id: ir.Table = None,
 ) -> dict[str, dict]:
     """Build a per-component-type schema dict from ((field)) rows.
 
@@ -167,6 +168,13 @@ def _build_component_schemas(
     entity_id : ir.Table
         One row per entity (value, path, alias, entity_key, filepath),
         used to map entity_key -> entity_id for schema lookup.
+    existing_field, existing_entity_id : ir.Table, optional
+        The same two tables from a registry accumulated by prior updates
+        (see ``existing_registry`` on ``field_validation_results``/
+        ``validation_results``), consulted so a component type's schema —
+        e.g. a user manifest's own field definitions, loaded once in an
+        earlier update — is found even when this batch doesn't happen to
+        include the files that declare it.
 
     Returns
     -------
@@ -176,6 +184,10 @@ def _build_component_schemas(
     """
     df_field = field.execute()
     df_entity = entity_id.execute()
+    if existing_field is not None:
+        df_field = pd.concat([existing_field.execute(), df_field], ignore_index=True)
+    if existing_entity_id is not None:
+        df_entity = pd.concat([existing_entity_id.execute(), df_entity], ignore_index=True)
 
     # Map entity_key -> entity_id for entities that have field definitions
     field_entity_ids = set(df_field["entity_id"].dropna().astype(str))
@@ -426,6 +438,7 @@ def field_validation_results(
 @unpack_fields("validated_components", "invalid_field")
 def validation_results(
     components: dict, validated_field: ir.Table, entity_id: ir.Table,
+    existing_registry: Registry = None,
 ) -> tuple[dict, ir.Table]:
     """Use the schemas defined by the ((field)) component to validate and coerce
     the data in each component, including component types that used to be
@@ -455,6 +468,15 @@ def validation_results(
     entity_id : ir.Table
         One row per entity (value, path, alias, entity_key, filepath),
         used to map entity_key -> entity_id for schema lookup.
+    existing_registry : Registry, optional
+        The registry already accumulated from prior updates (see
+        ``Registrar.update``), consulted for schema lookup so a component
+        type's schema is found even when this batch doesn't happen to
+        include the manifest file that declares it — e.g. a small,
+        hand-built YAML fragment merged onto an entity whose component
+        type was defined by a manifest loaded in an earlier update. Only
+        used to look up schema; the components actually validated and
+        returned are always this batch's own (see ``components``).
 
     Returns
     -------
@@ -463,7 +485,11 @@ def validation_results(
         is a dict of component_type -> coerced ibis Table, and ``invalid_field``
         is an ibis Table of rows that failed nullable or range constraints.
     """
-    component_schemas = _build_component_schemas(components.keys(), validated_field, entity_id)
+    existing_field = existing_registry.get("field") if existing_registry is not None else None
+    existing_entity_id = existing_registry.get("entity_id") if existing_registry is not None else None
+    component_schemas = _build_component_schemas(
+        components.keys(), validated_field, entity_id, existing_field, existing_entity_id
+    )
 
     validated_comps: dict = {"field": validated_field}
     violation_tables: list[ir.Table] = []
