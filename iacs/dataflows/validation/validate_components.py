@@ -438,8 +438,8 @@ def field_validation_results(
 def _empty_component_schema(fields: dict) -> ibis.Schema:
     """Build the schema an empty table of a declared-but-dataless component
     type would have: its own typed fields if it has any, or the generic
-    ``value`` string column a fieldless (tag) component type like ``active``
-    is given by the loader instead.
+    ``value`` string column a fieldless (tag) component type is given by
+    the loader instead.
     """
     cols = {"entity_id": "string", "component_index": "int64", "modifier": "string"}
     if fields:
@@ -456,10 +456,10 @@ def _declared_component_types(components: dict, entity_id: ir.Table) -> set[str]
 
     A component type is declared by attaching a bare ``component_type`` tag
     to its own defining entity (see ``iacs_component`` in builtins) — the
-    same mechanism ``active``, with no fields of its own, is declared by.
-    This is a broader net than ``_build_component_schemas``, which only
-    finds types that also have ``field`` sub-entries; a fieldless tag type
-    like ``active`` has none, but is still a legitimate component type.
+    same mechanism a fieldless tag component, with no fields of its own, is
+    declared by. This is a broader net than ``_build_component_schemas``,
+    which only finds types that also have ``field`` sub-entries; a fieldless
+    tag type has none, but is still a legitimate component type.
     """
     if "component_type" not in components:
         return set()
@@ -521,10 +521,11 @@ def validation_results(
         nullable or range constraints, and ``declared_schemas`` is a dict of
         component_type -> ``ibis.Schema`` for every declared component type
         (see ``_declared_component_types``) that has no data in this batch —
-        e.g. ``active`` before anything has been tagged with it — for
-        ``validated_registry`` to register via ``Registry.declare_schema``,
-        so ``get``/``view``/``view_current`` can return an empty,
-        correctly-typed result for it instead of raising.
+        e.g. a fieldless tag component before any entity has been given
+        that tag — for ``validated_registry`` to register via
+        ``Registry.declare_schema``, so ``get``/``view``/``view_current``
+        can return an empty, correctly-typed result for it instead of
+        raising.
     """
     declared_types = _declared_component_types(components, entity_id)
     existing_field = existing_registry.get("field") if existing_registry is not None else None
