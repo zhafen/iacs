@@ -100,6 +100,25 @@ class Registrar:
         self._registry.merge(new_registry)
         new_registry.close()
 
+    def overwrite(self, component_type: str, table) -> None:
+        """Replace `component_type`'s entire table in one step, bypassing the ETL pipeline.
+
+        The Registrar-level counterpart to the additive `update()` (which
+        unions new data in through the full load/validate/derive pipeline):
+        for a System that owns a component type outright and needs to
+        replace it wholesale each turn — e.g. rebuilding a tag component to
+        exactly match this turn's set, since a merge can only add rows,
+        never drop one that no longer applies — this writes the table
+        directly, the same way `update()` ultimately does, without a caller
+        needing to reach past `Registrar` into `.registry` to do it.
+
+        Args:
+            component_type: The component type to replace.
+            table: The replacement data, in any form `Registry.update`
+                accepts (e.g. an ibis Table or a pyarrow Table).
+        """
+        self._registry.update({component_type: table})
+
     def load_manifest(
         self, manifest: str | Path | list[str | Path], time: Any = None
     ) -> None:
