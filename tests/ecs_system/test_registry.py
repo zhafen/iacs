@@ -457,3 +457,43 @@ class TestRegistryDeclareSchema:
         result = sample_registry.get("position").execute()
         assert result.empty
         assert set(result.columns) == {"entity_id", "component_index", "modifier", "x"}
+
+
+class TestRegistryGetEntityId:
+    """Tests for resolving an entity ref to its canonical entity_id hash."""
+
+    @pytest.fixture
+    def registry(self):
+        conn = ibis.duckdb.connect()
+        conn.create_table(
+            "entity_id",
+            {
+                "value": ["aaa111aaa111", "bbb222bbb222", "ccc333ccc333"],
+                "alias": ["feed_cats", "water_cats", "feed_cats.sub"],
+                "path": [
+                    "examples/example.yaml:feeding_system.feed_cats",
+                    "examples/example.yaml:feeding_system.water_cats",
+                    "examples/example.yaml:feeding_system.feed_cats.sub",
+                ],
+                "entity_key": ["feed_cats", "water_cats", "sub"],
+                "filepath": ["examples/example.yaml"] * 3,
+            },
+        )
+        return Registry(conn, {"entity_id": conn.table("entity_id")})
+
+    def test_resolves_alias_to_hash(self, registry):
+        assert registry.get_entity_id("water_cats") == "bbb222bbb222"
+
+    def test_returns_exact_hash_unchanged(self, registry):
+        assert registry.get_entity_id("aaa111aaa111") == "aaa111aaa111"
+
+    def test_resolves_unambiguous_path_fragment(self, registry):
+        assert registry.get_entity_id("feeding_system.water_cats") == "bbb222bbb222"
+
+    def test_raises_when_no_match(self, registry):
+        with pytest.raises(ValueError):
+            registry.get_entity_id("nonexistent")
+
+    def test_raises_when_ambiguous(self, registry):
+        with pytest.raises(ValueError):
+            registry.get_entity_id("feed_cats")

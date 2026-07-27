@@ -201,6 +201,10 @@ class Registrar:
         return self._registry.view_df
 
     @property
+    def get_entity_id(self):
+        return self._registry.get_entity_id
+
+    @property
     def view_entity(self):
         return self._registry.view_entity
 
