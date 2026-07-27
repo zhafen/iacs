@@ -368,52 +368,72 @@ class Registry:
         df = df.set_index("entity_id")
         return df
 
-    def get_entity_id(self, entity_ref: str) -> str:
+    def get_entity_id(self, entity_ref: str) -> str | None:
         """Resolve `entity_ref` to its canonical entity_id hash.
 
-        Uses the same resolution ETL uses to resolve `entity_ref` fields and
-        `same_as` targets (see `candidate_entity_ids`): an exact entity hash
-        is returned as-is, otherwise `entity_ref` is matched as a substring
-        against every entity's full path (which alias values are always a
-        suffix of).
+        Tries three resolutions in order, the same ones ETL relies on for
+        `entity_ref` fields and `same_as` targets, from most to least exact:
+        an exact entity hash is returned as-is; failing that, an exact match
+        against an entity's own `alias`; failing that, `entity_ref` is
+        matched as a substring against every entity's full path (see
+        `candidate_entity_ids`) and the result kept only if exactly one
+        entity matches. The exact-alias step isn't just an optimization: a
+        container entity's own alias is always a prefix of (and so a
+        substring match against) every one of its descendants' paths too
+        (e.g. `"make_cats_happy"` vs. `"make_cats_happy.feed_and_water_cats"`),
+        so without it, `entity_ref` naming a container by its own alias
+        would be reported as ambiguous even though the alias identifies it
+        uniquely.
+
+        Deliberately tolerant rather than raising — unlike `same_as` target
+        resolution, where an unresolvable reference is a manifest error
+        worth failing loudly on, a caller resolving an arbitrary ref (e.g.
+        one it read from a still-in-flux registry) usually just wants to
+        know whether a matching entity currently exists.
 
         Args:
             entity_ref: An entity hash, alias, or path fragment identifying
                 the entity.
 
         Returns:
-            The resolved entity_id hash.
-
-        Raises:
-            ValueError: If `entity_ref` doesn't resolve to exactly one entity.
+            The resolved entity_id hash, or `None` if `entity_ref` doesn't
+            resolve to exactly one entity.
         """
+        if "entity_id" not in self._components:
+            return None
         entity_id_df = self._components["entity_id"].to_pandas()
         if (entity_id_df["value"] == entity_ref).any():
             return entity_ref
+        alias_matches = entity_id_df.loc[entity_id_df["alias"] == entity_ref, "value"].tolist()
+        if len(alias_matches) == 1:
+            return alias_matches[0]
+        if len(alias_matches) > 1:
+            return None
         candidates = candidate_entity_ids(entity_ref, entity_id_df)
-        if len(candidates) != 1:
-            raise ValueError(
-                f"{entity_ref!r} resolved to {len(candidates)} entities; expected exactly 1."
-            )
-        return candidates[0]
+        return candidates[0] if len(candidates) == 1 else None
 
     def view_entity_df(self, entity_id: str) -> dict[str, pd.DataFrame]:
         """Return component data for a specific entity, keyed by component type.
 
-        Accepts either the internal entity hash or a human-readable alias.
+        `entity_id` is resolved via `get_entity_id` first, so this accepts
+        anything that already does — the internal hash, an exact alias, or
+        an unambiguous path fragment — and returns `{}` for a ref that
+        doesn't resolve to exactly one entity, the same as it already did
+        for a bare unknown ref.
 
         Args:
-            entity_id: Internal entity hash or entity alias.
+            entity_id: Entity hash, alias, or path fragment identifying the entity.
         """
+        resolved_id = self.get_entity_id(entity_id)
+        if resolved_id is None:
+            return {}
         result = {}
         for comp_type in self._component_types:
             try:
                 df = self.view_df(comp_type).reset_index()
             except Exception:
                 continue
-            match = df[df["entity_id"] == entity_id]
-            if match.empty and "entity_id.alias" in df.columns:
-                match = df[df["entity_id.alias"] == entity_id]
+            match = df[df["entity_id"] == resolved_id]
             if not match.empty:
                 result[comp_type] = match.set_index("entity_id")
         return result
@@ -422,7 +442,8 @@ class Registry:
         """Return all component data for a specific entity as a formatted string.
 
         Args:
-            entity_id: Internal entity hash or human-readable alias.
+            entity_id: Entity hash, alias, or path fragment identifying the
+                entity (see `get_entity_id`).
             format: Output format — "markdown" (default) or "csv".
         """
         components = self.view_entity_df(entity_id)

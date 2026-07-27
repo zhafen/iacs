@@ -468,32 +468,114 @@ class TestRegistryGetEntityId:
         conn.create_table(
             "entity_id",
             {
-                "value": ["aaa111aaa111", "bbb222bbb222", "ccc333ccc333"],
-                "alias": ["feed_cats", "water_cats", "feed_cats.sub"],
-                "path": [
-                    "examples/example.yaml:feeding_system.feed_cats",
-                    "examples/example.yaml:feeding_system.water_cats",
-                    "examples/example.yaml:feeding_system.feed_cats.sub",
+                "value": [
+                    "aaa111aaa111",
+                    "bbb222bbb222",
+                    "ccc333ccc333",
+                    "fff666fff666",
+                    "ddd444ddd444",
+                    "eee555eee555",
                 ],
-                "entity_key": ["feed_cats", "water_cats", "sub"],
-                "filepath": ["examples/example.yaml"] * 3,
+                "alias": [
+                    "water_cats",
+                    "feeding_system",
+                    "feeding_system.feed_cats",
+                    "feeding_system.feed_cats.sub",
+                    "dup_alias",
+                    "dup_alias",
+                ],
+                "path": [
+                    "examples/example.yaml:feeding_system.water_cats",
+                    "examples/example.yaml:feeding_system",
+                    "examples/example.yaml:feeding_system.feed_cats",
+                    "examples/example.yaml:feeding_system.feed_cats.sub",
+                    "examples/example.yaml:zzz.dup_alias_one",
+                    "examples/example.yaml:zzz.dup_alias_two",
+                ],
+                "entity_key": [
+                    "water_cats",
+                    "feeding_system",
+                    "feed_cats",
+                    "sub",
+                    "dup_alias_one",
+                    "dup_alias_two",
+                ],
+                "filepath": ["examples/example.yaml"] * 6,
             },
         )
         return Registry(conn, {"entity_id": conn.table("entity_id")})
 
-    def test_resolves_alias_to_hash(self, registry):
-        assert registry.get_entity_id("water_cats") == "bbb222bbb222"
+    def test_resolves_exact_alias_to_hash(self, registry):
+        assert registry.get_entity_id("water_cats") == "aaa111aaa111"
 
     def test_returns_exact_hash_unchanged(self, registry):
         assert registry.get_entity_id("aaa111aaa111") == "aaa111aaa111"
 
     def test_resolves_unambiguous_path_fragment(self, registry):
-        assert registry.get_entity_id("feeding_system.water_cats") == "bbb222bbb222"
+        """A fragment that isn't anyone's exact alias but substring-matches
+        exactly one entity's path still resolves."""
+        assert registry.get_entity_id("system.water_cats") == "aaa111aaa111"
 
-    def test_raises_when_no_match(self, registry):
-        with pytest.raises(ValueError):
-            registry.get_entity_id("nonexistent")
+    def test_returns_none_when_no_match(self, registry):
+        assert registry.get_entity_id("nonexistent") is None
 
-    def test_raises_when_ambiguous(self, registry):
-        with pytest.raises(ValueError):
-            registry.get_entity_id("feed_cats")
+    def test_container_alias_resolves_despite_being_path_prefix_of_children(self, registry):
+        """A container's own alias ("feeding_system") is a substring of its
+        children's paths too ("feeding_system.feed_cats", ...), but the
+        exact-alias match must still resolve it unambiguously rather than
+        reporting it as ambiguous with its own descendants."""
+        assert registry.get_entity_id("feeding_system") == "bbb222bbb222"
+
+    def test_returns_none_when_substring_matches_multiple_with_no_exact_alias_hit(self, registry):
+        """"feed_cats" is nobody's exact alias, but is a substring of both
+        "feeding_system.feed_cats" and "feeding_system.feed_cats.sub"."""
+        assert registry.get_entity_id("feed_cats") is None
+
+    def test_returns_none_when_alias_itself_is_ambiguous(self, registry):
+        """Two entities sharing the same computed alias resolve to neither."""
+        assert registry.get_entity_id("dup_alias") is None
+
+
+class TestRegistryViewEntityDf:
+    """Tests for view_entity_df's ref resolution (delegated to get_entity_id)."""
+
+    @pytest.fixture
+    def registry(self):
+        conn = ibis.duckdb.connect()
+        conn.create_table(
+            "entity_id",
+            {
+                "value": ["bbb222bbb222", "ccc333ccc333"],
+                "alias": ["feeding_system", "feeding_system.feed_cats"],
+                "path": [
+                    "examples/example.yaml:feeding_system",
+                    "examples/example.yaml:feeding_system.feed_cats",
+                ],
+                "entity_key": ["feeding_system", "feed_cats"],
+                "filepath": ["examples/example.yaml"] * 2,
+            },
+        )
+        conn.create_table(
+            "description",
+            {
+                "entity_id": ["bbb222bbb222", "ccc333ccc333"],
+                "value": ["The feeding system.", "The feed_cats task."],
+            },
+        )
+        return Registry(
+            conn, {"entity_id": conn.table("entity_id"), "description": conn.table("description")}
+        )
+
+    def test_resolves_exact_alias(self, registry):
+        result = registry.view_entity_df("feeding_system.feed_cats")
+        assert result["description"].iloc[0]["description.value"] == "The feed_cats task."
+
+    def test_resolves_container_alias_despite_being_path_prefix_of_child(self, registry):
+        """Regression test: view_entity_df used to match `entity_id.alias`
+        by hand, which happened to disambiguate a container from its
+        children too; delegating to get_entity_id must preserve that."""
+        result = registry.view_entity_df("feeding_system")
+        assert result["description"].iloc[0]["description.value"] == "The feeding system."
+
+    def test_returns_empty_dict_for_unresolvable_ref(self, registry):
+        assert registry.view_entity_df("nonexistent") == {}
