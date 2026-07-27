@@ -371,19 +371,12 @@ class Registry:
     def get_entity_id(self, entity_ref: str) -> str | None:
         """Resolve `entity_ref` to its canonical entity_id hash.
 
-        Tries three resolutions in order, the same ones ETL relies on for
-        `entity_ref` fields and `same_as` targets, from most to least exact:
-        an exact entity hash is returned as-is; failing that, an exact match
-        against an entity's own `alias`; failing that, `entity_ref` is
-        matched as a substring against every entity's full path (see
-        `candidate_entity_ids`) and the result kept only if exactly one
-        entity matches. The exact-alias step isn't just an optimization: a
-        container entity's own alias is always a prefix of (and so a
-        substring match against) every one of its descendants' paths too
-        (e.g. `"make_cats_happy"` vs. `"make_cats_happy.feed_and_water_cats"`),
-        so without it, `entity_ref` naming a container by its own alias
-        would be reported as ambiguous even though the alias identifies it
-        uniquely.
+        The read-only counterpart to `candidate_entity_ids`, the same
+        resolution ETL uses for `entity_ref` fields and `same_as` targets:
+        an exact entity hash is returned as-is, otherwise `entity_ref` is
+        resolved via `candidate_entity_ids` (exact alias, else substring
+        match against every entity's full path) and kept only if that
+        resolves to exactly one entity.
 
         Deliberately tolerant rather than raising — unlike `same_as` target
         resolution, where an unresolvable reference is a manifest error
@@ -404,11 +397,6 @@ class Registry:
         entity_id_df = self._components["entity_id"].to_pandas()
         if (entity_id_df["value"] == entity_ref).any():
             return entity_ref
-        alias_matches = entity_id_df.loc[entity_id_df["alias"] == entity_ref, "value"].tolist()
-        if len(alias_matches) == 1:
-            return alias_matches[0]
-        if len(alias_matches) > 1:
-            return None
         candidates = candidate_entity_ids(entity_ref, entity_id_df)
         return candidates[0] if len(candidates) == 1 else None
 

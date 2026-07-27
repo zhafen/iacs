@@ -34,3 +34,37 @@ def test_no_match_returns_empty(entity_id_df):
 def test_ambiguous_matches_returns_multiple(entity_id_df):
     result = candidate_entity_ids("subrequirement", entity_id_df)
     assert set(result) == {"aaa111aaa111", "bbb222bbb222"}
+
+
+@pytest.fixture
+def entity_id_df_with_alias():
+    return pd.DataFrame([
+        {
+            "value": "ccc333ccc333",
+            "alias": "core_requirement",
+            "path": "examples/minimal2/minimal2.yaml:core_requirement",
+        },
+        {
+            "value": "aaa111aaa111",
+            "alias": "core_requirement.first_subrequirement",
+            "path": "examples/minimal2/minimal2.yaml:core_requirement.first_subrequirement",
+        },
+    ])
+
+
+def test_exact_alias_match_preferred_over_substring(entity_id_df_with_alias):
+    result = candidate_entity_ids("core_requirement.first_subrequirement", entity_id_df_with_alias)
+    assert result == ["aaa111aaa111"]
+
+
+def test_container_alias_resolves_despite_being_path_prefix_of_child(entity_id_df_with_alias):
+    """A container's own alias ("core_requirement") is a substring of its
+    child's path too ("core_requirement.first_subrequirement"), but the
+    exact-alias match must resolve it unambiguously to the container."""
+    result = candidate_entity_ids("core_requirement", entity_id_df_with_alias)
+    assert result == ["ccc333ccc333"]
+
+
+def test_falls_back_to_substring_when_no_exact_alias_match(entity_id_df_with_alias):
+    result = candidate_entity_ids("first_subrequirement", entity_id_df_with_alias)
+    assert result == ["aaa111aaa111"]
