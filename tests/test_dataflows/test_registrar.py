@@ -482,3 +482,8 @@ class TestViewProxies:
             r.view_entity_df(entity_id).keys()
             == r.registry.view_entity_df(entity_id).keys()
         )
+
+    def test_get_entity_id_matches_registry_get_entity_id(self):
+        r = self._registrar()
+        entity_id = r.registry.get("entity_id").execute().iloc[0]["value"]
+        assert r.get_entity_id(entity_id) == r.registry.get_entity_id(entity_id)

@@ -6,6 +6,8 @@ from pathlib import Path
 import ibis
 import pandas as pd
 
+from .utils import candidate_entity_ids
+
 _TABLE_META_COLS = {"entity_id", "component_index", "modifier"}
 
 
@@ -365,6 +367,35 @@ class Registry:
         df = result.execute()
         df = df.set_index("entity_id")
         return df
+
+    def get_entity_id(self, entity_ref: str) -> str:
+        """Resolve `entity_ref` to its canonical entity_id hash.
+
+        Uses the same resolution ETL uses to resolve `entity_ref` fields and
+        `same_as` targets (see `candidate_entity_ids`): an exact entity hash
+        is returned as-is, otherwise `entity_ref` is matched as a substring
+        against every entity's full path (which alias values are always a
+        suffix of).
+
+        Args:
+            entity_ref: An entity hash, alias, or path fragment identifying
+                the entity.
+
+        Returns:
+            The resolved entity_id hash.
+
+        Raises:
+            ValueError: If `entity_ref` doesn't resolve to exactly one entity.
+        """
+        entity_id_df = self._components["entity_id"].to_pandas()
+        if (entity_id_df["value"] == entity_ref).any():
+            return entity_ref
+        candidates = candidate_entity_ids(entity_ref, entity_id_df)
+        if len(candidates) != 1:
+            raise ValueError(
+                f"{entity_ref!r} resolved to {len(candidates)} entities; expected exactly 1."
+            )
+        return candidates[0]
 
     def view_entity_df(self, entity_id: str) -> dict[str, pd.DataFrame]:
         """Return component data for a specific entity, keyed by component type.
