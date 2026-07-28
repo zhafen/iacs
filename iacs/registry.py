@@ -371,12 +371,11 @@ class Registry:
     def get_entity_id(self, entity_ref: str) -> str | None:
         """Resolve `entity_ref` to its canonical entity_id hash.
 
-        The read-only counterpart to `candidate_entity_ids`, the same
-        resolution ETL uses for `entity_ref` fields and `same_as` targets:
-        an exact entity hash is returned as-is, otherwise `entity_ref` is
-        resolved via `candidate_entity_ids` (exact alias, else substring
-        match against every entity's full path) and kept only if that
-        resolves to exactly one entity.
+        The read-only counterpart to `candidate_entity_ids`, which this
+        delegates to directly: it's the exact same resolution ETL uses for
+        `entity_ref` fields and `same_as` targets (exact hash, else exact
+        alias, else substring match against every entity's full path), kept
+        only if it resolves to exactly one entity.
 
         Deliberately tolerant rather than raising — unlike `same_as` target
         resolution, where an unresolvable reference is a manifest error
@@ -395,8 +394,6 @@ class Registry:
         if "entity_id" not in self._components:
             return None
         entity_id_df = self._components["entity_id"].to_pandas()
-        if (entity_id_df["value"] == entity_ref).any():
-            return entity_ref
         candidates = candidate_entity_ids(entity_ref, entity_id_df)
         return candidates[0] if len(candidates) == 1 else None
 

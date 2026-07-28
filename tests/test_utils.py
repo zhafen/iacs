@@ -68,3 +68,12 @@ def test_container_alias_resolves_despite_being_path_prefix_of_child(entity_id_d
 def test_falls_back_to_substring_when_no_exact_alias_match(entity_id_df_with_alias):
     result = candidate_entity_ids("first_subrequirement", entity_id_df_with_alias)
     assert result == ["aaa111aaa111"]
+
+
+def test_exact_hash_match_preferred_over_alias_and_substring(entity_id_df_with_alias):
+    """A raw entity_id hash resolves to itself, even before the alias/path
+    resolutions are tried — so any entity_ref-typed field (or
+    same_as.value) can reference an entity precisely by hash, the same as
+    same_as.target_entity_id does explicitly."""
+    result = candidate_entity_ids("aaa111aaa111", entity_id_df_with_alias)
+    assert result == ["aaa111aaa111"]
