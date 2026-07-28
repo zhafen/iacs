@@ -9,6 +9,7 @@ import ibis
 from tests.conftest import make_registry
 from tests.test_dataflows.dags import dataflow, dataflow_b
 from iacs.registrar import Registrar
+from iacs.utils import get_id
 
 
 def _sample_registry():
@@ -430,6 +431,62 @@ class TestUpdate:
         # No disconnected second entity was minted for req_a_update.
         assert eids.filter(eids["alias"] == "req_a_update").count().execute() == 0
         assert r.registry.get("requirement").count().execute() == 1
+
+    def test_same_as_by_raw_hash_in_value_targets_entity(self):
+        """same_as's `value` (normally a path/alias) also accepts the raw
+        entity_id hash directly, the same as the dedicated
+        `target_entity_id` field — candidate_entity_ids tries an exact hash
+        match before falling back to alias/path resolution.
+        """
+        r = Registrar()
+        r.update(yaml_strings={
+            "req": "req_a:\n- description: Requirement A\n- requirement\n"
+        })
+        eids = r.registry.get("entity_id")
+        req_eid = eids.filter(eids["alias"] == "req_a").execute().iloc[0]["value"]
+
+        r.update(yaml_strings={
+            "extra": (
+                "req_a_update:\n"
+                "    - same_as:\n"
+                f"        value: {req_eid}\n"
+                "    - todo: Double check requirement A via hash\n"
+            )
+        })
+
+        todos = r.view("todo").execute()
+        new_todo = todos[todos["todo.value"] == "Double check requirement A via hash"]
+        assert len(new_todo) == 1
+        assert new_todo.iloc[0]["entity_id"] == req_eid
+
+    def test_entity_ref_field_resolves_by_raw_hash(self):
+        """A generic entity_ref field (relation's `value`, not just
+        same_as.value) can also reference an entity precisely by its raw
+        hash, not just by path/alias. Unlike same_as (which explicitly
+        searches the existing registry too, see
+        `test_same_as_by_path_targets_entity_from_a_prior_update`),
+        ordinary entity_ref resolution only sees entities in the same
+        update() batch, so both entities are declared together here; the
+        referenced entity's hash is computed the same deterministic way
+        (`dhash(f"{file_id}:{entity_path}")`) `load_manifest` does, via
+        `get_id`, rather than needing a prior update to look it up.
+        """
+        req_eid = get_id("batch", "req_a")
+
+        r = Registrar()
+        r.update(yaml_strings={
+            "batch": (
+                "req_a:\n"
+                "    - description: Requirement A\n"
+                "    - requirement\n"
+                "linker:\n"
+                "    - relation:\n"
+                f"        value: {req_eid}\n"
+            )
+        })
+
+        relation_df = r.view_df("relation")
+        assert relation_df.iloc[0]["relation.value_eid"] == req_eid
 
 
 class TestExportManifestMethod:
