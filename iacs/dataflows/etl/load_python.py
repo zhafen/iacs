@@ -1,7 +1,59 @@
 """Hamilton DAG for loading entity-first data from Python source files."""
 
 import ast
+import re
+import textwrap
 from pathlib import Path
+
+import yaml
+
+from ...config import DOCSTRING_COMPONENTS_PATTERN
+
+_COMPONENTS_HEADER_RE = re.compile(DOCSTRING_COMPONENTS_PATTERN, re.MULTILINE)
+_SECTION_HEADER_RE = re.compile(r"^[ \t]*\S.*\n[ \t]*-{3,}[ \t]*$", re.MULTILINE)
+
+
+def _split_docstring_components(docstring: str) -> tuple[str, str | None]:
+    """Split a docstring into (description_text, components_yaml_text).
+
+    Looks for a numpy-style "Components" section (see
+    ``iacs.config.DOCSTRING_COMPONENTS_PATTERN``) and pulls its body out
+    separately from the rest of the docstring, which becomes the
+    description text. Returns ``(docstring, None)`` unchanged if no
+    Components section is present.
+    """
+    match = _COMPONENTS_HEADER_RE.search(docstring)
+    if match is None:
+        return docstring, None
+
+    before = docstring[: match.start()].rstrip()
+    rest = docstring[match.end():]
+    next_header = _SECTION_HEADER_RE.search(rest)
+    if next_header:
+        section_text = rest[: next_header.start()]
+        after = rest[next_header.start():].lstrip("\n")
+    else:
+        section_text = rest
+        after = ""
+
+    description = "\n\n".join(part for part in (before, after) if part)
+    components_yaml = textwrap.dedent(section_text).strip()
+    return description, (components_yaml or None)
+
+
+def _parse_components_yaml(text: str) -> list:
+    """Parse a docstring Components section into a list of component entries.
+
+    Returns an empty list if the text fails to parse as YAML or doesn't
+    parse to a list (the expected shape for a component list).
+    """
+    try:
+        parsed = yaml.safe_load(text)
+    except yaml.YAMLError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return parsed
 
 
 def _module_qualified_name(file_id: str) -> str:
@@ -28,15 +80,28 @@ def _find_iacs_meta(stmts: list) -> dict | None:
 
 
 def _make_components(docstring: str | None, iacs_meta: dict | None) -> list | None:
-    """Build a component list from a docstring and __iacs__ metadata, or None if empty."""
-    if not docstring and not iacs_meta:
-        return None
+    """Build a component list from a docstring and __iacs__ metadata, or None if empty.
+
+    A docstring's "Components" section (see ``_split_docstring_components``)
+    is parsed as YAML and merged into the component list rather than the
+    description; it is not included in either part of a round trip: it
+    is excluded from the description text, and also excluded from manifest
+    export (see ``iacs.dataflows.etl.export_manifest``), since it lives in
+    a Python source file rather than a standalone YAML file.
+    """
+    description, components_yaml = (
+        _split_docstring_components(docstring) if docstring else (None, None)
+    )
     components = []
-    if docstring:
-        components.append({"description": docstring.strip()})
+    if description:
+        components.append({"description": description.strip()})
     if iacs_meta:
         for key, value in iacs_meta.items():
             components.append({key: value})
+    if components_yaml:
+        components.extend(_parse_components_yaml(components_yaml))
+    if not components:
+        return None
     return components
 
 

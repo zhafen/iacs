@@ -110,6 +110,144 @@ class TestModuleEntity:
         assert any(k.endswith("mod") for k in entities)
 
 
+class TestDocstringComponentsSection:
+    """Ingesting a docstring's numpy-style "Components" YAML section."""
+
+    def test_task_example(self):
+        src = (
+            'def my_function():\n'
+            '    """Docstring here.\n'
+            '\n'
+            '    Components\n'
+            '    ----------\n'
+            '    - todo: We need to implement this.\n'
+            '    """\n'
+        )
+        entities = _all_entities(load_python.raw_entity_first_data({"mod.py": src}))
+        key = next(k for k in entities if k.endswith(".my_function"))
+        comps = entities[key]
+        assert {"description": "Docstring here."} in comps
+        assert {"todo": "We need to implement this."} in comps
+
+    def test_multiple_component_entries(self):
+        src = (
+            'def foo():\n'
+            '    """Foo.\n'
+            '\n'
+            '    Components\n'
+            '    ----------\n'
+            '    - todo: First thing.\n'
+            '    - todo: Second thing.\n'
+            '    """\n'
+        )
+        entities = _all_entities(load_python.raw_entity_first_data({"mod.py": src}))
+        key = next(k for k in entities if k.endswith(".foo"))
+        comps = entities[key]
+        assert {"todo": "First thing."} in comps
+        assert {"todo": "Second thing."} in comps
+
+    def test_dict_component_entry(self):
+        src = (
+            'def foo():\n'
+            '    """Foo.\n'
+            '\n'
+            '    Components\n'
+            '    ----------\n'
+            '    - solution of: some_requirement\n'
+            '    """\n'
+        )
+        entities = _all_entities(load_python.raw_entity_first_data({"mod.py": src}))
+        key = next(k for k in entities if k.endswith(".foo"))
+        assert {"solution of": "some_requirement"} in entities[key]
+
+    def test_components_section_excluded_from_description(self):
+        src = (
+            'def foo():\n'
+            '    """Foo does things.\n'
+            '\n'
+            '    Components\n'
+            '    ----------\n'
+            '    - todo: Do it.\n'
+            '    """\n'
+        )
+        entities = _all_entities(load_python.raw_entity_first_data({"mod.py": src}))
+        key = next(k for k in entities if k.endswith(".foo"))
+        desc = next(c["description"] for c in entities[key] if "description" in c)
+        assert "Components" not in desc
+        assert "todo" not in desc
+        assert desc == "Foo does things."
+
+    def test_no_components_section_unaffected(self):
+        src = 'def foo():\n    """Just a plain docstring."""\n'
+        entities = _all_entities(load_python.raw_entity_first_data({"mod.py": src}))
+        key = next(k for k in entities if k.endswith(".foo"))
+        assert entities[key] == [{"description": "Just a plain docstring."}]
+
+    def test_malformed_yaml_is_ignored(self):
+        src = (
+            'def foo():\n'
+            '    """Foo.\n'
+            '\n'
+            '    Components\n'
+            '    ----------\n'
+            '    - todo: [unterminated\n'
+            '    """\n'
+        )
+        entities = _all_entities(load_python.raw_entity_first_data({"mod.py": src}))
+        key = next(k for k in entities if k.endswith(".foo"))
+        assert entities[key] == [{"description": "Foo."}]
+
+    def test_non_list_yaml_is_ignored(self):
+        src = (
+            'def foo():\n'
+            '    """Foo.\n'
+            '\n'
+            '    Components\n'
+            '    ----------\n'
+            '    just a plain string, not a list\n'
+            '    """\n'
+        )
+        entities = _all_entities(load_python.raw_entity_first_data({"mod.py": src}))
+        key = next(k for k in entities if k.endswith(".foo"))
+        assert entities[key] == [{"description": "Foo."}]
+
+    def test_component_only_docstring_with_no_leading_description(self):
+        src = (
+            'def foo():\n'
+            '    """\n'
+            '    Components\n'
+            '    ----------\n'
+            '    - todo: Only a todo, no description.\n'
+            '    """\n'
+        )
+        entities = _all_entities(load_python.raw_entity_first_data({"mod.py": src}))
+        key = next(k for k in entities if k.endswith(".foo"))
+        assert entities[key] == [{"todo": "Only a todo, no description."}]
+
+    def test_section_before_trailing_numpy_section(self):
+        src = (
+            'def foo():\n'
+            '    """Foo.\n'
+            '\n'
+            '    Components\n'
+            '    ----------\n'
+            '    - todo: Do it.\n'
+            '\n'
+            '    Returns\n'
+            '    -------\n'
+            '    None.\n'
+            '    """\n'
+        )
+        entities = _all_entities(load_python.raw_entity_first_data({"mod.py": src}))
+        key = next(k for k in entities if k.endswith(".foo"))
+        comps = entities[key]
+        assert {"todo": "Do it."} in comps
+        desc = next(c["description"] for c in comps if "description" in c)
+        assert "Components" not in desc
+        assert "Returns" in desc
+        assert "None." in desc
+
+
 class TestFunctionEntity:
 
     def test_function_docstring_becomes_description(self):
