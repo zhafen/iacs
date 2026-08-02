@@ -89,6 +89,12 @@ def cmd_run_dataflow(reg: "Registrar", name: str) -> str:
     return f"Dataflow {name!r} complete. No new component types added."
 
 
+def cmd_generate_report(reg: "Registrar", output_path: str = "iacs_report.html") -> str:
+    """Render the HTML audit report (cost-impact plot + requirement tree) and save it."""
+    path = reg.generate_report(output_path)
+    return f"Report written to {path}"
+
+
 def cmd_refresh(reg: "Registrar") -> str:
     """Run the ETL export and write normalised YAML back to the original source paths.
 

@@ -165,6 +165,23 @@ class Registrar:
         result = self.execute("etl.export_manifest", **kwargs)
         return result.get("exported_manifest_filepaths", [])
 
+    def generate_report(self, output_path: str | Path = "iacs_report.html") -> str:
+        """Render a self-contained HTML audit report and save it.
+
+        Runs the ``audit.report`` dataflow against the current registry,
+        producing a report with an aggregated cost-impact plot and a
+        navigable requirements tree.
+
+        Args:
+            output_path: File path to write the report to. Defaults to
+                "iacs_report.html" in the current directory.
+
+        Returns:
+            The path the report was written to.
+        """
+        result = self.execute("audit.report", output_path=str(output_path))
+        return result["report_path"]
+
     def load_dataflow(self, name: str) -> None:
         """Load a dataflow module by name and attach it to the driver.
 

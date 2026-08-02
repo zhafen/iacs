@@ -308,6 +308,37 @@ class TestRefreshCommand:
 
 
 # ---------------------------------------------------------------------------
+# generate-report command
+# ---------------------------------------------------------------------------
+
+class TestGenerateReportCommand:
+
+    def test_writes_report_to_default_path(self, monkeypatch, capsys, tmp_path):
+        from pathlib import Path
+        manifest_path = str(Path("examples/impact-cost_analysis").resolve())
+        monkeypatch.chdir(tmp_path)
+        out, _ = run_cli(
+            "--manifest", manifest_path,
+            "generate-report",
+            monkeypatch=monkeypatch, capsys=capsys,
+        )
+        assert "iacs_report.html" in out
+        assert (tmp_path / "iacs_report.html").exists()
+
+    def test_writes_report_to_custom_output_path(self, monkeypatch, capsys, tmp_path):
+        out_path = tmp_path / "custom_report.html"
+        out, _ = run_cli(
+            "--manifest", "examples/impact-cost_analysis",
+            "generate-report", "--output", str(out_path),
+            monkeypatch=monkeypatch, capsys=capsys,
+        )
+        assert str(out_path) in out
+        assert out_path.exists()
+        content = out_path.read_text(encoding="utf-8")
+        assert "<title>iacs Audit Report</title>" in content
+
+
+# ---------------------------------------------------------------------------
 # Argument parser structure
 # ---------------------------------------------------------------------------
 
@@ -318,7 +349,7 @@ class TestParserStructure:
         choices = parser._subparsers._actions[-1].choices
         expected = {
             "manifest", "list-types", "view-component", "view-entity",
-            "run-dataflow", "refresh", "describe-format", "validate-yaml",
+            "run-dataflow", "refresh", "generate-report", "describe-format", "validate-yaml",
         }
         assert expected == set(choices.keys())
 
