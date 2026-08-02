@@ -594,17 +594,36 @@ const requirementTreeData = @REQUIREMENT_TREE_JSON@;
   root.y0 = 0;
 
   let maxW = 0;
+  let rootLabelW = 0;
   root.each(d => {
     const label = d.data.name + (d.data.priority != null ? ` (${d.data.priority.toFixed(2)})` : "");
-    maxW = Math.max(maxW, textWidth(label));
+    const w = textWidth(label);
+    maxW = Math.max(maxW, w);
+    if (d === root) rootLabelW = w;
   });
   NODE_W = maxW + 40;
 
+  let lastNodes = [];
+
   root.children && root.children.forEach(collapse);
   update(root);
+  fitToView();
 
-  const { height } = svg.node().getBoundingClientRect();
-  svg.call(zoom.transform, d3.zoomIdentity.translate(80, height / 2));
+  function fitToView() {
+    if (!lastNodes.length) return;
+    const { width: w, height: h } = svg.node().getBoundingClientRect();
+    const yExtent = d3.extent(lastNodes, d => d.y);
+    const xExtent = d3.extent(lastNodes, d => d.x);
+    const leftMargin = rootLabelW + 20; // room for the root's own label, which hangs left of y=0
+    const rightMargin = NODE_W;
+    const topBottomMargin = NODE_H * 1.5;
+    const contentW = (yExtent[1] - yExtent[0]) + leftMargin + rightMargin;
+    const contentH = (xExtent[1] - xExtent[0]) + topBottomMargin * 2;
+    const scale = Math.min(1, w / contentW, h / contentH);
+    const tx = leftMargin * scale - yExtent[0] * scale;
+    const ty = h / 2 - ((xExtent[0] + xExtent[1]) / 2) * scale;
+    svg.call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+  }
 
   function collapse(d) {
     if (d.children) {
@@ -626,6 +645,7 @@ const requirementTreeData = @REQUIREMENT_TREE_JSON@;
 
     const nodes = rootRef(source).descendants();
     const links = rootRef(source).links();
+    lastNodes = nodes;
 
     const node = g.selectAll("g.req-node").data(nodes, d => d.uid || (d.uid = ++nodeId));
 
