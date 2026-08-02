@@ -56,12 +56,6 @@ def _parse_components_yaml(text: str) -> list:
     return parsed
 
 
-def _module_qualified_name(file_id: str) -> str:
-    """Derive a dotted module name from a file identifier."""
-    parts = list(Path(file_id).with_suffix("").parts)
-    return ".".join(parts)
-
-
 def _find_iacs_meta(stmts: list) -> dict | None:
     """Return the value of the first __iacs__ = {...} assignment in stmts, or None."""
     for stmt in stmts[:5]:
@@ -137,13 +131,11 @@ def _extract_entities(tree: ast.Module, module_name: str) -> dict:
     return entities
 
 
-def raw_entity_first_data(raw_python_strings: dict[str, str]) -> dict:
-    """Parse raw Python source text into entity-first dicts, keyed by file identifier.
+def parsed_asts(raw_python_strings: dict[str, str]) -> dict[str, ast.Module]:
+    """Parse raw Python source text into AST modules, keyed by file identifier.
 
-    Parses every source string and extracts entities from modules, classes,
-    and functions that have a docstring or ``__iacs__`` metadata. Entity keys
-    are fully-qualified dotted names derived from the file identifier (e.g.
-    ``iacs.dataflows.etl.load_manifest.raw_entity_first_data``).
+    Files that fail to parse (e.g. non-Python content, syntax errors) are
+    silently dropped.
 
     Parameters
     ----------
@@ -153,21 +145,62 @@ def raw_entity_first_data(raw_python_strings: dict[str, str]) -> dict:
 
     Returns
     -------
+    dict[str, ast.Module]
+        A dict keyed by file identifier, where each value is the parsed AST
+        module for that file's source.
+    """
+    result = {}
+    for file_id, source in raw_python_strings.items():
+        try:
+            result[file_id] = ast.parse(source, filename=file_id)
+        except SyntaxError:
+            continue
+    return result
+
+
+def module_names(parsed_asts: dict[str, ast.Module]) -> dict[str, str]:
+    """Derive a dotted module name for each successfully parsed file.
+
+    e.g. ``"iacs/dataflows/etl/load_python.py"`` becomes
+    ``"iacs.dataflows.etl.load_python"``.
+    """
+    return {
+        file_id: ".".join(Path(file_id).with_suffix("").parts)
+        for file_id in parsed_asts
+    }
+
+
+def raw_entity_first_data(
+    parsed_asts: dict[str, ast.Module],
+    module_names: dict[str, str],
+) -> dict:
+    """Extract entity-first dicts from parsed ASTs, keyed by file identifier.
+
+    Extracts entities from modules, classes, and functions that have a
+    docstring or ``__iacs__`` metadata. Entity keys are fully-qualified
+    dotted names derived from the file identifier (e.g.
+    ``iacs.dataflows.etl.load_manifest.raw_entity_first_data``).
+
+    Parameters
+    ----------
+    parsed_asts : dict[str, ast.Module]
+        A dict keyed by file identifier, where each value is the parsed AST
+        module for that file's source, as returned by ``parsed_asts``.
+    module_names : dict[str, str]
+        A dict keyed by file identifier, where each value is that file's
+        dotted module name, as returned by ``module_names``.
+
+    Returns
+    -------
     dict
         A dict keyed by file identifier, where each value is the entity-first
         dict of entities extracted from that source.
     """
     result = {}
-    for file_id, source in raw_python_strings.items():
-        try:
-            tree = ast.parse(source, filename=file_id)
-        except SyntaxError:
-            continue
-        module_name = _module_qualified_name(file_id)
-        entities = _extract_entities(tree, module_name)
+    for file_id, tree in parsed_asts.items():
+        entities = _extract_entities(tree, module_names[file_id])
         if entities:
             result[file_id] = entities
-
     return result
 
 
