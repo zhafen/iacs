@@ -39,19 +39,27 @@ def stripped_registry(resolved_registry: Registry) -> Registry:
                 fields_by_comp.setdefault(comp_type, []).append(row["value"])
 
     if "description" in components:
-        df = components["description"].to_pandas().copy()
+        original = components["description"]
+        df = original.to_pandas().copy()
         if "value" in df.columns:
             df["value"] = df["value"].apply(lambda v: v.strip() if isinstance(v, str) else v)
-            updated["description"] = ibis.memtable(df)
+            # Schema passed explicitly, not inferred: a column that's entirely
+            # NULL in this batch (e.g. a nullable time_dimension field not yet
+            # backfilled by time_filled_registry, which runs after this step)
+            # has no non-null values for pandas/ibis to infer a dtype from, and
+            # DuckDB rejects creating a table with an untyped NULL column (see
+            # resolve_same_as.same_as_resolved_registry for the same fix).
+            updated["description"] = ibis.memtable(df, schema=original.schema())
 
     for comp_type, field_names in fields_by_comp.items():
         if comp_type not in components:
             continue
-        df = (updated.get(comp_type) or components[comp_type]).to_pandas().copy()
+        original = updated.get(comp_type) or components[comp_type]
+        df = original.to_pandas().copy()
         for col in field_names:
             if col in df.columns:
                 df[col] = df[col].apply(lambda v: v.strip() if isinstance(v, str) else v)
-        updated[comp_type] = ibis.memtable(df)
+        updated[comp_type] = ibis.memtable(df, schema=original.schema())
 
     resolved_registry.update(updated)
     return resolved_registry

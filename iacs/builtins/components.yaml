@@ -232,11 +232,30 @@ iacs_component:
         - description: >
               A human-readable description of what an entity is or does. This is one of
               the most common components as nearly every entity should have a description.
+              Flagged time_dimension on ``time`` so a later write updates the current
+              description instead of accumulating an ever-growing history of near-duplicate
+              restatements — view_current (and export_manifest, which now defers to it for
+              any time_dimension'd type) returns only the highest-time row per entity.
+              Callers that genuinely want the full history (e.g. an audit trail of how a
+              description changed over time) should use ``view``, not ``view_current``.
         - parent: str
         - field:
               value:
                   description: The descriptive text.
                   type: str
+              time:
+                  description: >
+                      Ordering value for which description is current, e.g. a timestamp or
+                      turn counter. Left null if the caller never supplies one — a component
+                      type's time_dimension field is optional to populate, same as any other
+                      nullable field; view_current still resolves a single current row per
+                      entity as long as at most one row per entity has a null value here
+                      (multiple null rows for the same entity are ambiguous — nulls sort last,
+                      so if more than one exists, whichever the backend orders last wins,
+                      which is not necessarily the most recently written one).
+                  type: int
+                  nullable: true
+                  time_dimension: true
     entity_id:
         - description: >
               The ((entity_id)) component contains identity information about a given

@@ -65,3 +65,46 @@ class TestPythonSourcedEntitiesExcludedFromExport:
             data = yaml.safe_load(f)
         assert "req_a" in data
         assert not any("my_function" in key for key in data)
+
+
+class TestExportManifestCollapsesTimeDimensionedComponents:
+    """A component type flagged time_dimension should export only its
+    current row per entity, not its full accumulated history -- a manifest
+    export is a snapshot of current state, not a change log.
+    """
+
+    def test_repeated_description_writes_export_only_the_latest(self, tmp_path):
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        (input_dir / "thing.yaml").write_text("thing:\n- description: first\n")
+        output_dir = tmp_path / "output"
+
+        a = Registrar.from_manifest(str(input_dir))
+        a.update(
+            yaml_strings={"turn2": "thing:\n- same_as: thing\n- description: second\n"},
+            time=2,
+        )
+        a.execute("etl.export_manifest", output_dir=str(output_dir))
+
+        with open(output_dir / "thing.yaml") as f:
+            text = f.read()
+        assert "second" in text
+        assert "first" not in text
+
+    def test_non_time_dimensioned_component_still_exports_full_history(self, tmp_path):
+        """A component type with no time_dimension field is unaffected -- every
+        recorded instance is still exported, not just one.
+        """
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        (input_dir / "thing.yaml").write_text("thing:\n- todo: first todo\n")
+        output_dir = tmp_path / "output"
+
+        a = Registrar.from_manifest(str(input_dir))
+        a.update(yaml_strings={"turn2": "thing:\n- same_as: thing\n- todo: second todo\n"})
+        a.execute("etl.export_manifest", output_dir=str(output_dir))
+
+        with open(output_dir / "thing.yaml") as f:
+            text = f.read()
+        assert "first todo" in text
+        assert "second todo" in text
