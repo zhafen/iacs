@@ -48,6 +48,18 @@ from ...registry import Registry
 INPUT_COMPONENT_TYPES = ["entity_id", "parent"]
 
 
+def _exportable_mask(filepath: pd.Series) -> pd.Series:
+    """True for entities that belong in manifest export.
+
+    Excludes builtin entities and any entity sourced from a Python file.
+    Python-derived components — including a docstring's "Components" YAML
+    section (see ``iacs.dataflows.etl.load_python``) — live in source code,
+    not a standalone YAML file, so they have nowhere to round-trip to and
+    are excluded from export by default.
+    """
+    return ~filepath.str.startswith("builtins") & ~filepath.str.endswith(".py")
+
+
 @extract_fields({ct: ir.Table for ct in INPUT_COMPONENT_TYPES})
 def components(registry: Registry) -> dict:
     """Extract all component tables from the registry.
@@ -122,7 +134,7 @@ def entity_hierarchy(parent: ir.Table, entity_id: ir.Table) -> dict[str, str | N
         Entities with no parents are NOT included in the dict.
     """
     spine_df = entity_id.to_pandas()
-    user_rows = spine_df[~spine_df["filepath"].str.startswith("builtins")]
+    user_rows = spine_df[_exportable_mask(spine_df["filepath"])]
     user_entity_ids = set(user_rows["value"].unique())
 
     parent_df = parent.execute()
@@ -185,7 +197,7 @@ def non_hierarchy_parents(
 
     # Only keep rows for user entities
     spine_df = entity_id.to_pandas()
-    user_rows = spine_df[~spine_df["filepath"].str.startswith("builtins")]
+    user_rows = spine_df[_exportable_mask(spine_df["filepath"])]
     user_entity_ids = set(user_rows["value"].unique())
 
     parent_df = parent_df[parent_df["entity_id"].isin(user_entity_ids)].copy()
@@ -290,7 +302,7 @@ def entity_first_data(components_for_export: dict, entity_id: ir.Table) -> dict:
         ``hierarchical_entity_first_data``).
     """
     spine_df = entity_id.to_pandas()
-    user_rows = spine_df[~spine_df["filepath"].str.startswith("builtins")]
+    user_rows = spine_df[_exportable_mask(spine_df["filepath"])]
     user_entity_ids = set(user_rows["value"].unique())
 
     skip_types = _skip_on_export_types(components_for_export)
@@ -432,7 +444,7 @@ def hierarchical_entity_first_data(
         containing a ``"data"`` key (own components) and child-entity keys.
     """
     spine_df = entity_id.to_pandas()
-    user_rows = spine_df[~spine_df["filepath"].str.startswith("builtins")]
+    user_rows = spine_df[_exportable_mask(spine_df["filepath"])]
     user_entity_ids = set(user_rows["value"].unique())
 
     id_to_filepath: dict[str, str] = {}

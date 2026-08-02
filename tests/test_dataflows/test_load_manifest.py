@@ -164,7 +164,8 @@ class TestRawStrings:
     def test_given_python_strings_parse_correctly_downstream(self):
         given = {"inline_mod": '"""Inline module doc."""\n'}
         raw = load_manifest.raw_strings([], python_strings=given)["raw_python_strings"]
-        entities = load_python.raw_entity_first_data(raw)
+        asts = load_python.parsed_asts(raw)
+        entities = load_python.raw_entity_first_data(asts, load_python.module_names(asts))
         assert {"description": "Inline module doc."} in entities["inline_mod"]["inline_mod"]
 
     def test_accepts_path_objects_directly(self, tmp_path):

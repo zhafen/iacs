@@ -30,3 +30,38 @@ class TestExportManifestSplitsByFile:
         # No cross-contamination
         assert "subnet_AB" not in abcd_data
         assert "net_ABCD" not in ab_data
+
+
+class TestPythonSourcedEntitiesExcludedFromExport:
+    """Docstring-derived entities (including "Components" YAML sections) have
+    no standalone YAML file to round-trip into, so they must not appear in
+    exported manifest output.
+    """
+
+    def test_python_entities_not_written_to_output_dir(self, tmp_path):
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        (input_dir / "mod.py").write_text(
+            'def my_function():\n'
+            '    """Docstring here.\n'
+            '\n'
+            '    Components\n'
+            '    ----------\n'
+            '    - todo: We need to implement this.\n'
+            '    """\n'
+        )
+        (input_dir / "req.yaml").write_text(
+            "req_a:\n- description: Requirement A\n- requirement\n"
+        )
+        output_dir = tmp_path / "output"
+
+        a = Registrar.from_manifest(str(input_dir))
+        a.execute("etl.export_manifest", output_dir=str(output_dir))
+
+        output_files = sorted(f.name for f in output_dir.glob("*"))
+        assert output_files == ["req.yaml"]
+
+        with open(output_dir / "req.yaml") as f:
+            data = yaml.safe_load(f)
+        assert "req_a" in data
+        assert not any("my_function" in key for key in data)
