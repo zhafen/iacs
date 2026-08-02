@@ -1910,3 +1910,25 @@ text_discretization:
                   Instructor, LlamaIndex property-graph extraction, DSPy, Marvin,
                   Outlines, Langchain document transformers) and document pros/cons
                   in this file before beginning implementation.
+cost_budgets:
+    data:
+        - description: >
+              Cost types and normalized conversion rates for effort-based costs,
+              so effort recorded under different development-hour categories can
+              be compared on a common cost scale.
+        - cost_budget:
+              - value: development_hours
+                normalized_value_per_unit: 1.0
+                description: Baseline development hour, no unusual intensity.
+              - value: high_intensity_development_hours
+                normalized_value_per_unit: 1.5
+                description: >
+                    An hour of high-intensity, deep-focus development work.
+                    Weighted above baseline since it draws on a scarcer,
+                    more fatigue-prone kind of effort.
+              - value: low_intensity_development_hours
+                normalized_value_per_unit: 0.5
+                description: >
+                    An hour of low-intensity development work, e.g. routine
+                    or easily-interruptible tasks. Weighted below baseline
+                    since it is more abundant and less costly to supply.
