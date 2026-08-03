@@ -9,7 +9,7 @@ from hamilton.function_modifiers import extract_fields
 import ibis.expr.types as ir
 
 from iacs.registry import Registry
-from iacs.utils import candidate_entity_ids
+from iacs.utils import candidate_entity_ids, non_format_guide_ids
 
 
 INPUT_COMPONENT_TYPES = [
@@ -222,18 +222,60 @@ def priority_product(parent: ir.Table, entity_id: ir.Table, requirement: ir.Tabl
     return pd.DataFrame(rows, columns=["entity_id", "priority_product"])
 
 
+def impact_from_requirement(requirement: ir.Table, entity_id: ir.Table) -> pd.DataFrame:
+    """Synthesize impact rows from each requirement's priority value.
+
+    ``requirement`` is schema-declared as a child of ``impact`` and its
+    ``value`` field is documented as "the priority/impact score for the
+    requirement", so a requirement's priority doubles as its impact score
+    without needing separately-authored impact data. format_guide.yaml's
+    self-documentation entities (which also carry ``requirement`` tags to
+    describe the EC format spec itself) are excluded, since they aren't
+    project data.
+
+    Parameters
+    ----------
+    requirement : ir.Table
+        The requirement component table from the registry.
+    entity_id : ir.Table
+        The entity spine table, used to exclude format_guide.yaml entities.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns: entity_id, value, type ("impact"). One row per requirement
+        entity outside of format_guide.yaml.
+    """
+    req_df = requirement.to_pandas()
+    if req_df.empty or "value" not in req_df.columns:
+        return pd.DataFrame(columns=["entity_id", "value", "type"])
+
+    eid_df = entity_id.to_pandas()
+    keep_ids = non_format_guide_ids(eid_df, set(req_df["entity_id"].unique()))
+    req_df = req_df[req_df["entity_id"].isin(keep_ids)]
+    if req_df.empty:
+        return pd.DataFrame(columns=["entity_id", "value", "type"])
+
+    result = req_df.groupby("entity_id")["value"].max().reset_index()
+    result["type"] = "impact"
+    return result[["entity_id", "value", "type"]]
+
+
 def resolved_impact_cost(
     impact: ir.Table,
     cost: ir.Table,
     impact_budget: ir.Table,
     cost_budget: ir.Table,
+    impact_from_requirement: pd.DataFrame,
 ) -> pd.DataFrame:
     """Compute normalized impact and cost totals for each entity.
 
     Each impact/cost row's value is weighted by the ``normalized_value_per_unit``
     of the matching ``impact_budget``/``cost_budget`` entry for its ``type``
     (defaulting to 1 when no budget is defined for that type), then summed per
-    entity.
+    entity. Impact rows are the union of any directly-authored ``impact``
+    components and those synthesized from requirement priorities (see
+    ``impact_from_requirement``).
 
     Parameters
     ----------
@@ -245,6 +287,8 @@ def resolved_impact_cost(
         The impact_budget component table from the registry.
     cost_budget : ir.Table
         The cost_budget component table from the registry.
+    impact_from_requirement : pd.DataFrame
+        Impact rows synthesized from requirement priorities.
 
     Returns
     -------
@@ -264,7 +308,8 @@ def resolved_impact_cost(
         weighted = pd.to_numeric(df["value"], errors="coerce") * weight
         return weighted.groupby(df["entity_id"]).sum()
 
-    impact_sum = _normalized_sum(impact.to_pandas(), impact_budget.to_pandas())
+    impact_df = pd.concat([impact.to_pandas(), impact_from_requirement], ignore_index=True)
+    impact_sum = _normalized_sum(impact_df, impact_budget.to_pandas())
     cost_sum = _normalized_sum(cost.to_pandas(), cost_budget.to_pandas())
 
     result = pd.DataFrame({"impact": impact_sum, "cost": cost_sum}).fillna(0.0)
