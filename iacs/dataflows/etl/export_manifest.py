@@ -61,29 +61,33 @@ def _exportable_mask(filepath: pd.Series) -> pd.Series:
 
 
 @extract_fields({ct: ir.Table for ct in INPUT_COMPONENT_TYPES})
-def components(registry: Registry) -> dict:
-    """Extract all component tables from the registry, collapsed to current state.
+def components(registry: Registry, collapse_time_dimension: bool = True) -> dict:
+    """Extract all component tables from the registry.
 
     Returns all components (not just INPUT_COMPONENT_TYPES) because downstream
     nodes such as ``components_for_export`` and ``entity_first_data`` must
     iterate over every component type to reconstruct the full manifest.
     ``parent`` is guaranteed present via a fallback empty table.
 
-    Any component type with a field flagged ``time_dimension: true`` is
-    collapsed to its current row per entity -- the same resolution
-    ``Registry.view_current`` uses -- rather than exported as its full
-    accumulated history. A manifest export is meant to round-trip a
-    snapshot of current state (what a save's own YAML should read as, e.g.
-    a single door description rather than every restatement of it since
-    the world started), not a change log; the full history is still there
-    in the registry itself for any caller that wants it via ``view``.
-    Component types with no time_dimension field are exported in full,
-    unchanged.
+    Args:
+        collapse_time_dimension: When True (the default), any component type
+            with a field flagged ``time_dimension: true`` is collapsed to its
+            current row per entity -- the same resolution
+            ``Registry.view_current`` uses -- rather than exported as its
+            full accumulated history. A manifest export is normally meant to
+            round-trip a snapshot of current state (what a save's own YAML
+            should read as, e.g. a single door description rather than every
+            restatement of it since the world started), not a change log.
+            Set False to export every component type in full, uncollapsed,
+            regardless of time_dimension -- e.g. for a full-history export
+            kept alongside a collapsed current-state one. The full history is
+            always still in the registry itself either way, reachable via
+            ``view`` even when this defaults to collapsing the export.
     """
     result = {
         comp_type: (
             registry._current_table(comp_type)
-            if registry._time_dimension_field(comp_type) is not None
+            if collapse_time_dimension and registry._time_dimension_field(comp_type) is not None
             else table
         )
         for comp_type, table in registry._components.items()

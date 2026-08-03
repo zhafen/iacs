@@ -146,7 +146,9 @@ class Registrar:
         """
         self._registry.to_database(path)
 
-    def export_manifest(self, output_dir: str | Path | None = None) -> list[str]:
+    def export_manifest(
+        self, output_dir: str | Path | None = None, collapse_time_dimension: bool = True
+    ) -> list[str]:
         """Export the registry back to entity-centered EC files.
 
         Runs the ``etl.export_manifest`` dataflow against the current
@@ -157,11 +159,18 @@ class Registrar:
             output_dir: Directory to write the exported files to. If
                 omitted, each entity is written back to its original
                 source path (a "refresh" round-trip).
+            collapse_time_dimension: When True (the default), a component
+                type flagged ``time_dimension`` exports only its current row
+                per entity. Set False for a full, uncollapsed history export
+                instead -- e.g. to keep a full-history file alongside a
+                collapsed current-state one.
 
         Returns:
             The filepaths that were written.
         """
-        kwargs = {"output_dir": str(output_dir)} if output_dir is not None else {}
+        kwargs: dict = {"collapse_time_dimension": collapse_time_dimension}
+        if output_dir is not None:
+            kwargs["output_dir"] = str(output_dir)
         result = self.execute("etl.export_manifest", **kwargs)
         return result.get("exported_manifest_filepaths", [])
 
