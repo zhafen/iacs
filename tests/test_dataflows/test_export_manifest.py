@@ -108,3 +108,44 @@ class TestExportManifestCollapsesTimeDimensionedComponents:
             text = f.read()
         assert "first todo" in text
         assert "second todo" in text
+
+    def test_collapse_time_dimension_false_exports_full_history(self, tmp_path):
+        """Passing collapse_time_dimension=False opts out of collapsing entirely,
+        even for a time_dimension'd component type -- e.g. for a full-history
+        export kept alongside a collapsed current-state one.
+        """
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        (input_dir / "thing.yaml").write_text("thing:\n- description: first\n")
+        output_dir = tmp_path / "output"
+
+        a = Registrar.from_manifest(str(input_dir))
+        a.update(
+            yaml_strings={"turn2": "thing:\n- same_as: thing\n- description: second\n"},
+            time=2,
+        )
+        a.execute("etl.export_manifest", output_dir=str(output_dir), collapse_time_dimension=False)
+
+        with open(output_dir / "thing.yaml") as f:
+            text = f.read()
+        assert "first" in text
+        assert "second" in text
+
+    def test_export_manifest_registrar_method_accepts_collapse_time_dimension(self, tmp_path):
+        """Registrar.export_manifest itself exposes the flag, not just the raw dataflow."""
+        input_dir = tmp_path / "input"
+        input_dir.mkdir()
+        (input_dir / "thing.yaml").write_text("thing:\n- description: first\n")
+        output_dir = tmp_path / "output"
+
+        a = Registrar.from_manifest(str(input_dir))
+        a.update(
+            yaml_strings={"turn2": "thing:\n- same_as: thing\n- description: second\n"},
+            time=2,
+        )
+        a.export_manifest(output_dir=str(output_dir), collapse_time_dimension=False)
+
+        with open(output_dir / "thing.yaml") as f:
+            text = f.read()
+        assert "first" in text
+        assert "second" in text
