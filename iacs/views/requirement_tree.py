@@ -3,8 +3,30 @@
 from collections import defaultdict
 
 import networkx as nx
+import pandas as pd
 
 from iacs.registrar import Registrar
+
+# format_guide.yaml self-documents the EC format spec (see
+# iacs.commands.build_format_description) using the same "requirement"
+# tagging convention as real project data, but it isn't project data — it
+# ships alongside a manifest purely for the describe_format tool. Its
+# entities are excluded from requirement trees so format-spec constraints
+# don't get mixed in with the project's actual requirements.
+_FORMAT_GUIDE_BASENAME = "format_guide.yaml"
+
+
+def _non_format_guide_ids(entity_ids_pd: pd.DataFrame, ids: set) -> set:
+    """Return ``ids`` with any entity sourced from format_guide.yaml removed."""
+    if "filepath" not in entity_ids_pd.columns:
+        return ids
+    excluded = set(
+        entity_ids_pd.loc[
+            entity_ids_pd["filepath"].astype(str).str.endswith(_FORMAT_GUIDE_BASENAME),
+            "value",
+        ]
+    )
+    return ids - excluded
 
 
 def _requirement_node(node_id, children_map: dict, id_to_key: dict, id_to_priority: dict) -> dict:
@@ -43,7 +65,7 @@ def build_requirement_tree(registrar: Registrar, ancestor_key: str) -> dict:
     reqs_pd = registrar.get("requirement").to_pandas()
 
     id_to_key = entity_ids_pd.set_index("value")["entity_key"].to_dict()
-    req_ids = set(reqs_pd["entity_id"].unique())
+    req_ids = _non_format_guide_ids(entity_ids_pd, set(reqs_pd["entity_id"].unique()))
 
     # Use max priority per entity (an entity may have multiple requirement rows)
     id_to_priority = reqs_pd.groupby("entity_id")["value"].max().to_dict()
@@ -91,7 +113,7 @@ def build_requirement_forest(registrar: Registrar) -> dict:
     parents_pd = registrar.get("parent").to_pandas()
     reqs_pd = registrar.get("requirement").to_pandas()
 
-    req_ids = set(reqs_pd["entity_id"].unique())
+    req_ids = _non_format_guide_ids(entity_ids_pd, set(reqs_pd["entity_id"].unique()))
     if not req_ids:
         return {"name": "Requirements", "priority": None}
 
