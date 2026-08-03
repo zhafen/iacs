@@ -261,12 +261,52 @@ def impact_from_requirement(requirement: ir.Table, entity_id: ir.Table) -> pd.Da
     return result[["entity_id", "value", "type"]]
 
 
+def _subtree_rollup(per_entity: pd.Series, parent: pd.DataFrame) -> pd.Series:
+    """Roll up each entity's own value to include the sum over its full descendant subtree.
+
+    Every ancestor of an entity with a direct value gets a total too, even if
+    it has no direct value of its own (e.g. a container entity whose only
+    cost comes from its children).
+
+    Parameters
+    ----------
+    per_entity : pd.Series
+        Direct (non-rolled-up) per-entity values, indexed by entity_id.
+    parent : pd.DataFrame
+        The parent component table, with columns entity_id, parent_eid.
+
+    Returns
+    -------
+    pd.Series
+        Subtree-summed values, indexed by entity_id.
+    """
+    if per_entity.empty:
+        return per_entity
+
+    graph = nx.DiGraph()
+    graph.add_edges_from(zip(parent["parent_eid"], parent["entity_id"]))
+
+    candidates = set(per_entity.index)
+    for eid in list(per_entity.index):
+        if eid in graph:
+            candidates |= nx.ancestors(graph, eid)
+
+    totals = {}
+    for eid in candidates:
+        subtree = (nx.descendants(graph, eid) if eid in graph else set()) | {eid}
+        total = per_entity.reindex(list(subtree)).fillna(0.0).sum()
+        if total:
+            totals[eid] = total
+    return pd.Series(totals, dtype=float)
+
+
 def resolved_impact_cost(
     impact: ir.Table,
     cost: ir.Table,
     impact_budget: ir.Table,
     cost_budget: ir.Table,
     impact_from_requirement: pd.DataFrame,
+    parent: ir.Table,
 ) -> pd.DataFrame:
     """Compute normalized impact and cost totals for each entity.
 
@@ -275,7 +315,10 @@ def resolved_impact_cost(
     (defaulting to 1 when no budget is defined for that type), then summed per
     entity. Impact rows are the union of any directly-authored ``impact``
     components and those synthesized from requirement priorities (see
-    ``impact_from_requirement``).
+    ``impact_from_requirement``). Cost is then rolled up across each entity's
+    full descendant subtree (see ``_subtree_rollup``), so a container entity's
+    cost reflects everything needed to fulfill it, not just its own direct
+    cost components.
 
     Parameters
     ----------
@@ -289,12 +332,14 @@ def resolved_impact_cost(
         The cost_budget component table from the registry.
     impact_from_requirement : pd.DataFrame
         Impact rows synthesized from requirement priorities.
+    parent : ir.Table
+        The parent component table, used to roll cost up each entity's subtree.
 
     Returns
     -------
     pd.DataFrame
         Columns: entity_id, impact, cost, diff, ratio. One row per entity that
-        has at least one impact or cost component.
+        has at least one impact or cost (own or via a descendant) component.
     """
     def _normalized_sum(df: pd.DataFrame, budget_df: pd.DataFrame) -> pd.Series:
         if df.empty or "value" not in df.columns or "type" not in df.columns:
@@ -310,7 +355,7 @@ def resolved_impact_cost(
 
     impact_df = pd.concat([impact.to_pandas(), impact_from_requirement], ignore_index=True)
     impact_sum = _normalized_sum(impact_df, impact_budget.to_pandas())
-    cost_sum = _normalized_sum(cost.to_pandas(), cost_budget.to_pandas())
+    cost_sum = _subtree_rollup(_normalized_sum(cost.to_pandas(), cost_budget.to_pandas()), parent.to_pandas())
 
     result = pd.DataFrame({"impact": impact_sum, "cost": cost_sum}).fillna(0.0)
     if result.empty:

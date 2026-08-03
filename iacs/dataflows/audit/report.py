@@ -387,7 +387,7 @@ _TEMPLATE = """<!doctype html>
 
   <section id="cost-impact-section">
     <h2>Aggregated Cost vs. Impact</h2>
-    <p class="lede">Each point is one entity's total normalized impact and cost. Points above the dashed line return more impact than they cost; color shows the size of that gap.</p>
+    <p class="lede">Each point is one entity's total normalized impact and cost, including its full descendant subtree. Cost and impact axes are each scaled independently to their own range; points above the dashed line rank higher on impact than on cost, and color shows the size of that gap.</p>
     <svg id="cost-impact-chart"></svg>
     <details class="table-toggle">
       <summary>Show as table</summary>
@@ -442,19 +442,27 @@ const requirementTreeData = @REQUIREMENT_TREE_JSON@;
   svg.attr("viewBox", `0 0 ${width} ${height}`);
   const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-  const maxVal = d3.max(costImpactData, d => Math.max(d.impact, d.cost)) || 1;
-  const x = d3.scaleLinear().domain([0, maxVal * 1.08]).range([0, innerW]);
-  const y = d3.scaleLinear().domain([0, maxVal * 1.08]).range([innerH, 0]);
+  // Cost and impact are different units (weighted hours vs. a 0-1 rating), so
+  // sharing one scale would flatten whichever axis has the smaller range.
+  // Each axis is scaled independently to its own max, so both fill the full
+  // plot area and relative outliers are visible on both dimensions.
+  const costMax = d3.max(costImpactData, d => d.cost) || 1;
+  const impactMax = d3.max(costImpactData, d => d.impact) || 1;
+  const x = d3.scaleLinear().domain([0, costMax * 1.08]).range([0, innerW]);
+  const y = d3.scaleLinear().domain([0, impactMax * 1.08]).range([innerH, 0]);
 
-  const diffs = costImpactData.map(d => d.diff);
-  const diffExtent = Math.max(Math.abs(d3.min(diffs)), Math.abs(d3.max(diffs))) || 1;
+  // Color also uses each point's position relative to its own axis's max
+  // (not the raw impact-cost difference), for the same reason.
+  const relDiffs = costImpactData.map(d => d.impact / impactMax - d.cost / costMax);
+  const relDiffExtent = Math.max(Math.abs(d3.min(relDiffs)), Math.abs(d3.max(relDiffs))) || 1;
   const color = d3.scaleDiverging()
-    .domain([-diffExtent, 0, diffExtent])
+    .domain([-relDiffExtent, 0, relDiffExtent])
     .interpolator(d3.interpolateRgbBasis([
       getComputedStyle(document.documentElement).getPropertyValue("--neg").trim(),
       getComputedStyle(document.documentElement).getPropertyValue("--neutral").trim(),
       getComputedStyle(document.documentElement).getPropertyValue("--pos").trim(),
     ]));
+  const relDiff = d => d.impact / impactMax - d.cost / costMax;
 
   // Gridlines
   g.append("g")
@@ -465,11 +473,13 @@ const requirementTreeData = @REQUIREMENT_TREE_JSON@;
     .attr("x1", 0).attr("x2", innerW)
     .attr("y1", d => y(d)).attr("y2", d => y(d));
 
-  // Break-even reference line (impact == cost)
+  // Diagonal reference line: since each axis is independently rescaled, this
+  // marks equal relative standing (fraction of own max) rather than literal
+  // impact == cost; points above it rank higher on impact than on cost.
   g.append("line")
     .attr("class", "breakeven")
     .attr("x1", x(0)).attr("y1", y(0))
-    .attr("x2", x(maxVal * 1.08)).attr("y2", y(maxVal * 1.08));
+    .attr("x2", x(costMax * 1.08)).attr("y2", y(impactMax * 1.08));
 
   // Axes
   g.append("g")
@@ -502,7 +512,7 @@ const requirementTreeData = @REQUIREMENT_TREE_JSON@;
   points.append("circle")
     .attr("class", "dot")
     .attr("r", 6)
-    .attr("fill", d => color(d.diff));
+    .attr("fill", d => color(relDiff(d)));
 
   points.append("circle")
     .attr("class", "hit")
@@ -547,7 +557,7 @@ const requirementTreeData = @REQUIREMENT_TREE_JSON@;
     .data([0, 0.5, 1])
     .join("stop")
     .attr("offset", d => d * 100 + "%")
-    .attr("stop-color", d => color(-diffExtent + d * 2 * diffExtent));
+    .attr("stop-color", d => color(-relDiffExtent + d * 2 * relDiffExtent));
   legendG.append("rect")
     .attr("width", legendW).attr("height", legendH)
     .attr("fill", `url(#${gradId})`)
