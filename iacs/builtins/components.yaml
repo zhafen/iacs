@@ -566,11 +566,12 @@ iacs_component:
         - component_type:
               derived: true
 
-    effort_total:
+    normalized_cost_total:
         - description: >
-              Total effort for an entity and all its descendants over a configured
-              time period. Derived from effort components by
-              iacs.dataflows.etl.derive_components.
+              Total normalized cost for an entity and all its descendants over a
+              configured time period, weighted by the matching cost_budget
+              normalized_value_per_unit. Derived from cost components by
+              iacs.dataflows.derive.impact_cost.
         - component_type:
               derived: true
 
