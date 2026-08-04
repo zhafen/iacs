@@ -8,6 +8,7 @@ from iacs.commands import (
     MANIFEST_ENV_VAR,
     available_audit_components,
     build_format_description,
+    cmd_generate_report,
     cmd_list_component_types,
     cmd_refresh,
     cmd_view_component,
@@ -104,6 +105,17 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    p_gr = sub.add_parser(
+        "generate-report",
+        help="Render a self-contained HTML audit report (cost-impact plot + requirement tree).",
+    )
+    p_gr.add_argument(
+        "--output",
+        metavar="PATH",
+        default="iacs_report.html",
+        help="File path to write the report to (default: iacs_report.html).",
+    )
+
     sub.add_parser(
         "describe-format",
         help="Show the entity-first YAML format specification.",
@@ -151,6 +163,9 @@ def main() -> None:
 
     if args.command == "refresh":
         print(cmd_refresh(reg))
+
+    elif args.command == "generate-report":
+        print(cmd_generate_report(reg, args.output))
 
     elif args.command == "list-types":
         print(cmd_list_component_types(reg))

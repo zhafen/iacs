@@ -31,16 +31,16 @@ iacs:
                                   We don't want to duplicate other IaC code if
                                   possible.
                             - requirement
-                            - effort:
-                                value: 13
-                                unit: points
+                            - cost:
+                                value: 26
+                                type: high_intensity_development_hours
                         parse_code_languages:
                             - description: >
                                   Code such as Python also provides clear definitions.
                             - requirement
-                            - effort:
-                                value: 8
-                                unit: points
+                            - cost:
+                                value: 16
+                                type: development_hours
                         parse_natural_language:
                             - id: parse_natural_language
                             - description: >
@@ -51,9 +51,9 @@ iacs:
                                   atomic facts, and mapping them to canonical entity and
                                   component representations.
                             - requirement
-                            - effort:
-                                value: 21
-                                unit: points
+                            - cost:
+                                value: 42
+                                type: high_intensity_development_hours
                 compatible_with_version_control:
                     - description: >
                           Version control is essential for reliability.
@@ -127,17 +127,17 @@ iacs:
                             Wikis are a very common and readable way of documenting
                             knowledge. This would be a good and easy default.
                         - requirement
-                        - effort:
-                            value: 5
-                            unit: points
+                        - cost:
+                            value: 10
+                            type: low_intensity_development_hours
                 transform_between_formats:
                     data:
                         - requirement: 0.9
                     transform_between_entity_first_and_component_first:
                         - requirement: 0.9
-                        - effort:
-                            value: 8
-                            unit: points
+                        - cost:
+                            value: 16
+                            type: development_hours
             address_issues_with_multiple_possible_representations:
                 data:
                     - requirement: 0.7
@@ -236,24 +236,24 @@ iacs:
                         We desperately need this in order to use it on development
                         and continue making progress.
                     - requirement: 1.0
-                    - effort:
-                        value: 8
-                        unit: points
+                    - cost:
+                        value: 16
+                        type: development_hours
             facilitate_compatibility_with_agents:
                 - requirement: {type: constraint}
-                - effort:
-                    value: 8
-                    unit: points
+                - cost:
+                    value: 16
+                    type: development_hours
             facilitate_compatibility_with_terraform:
                 - requirement: {type: constraint}
-                - effort:
-                    value: 13
-                    unit: points
+                - cost:
+                    value: 26
+                    type: high_intensity_development_hours
             facilitate_compatibility_with_relational_databases:
                 - requirement: {type: constraint}
-                - effort:
-                    value: 8
-                    unit: points
+                - cost:
+                    value: 16
+                    type: development_hours
     iacs_solution:
         data:
             - description: >
@@ -918,9 +918,9 @@ ecs_framework:
                       type has its own table (DataFrame) with a multi-index of
                       (entity_id, component_index).
                 - system
-                - effort:
-                    value: 5
-                    unit: points
+                - cost:
+                    value: 10
+                    type: development_hours
             init:
                 - description: Initialize from a dict of component DataFrames.
                 - input:
@@ -955,9 +955,9 @@ ecs_framework:
                       Converts between entity-first format (for human editing)
                       and component-first format (Registry, for querying).
                 - system
-                - effort:
-                    value: 8
-                    unit: points
+                - cost:
+                    value: 16
+                    type: development_hours
             read_entity_first:
                 - description: >
                       Parse entity-first data (dict) into a flat DataFrame with
@@ -1009,9 +1009,9 @@ ecs_framework:
                     components.
                 - system
                 - todo: Choose between DAG-based and custom approach and implement.
-                - effort:
-                    value: 13
-                    unit: points
+                - cost:
+                    value: 26
+                    type: high_intensity_development_hours
             required_functionality:
                 load_data:
                 get_ids_from_path:
@@ -1300,9 +1300,9 @@ ecs_framework:
                           and extract facts implicitly, returning structured output
                           (e.g. via Instructor + Pydantic).
                     - solution of: parse_natural_language
-                    - effort:
-                        value: 5
-                        unit: points
+                    - cost:
+                        value: 10
+                        type: low_intensity_development_hours
                 pro_simplicity:
                     - description: No pipeline to maintain; one call handles all steps.
                     - weight: 0.8
@@ -1329,9 +1329,9 @@ ecs_framework:
                           facts to the ECS schema. Tools like Graphiti or a custom
                           extraction prompt can handle the first pass.
                     - solution of: parse_natural_language
-                    - effort:
-                        value: 8
-                        unit: points
+                    - cost:
+                        value: 16
+                        type: development_hours
                 pro_debuggable:
                     - description: >
                           Separating extraction from schema mapping makes it easy to
@@ -1354,9 +1354,9 @@ ecs_framework:
                           coreferences incrementally. Well-suited for conversational
                           or multi-document inputs.
                     - solution of: parse_natural_language
-                    - effort:
-                        value: 13
-                        unit: points
+                    - cost:
+                        value: 26
+                        type: high_intensity_development_hours
                 pro_natural_fit_with_registry:
                     - description: >
                           The iacs registry is already the canonical entity store;
@@ -1507,9 +1507,9 @@ audit_system:
                 - description: >
                     Identify the most-impactful structure to work on. May include other
                     audits as subaudits.
-                - effort:
-                    value: 8
-                    unit: points
+                - cost:
+                    value: 16
+                    type: development_hours
             generate_effort_priority_matrix:
                 define_metrics:
                     define_requirements:
@@ -1694,37 +1694,37 @@ audit_system:
             - description: >
                   Checks that requirements have implementing solutions.
                   Flags requirements missing implementations.
-            - effort:
-                value: 3
-                unit: points
+            - cost:
+                value: 6
+                type: low_intensity_development_hours
         traceability_audit:
             - description: >
                   Checks that components trace back to requirements.
                   Flags orphan infrastructure with no motivating requirement.
-            - effort:
-                value: 3
-                unit: points
+            - cost:
+                value: 6
+                type: low_intensity_development_hours
         definition_audit:
             - description: >
                   Validates that component instances conform to their schemas.
                   Flags invalid or malformed definitions.
-            - effort:
-                value: 5
-                unit: points
+            - cost:
+                value: 10
+                type: low_intensity_development_hours
         connectivity_audit:
             - description: >
                   Checks that all infrastructure is connected to the main
                   solution. Flags siloed or disconnected components.
-            - effort:
-                value: 5
-                unit: points
+            - cost:
+                value: 10
+                type: low_intensity_development_hours
         todo_audit:
             - description: >
                   Reports on outstanding todos. Can flag incomplete items
                   or items past a deadline.
-            - effort:
-                value: 2
-                unit: points
+            - cost:
+                value: 4
+                type: low_intensity_development_hours
 deduplication_system:
     data:
         - description: >
@@ -1910,3 +1910,25 @@ text_discretization:
                   Instructor, LlamaIndex property-graph extraction, DSPy, Marvin,
                   Outlines, Langchain document transformers) and document pros/cons
                   in this file before beginning implementation.
+cost_budgets:
+    data:
+        - description: >
+              Cost types and normalized conversion rates for effort-based costs,
+              so effort recorded under different development-hour categories can
+              be compared on a common cost scale.
+        - cost_budget:
+              - value: development_hours
+                normalized_value_per_unit: 1.0
+                description: Baseline development hour, no unusual intensity.
+              - value: high_intensity_development_hours
+                normalized_value_per_unit: 1.5
+                description: >
+                    An hour of high-intensity, deep-focus development work.
+                    Weighted above baseline since it draws on a scarcer,
+                    more fatigue-prone kind of effort.
+              - value: low_intensity_development_hours
+                normalized_value_per_unit: 0.5
+                description: >
+                    An hour of low-intensity development work, e.g. routine
+                    or easily-interruptible tasks. Weighted below baseline
+                    since it is more abundant and less costly to supply.
