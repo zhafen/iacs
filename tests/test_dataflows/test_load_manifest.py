@@ -9,6 +9,7 @@ import pytest
 import iacs.dataflows.etl.load_manifest as load_manifest
 import iacs.dataflows.etl.load_python as load_python
 import iacs.dataflows.etl.load_yaml as load_yaml
+from iacs.registrar import Registrar
 from iacs.registry import Registry
 from iacs.utils import dhash
 
@@ -466,6 +467,58 @@ class TestComponentTables:
         df = result["description"].to_pandas()
         assert "entity_id" in df.columns
         assert "component_index" in df.columns
+
+
+class TestExpandTimeDimensionShorthand:
+    """A field declared ``type: time_dimension`` defaults ``time_dimension: true``."""
+
+    def _field_rows(self, data: dict) -> pd.DataFrame:
+        wrapped = {_FILE_ID: data}
+        pvp = load_manifest.pathvalue_pairs(wrapped)
+        kvs = load_manifest.keyvalue_store(pvp)
+        return load_manifest.component_tables(kvs)["field"].to_pandas()
+
+    def test_defaults_time_dimension_true(self):
+        data = {"widget": [{"field": {"turn": {"type": "time_dimension"}}}]}
+        df = self._field_rows(data)
+        row = df[df["value"] == "turn"].iloc[0]
+        assert row["time_dimension"] == "true"
+
+    def test_leaves_other_types_untouched(self):
+        data = {"widget": [{"field": {"x": {"type": "float"}}}]}
+        df = self._field_rows(data)
+        row = df[df["value"] == "x"].iloc[0]
+        assert "time_dimension" not in df.columns or pd.isna(row.get("time_dimension"))
+
+    def test_respects_explicit_override(self):
+        """An explicit time_dimension value on a time_dimension-typed field is not overwritten."""
+        data = {
+            "widget": [{"field": {"turn": {"type": "time_dimension", "time_dimension": "false"}}}]
+        }
+        df = self._field_rows(data)
+        row = df[df["value"] == "turn"].iloc[0]
+        assert row["time_dimension"] == "false"
+
+    def test_end_to_end_resolves_as_current_row(self):
+        """type: time_dimension alone (no separate time_dimension: true) drives view_current."""
+        yaml_str = (
+            "widget:\n"
+            "    - component_type\n"
+            "    - field:\n"
+            "          turn:\n"
+            "              type: time_dimension\n"
+            "thing:\n"
+            "    - widget:\n"
+            "          value: old\n"
+            "          turn: 1\n"
+            "    - widget:\n"
+            "          value: new\n"
+            "          turn: 2\n"
+        )
+        registrar = Registrar()
+        registrar.update(yaml_strings={"test.yaml": yaml_str})
+        current = registrar.registry.view_current("widget").to_pandas()
+        assert current["widget.value"].tolist() == ["new"]
 
 
 # ---------------------------------------------------------------------------
