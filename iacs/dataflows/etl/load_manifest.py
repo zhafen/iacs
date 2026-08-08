@@ -615,6 +615,34 @@ def component_type_table(
     return ibis.union(yaml_ct, ibis.memtable(csv_df))
 
 
+def _expand_time_dimension_shorthand(field_df: pd.DataFrame) -> pd.DataFrame:
+    """Default ``time_dimension: true`` for field rows declared ``type: time_dimension``.
+
+    ``time_dimension`` is a shorthand field type: a component author writes
+    ``type: time_dimension`` once instead of separately declaring
+    ``type: int``, ``nullable: true`` (already the ``field`` schema's own
+    default), and ``time_dimension: true``. The two are meant to always go
+    together -- a time-dimension field orders which row is current, so its
+    dtype must sort meaningfully as int -- and forgetting the flag silently
+    turns an SCD field into a plain accumulating log instead of a
+    current-value lookup (see ``registry.py``'s ``_time_dimension_field``).
+
+    A field row that already states ``time_dimension`` explicitly (true or
+    false) is left untouched. The actual int cast happens later, in
+    validate_components, via ``_IACS_TO_PYTHON_TYPE["time_dimension"]``.
+    """
+    if "type" not in field_df.columns:
+        return field_df
+    is_shorthand = field_df["type"] == "time_dimension"
+    if not is_shorthand.any():
+        return field_df
+    if "time_dimension" not in field_df.columns:
+        field_df["time_dimension"] = pd.NA
+    unset = field_df["time_dimension"].isna() | (field_df["time_dimension"] == "")
+    field_df.loc[is_shorthand & unset, "time_dimension"] = "true"
+    return field_df
+
+
 def component_tables(
     keyvalue_store: ir.Table,
     csv_component_tables: dict[str, ir.Table] = None,
@@ -652,6 +680,8 @@ def component_tables(
             instances[key][row["field"]] = row["value"]
 
         comp_df = pd.DataFrame(list(instances.values()))
+        if comp_type == "field":
+            comp_df = _expand_time_dimension_shorthand(comp_df)
         comp_df["modifier"] = comp_df["modifier"].astype(pd.StringDtype())
         result[comp_type] = ibis.memtable(comp_df)
 

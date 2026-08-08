@@ -73,6 +73,7 @@ _IACS_TO_IBIS_TYPE: dict[str, dt.DataType] = {
     "int": dt.Int64(),
     "float": dt.Float64(),
     "rating": dt.Float64(),
+    "time_dimension": dt.Int64(),
 }
 
 _IACS_TO_PYTHON_TYPE: dict[str, type] = {
@@ -81,6 +82,7 @@ _IACS_TO_PYTHON_TYPE: dict[str, type] = {
     "int": int,
     "float": float,
     "rating": float,
+    "time_dimension": int,
 }
 
 _IBIS_DTYPE = {bool: "boolean", str: "string", int: "int64", float: "float64"}

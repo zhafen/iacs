@@ -164,7 +164,15 @@ data_structure:
                   description: A text description of the field.
                   type: str
               type:
-                  description: The type of the field.
+                  description: >
+                      The type of the field, e.g. str/int/float/bool/rating.
+                      ``time_dimension`` is a shorthand type: it casts like
+                      int and also defaults this field's own
+                      ``time_dimension`` attribute to true, so a slowly
+                      changing dimension's ordering field can be declared
+                      as a single ``type: time_dimension`` line instead of
+                      separately writing ``type: int`` plus
+                      ``time_dimension: true``.
                   type: str
               nullable:
                   description: Whether or not nulls can exist in the field.
@@ -253,9 +261,7 @@ iacs_component:
                       (multiple null rows for the same entity are ambiguous — nulls sort last,
                       so if more than one exists, whichever the backend orders last wins,
                       which is not necessarily the most recently written one).
-                  type: int
-                  nullable: true
-                  time_dimension: true
+                  type: time_dimension
     entity_id:
         - description: >
               The ((entity_id)) component contains identity information about a given
