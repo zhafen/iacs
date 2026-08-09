@@ -13,6 +13,7 @@ from iacs.commands import (
     IACS_MANIFEST_DIR as _IACS_MANIFEST_DIR,
     available_audit_components as _available_audit_components,
     build_format_description as _build_format_description,
+    cmd_generate_report,
     cmd_list_component_types,
     cmd_refresh,
     cmd_run_dataflow,
@@ -134,6 +135,20 @@ def refresh(ctx: Context) -> str:
     Returns a summary listing each file that was written.
     """
     return cmd_refresh(_get_registrar(ctx))
+
+
+@server.tool()
+def generate_report(ctx: Context, output_path: str = "iacs_report.html") -> str:
+    """Render a self-contained HTML audit report and save it to disk.
+
+    The report includes an aggregated cost-impact scatter plot and a
+    navigable requirements tree, both computed from the current registry.
+
+    Args:
+        output_path: File path to write the report to (default:
+            "iacs_report.html").
+    """
+    return cmd_generate_report(_get_registrar(ctx), output_path)
 
 
 @server.tool()

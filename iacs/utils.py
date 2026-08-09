@@ -2,6 +2,27 @@ import hashlib
 
 import pandas as pd
 
+# format_guide.yaml self-documents the EC format spec (see
+# iacs.commands.build_format_description) using the same component-tagging
+# conventions as real project data (e.g. "requirement"), but it ships
+# alongside a manifest purely for the describe_format tool and isn't
+# project data. Views/dataflows that aggregate project-wide data exclude
+# entities sourced from it.
+FORMAT_GUIDE_BASENAME = "format_guide.yaml"
+
+
+def non_format_guide_ids(entity_id_table: pd.DataFrame, ids: set) -> set:
+    """Return `ids` with any entity sourced from format_guide.yaml removed."""
+    if "filepath" not in entity_id_table.columns:
+        return ids
+    excluded = set(
+        entity_id_table.loc[
+            entity_id_table["filepath"].astype(str).str.endswith(FORMAT_GUIDE_BASENAME),
+            "value",
+        ]
+    )
+    return ids - excluded
+
 
 def dhash(path: str) -> str:
     """Return a deterministic 12-char hex hash."""

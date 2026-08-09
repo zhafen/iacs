@@ -49,7 +49,7 @@ where = ["."]
 include = ["iacs*"]
 
 [tool.setuptools.package-data]
-iacs = ["builtins/*.yaml", "iacs_manifest/*.yaml"]
+iacs = ["builtins/*.yaml", "iacs_manifest/*.yaml", "static/*.js"]
 
 [dependency-groups]
 dev = [

@@ -219,3 +219,6 @@ Thumbs.db
 
 # Test-generated scratch output (see tests/test_human_validated.py TEMP_DIR)
 tests/test_dataflows/temp/
+
+# Generated audit report output (default output of `iacs report` / generate_report)
+/iacs_report.html

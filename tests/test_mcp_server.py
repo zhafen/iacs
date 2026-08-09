@@ -15,6 +15,7 @@ from iacs.mcp_server import (
     _build_format_description,
     _parse_manifest_env,
     _validate_yaml_string,
+    generate_report,
     get_manifest_path,
     list_component_types,
     load_manifest,
@@ -456,3 +457,30 @@ class TestRefresh:
     def test_refresh_tool_is_registered(self):
         tool_names = {t.name for t in server._tool_manager.list_tools()}
         assert "refresh" in tool_names
+
+
+# ---------------------------------------------------------------------------
+# generate_report — MCP tool
+# ---------------------------------------------------------------------------
+
+class TestGenerateReport:
+
+    def test_returns_written_message(self, tmp_path):
+        ctx = _make_ctx()
+        load_manifest(["examples/impact-cost_analysis"], ctx)
+        out_path = tmp_path / "report.html"
+        result = generate_report(ctx, str(out_path))
+        assert "Report written to" in result
+        assert str(out_path) in result
+
+    def test_file_is_actually_written(self, tmp_path):
+        ctx = _make_ctx()
+        load_manifest(["examples/impact-cost_analysis"], ctx)
+        out_path = tmp_path / "report.html"
+        generate_report(ctx, str(out_path))
+        assert out_path.exists()
+        assert "<title>iacs Audit Report</title>" in out_path.read_text(encoding="utf-8")
+
+    def test_generate_report_tool_is_registered(self):
+        tool_names = {t.name for t in server._tool_manager.list_tools()}
+        assert "generate_report" in tool_names

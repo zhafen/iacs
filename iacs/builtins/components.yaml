@@ -364,6 +364,16 @@ iacs_component:
                       type: timedelta
                       default: null
 
+    mission:
+        - description: >
+              Marks an entity as a root of the project's official requirement
+              tree. When any entity carries this tag, requirement-tree views
+              (e.g. iacs.views.requirement_tree.build_requirement_forest)
+              scope themselves to only that entity's (or entities')
+              descendants, instead of auto-detecting every disconnected
+              requirement subtree in the manifest.
+        - parent: tag
+
     impact_budget:
         - description: >
               Quantifies the budget (allotment) and conversion rate for a specific type of
@@ -613,11 +623,12 @@ iacs_component:
         - component_type:
               derived: true
 
-    effort_total:
+    normalized_cost_total:
         - description: >
-              Total effort for an entity and all its descendants over a configured
-              time period. Derived from effort components by
-              iacs.dataflows.etl.derive_components.
+              Total normalized cost for an entity and all its descendants over a
+              configured time period, weighted by the matching cost_budget
+              normalized_value_per_unit. Derived from cost components by
+              iacs.dataflows.derive.impact_cost.
         - component_type:
               derived: true
 
