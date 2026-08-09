@@ -21,6 +21,11 @@ from ...views.requirement_tree import build_requirement_forest
 
 INPUT_COMPONENT_TYPES = ["entity_id", "resolved_impact_cost"]
 
+# Vendored rather than loaded from a CDN so the report has no network
+# dependency: it opens standalone in a browser and works when published as
+# a sandboxed artifact (whose CSP blocks external script loads).
+_D3_JS_PATH = Path(__file__).resolve().parents[2] / "static" / "d3.v7.min.js"
+
 
 @extract_fields({ct: ir.Table for ct in INPUT_COMPONENT_TYPES})
 def components(registry: Registry) -> dict:
@@ -122,6 +127,7 @@ def report_html(requirement_tree_data: dict, cost_impact_data: list[dict]) -> st
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     out = _TEMPLATE
     out = out.replace("@GENERATED_AT@", html.escape(generated_at))
+    out = out.replace("@D3_JS@", _D3_JS_PATH.read_text(encoding="utf-8"))
     out = out.replace("@COST_IMPACT_JSON@", _safe_json_dumps(_json_safe(cost_impact_data)))
     out = out.replace("@REQUIREMENT_TREE_JSON@", _safe_json_dumps(requirement_tree_data))
     out = out.replace("@COST_IMPACT_TABLE_ROWS@", _cost_impact_table_rows(cost_impact_data))
@@ -411,7 +417,7 @@ _TEMPLATE = """<!doctype html>
 
 <div id="tooltip"></div>
 
-<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>@D3_JS@</script>
 <script>
 const costImpactData = @COST_IMPACT_JSON@;
 const requirementTreeData = @REQUIREMENT_TREE_JSON@;
