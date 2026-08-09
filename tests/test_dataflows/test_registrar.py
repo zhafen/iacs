@@ -321,6 +321,13 @@ class TestLoadManifest:
         for comp_type in a_all.registry.component_types:
             df_all = a_all.registry.get(comp_type).execute()
             df_inc = a_inc.registry.get(comp_type).execute()
+            # _seq_{field} (see Registry.merge) is assigned independently per
+            # load -- a single-shot load and a file-by-file incremental load
+            # legitimately assign different sequence numbers, so it isn't
+            # comparable here, the same way component_index already wasn't.
+            seq_cols = [c for c in df_all.columns if c.startswith("_seq_")]
+            df_all = df_all.drop(columns=seq_cols)
+            df_inc = df_inc.drop(columns=[c for c in seq_cols if c in df_inc.columns])
             sort_by = sorted(df_all.columns)
             pd.testing.assert_frame_equal(
                 df_all.sort_values(sort_by, na_position="last").reset_index(drop=True),
@@ -402,6 +409,46 @@ class TestUpdate:
         assert list(
             positions.execute().iloc[0][["position.x", "position.y", "position.z"]]
         ) == [5, 5, 5]
+
+    def test_update_same_time_dimension_value_resolves_deterministically(self):
+        """Two updates tied on the same time_dimension value (e.g. two writes in
+        the same in-world turn) must still resolve to one deterministic
+        current row -- not an arbitrary, backend-dependent one (see
+        `_seq_{field}`, assigned by `Registry.merge`).
+        """
+        example_dir = Path("examples/game_data")
+
+        def _last_position() -> str:
+            r = Registrar.from_manifest(example_dir)
+            eids = r.registry.get("entity_id")
+            player_eid = (
+                eids.filter(eids["alias"].contains("player")).execute().iloc[0]["value"]
+            )
+            same_as_yaml = f"""
+            player_position_a:
+                - same_as:
+                    target_entity_id: {player_eid}
+                - position:
+                    x: 1
+                    y: 1
+                    z: 1
+            """
+            r.update(input_dirs=[example_dir], yaml_strings={"a": same_as_yaml}, time=1)
+            same_as_yaml_b = f"""
+            player_position_b:
+                - same_as:
+                    target_entity_id: {player_eid}
+                - position:
+                    x: 2
+                    y: 2
+                    z: 2
+            """
+            r.update(input_dirs=[example_dir], yaml_strings={"b": same_as_yaml_b}, time=1)
+            row = r.view_current("position").execute().iloc[0]
+            return list(row[["position.x", "position.y", "position.z"]])
+
+        results = [_last_position() for _ in range(5)]
+        assert all(result == [2, 2, 2] for result in results), results
 
     def test_same_as_by_path_targets_entity_from_a_prior_update(self):
         """same_as's path-based `value` can target an entity registered by an
