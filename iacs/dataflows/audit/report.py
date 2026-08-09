@@ -373,6 +373,10 @@ _TEMPLATE = """<!doctype html>
     font-size: 12px;
     fill: var(--text-primary);
     pointer-events: none;
+    paint-order: stroke fill;
+    stroke: var(--surface);
+    stroke-width: 3px;
+    stroke-linejoin: round;
   }
   .req-node .priority {
     fill: var(--text-muted);
@@ -612,7 +616,9 @@ const requirementTreeData = @REQUIREMENT_TREE_JSON@;
   let maxW = 0;
   let rootLabelW = 0;
   root.each(d => {
-    const label = d.data.name + (d.data.priority != null ? ` (${d.data.priority.toFixed(2)})` : "");
+    // Priority is mostly the 0.5 default now (no longer meaningfully
+    // differentiated), so it's not displayed — see the tspan below.
+    const label = d.data.name; // + (d.data.priority != null ? ` (${d.data.priority.toFixed(2)})` : "");
     const w = textWidth(label);
     maxW = Math.max(maxW, w);
     if (d === root) rootLabelW = w;
@@ -682,9 +688,11 @@ const requirementTreeData = @REQUIREMENT_TREE_JSON@;
       .attr("x", d => d.children || d._children ? -10 : 10)
       .attr("text-anchor", d => d.children || d._children ? "end" : "start");
     textEl.append("tspan").text(d => d.data.name);
-    textEl.append("tspan")
-      .attr("class", "priority")
-      .text(d => d.data.priority != null ? ` (${d.data.priority.toFixed(2)})` : "");
+    // Priority is mostly the 0.5 default now (no longer meaningfully
+    // differentiated), so it's not displayed next to the node name.
+    // textEl.append("tspan")
+    //   .attr("class", "priority")
+    //   .text(d => d.data.priority != null ? ` (${d.data.priority.toFixed(2)})` : "");
 
     const merged = enter.merge(node);
 
