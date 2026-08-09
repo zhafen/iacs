@@ -345,6 +345,16 @@ iacs_component:
                       type: timedelta
                       default: null
 
+    mission:
+        - description: >
+              Marks an entity as a root of the project's official requirement
+              tree. When any entity carries this tag, requirement-tree views
+              (e.g. iacs.views.requirement_tree.build_requirement_forest)
+              scope themselves to only that entity's (or entities')
+              descendants, instead of auto-detecting every disconnected
+              requirement subtree in the manifest.
+        - parent: tag
+
     impact_budget:
         - description: >
               Quantifies the budget (allotment) and conversion rate for a specific type of

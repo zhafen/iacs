@@ -74,11 +74,17 @@ def build_requirement_tree(registrar: Registrar, ancestor_key: str) -> dict:
 def build_requirement_forest(registrar: Registrar) -> dict:
     """Return nested {name, priority, children} dict covering every requirement.
 
-    Unlike ``build_requirement_tree``, no ``ancestor_key`` is needed: root
-    requirement entities (those with no requirement-typed ancestor) are
-    auto-detected. A single root is returned directly; multiple roots are
-    wrapped as children of a synthetic "Requirements" node so the result is
-    always one D3-hierarchy-compatible tree.
+    Unlike ``build_requirement_tree``, no ``ancestor_key`` is needed. If any
+    entity carries a ``mission`` tag, the tree is scoped to only those
+    entities' descendants — this is the normal case, since a project's
+    solutions are typically authored as separate top-level entities not
+    nested under its mission, and would otherwise each appear as their own
+    disconnected root. Without any ``mission`` tag, root requirement
+    entities (those with no requirement-tagged ancestor) are auto-detected
+    instead, so the tree still degrades gracefully. A single root is
+    returned directly; multiple roots are wrapped as children of a
+    synthetic "Requirements" node so the result is always one
+    D3-hierarchy-compatible tree.
 
     Args:
         registrar: A Registrar instance with loaded registry data.
@@ -91,6 +97,7 @@ def build_requirement_forest(registrar: Registrar) -> dict:
     entity_ids_pd = registrar.get("entity_id").to_pandas()
     parents_pd = registrar.get("parent").to_pandas()
     reqs_pd = registrar.get("requirement").to_pandas()
+    mission_pd = registrar.get("mission").to_pandas()
 
     req_ids = non_format_guide_ids(entity_ids_pd, set(reqs_pd["entity_id"].unique()))
     if not req_ids:
@@ -103,16 +110,30 @@ def build_requirement_forest(registrar: Registrar) -> dict:
     for _, row in parents_pd.iterrows():
         graph.add_edge(row["parent_eid"], row["entity_id"])
 
+    mission_ids = non_format_guide_ids(entity_ids_pd, set(mission_pd["entity_id"].unique()))
+
+    if mission_ids:
+        # Scoped mode: only mission entities are roots, and only their
+        # descendants (that are themselves requirements) are included —
+        # solutions elsewhere in the manifest are out of scope entirely.
+        roots = sorted(mission_ids, key=lambda r: id_to_priority.get(r, 0.5), reverse=True)
+        node_ids = set(roots)
+        for r in roots:
+            node_ids |= (nx.descendants(graph, r) if r in graph else set()) & req_ids
+    else:
+        # Auto-detect mode: every requirement with no requirement-tagged
+        # ancestor becomes its own root.
+        roots = [
+            r for r in req_ids
+            if not ((nx.ancestors(graph, r) if r in graph else set()) & req_ids)
+        ]
+        roots.sort(key=lambda r: id_to_priority.get(r, 0.5), reverse=True)
+        node_ids = req_ids
+
     children_map = defaultdict(list)
     for _, row in parents_pd.iterrows():
-        if row["parent_eid"] in req_ids and row["entity_id"] in req_ids:
+        if row["parent_eid"] in node_ids and row["entity_id"] in node_ids:
             children_map[row["parent_eid"]].append(row["entity_id"])
-
-    roots = [
-        r for r in req_ids
-        if not ((nx.ancestors(graph, r) if r in graph else set()) & req_ids)
-    ]
-    roots.sort(key=lambda r: id_to_priority.get(r, 0.5), reverse=True)
 
     trees = [_requirement_node(r, children_map, id_to_key, id_to_priority) for r in roots]
     if len(trees) == 1:

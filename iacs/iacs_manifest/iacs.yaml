@@ -7,6 +7,7 @@ iacs:
                   without worrying about the precise details of the implementation or the
                   system-specific syntax.
             - requirement
+            - mission
         provide_quality_end_to_end_documentation_of_infrastructure:
             data:
                 - description: >
