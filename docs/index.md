@@ -15,3 +15,4 @@ iacs uses an Entity-Component-System framework for modeling infrastructure solut
 
 - [API Reference](api/iacs.md) — auto-generated docs from source docstrings
 - [Dataflow DAGs](dataflows/index.md) — visual diagrams of Hamilton dataflows
+- [Architecture](architecture/index.md) — file/call-structure diagram parsed from source (`iacs generate-architecture-diagram`)
