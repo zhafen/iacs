@@ -598,6 +598,35 @@ class TestRenderReachabilityMermaid:
         # the sequence one (root's own file subgraph).
         assert out.count("subgraph") == 2
 
+    def test_sequence_subgraph_declares_no_explicit_inner_direction(self):
+        """A seqN subgraph must never emit its own `direction` line.
+
+        Confirmed via a minimal repro (a multi-node chain in a box, with
+        the box's first member also targeted by an edge from outside):
+        Mermaid/dagre's compound layout mis-anchors an edge crossing a
+        subgraph boundary whenever that subgraph declares an explicit
+        inner `direction`, matching or not -- the edge renders as if it
+        started from an arbitrary internal node instead of the true
+        source. Omitting the inner direction line (so the box inherits the
+        outer flowchart's direction implicitly) is the only combination
+        that both avoids the bug and keeps the box's chain legible."""
+        graph = {
+            "root": "root_e",
+            "nodes": [
+                {"id": "root_e", "label": "main", "filepath": "a.py"},
+                {"id": "a_e", "label": "call_a", "filepath": "a.py"},
+                {"id": "b_e", "label": "call_b", "filepath": "a.py"},
+            ],
+            "edges": [
+                {"source": "root_e", "target": "a_e"},
+                {"source": "root_e", "target": "b_e"},
+            ],
+            "call_sequences": [{"caller": "root_e", "targets": ["a_e", "b_e"]}],
+        }
+        out = render_reachability_mermaid(graph)
+        assert "direction TB" not in out
+        assert "direction LR" not in out
+
     def test_call_sequence_members_are_pulled_out_of_the_file_subgraph(self):
         """A node inside a seqN subgraph must not also be declared in its
         file subgraph -- Mermaid doesn't support a node in two containers,

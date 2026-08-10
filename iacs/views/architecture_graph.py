@@ -265,7 +265,7 @@ def _call_sequences(calls_df, edges: list[tuple[str, str]]) -> list[dict]:
     return sequences
 
 
-def render_reachability_mermaid(graph: dict, direction: str = "LR") -> str:
+def render_reachability_mermaid(graph: dict, direction: str = "TB") -> str:
     """Render a ``build_call_reachability`` graph as Mermaid, one subgraph per source file.
 
     The root node gets a distinct fill via a Mermaid ``rootNode`` class, so
@@ -276,15 +276,30 @@ def render_reachability_mermaid(graph: dict, direction: str = "LR") -> str:
     ``build_call_reachability``'s ``call_sequences``) gets its targets
     drawn as their own ``seqN`` subgraph instead of scattered across their
     usual per-file ones -- internally chained by dotted "A then B" arrows
-    in call order, always top-to-bottom inside the box regardless of the
-    overall ``direction`` (a box's own multi-step chain read as more
-    cramped running the same direction as the outer diagram than getting
-    its own perpendicular one), with a single solid arrow from the caller
-    to the subgraph as a whole. Fanning N solid arrows out from one caller
-    *and* N-1 dotted arrows threading back through the same targets said
-    the same thing twice and read as clutter, not structure; one arrow in,
-    one visibly-ordered box, says it once. A caller with only one call
-    target keeps the plain direct arrow -- there is no order to show.
+    in call order, with a single solid arrow from the caller to the
+    subgraph as a whole. Fanning N solid arrows out from one caller *and*
+    N-1 dotted arrows threading back through the same targets said the
+    same thing twice and read as clutter, not structure; one arrow in, one
+    visibly-ordered box, says it once. A caller with only one call target
+    keeps the plain direct arrow -- there is no order to show.
+
+    A sequence subgraph deliberately declares no explicit inner
+    ``direction`` of its own -- it inherits the outer flowchart's, so
+    ``direction="TB"``'s default keeps a box's multi-step chain readable
+    top-to-bottom without any inner override. This isn't a style choice:
+    Mermaid/dagre's compound layout mis-anchors an edge that crosses a
+    subgraph boundary when that subgraph declares its own explicit
+    ``direction`` statement -- confirmed by a minimal repro (a 5-node
+    chain in a box, with the box's first member also targeted by an edge
+    from outside) where the boundary-crossing edge rendered as if it
+    started from an arbitrary internal node instead of the true source,
+    regardless of whether the inner direction matched or mismatched the
+    outer one. Only omitting the inner ``direction`` line entirely fixed
+    it. An overall left-right diagram would need its boxes to run
+    left-right too for that same reason, which cramps a multi-step chain
+    into one band -- top-to-bottom is the direction that both avoids the
+    dagre bug and stays legible for a vertical chain, so it's the only
+    supported combination here.
 
     Only the *target* side gets this box treatment, not the source: an
     outgoing edge from a node that happens to live inside some other
@@ -306,12 +321,9 @@ def render_reachability_mermaid(graph: dict, direction: str = "LR") -> str:
     Args:
         graph: A graph dict as returned by ``build_call_reachability``.
         direction: Mermaid flowchart direction for the overall diagram
-            (default left-right). Each sequence box's own internal chain
-            always runs top-to-bottom regardless of this -- left-right
-            nested inside left-right (tried first) packed a box's whole
-            multi-step chain into one cramped horizontal band, harder to
-            read than the overall diagram's own left-right flow between
-            boxes; top-to-bottom inside gives each step its own line.
+            (default top-to-bottom -- see above for why this is the only
+            direction that avoids the dagre boundary-crossing-edge bug
+            while keeping a sequence box's internal chain legible).
 
     Returns:
         Mermaid ``flowchart`` source text.
@@ -356,7 +368,6 @@ def render_reachability_mermaid(graph: dict, direction: str = "LR") -> str:
             seq_id = f"seq{i}"
             sequence_box_of_caller[caller] = seq_id
             sequence_lines.append(f'    subgraph {seq_id}["{label_by_id.get(caller, caller)}"]')
-            sequence_lines.append("        direction TB")
             for t in targets:
                 sequence_members[t] = seq_id
                 sequence_lines.append(f'        {id_map[t]}["{label_by_id.get(t, t)}"]')
