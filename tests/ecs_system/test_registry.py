@@ -310,6 +310,58 @@ class TestRegistryViewCurrent:
         with pytest.raises(KeyError):
             scd_registry.view_current("nonexistent")
 
+    def test_seq_column_hidden_from_view_current(self, scd_registry):
+        """A `_seq_{field}` column, if present, doesn't leak into view/view_current output."""
+        conn = scd_registry._con
+        conn.create_table(
+            "status_reading",
+            {"entity_id": ["e1", "e1", "e2"],
+             "component_index": [0, 1, 0],
+             "modifier": pd.array([None, None, None], dtype=pd.StringDtype()),
+             "as_of": ["2024-01-01", "2024-06-01", "2024-03-01"],
+             "status": ["open", "closed", "open"],
+             "_seq_as_of": [1, 2, 1]},
+            overwrite=True,
+        )
+        scd_registry._components["status_reading"] = conn.table("status_reading")
+        assert "status_reading._seq_as_of" not in scd_registry.view_current("status_reading").columns
+        assert "status_reading._seq_as_of" not in scd_registry.view("status_reading").columns
+
+    def test_seq_column_breaks_ties_most_recent_wins(self, scd_registry):
+        """Two rows tied on the time_dimension value resolve via `_seq_{field}`."""
+        conn = scd_registry._con
+        conn.create_table(
+            "status_reading",
+            {"entity_id": ["e1", "e1", "e2"],
+             "component_index": [0, 1, 0],
+             "modifier": pd.array([None, None, None], dtype=pd.StringDtype()),
+             # e1's two rows now tie on as_of -- only _seq_as_of tells them apart.
+             "as_of": ["2024-06-01", "2024-06-01", "2024-03-01"],
+             "status": ["stale", "fresh", "open"],
+             "_seq_as_of": [1, 2, 1]},
+            overwrite=True,
+        )
+        scd_registry._components["status_reading"] = conn.table("status_reading")
+        df = scd_registry.view_current("status_reading").execute()
+        e1_row = df[df["entity_id"] == "e1"].iloc[0]
+        assert e1_row["status_reading.status"] == "fresh"
+
+    def test_no_seq_column_falls_back_gracefully(self, scd_registry):
+        """A tie with no `_seq_{field}` column at all still resolves to exactly one row."""
+        conn = scd_registry._con
+        conn.create_table(
+            "status_reading",
+            {"entity_id": ["e1", "e1", "e2"],
+             "component_index": [0, 1, 0],
+             "modifier": pd.array([None, None, None], dtype=pd.StringDtype()),
+             "as_of": ["2024-06-01", "2024-06-01", "2024-03-01"],
+             "status": ["stale", "fresh", "open"]},
+            overwrite=True,
+        )
+        scd_registry._components["status_reading"] = conn.table("status_reading")
+        df = scd_registry.view_current("status_reading").execute()
+        assert len(df[df["entity_id"] == "e1"]) == 1
+
     def test_view_current_component_without_time_dimension_is_unchanged(self):
         """Component types with no time_dimension field are returned as-is."""
         conn = ibis.duckdb.connect()

@@ -80,12 +80,24 @@ class Registry:
         Existing component types are unioned and deduplicated; new component
         types are added directly.
 
+        For any component type with a time_dimension field (see
+        ``_time_dimension_field``), also maintains a ``_seq_{field}`` write-order
+        column on that table (see ``_seq_column``) — assigned only to rows
+        genuinely new to this registry, never reassigned to a row already
+        present, so it records each row's relative write order stably across
+        every future merge. This is what lets ``_current_table`` break a tie
+        between two rows sharing the same time_dimension value
+        deterministically, instead of relying on an arbitrary,
+        backend-dependent window-function order.
+
         Args:
             other: Registry whose component tables are merged in.
         """
         for comp_type in other.component_types:
-            arrow_data = other.get(comp_type).to_pyarrow()
+            seq_col = self._seq_column(comp_type, other)
+            incoming_table = other.get(comp_type)
             if comp_type in self._component_types:
+                arrow_data = incoming_table.to_pyarrow()
                 tmp = f"_merge_{comp_type}"
                 self._con.create_table(tmp, arrow_data, overwrite=True)
                 existing = self.get(comp_type)
@@ -105,15 +117,25 @@ class Registry:
                     incoming = incoming.mutate(
                         ibis.null().cast(existing_schema[col]).name(col)
                     )
+                if seq_col:
+                    if seq_col not in existing.columns:
+                        existing = existing.mutate(ibis.null().cast("int64").name(seq_col))
+                    if seq_col not in incoming.columns:
+                        incoming = incoming.mutate(ibis.null().cast("int64").name(seq_col))
 
                 all_cols = sorted(existing.columns)
-                merged = existing.select(all_cols).union(
-                    incoming.select(all_cols), distinct=True
-                )
+                if seq_col:
+                    merged = self._merge_with_sequence(existing, incoming, seq_col, all_cols)
+                else:
+                    merged = existing.select(all_cols).union(
+                        incoming.select(all_cols), distinct=True
+                    )
                 self.update({comp_type: merged})
                 self._con.drop_table(tmp)
             else:
-                self.update({comp_type: arrow_data})
+                if seq_col:
+                    incoming_table = self._with_initial_sequence(incoming_table, seq_col)
+                self.update({comp_type: incoming_table.to_pyarrow()})
 
         # Carry forward any of other's declared-but-dataless schemas (see
         # declare_schema) too, not just its physical tables, so a component
@@ -124,6 +146,86 @@ class Registry:
         for comp_type, schema in other._schemas.items():
             if comp_type not in other.component_types:
                 self.declare_schema(comp_type, schema)
+
+    def _seq_column(self, component_type: str, other: "Registry") -> str | None:
+        """Return `component_type`'s ``_seq_{field}`` write-order column name, if any.
+
+        Only component types with a time_dimension field get one — looked up
+        via ``other`` (not ``self``) since ``other`` just went through the
+        full validate/derive pipeline for this batch and so always has a
+        complete, resolved schema for anything it's carrying data for, even
+        for a component type ``self`` has never seen before (see
+        ``story_simulator.spatial.merge_yaml_string``: every update reloads
+        the full manifest directory alongside the incremental data, so
+        ``other`` always includes schema declarations, not just this batch's
+        world-state rows).
+
+        Returns ``None`` without consulting ``_time_dimension_field`` if
+        ``other`` lacks a ``field`` or ``entity_id`` table -- a minimal,
+        hand-built registry (e.g. in a unit test exercising ``merge`` in
+        isolation) structurally cannot have declared any time_dimension
+        field, so "no seq column" is the correct answer, not a special case
+        to route around.
+        """
+        if "field" not in other._components or "entity_id" not in other._components:
+            return None
+        time_field = other._time_dimension_field(component_type)
+        return f"_seq_{time_field}" if time_field else None
+
+    def _with_initial_sequence(self, table: ibis.Table, seq_col: str) -> ibis.Table:
+        """Number every row of `table` 1..N in `seq_col`, for a component type
+        this registry has no prior rows for (so nothing to preserve).
+
+        Ordered by (entity_id, component_index) for a stable, reproducible
+        result — a best-effort proxy for authoring order among rows that all
+        arrive in this single merge call, not a guarantee of matching the
+        exact order they were originally written across separate sessions
+        (e.g. after a cold reload from an exported save, see ``merge``'s
+        docstring caveat via ``_merge_with_sequence``).
+        """
+        order_cols = [table["entity_id"]]
+        if "component_index" in table.columns:
+            order_cols.append(table["component_index"])
+        return table.mutate(**{seq_col: ibis.row_number().over(order_by=order_cols) + 1})
+
+    def _merge_with_sequence(
+        self, existing: ibis.Table, incoming: ibis.Table, seq_col: str, all_cols: list[str]
+    ) -> ibis.Table:
+        """Union `existing` and `incoming`, assigning fresh `seq_col` values
+        only to rows genuinely new to `existing`.
+
+        "Genuinely new" means: not already present in `existing` when
+        compared on every column except `seq_col` — the same comparison
+        ``merge``'s plain union/distinct path already uses to dedupe, just
+        computed explicitly here instead of left to `union(distinct=True)`
+        (which would otherwise treat two copies of an existing row as
+        distinct the moment they disagree on `seq_col`, since `incoming`
+        never carries one).
+
+        A row already in `existing` keeps whatever `seq_col` value it already
+        has, so a sequence number, once assigned, is never rewritten — this
+        is what makes two rows' *relative* write order stable across every
+        later merge. New rows are numbered starting one past `existing`'s
+        current maximum, in (entity_id, component_index) order (see
+        `_with_initial_sequence`) — reproducible within this merge call, but
+        only a best-effort proxy for true write order across a cold reload
+        from an exported save, where a whole file's worth of history arrives
+        as a single "new" batch with no prior `_seq` to continue from.
+        """
+        non_seq_cols = [c for c in all_cols if c != seq_col]
+        new_rows = incoming.select(non_seq_cols).difference(existing.select(non_seq_cols))
+
+        existing_seq = existing.select(seq_col).to_pandas()[seq_col]
+        start = int(existing_seq.max()) + 1 if existing_seq.notna().any() else 1
+
+        order_cols = [new_rows["entity_id"]]
+        if "component_index" in non_seq_cols:
+            order_cols.append(new_rows["component_index"])
+        new_rows = new_rows.mutate(
+            **{seq_col: ibis.row_number().over(order_by=order_cols) + start}
+        )
+
+        return existing.select(all_cols).union(new_rows.select(all_cols), distinct=True)
 
     def to_database(self, path: str | Path) -> None:
         """Export all component tables as-is to a database.
@@ -265,7 +367,10 @@ class Registry:
                     raise KeyError(ct)
                 t = table_fn(ct)
                 skip = _TABLE_META_COLS | ({"value"} if ct == "entity_id" else set())
-                pairs.extend((ct, f) for f in t.columns if f not in skip)
+                pairs.extend(
+                    (ct, f) for f in t.columns
+                    if f not in skip and not f.startswith("_seq_")
+                )
             else:
                 table_name, field = ct.split(".", 1)
                 if not self._known(table_name):
@@ -308,6 +413,14 @@ class Registry:
         ``entity_id`` are present). Tables with no time_dimension field
         are returned unchanged.
 
+        Two rows tied on the time_dimension value are broken by
+        ``_seq_{field}`` (see ``merge``) when present, most-recent-write
+        wins — so a second update in the same in-world turn no longer loses
+        to the first via an arbitrary, backend-dependent window-function
+        order. A table with no ``_seq_{field}`` column yet (e.g. one that
+        predates this column, or was inserted directly rather than through
+        ``merge``) falls back to that prior arbitrary tie-break.
+
         Raises:
             ValueError: If ``table_name`` has more than one time_dimension field.
         """
@@ -316,10 +429,13 @@ class Registry:
         if time_field is None or time_field not in t.columns:
             return t
 
+        order_by = [t[time_field].desc(nulls_first=False)]
+        seq_col = f"_seq_{time_field}"
+        if seq_col in t.columns:
+            order_by.append(t[seq_col].desc(nulls_first=False))
+
         ranked = t.mutate(
-            _scd_rank=ibis.row_number().over(
-                group_by="entity_id", order_by=t[time_field].desc(nulls_first=False)
-            )
+            _scd_rank=ibis.row_number().over(group_by="entity_id", order_by=order_by)
         )
         return ranked.filter(ranked["_scd_rank"] == 0).drop("_scd_rank")
 

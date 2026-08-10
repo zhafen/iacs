@@ -224,7 +224,11 @@ def _assert_components_equal(
     paths.
     """
     common_cols = sorted(
-        (set(comp.columns) & set(loaded_comp.columns)) - {"component_index"}
+        c for c in (set(comp.columns) & set(loaded_comp.columns))
+        # _seq_{field} (see Registry.merge), like component_index, is
+        # assigned independently per load and isn't meaningfully comparable
+        # across two separately-loaded registries.
+        if c != "component_index" and not c.startswith("_seq_")
     )
     norm1 = _normalize_df(comp, eid_df, common_cols)
     norm2 = _normalize_df(loaded_comp, reloaded_eid_df, common_cols)

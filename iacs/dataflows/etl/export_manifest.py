@@ -353,6 +353,7 @@ def entity_first_data(components_for_export: dict, entity_id: ir.Table) -> dict:
                 k: v for k, v in row.items()
                 if k not in _METADATA_COLS
                 and not k.endswith("_eid")
+                and not k.startswith("_seq_")
                 and pd.notna(v)
             }
 
