@@ -265,7 +265,7 @@ def _call_sequences(calls_df, edges: list[tuple[str, str]]) -> list[dict]:
     return sequences
 
 
-def render_reachability_mermaid(graph: dict, direction: str = "TD") -> str:
+def render_reachability_mermaid(graph: dict, direction: str = "LR") -> str:
     """Render a ``build_call_reachability`` graph as Mermaid, one subgraph per source file.
 
     The root node gets a distinct fill via a Mermaid ``rootNode`` class, so
@@ -276,22 +276,28 @@ def render_reachability_mermaid(graph: dict, direction: str = "TD") -> str:
     ``build_call_reachability``'s ``call_sequences``) gets its targets
     drawn as their own ``seqN`` subgraph instead of scattered across their
     usual per-file ones -- internally chained by dotted "A then B" arrows
-    in call order (left to right inside the box, independent of the
-    overall ``direction``), with a single solid arrow from the caller to
-    the subgraph as a whole. Fanning N solid arrows out from one caller
+    in call order, always top-to-bottom inside the box regardless of the
+    overall ``direction`` (a box's own multi-step chain read as more
+    cramped running the same direction as the outer diagram than getting
+    its own perpendicular one), with a single solid arrow from the caller
+    to the subgraph as a whole. Fanning N solid arrows out from one caller
     *and* N-1 dotted arrows threading back through the same targets said
     the same thing twice and read as clutter, not structure; one arrow in,
     one visibly-ordered box, says it once. A caller with only one call
     target keeps the plain direct arrow -- there is no order to show.
 
-    That box-not-node treatment is symmetric on both ends: a solid edge
-    whose source or target is itself a member of some sequence box (e.g.
-    ``_resolve_args`` is both a target inside ``advance_simulation``'s box
-    *and* its own caller elsewhere) is drawn from/to that box's boundary,
-    not the specific inner node -- one consistent picture of "this box, as
-    a whole, also reaches/is reached by X," rather than punching through
-    box edges to name exactly which member did it (already visible from
-    the box's own internal dotted chain).
+    Only the *target* side gets this box treatment, not the source: an
+    outgoing edge from a node that happens to live inside some other
+    caller's box (e.g. ``_resolve_args`` is a target inside
+    ``advance_simulation``'s box, and also its own caller elsewhere)
+    still starts from that specific node, not the box's boundary -- which
+    member actually made the call is real information, worth keeping
+    visible rather than collapsing into "the box, generically." An
+    *incoming* edge, though, does get the box treatment: "something
+    outside calls into this whole ordered sequence" is what the box
+    exists to show, and there's no member-level provenance to lose by
+    landing the arrow on the boundary instead of the specific first-called
+    node.
 
     Missing ``call_sequences`` entirely (e.g. an older or hand-built graph
     dict) falls back to one plain arrow per ``edges`` entry, same as
@@ -299,7 +305,13 @@ def render_reachability_mermaid(graph: dict, direction: str = "TD") -> str:
 
     Args:
         graph: A graph dict as returned by ``build_call_reachability``.
-        direction: Mermaid flowchart direction (default top-down).
+        direction: Mermaid flowchart direction for the overall diagram
+            (default left-right). Each sequence box's own internal chain
+            always runs top-to-bottom regardless of this -- left-right
+            nested inside left-right (tried first) packed a box's whole
+            multi-step chain into one cramped horizontal band, harder to
+            read than the overall diagram's own left-right flow between
+            boxes; top-to-bottom inside gives each step its own line.
 
     Returns:
         Mermaid ``flowchart`` source text.
@@ -331,7 +343,7 @@ def render_reachability_mermaid(graph: dict, direction: str = "TD") -> str:
             seq_id = f"seq{i}"
             sequence_box_of_caller[caller] = seq_id
             sequence_lines.append(f'    subgraph {seq_id}["{label_by_id.get(caller, caller)}"]')
-            sequence_lines.append("        direction LR")
+            sequence_lines.append("        direction TB")
             for t in targets:
                 sequence_members[t] = seq_id
                 sequence_lines.append(f'        {id_map[t]}["{label_by_id.get(t, t)}"]')
@@ -339,17 +351,16 @@ def render_reachability_mermaid(graph: dict, direction: str = "TD") -> str:
                 sequence_lines.append(f'        {id_map[a]} -.-> {id_map[b]}')
             sequence_lines.append("    end")
 
-        # Pass 2: an edge's endpoint resolves to the box it's a *member*
-        # of (`sequence_members`, i.e. it's a target inside someone else's
-        # sequence) when it has one, falling back to its own plain node id
-        # otherwise. Deliberately never consults `sequence_box_of_caller`
-        # here -- that map is about which box an entity *owns*, and an
-        # entity's own outgoing edge to its own box is handled directly
-        # below; checking box-ownership for a general endpoint would wire
-        # that box back to itself as a self-loop instead of a real edge.
+        # Pass 2: the source is always the caller's own specific node --
+        # never abstracted to a box, even when the caller is itself a
+        # member of one (see this function's own docstring for why). The
+        # target resolves to the box it's a *member* of (`sequence_members`,
+        # i.e. it's a target inside someone else's sequence) when it has
+        # one, or the caller's own brand-new box for a 2+-target sequence,
+        # falling back to the plain node id otherwise.
         for seq in call_sequences:
             caller, targets = seq["caller"], seq["targets"]
-            source_ref = sequence_members.get(caller, id_map[caller])
+            source_ref = id_map[caller]
             if len(targets) >= 2:
                 solid_edges.append((source_ref, sequence_box_of_caller[caller]))
             else:
@@ -375,15 +386,15 @@ def render_reachability_mermaid(graph: dict, direction: str = "TD") -> str:
 
     lines.extend(sequence_lines)
 
-    # Distinct (caller, target) pairs can abstract to the same box pair --
-    # e.g. two different members of one caller's box each individually
-    # reaching into the same other box -- which would otherwise draw the
-    # exact same arrow twice. Dedupe (order-preserving) rather than
-    # showing that as two parallel lines; the box-to-box relationship is
-    # what the arrow means once abstracted, not "count of underlying
-    # calls." A same-box self-reference (two members of one box calling
-    # each other) is dropped for the same reason -- it says nothing an
-    # arrow drawn back onto the same box's boundary can usefully convey.
+    # Defensive rather than commonly triggered now that the source side is
+    # always a specific node (two different callers can no longer collapse
+    # into "the same" edge just by sharing a target's box) -- but a single
+    # caller calling the same target twice non-consecutively would still
+    # produce the identical pair twice, so dedupe (order-preserving)
+    # rather than draw parallel copies of it. A same-box self-reference
+    # (two members of one box calling each other) is dropped too -- it
+    # says nothing an arrow drawn back onto the same box's boundary can
+    # usefully convey.
     for s, t in dict.fromkeys(solid_edges):
         if s != t:
             lines.append(f'    {s} --> {t}')

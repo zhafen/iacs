@@ -395,7 +395,7 @@ class TestGenerateArchitectureDiagramCommand:
         )
         assert str(out_path) in out
         content = out_path.read_text(encoding="utf-8")
-        assert "flowchart TD" in content
+        assert "flowchart LR" in content
         assert "subgraph" in content
         assert "rootNode" in content
         assert '["main"]' in content

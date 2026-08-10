@@ -143,11 +143,11 @@ def _collect_body(stmts: list) -> tuple[list[str], list[str]]:
     Calls keep call order (not alphabetical) because that order is real,
     caller-observable information -- see ``_make_components``'s ``seq``
     field and ``architecture_graph.build_call_reachability``'s
-    ``order_edges``, which use it to draw "this call happens before that
-    one" arrows a diagram viewer couldn't otherwise recover (Mermaid edge
-    order isn't call order, and multiple calls to the same target collapse
-    to one edge either way). Imports have no analogous consumer, so they
-    stay alphabetical for stable, easy-to-scan output.
+    ``call_sequences``, which use it to draw "this call happens before
+    that one" arrows a diagram viewer couldn't otherwise recover (Mermaid
+    edge order isn't call order, and multiple calls to the same target
+    collapse to one edge either way). Imports have no analogous consumer,
+    so they stay alphabetical for stable, easy-to-scan output.
 
     See ``_BodyCollector`` for the "directly" scoping rule.
     """
@@ -184,7 +184,7 @@ def _make_components(
     first-occurrence position in the source, see ``_collect_body``) rather
     than being a bare scalar like ``imports`` -- that's what lets
     ``architecture_graph.build_call_reachability`` later recover "this
-    entity called A before B" as its own ``order_edges``, not just the
+    entity called A before B" as its own ``call_sequences``, not just the
     unordered set of what it called.
     """
     description, components_yaml = (

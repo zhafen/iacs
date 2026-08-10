@@ -599,12 +599,14 @@ class TestRenderReachabilityMermaid:
         assert out.count('["call_a"]') == 1
         assert out.count('["call_b"]') == 1
 
-    def test_outgoing_edge_from_a_sequence_member_originates_at_its_box(self):
+    def test_outgoing_edge_from_a_sequence_member_still_originates_at_its_own_node(self):
         """a_e is a member of root_e's box, but a_e itself also calls d_e
-        (a single, unrelated call elsewhere) -- that edge must be drawn
-        from the box's own boundary, not from a_e specifically, since a_e
-        isn't declared as a standalone node anywhere an edge could point
-        from."""
+        (a single, unrelated call elsewhere) -- that edge must still be
+        drawn from a_e specifically, not from the box's boundary. Only
+        *incoming* edges get the box treatment; which member actually made
+        an outgoing call stays visible rather than collapsing into "the
+        box, generically" (see test_incoming_edge_to_a_sequence_member_
+        terminates_at_its_box for the target-side counterpart)."""
         graph = {
             "root": "root_e",
             "nodes": [
@@ -624,8 +626,8 @@ class TestRenderReachabilityMermaid:
             ],
         }
         out = render_reachability_mermaid(graph)
-        assert "seq0 --> n3" in out
-        assert "n1 --> n3" not in out
+        assert "n1 --> n3" in out
+        assert "seq0 --> n3" not in out
 
     def test_incoming_edge_to_a_sequence_member_terminates_at_its_box(self):
         """d_e is a plain caller of a single target, b_e -- but b_e is
@@ -652,11 +654,13 @@ class TestRenderReachabilityMermaid:
         out = render_reachability_mermaid(graph)
         assert "n3 --> seq0" in out
 
-    def test_duplicate_box_to_box_edges_collapse_to_one_arrow(self):
+    def test_two_different_members_calling_the_same_target_both_render(self):
         """a_e and c_e are two different members of root_e's box, and each
-        separately calls the same d_e -- both individually abstract to the
-        identical (seq0, d_e) pair, which must render as one arrow, not
-        two parallel copies of it."""
+        separately calls the same d_e -- since the source side is never
+        abstracted, these are genuinely distinct (n1, n4)/(n3, n4) pairs,
+        not duplicates of each other, and both arrows must show: knowing
+        *which* member reached d_e is exactly the information source-side
+        abstraction would have thrown away."""
         graph = {
             "root": "root_e",
             "nodes": [
@@ -680,4 +684,5 @@ class TestRenderReachabilityMermaid:
             ],
         }
         out = render_reachability_mermaid(graph)
-        assert out.count("seq0 --> n4") == 1
+        assert "n1 --> n4" in out
+        assert "n3 --> n4" in out
