@@ -100,6 +100,20 @@ def _call_target(func: ast.expr) -> str | None:
     return None
 
 
+def _is_constructor_call(target: str) -> bool:
+    """Heuristic: PEP 8 class names start with an uppercase letter.
+
+    A call-reachability trace is meant to show callables reaching other
+    callables, not "this function builds one of these" -- ``TurnReplay()``
+    constructs a ``TurnReplay``, it doesn't call any behavior named
+    ``TurnReplay``, so it's not a real edge in that trace. Checked against
+    the target's last dotted segment (``spatial.TurnReplay`` is still a
+    constructor call) so an attribute-chained construction is caught too.
+    """
+    last_segment = target.rsplit(".", 1)[-1]
+    return last_segment[:1].isupper()
+
+
 class _BodyCollector(ast.NodeVisitor):
     """Collects call/import targets made directly in a node's own body.
 
@@ -115,7 +129,7 @@ class _BodyCollector(ast.NodeVisitor):
 
     def visit_Call(self, node: ast.Call) -> None:
         target = _call_target(node.func)
-        if target:
+        if target and not _is_constructor_call(target):
             self.calls.append(target)
         self.generic_visit(node)
 
@@ -148,6 +162,10 @@ def _collect_body(stmts: list) -> tuple[list[str], list[str]]:
     edge order isn't call order, and multiple calls to the same target
     collapse to one edge either way). Imports have no analogous consumer,
     so they stay alphabetical for stable, easy-to-scan output.
+
+    A constructor call (``_is_constructor_call``) is left out of ``calls``
+    entirely -- a call-reachability trace is meant to follow callables
+    calling other callables, and instantiating a type isn't that.
 
     See ``_BodyCollector`` for the "directly" scoping rule.
     """

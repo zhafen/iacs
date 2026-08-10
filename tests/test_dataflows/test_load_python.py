@@ -417,6 +417,22 @@ class TestCollectBody:
         calls, _ = load_python._collect_body(self._body("f = lambda: foo()\n"))
         assert calls == ["foo"]
 
+    def test_excludes_a_constructor_call(self):
+        # Foo() constructs a Foo, it doesn't call behavior named "Foo" --
+        # only callables belong in a call-reachability trace, so a
+        # PEP 8-capitalized call target is treated as a constructor and
+        # left out.
+        calls, _ = load_python._collect_body(self._body("Foo()\n"))
+        assert calls == []
+
+    def test_excludes_a_constructor_call_via_attribute_access(self):
+        calls, _ = load_python._collect_body(self._body("self.spatial.Foo()\n"))
+        assert calls == []
+
+    def test_keeps_lowercase_calls_alongside_an_excluded_constructor(self):
+        calls, _ = load_python._collect_body(self._body("bar()\nFoo()\nbaz()\n"))
+        assert calls == ["bar", "baz"]
+
 
 # ---------------------------------------------------------------------------
 # End-to-end: calls/imports show up as component entries
@@ -471,6 +487,29 @@ class TestCallsAndImportsAsComponents:
         entities = _all_entities(_load({"mod.py": src}))
         key = next(k for k in entities if k.endswith(".run"))
         assert {"calls": {"value": "helper", "seq": 0}} in entities[key]
+
+    def test_constructor_call_produces_no_calls_component(self):
+        # A call-reachability trace is meant to show callables, not types
+        # in use -- Bar() constructs a Bar, so it's excluded the same as
+        # _collect_body excludes it, and never becomes a "calls" edge.
+        # No docstring, matching test_entity_with_only_calls_has_no_description's
+        # pattern: calls alone (here, none survive) don't qualify an entity.
+        src = 'def foo():\n    Bar()\n'
+        entities = _all_entities(_load({"mod.py": src}))
+        assert entities == {}
+
+    def test_constructor_call_alongside_a_real_call_only_the_real_one_is_kept(self):
+        src = (
+            'def foo():\n'
+            '    """Foo."""\n'
+            '    Bar()\n'
+            '    baz()\n'
+        )
+        entities = _all_entities(_load({"mod.py": src}))
+        key = next(k for k in entities if k.endswith(".foo"))
+        assert {"calls": {"value": "baz", "seq": 0}} in entities[key]
+        calls_values = [c["calls"]["value"] for c in entities[key] if "calls" in c]
+        assert calls_values == ["baz"]
 
     def test_entity_with_only_calls_has_no_description(self):
         src = 'def foo():\n    bar()\n'
