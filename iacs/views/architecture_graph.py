@@ -316,7 +316,20 @@ def render_reachability_mermaid(graph: dict, direction: str = "LR") -> str:
     Returns:
         Mermaid ``flowchart`` source text.
     """
-    lines = [f"flowchart {direction}"]
+    # Mermaid's default theme fills a subgraph's whole bounding box with a
+    # solid color, not just outlines it -- fine for a small, compact
+    # subgraph, but a file subgraph whose members end up scattered across
+    # the layout (pulled apart by their own edges elsewhere) can end up
+    # with a bounding box large enough to visually cover unrelated edges
+    # and even other subgraphs underneath it. Transparent cluster
+    # backgrounds fix that regardless of any one subgraph's size, at the
+    # cost of the subtle fill color a reader never relied on for meaning
+    # anyway (the border and label already say which group is which).
+    lines = [
+        "%%{init: {'themeVariables': {'clusterBkg': 'transparent', "
+        "'clusterBorder': '#999999'}}}%%",
+        f"flowchart {direction}",
+    ]
     if not graph["nodes"]:
         lines.append('    empty["(root not found)"]')
         return "\n".join(lines)
