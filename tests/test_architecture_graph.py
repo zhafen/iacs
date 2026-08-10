@@ -322,7 +322,7 @@ class TestBuildCallReachability:
         graph = build_call_reachability(registry, "main")
         assert graph["edges"] == [{"source": "root_e", "target": "helper_e"}]
 
-    def test_order_edges_connect_consecutive_resolved_call_targets(self):
+    def test_call_sequence_targets_follow_seq_not_calls_row_order(self):
         registry = _reachability_registry(
             entity_id_rows=[
                 {"value": "root_e", "entity_key": "main", "alias": "main",
@@ -334,16 +334,16 @@ class TestBuildCallReachability:
             ],
             calls_rows=[
                 # call_b is called first in source (seq=0), call_a second
-                # (seq=1) -- order_edges must follow seq, not the "calls"
+                # (seq=1) -- the sequence must follow seq, not the "calls"
                 # rows' own order or alphabetical target order.
                 {"entity_id": "root_e", "value": "call_a", "value_eid": "a_e", "seq": 1},
                 {"entity_id": "root_e", "value": "call_b", "value_eid": "b_e", "seq": 0},
             ],
         )
         graph = build_call_reachability(registry, "main")
-        assert graph["order_edges"] == [{"source": "b_e", "target": "a_e"}]
+        assert graph["call_sequences"] == [{"caller": "root_e", "targets": ["b_e", "a_e"]}]
 
-    def test_order_edges_skip_over_an_unresolved_call_in_the_middle(self):
+    def test_call_sequence_skips_over_an_unresolved_call_in_the_middle(self):
         registry = _reachability_registry(
             entity_id_rows=[
                 {"value": "root_e", "entity_key": "main", "alias": "main",
@@ -360,9 +360,9 @@ class TestBuildCallReachability:
             ],
         )
         graph = build_call_reachability(registry, "main")
-        assert graph["order_edges"] == [{"source": "a_e", "target": "b_e"}]
+        assert graph["call_sequences"] == [{"caller": "root_e", "targets": ["a_e", "b_e"]}]
 
-    def test_no_order_edges_from_a_single_call(self):
+    def test_call_sequence_has_a_single_target_for_a_single_call(self):
         registry = _reachability_registry(
             entity_id_rows=[
                 {"value": "root_e", "entity_key": "main", "alias": "main",
@@ -375,9 +375,9 @@ class TestBuildCallReachability:
             ],
         )
         graph = build_call_reachability(registry, "main")
-        assert graph["order_edges"] == []
+        assert graph["call_sequences"] == [{"caller": "root_e", "targets": ["a_e"]}]
 
-    def test_order_edges_do_not_cross_between_different_callers(self):
+    def test_call_sequences_are_kept_separate_per_caller(self):
         registry = _reachability_registry(
             entity_id_rows=[
                 {"value": "root_e", "entity_key": "main", "alias": "main",
@@ -390,13 +390,39 @@ class TestBuildCallReachability:
             calls_rows=[
                 # root calls call_a, which itself calls call_b -- two
                 # different callers, each with exactly one call of their
-                # own, so no "next call" relationship exists between them.
+                # own, so two separate one-target sequences, not one
+                # two-target sequence crossing callers.
                 {"entity_id": "root_e", "value": "call_a", "value_eid": "a_e", "seq": 0},
                 {"entity_id": "a_e", "value": "call_b", "value_eid": "b_e", "seq": 0},
             ],
         )
         graph = build_call_reachability(registry, "main")
-        assert graph["order_edges"] == []
+        assert graph["call_sequences"] == [
+            {"caller": "root_e", "targets": ["a_e"]},
+            {"caller": "a_e", "targets": ["b_e"]},
+        ]
+
+    def test_call_sequence_excludes_a_caller_cut_off_by_max_depth(self):
+        """mid_e is reached (added to the frontier) but never itself
+        expanded once max_depth stops the BFS -- its own call to leaf_e
+        must not show up as a call_sequences entry, matching test_max_depth_
+        limits_traversal's existing "no edge for it either" behavior."""
+        registry = _reachability_registry(
+            entity_id_rows=[
+                {"value": "root_e", "entity_key": "main", "alias": "main",
+                 "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
+                {"value": "mid_e", "entity_key": "helper", "alias": "helper",
+                 "path": "mod_a.py:mod_a.helper", "filepath": "mod_a.py"},
+                {"value": "leaf_e", "entity_key": "util", "alias": "util",
+                 "path": "mod_b.py:mod_b.util", "filepath": "mod_b.py"},
+            ],
+            calls_rows=[
+                {"entity_id": "root_e", "value": "helper", "value_eid": "mid_e", "seq": 0},
+                {"entity_id": "mid_e", "value": "util", "value_eid": "leaf_e", "seq": 0},
+            ],
+        )
+        graph = build_call_reachability(registry, "main", max_depth=1)
+        assert graph["call_sequences"] == [{"caller": "root_e", "targets": ["mid_e"]}]
 
     def test_root_not_found_raises(self):
         registry = _reachability_registry(entity_id_rows=[
@@ -496,19 +522,38 @@ class TestRenderReachabilityMermaid:
         out = render_reachability_mermaid(graph)
         assert "rootNode" in out
 
-    def test_missing_order_edges_key_renders_fine_with_no_dotted_arrows(self):
+    def test_missing_call_sequences_key_falls_back_to_plain_edges(self):
         """A hand-built graph dict (e.g. an older test, or a caller that
-        never populated order_edges) must not KeyError -- order_edges is
-        optional, defaulting to none rendered."""
+        never populated call_sequences) must not KeyError -- it falls back
+        to one plain arrow per edges entry, no subgraph, no dotted arrows."""
         graph = {
             "root": "root_e",
-            "nodes": [{"id": "root_e", "label": "main", "filepath": "a.py"}],
-            "edges": [],
+            "nodes": [
+                {"id": "root_e", "label": "main", "filepath": "a.py"},
+                {"id": "a_e", "label": "call_a", "filepath": "a.py"},
+            ],
+            "edges": [{"source": "root_e", "target": "a_e"}],
         }
         out = render_reachability_mermaid(graph)
+        assert out.count("-->") == 1
         assert "-.->" not in out
 
-    def test_order_edges_render_as_dotted_arrows(self):
+    def test_single_target_call_sequence_uses_a_plain_arrow_no_subgraph(self):
+        graph = {
+            "root": "root_e",
+            "nodes": [
+                {"id": "root_e", "label": "main", "filepath": "a.py"},
+                {"id": "a_e", "label": "call_a", "filepath": "a.py"},
+            ],
+            "edges": [{"source": "root_e", "target": "a_e"}],
+            "call_sequences": [{"caller": "root_e", "targets": ["a_e"]}],
+        }
+        out = render_reachability_mermaid(graph)
+        assert out.count("-->") == 1
+        assert "-.->" not in out
+        assert "seq0" not in out
+
+    def test_multi_target_call_sequence_becomes_a_subgraph_with_one_incoming_arrow(self):
         graph = {
             "root": "root_e",
             "nodes": [
@@ -520,8 +565,119 @@ class TestRenderReachabilityMermaid:
                 {"source": "root_e", "target": "a_e"},
                 {"source": "root_e", "target": "b_e"},
             ],
-            "order_edges": [{"source": "a_e", "target": "b_e"}],
+            "call_sequences": [{"caller": "root_e", "targets": ["a_e", "b_e"]}],
         }
         out = render_reachability_mermaid(graph)
-        assert out.count("-->") == 2
+        # One solid arrow: root -> the sequence subgraph (not two, one per
+        # target) -- plus the one dotted arrow chaining a_e to b_e inside it.
+        assert out.count("-->") == 1
         assert out.count("-.->") == 1
+        assert "subgraph seq0" in out
+        # a_e/b_e are declared inside the sequence subgraph, not root's
+        # file subgraph -- so there's exactly one subgraph total besides
+        # the sequence one (root's own file subgraph).
+        assert out.count("subgraph") == 2
+
+    def test_call_sequence_members_are_pulled_out_of_the_file_subgraph(self):
+        """A node inside a seqN subgraph must not also be declared in its
+        file subgraph -- Mermaid doesn't support a node in two containers,
+        and it would be visually redundant either way."""
+        graph = {
+            "root": "root_e",
+            "nodes": [
+                {"id": "root_e", "label": "main", "filepath": "a.py"},
+                {"id": "a_e", "label": "call_a", "filepath": "a.py"},
+                {"id": "b_e", "label": "call_b", "filepath": "a.py"},
+            ],
+            "edges": [
+                {"source": "root_e", "target": "a_e"},
+                {"source": "root_e", "target": "b_e"},
+            ],
+            "call_sequences": [{"caller": "root_e", "targets": ["a_e", "b_e"]}],
+        }
+        out = render_reachability_mermaid(graph)
+        assert out.count('["call_a"]') == 1
+        assert out.count('["call_b"]') == 1
+
+    def test_outgoing_edge_from_a_sequence_member_originates_at_its_box(self):
+        """a_e is a member of root_e's box, but a_e itself also calls d_e
+        (a single, unrelated call elsewhere) -- that edge must be drawn
+        from the box's own boundary, not from a_e specifically, since a_e
+        isn't declared as a standalone node anywhere an edge could point
+        from."""
+        graph = {
+            "root": "root_e",
+            "nodes": [
+                {"id": "root_e", "label": "main", "filepath": "a.py"},
+                {"id": "a_e", "label": "call_a", "filepath": "a.py"},
+                {"id": "b_e", "label": "call_b", "filepath": "a.py"},
+                {"id": "d_e", "label": "call_d", "filepath": "a.py"},
+            ],
+            "edges": [
+                {"source": "root_e", "target": "a_e"},
+                {"source": "root_e", "target": "b_e"},
+                {"source": "a_e", "target": "d_e"},
+            ],
+            "call_sequences": [
+                {"caller": "root_e", "targets": ["a_e", "b_e"]},
+                {"caller": "a_e", "targets": ["d_e"]},
+            ],
+        }
+        out = render_reachability_mermaid(graph)
+        assert "seq0 --> n3" in out
+        assert "n1 --> n3" not in out
+
+    def test_incoming_edge_to_a_sequence_member_terminates_at_its_box(self):
+        """d_e is a plain caller of a single target, b_e -- but b_e is
+        itself a member of root_e's own box, so the edge must land on that
+        box's boundary, not on b_e specifically."""
+        graph = {
+            "root": "root_e",
+            "nodes": [
+                {"id": "root_e", "label": "main", "filepath": "a.py"},
+                {"id": "a_e", "label": "call_a", "filepath": "a.py"},
+                {"id": "b_e", "label": "call_b", "filepath": "a.py"},
+                {"id": "d_e", "label": "call_d", "filepath": "a.py"},
+            ],
+            "edges": [
+                {"source": "root_e", "target": "a_e"},
+                {"source": "root_e", "target": "b_e"},
+                {"source": "d_e", "target": "b_e"},
+            ],
+            "call_sequences": [
+                {"caller": "root_e", "targets": ["a_e", "b_e"]},
+                {"caller": "d_e", "targets": ["b_e"]},
+            ],
+        }
+        out = render_reachability_mermaid(graph)
+        assert "n3 --> seq0" in out
+
+    def test_duplicate_box_to_box_edges_collapse_to_one_arrow(self):
+        """a_e and c_e are two different members of root_e's box, and each
+        separately calls the same d_e -- both individually abstract to the
+        identical (seq0, d_e) pair, which must render as one arrow, not
+        two parallel copies of it."""
+        graph = {
+            "root": "root_e",
+            "nodes": [
+                {"id": "root_e", "label": "main", "filepath": "a.py"},
+                {"id": "a_e", "label": "call_a", "filepath": "a.py"},
+                {"id": "b_e", "label": "call_b", "filepath": "a.py"},
+                {"id": "c_e", "label": "call_c", "filepath": "a.py"},
+                {"id": "d_e", "label": "call_d", "filepath": "a.py"},
+            ],
+            "edges": [
+                {"source": "root_e", "target": "a_e"},
+                {"source": "root_e", "target": "b_e"},
+                {"source": "root_e", "target": "c_e"},
+                {"source": "a_e", "target": "d_e"},
+                {"source": "c_e", "target": "d_e"},
+            ],
+            "call_sequences": [
+                {"caller": "root_e", "targets": ["a_e", "b_e", "c_e"]},
+                {"caller": "a_e", "targets": ["d_e"]},
+                {"caller": "c_e", "targets": ["d_e"]},
+            ],
+        }
+        out = render_reachability_mermaid(graph)
+        assert out.count("seq0 --> n4") == 1

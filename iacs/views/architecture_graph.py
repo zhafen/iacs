@@ -219,43 +219,50 @@ def build_call_reachability(registrar: Registrar, root: str, max_depth: int | No
         "root": root_eid,
         "nodes": nodes,
         "edges": [{"source": s, "target": t} for s, t in edges],
-        "order_edges": [{"source": s, "target": t} for s, t in _order_edges(calls_df, visited)],
+        "call_sequences": _call_sequences(calls_df, edges),
     }
 
 
-def _order_edges(calls_df, node_ids: set[str]) -> list[tuple[str, str]]:
-    """Consecutive-pair edges between one entity's own resolved call
-    targets, in call order (``load_python``'s ``seq`` field on ``calls``)
-    -- the "this call happens before that one" information a plain
-    caller->callee edge can't carry, since multiple calls from the same
-    entity collapse to one edge each regardless of which came first.
+def _call_sequences(calls_df, edges: list[tuple[str, str]]) -> list[dict]:
+    """Group ``edges`` (``build_call_reachability``'s own already-correctly-
+    scoped (caller, target) pairs -- right depth, right resolution, no
+    caller beyond ``max_depth`` sneaking back in) by caller, each group's
+    targets ordered by ``load_python``'s ``seq`` field on ``calls`` where
+    available.
 
-    An unresolved or off-diagram call in the middle of the sequence is
-    skipped rather than breaking it -- the sequence still connects the
-    call before it to the next one actually drawn, same principle as
-    ``build_call_reachability`` itself only ever following resolved edges.
-    Consecutive repeats of the same target (calling the same thing twice
-    in a row) collapse to one node pair rather than a self-edge.
+    Grouping from ``edges`` rather than re-deriving from ``calls_df`` and a
+    raw "visited" set is what keeps this consistent with the BFS's own
+    depth cutoff: a node added to ``visited`` but never actually expanded
+    (stopped by ``max_depth``) contributes no edges, so it contributes no
+    sequence either, automatically -- no separate bookkeeping needed here.
 
     Args:
         calls_df: The raw ``calls`` component table (as loaded by
             ``registrar.get("calls").to_pandas()``).
-        node_ids: Entity ids actually present in this diagram -- both the
-            caller and each call target must be one of these, or the
-            row is skipped (a caller outside the diagram, e.g. beyond
-            ``max_depth``, has no business contributing order edges to it).
+        edges: ``(source, target)`` pairs, as computed by
+            ``build_call_reachability``'s own BFS.
+
+    Returns:
+        ``[{"caller": entity_id, "targets": [entity_id, ...]}, ...]``, one
+        entry per distinct caller in ``edges``. ``targets`` always has at
+        least one entry (a caller with no edges contributes nothing) and
+        never repeats one immediately after itself.
     """
-    if calls_df.empty or "value_eid" not in calls_df.columns or "seq" not in calls_df.columns:
-        return []
-    resolved = calls_df.dropna(subset=["value_eid"])
-    edges: list[tuple[str, str]] = []
-    for entity_id, group in resolved.groupby("entity_id"):
-        if entity_id not in node_ids:
-            continue
-        targets = [t for t in group.sort_values("seq")["value_eid"] if t in node_ids]
-        deduped = [t for i, t in enumerate(targets) if i == 0 or t != targets[i - 1]]
-        edges.extend(zip(deduped, deduped[1:]))
-    return edges
+    call_order: dict[tuple[str, str], object] = {}
+    if not calls_df.empty and "value_eid" in calls_df.columns and "seq" in calls_df.columns:
+        for _, row in calls_df.dropna(subset=["value_eid"]).iterrows():
+            call_order[(row["entity_id"], row["value_eid"])] = row["seq"]
+
+    by_caller: dict[str, list[str]] = {}
+    for caller, target in edges:
+        by_caller.setdefault(caller, []).append(target)
+
+    sequences = []
+    for caller, targets in by_caller.items():
+        ordered = sorted(targets, key=lambda t: call_order.get((caller, t), float("inf")))
+        deduped = [t for i, t in enumerate(ordered) if i == 0 or t != ordered[i - 1]]
+        sequences.append({"caller": caller, "targets": deduped})
+    return sequences
 
 
 def render_reachability_mermaid(graph: dict, direction: str = "TD") -> str:
@@ -263,13 +270,32 @@ def render_reachability_mermaid(graph: dict, direction: str = "TD") -> str:
 
     The root node gets a distinct fill via a Mermaid ``rootNode`` class, so
     it stays visually anchored regardless of how large the reachable set
-    grows. ``order_edges`` (see ``build_call_reachability``/``_order_edges``)
-    are drawn as dotted arrows layered on top of the solid ``calls``
-    arrows -- "A then B", not "A calls B" (there usually is no direct call
-    between two of a caller's own successive call targets, so this rarely
-    duplicates a solid edge). Missing entirely from ``graph`` (e.g. an
-    older or hand-built graph dict) is treated the same as empty, so this
-    stays backward compatible.
+    grows.
+
+    A caller with two or more resolved call targets (see
+    ``build_call_reachability``'s ``call_sequences``) gets its targets
+    drawn as their own ``seqN`` subgraph instead of scattered across their
+    usual per-file ones -- internally chained by dotted "A then B" arrows
+    in call order (left to right inside the box, independent of the
+    overall ``direction``), with a single solid arrow from the caller to
+    the subgraph as a whole. Fanning N solid arrows out from one caller
+    *and* N-1 dotted arrows threading back through the same targets said
+    the same thing twice and read as clutter, not structure; one arrow in,
+    one visibly-ordered box, says it once. A caller with only one call
+    target keeps the plain direct arrow -- there is no order to show.
+
+    That box-not-node treatment is symmetric on both ends: a solid edge
+    whose source or target is itself a member of some sequence box (e.g.
+    ``_resolve_args`` is both a target inside ``advance_simulation``'s box
+    *and* its own caller elsewhere) is drawn from/to that box's boundary,
+    not the specific inner node -- one consistent picture of "this box, as
+    a whole, also reaches/is reached by X," rather than punching through
+    box edges to name exactly which member did it (already visible from
+    the box's own internal dotted chain).
+
+    Missing ``call_sequences`` entirely (e.g. an older or hand-built graph
+    dict) falls back to one plain arrow per ``edges`` entry, same as
+    before this grouping existed, so this stays backward compatible.
 
     Args:
         graph: A graph dict as returned by ``build_call_reachability``.
@@ -284,24 +310,83 @@ def render_reachability_mermaid(graph: dict, direction: str = "TD") -> str:
         return "\n".join(lines)
 
     id_map = {n["id"]: f"n{i}" for i, n in enumerate(graph["nodes"])}
+    label_by_id = {n["id"]: n["label"].replace('"', "'") for n in graph["nodes"]}
+
+    call_sequences = graph.get("call_sequences")
+    sequence_members: dict[str, str] = {}
+    sequence_box_of_caller: dict[str, str] = {}
+    sequence_lines: list[str] = []
+    solid_edges: list[tuple[str, str]] = []
+
+    if call_sequences is not None:
+        # Pass 1: lay out every 2+-target caller's own box, and record
+        # which box (if any) each node ends up inside -- needed before
+        # pass 2 can resolve any edge's endpoints, since a caller earlier
+        # in call_sequences may itself be a later caller's box member (or
+        # vice versa).
+        for i, seq in enumerate(call_sequences):
+            caller, targets = seq["caller"], seq["targets"]
+            if len(targets) < 2:
+                continue
+            seq_id = f"seq{i}"
+            sequence_box_of_caller[caller] = seq_id
+            sequence_lines.append(f'    subgraph {seq_id}["{label_by_id.get(caller, caller)}"]')
+            sequence_lines.append("        direction LR")
+            for t in targets:
+                sequence_members[t] = seq_id
+                sequence_lines.append(f'        {id_map[t]}["{label_by_id.get(t, t)}"]')
+            for a, b in zip(targets, targets[1:]):
+                sequence_lines.append(f'        {id_map[a]} -.-> {id_map[b]}')
+            sequence_lines.append("    end")
+
+        # Pass 2: an edge's endpoint resolves to the box it's a *member*
+        # of (`sequence_members`, i.e. it's a target inside someone else's
+        # sequence) when it has one, falling back to its own plain node id
+        # otherwise. Deliberately never consults `sequence_box_of_caller`
+        # here -- that map is about which box an entity *owns*, and an
+        # entity's own outgoing edge to its own box is handled directly
+        # below; checking box-ownership for a general endpoint would wire
+        # that box back to itself as a self-loop instead of a real edge.
+        for seq in call_sequences:
+            caller, targets = seq["caller"], seq["targets"]
+            source_ref = sequence_members.get(caller, id_map[caller])
+            if len(targets) >= 2:
+                solid_edges.append((source_ref, sequence_box_of_caller[caller]))
+            else:
+                for t in targets:
+                    target_ref = sequence_members.get(t, id_map[t])
+                    solid_edges.append((source_ref, target_ref))
+    else:
+        for e in graph.get("edges", []):
+            solid_edges.append((id_map[e["source"]], id_map[e["target"]]))
 
     by_file: dict[str, list[dict]] = {}
     for n in graph["nodes"]:
+        if n["id"] in sequence_members:
+            continue
         by_file.setdefault(n["filepath"] or "(unknown)", []).append(n)
 
     for i, (filepath, nodes) in enumerate(sorted(by_file.items())):
         subgraph_label = _module_label(filepath) if filepath.endswith(".py") else filepath
         lines.append(f'    subgraph sg{i}["{subgraph_label}"]')
         for n in nodes:
-            label = n["label"].replace('"', "'")
-            lines.append(f'        {id_map[n["id"]]}["{label}"]')
+            lines.append(f'        {id_map[n["id"]]}["{label_by_id[n["id"]]}"]')
         lines.append("    end")
 
-    for e in graph["edges"]:
-        lines.append(f'    {id_map[e["source"]]} --> {id_map[e["target"]]}')
+    lines.extend(sequence_lines)
 
-    for e in graph.get("order_edges", []):
-        lines.append(f'    {id_map[e["source"]]} -.-> {id_map[e["target"]]}')
+    # Distinct (caller, target) pairs can abstract to the same box pair --
+    # e.g. two different members of one caller's box each individually
+    # reaching into the same other box -- which would otherwise draw the
+    # exact same arrow twice. Dedupe (order-preserving) rather than
+    # showing that as two parallel lines; the box-to-box relationship is
+    # what the arrow means once abstracted, not "count of underlying
+    # calls." A same-box self-reference (two members of one box calling
+    # each other) is dropped for the same reason -- it says nothing an
+    # arrow drawn back onto the same box's boundary can usefully convey.
+    for s, t in dict.fromkeys(solid_edges):
+        if s != t:
+            lines.append(f'    {s} --> {t}')
 
     lines.append(f'    class {id_map[graph["root"]]} rootNode')
     lines.append("    classDef rootNode fill:#f96,stroke:#333,stroke-width:3px")

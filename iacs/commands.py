@@ -123,10 +123,14 @@ def cmd_generate_architecture_diagram(
         mermaid = render_reachability_mermaid(graph)
         intro = (
             f"Entities reachable from `{root}` by following `calls` edges outward "
-            "(the root is highlighted); grouped into one subgraph per source file. "
-            "Solid arrows are calls; dotted arrows connect one entity's own call "
-            "targets in the order it calls them (skipping over any unresolved call "
-            "in between)."
+            "(the root is highlighted); grouped into one subgraph per source file, "
+            "except where noted next. An entity that itself makes two or more calls "
+            "gets its call targets pulled into their own subgraph instead, chained "
+            "left to right by dotted arrows in the order it actually calls them "
+            "(skipping over any unresolved call in between); a solid `calls` arrow "
+            "involving anything inside such a subgraph is drawn from/to the subgraph's "
+            "own boundary rather than the specific node inside it. One call with one "
+            "destination stays a plain arrow -- there's no order to show."
         )
     else:
         graph = build_architecture_graph(reg)
