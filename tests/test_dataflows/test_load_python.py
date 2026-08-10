@@ -297,6 +297,191 @@ class TestDocstringComponentsSection:
         assert "None." in desc
 
 
+# ---------------------------------------------------------------------------
+# _call_target — resolving a Call node's func to a best-effort dotted name
+# ---------------------------------------------------------------------------
+
+class TestCallTarget:
+
+    def _call_func(self, src: str):
+        import ast
+        call = ast.parse(src, mode="eval").body
+        assert isinstance(call, ast.Call)
+        return call.func
+
+    def test_bare_name_call(self):
+        assert load_python._call_target(self._call_func("foo()")) == "foo"
+
+    def test_attribute_call(self):
+        assert load_python._call_target(self._call_func("pd.DataFrame()")) == "pd.DataFrame"
+
+    def test_self_call_drops_self(self):
+        assert load_python._call_target(self._call_func("self.foo()")) == "foo"
+
+    def test_cls_call_drops_cls(self):
+        assert load_python._call_target(self._call_func("cls.foo()")) == "foo"
+
+    def test_chained_attribute_call(self):
+        assert (
+            load_python._call_target(self._call_func("self.spatial.select_character()"))
+            == "spatial.select_character"
+        )
+
+    def test_deep_chained_attribute_call_keeps_full_chain(self):
+        assert load_python._call_target(self._call_func("a.b.c()")) == "a.b.c"
+
+    def test_unresolvable_subscript_target_returns_none(self):
+        assert load_python._call_target(self._call_func("handlers[0]()")) is None
+
+    def test_call_result_call_returns_none(self):
+        assert load_python._call_target(self._call_func("foo()()")) is None
+
+
+# ---------------------------------------------------------------------------
+# _collect_body — calls/imports made directly in a body, not nested defs
+# ---------------------------------------------------------------------------
+
+class TestCollectBody:
+
+    def _body(self, src: str):
+        import ast
+        import textwrap
+        return ast.parse(textwrap.dedent(src)).body
+
+    def test_collects_a_call(self):
+        calls, imports = load_python._collect_body(self._body("foo()\n"))
+        assert calls == ["foo"]
+        assert imports == []
+
+    def test_collects_multiple_distinct_calls_sorted_and_deduped(self):
+        calls, _ = load_python._collect_body(self._body("bar()\nfoo()\nfoo()\n"))
+        assert calls == ["bar", "foo"]
+
+    def test_does_not_descend_into_nested_function(self):
+        # This body itself plays the role of an enclosing function's body --
+        # `def inner` is a nested def within it, mirroring what
+        # `_collect_body(node.body)` actually receives for a real function.
+        calls, _ = load_python._collect_body(self._body(
+            """
+            def inner():
+                inner_only_call()
+            outer_call()
+            """
+        ))
+        assert calls == ["outer_call"]
+
+    def test_does_not_descend_into_nested_class(self):
+        calls, _ = load_python._collect_body(self._body(
+            """
+            class Outer:
+                def method(self):
+                    method_only_call()
+            top_level_call()
+            """
+        ))
+        assert calls == ["top_level_call"]
+
+    def test_collects_plain_import(self):
+        _, imports = load_python._collect_body(self._body("import os\n"))
+        assert imports == ["os"]
+
+    def test_collects_dotted_import(self):
+        _, imports = load_python._collect_body(self._body("import os.path\n"))
+        assert imports == ["os.path"]
+
+    def test_collects_import_from(self):
+        _, imports = load_python._collect_body(self._body("from a.b import c\n"))
+        assert imports == ["a.b.c"]
+
+    def test_collects_import_from_multiple_names(self):
+        _, imports = load_python._collect_body(self._body("from a.b import c, d\n"))
+        assert imports == ["a.b.c", "a.b.d"]
+
+    def test_finds_import_inside_try_block(self):
+        _, imports = load_python._collect_body(self._body(
+            """
+            try:
+                import ujson as json
+            except ImportError:
+                import json
+            """
+        ))
+        assert imports == ["json", "ujson"]
+
+    def test_call_inside_lambda_is_collected(self):
+        calls, _ = load_python._collect_body(self._body("f = lambda: foo()\n"))
+        assert calls == ["foo"]
+
+
+# ---------------------------------------------------------------------------
+# End-to-end: calls/imports show up as component entries
+# ---------------------------------------------------------------------------
+
+class TestCallsAndImportsAsComponents:
+
+    def test_function_call_becomes_calls_component(self):
+        src = (
+            'def foo():\n'
+            '    """Foo."""\n'
+            '    bar()\n'
+        )
+        entities = _all_entities(_load({"mod.py": src}))
+        key = next(k for k in entities if k.endswith(".foo"))
+        assert {"calls": "bar"} in entities[key]
+
+    def test_function_without_calls_has_no_calls_component(self):
+        src = 'def foo():\n    """Just a plain docstring."""\n'
+        entities = _all_entities(_load({"mod.py": src}))
+        key = next(k for k in entities if k.endswith(".foo"))
+        assert entities[key] == [{"description": "Just a plain docstring."}]
+
+    def test_multiple_calls_become_multiple_calls_components(self):
+        src = (
+            'def foo():\n'
+            '    """Foo."""\n'
+            '    bar()\n'
+            '    baz()\n'
+        )
+        entities = _all_entities(_load({"mod.py": src}))
+        key = next(k for k in entities if k.endswith(".foo"))
+        assert {"calls": "bar"} in entities[key]
+        assert {"calls": "baz"} in entities[key]
+
+    def test_module_level_import_becomes_imports_component(self):
+        src = '"""Mod."""\nimport os\n'
+        entities = _all_entities(_load({"mod.py": src}))
+        key = next(k for k in entities if k.endswith("mod"))
+        assert {"imports": "os"} in entities[key]
+
+    def test_method_call_via_self_resolves_to_bare_name(self):
+        src = (
+            'class Foo:\n'
+            '    """Foo."""\n'
+            '    def run(self):\n'
+            '        """Run."""\n'
+            '        self.helper()\n'
+        )
+        entities = _all_entities(_load({"mod.py": src}))
+        key = next(k for k in entities if k.endswith(".run"))
+        assert {"calls": "helper"} in entities[key]
+
+    def test_entity_with_only_calls_has_no_description(self):
+        src = 'def foo():\n    bar()\n'
+        entities = _all_entities(_load({"mod.py": src}))
+        assert entities == {}
+
+    def test_undocumented_function_calls_do_not_leak_onto_module_entity(self):
+        """A module-level __iacs__ still creates the module entity (existing
+        behavior), but calls inside an undocumented nested function must not
+        be attributed to it -- _collect_body stops at nested FunctionDef."""
+        src = '__iacs__ = {"solution of": "req"}\ndef foo():\n    bar()\n'
+        entities = _all_entities(_load({"mod.py": src}))
+        mod_key = next(k for k in entities if k.endswith("mod"))
+        assert {"solution of": "req"} in entities[mod_key]
+        assert not any("calls" in c for c in entities[mod_key])
+        assert not any(k.endswith(".foo") for k in entities)
+
+
 class TestFunctionEntity:
 
     def test_function_docstring_becomes_description(self):

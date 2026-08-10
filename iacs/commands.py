@@ -95,6 +95,28 @@ def cmd_generate_report(reg: "Registrar", output_path: str = "iacs_report.html")
     return f"Report written to {path}"
 
 
+def cmd_generate_architecture_diagram(
+    reg: "Registrar", output_path: str = "iacs_architecture.md"
+) -> str:
+    """Render a Mermaid file/call-structure diagram and save it as a Markdown file.
+
+    Built from whatever ``calls``/``imports``/entity data is already loaded
+    in ``reg`` -- for application code this means loading the package's
+    source directory itself (picked up automatically as ``.py`` files by
+    ``load_manifest``), not just a project's requirement manifest.
+    """
+    from iacs.views.architecture_graph import build_architecture_graph, render_mermaid
+
+    graph = build_architecture_graph(reg)
+    mermaid = render_mermaid(graph)
+    content = f"# Architecture diagram\n\nSolid arrows are calls, dashed arrows are imports.\n\n```mermaid\n{mermaid}\n```\n"
+    path = Path(output_path)
+    if path.parent != Path("."):
+        path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    return f"Architecture diagram written to {path}"
+
+
 def cmd_refresh(reg: "Registrar") -> str:
     """Run the ETL export and write normalised YAML back to the original source paths.
 

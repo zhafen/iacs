@@ -339,6 +339,48 @@ class TestGenerateReportCommand:
 
 
 # ---------------------------------------------------------------------------
+# generate-architecture-diagram command
+# ---------------------------------------------------------------------------
+
+class TestGenerateArchitectureDiagramCommand:
+
+    def test_writes_diagram_to_default_path(self, monkeypatch, capsys, tmp_path):
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "a.py").write_text(
+            '"""Module A."""\nfrom src.b import helper\n\n\ndef main():\n    """Main."""\n    helper()\n'
+        )
+        (tmp_path / "src" / "b.py").write_text(
+            '"""Module B."""\n\n\ndef helper():\n    """Helper."""\n    pass\n'
+        )
+        run_dir = tmp_path / "run"
+        run_dir.mkdir()
+        monkeypatch.chdir(run_dir)
+        out, _ = run_cli(
+            "--manifest", str(tmp_path / "src"),
+            "generate-architecture-diagram",
+            monkeypatch=monkeypatch, capsys=capsys,
+        )
+        assert "iacs_architecture.md" in out
+        out_path = run_dir / "iacs_architecture.md"
+        assert out_path.exists()
+        content = out_path.read_text(encoding="utf-8")
+        assert "```mermaid" in content
+        assert "flowchart LR" in content
+
+    def test_writes_diagram_to_custom_output_path(self, monkeypatch, capsys, tmp_path):
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "a.py").write_text('"""Module A."""\n')
+        out_path = tmp_path / "custom_architecture.md"
+        out, _ = run_cli(
+            "--manifest", str(tmp_path / "src"),
+            "generate-architecture-diagram", "--output", str(out_path),
+            monkeypatch=monkeypatch, capsys=capsys,
+        )
+        assert str(out_path) in out
+        assert out_path.exists()
+
+
+# ---------------------------------------------------------------------------
 # Argument parser structure
 # ---------------------------------------------------------------------------
 
@@ -349,7 +391,8 @@ class TestParserStructure:
         choices = parser._subparsers._actions[-1].choices
         expected = {
             "manifest", "list-types", "view-component", "view-entity",
-            "run-dataflow", "refresh", "generate-report", "describe-format", "validate-yaml",
+            "run-dataflow", "refresh", "generate-report", "generate-architecture-diagram",
+            "describe-format", "validate-yaml",
         }
         assert expected == set(choices.keys())
 

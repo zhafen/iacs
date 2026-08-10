@@ -73,15 +73,102 @@ def _find_iacs_meta(stmts: list) -> dict | None:
     return None
 
 
-def _make_components(docstring: str | None, iacs_meta: dict | None) -> list | None:
-    """Build a component list from a docstring and __iacs__ metadata, or None if empty.
+def _call_target(func: ast.expr) -> str | None:
+    """Best-effort dotted name for a Call node's ``func``, or None if unresolvable.
 
-    A docstring's "Components" section (see ``_split_docstring_components``)
-    is parsed as YAML and merged into the component list rather than the
-    description; it is not included in either part of a round trip: it
-    is excluded from the description text, and also excluded from manifest
-    export (see ``iacs.dataflows.etl.export_manifest``), since it lives in
-    a Python source file rather than a standalone YAML file.
+    ``self.foo(...)``/``cls.foo(...)`` drop the leading ``self``/``cls`` (it
+    isn't part of any entity's qualified name); other attribute chains and
+    bare names are kept as-is for iacs's entity_ref substring matching to
+    resolve later, at derive time. Calls whose target isn't a plain name or
+    attribute chain (e.g. ``handlers[0]()`` or ``foo()()``) return None.
+    """
+    if isinstance(func, ast.Name):
+        return func.id
+    if isinstance(func, ast.Attribute):
+        parts = [func.attr]
+        node = func.value
+        while isinstance(node, ast.Attribute):
+            parts.append(node.attr)
+            node = node.value
+        if not isinstance(node, ast.Name):
+            return None
+        parts.append(node.id)
+        parts.reverse()
+        if parts[0] in ("self", "cls"):
+            parts = parts[1:]
+        return ".".join(parts) if parts else None
+    return None
+
+
+class _BodyCollector(ast.NodeVisitor):
+    """Collects call/import targets made directly in a node's own body.
+
+    Does not descend into nested function/class definitions -- those get
+    their own entity (if they qualify) and their own extraction via the
+    outer ``_walk`` recursion, so their calls/imports must not double up
+    onto an ancestor's.
+    """
+
+    def __init__(self):
+        self.calls: list[str] = []
+        self.imports: list[str] = []
+
+    def visit_Call(self, node: ast.Call) -> None:
+        target = _call_target(node.func)
+        if target:
+            self.calls.append(target)
+        self.generic_visit(node)
+
+    def visit_Import(self, node: ast.Import) -> None:
+        self.imports.extend(alias.name for alias in node.names)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        if node.module:
+            self.imports.extend(f"{node.module}.{alias.name}" for alias in node.names)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        pass
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        pass
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        pass
+
+
+def _collect_body(stmts: list) -> tuple[list[str], list[str]]:
+    """Return (sorted deduped calls, sorted deduped imports) made directly in stmts.
+
+    See ``_BodyCollector`` for the "directly" scoping rule.
+    """
+    collector = _BodyCollector()
+    for stmt in stmts:
+        collector.visit(stmt)
+    return sorted(set(collector.calls)), sorted(set(collector.imports))
+
+
+def _make_components(
+    docstring: str | None,
+    iacs_meta: dict | None,
+    calls: list[str] | None = None,
+    imports: list[str] | None = None,
+) -> list | None:
+    """Build a component list from a docstring, __iacs__ metadata, calls, and imports.
+
+    Returns None if empty. A docstring's "Components" section (see
+    ``_split_docstring_components``) is parsed as YAML and merged into the
+    component list rather than the description; it is not included in
+    either part of a round trip: it is excluded from the description text,
+    and also excluded from manifest export (see
+    ``iacs.dataflows.etl.export_manifest``), since it lives in a Python
+    source file rather than a standalone YAML file.
+
+    Whether this construct qualifies as an entity at all is still decided
+    purely by docstring/``__iacs__``/components_yaml, matching
+    ``_extract_entities``'s existing rule -- ``calls``/``imports`` are only
+    ever appended to an entity that already qualifies for another reason,
+    never enough on their own to conjure one up (which would turn every
+    undocumented helper function into a graph node).
     """
     description, components_yaml = (
         _split_docstring_components(docstring) if docstring else (None, None)
@@ -96,6 +183,10 @@ def _make_components(docstring: str | None, iacs_meta: dict | None) -> list | No
         components.extend(_parse_components_yaml(components_yaml))
     if not components:
         return None
+    for target in calls or []:
+        components.append({"calls": target})
+    for target in imports or []:
+        components.append({"imports": target})
     return components
 
 
@@ -104,11 +195,16 @@ def _extract_entities(tree: ast.Module, module_name: str) -> dict:
 
     Entity keys are fully-qualified dotted names within the module
     (e.g. ``iacs.dataflows.etl.load_manifest.MyClass.my_method``).
-    Only constructs with a docstring or ``__iacs__`` assignment are included.
+    Only constructs with a docstring or ``__iacs__`` assignment are included;
+    such an entity also gets ``calls``/``imports`` components for whatever
+    it calls/imports directly in its own body (see ``_collect_body``).
     """
     entities: dict = {}
 
-    components = _make_components(ast.get_docstring(tree), _find_iacs_meta(tree.body))
+    calls, imports = _collect_body(tree.body)
+    components = _make_components(
+        ast.get_docstring(tree), _find_iacs_meta(tree.body), calls, imports
+    )
     if components is not None:
         entities[module_name] = components
 
@@ -116,13 +212,19 @@ def _extract_entities(tree: ast.Module, module_name: str) -> dict:
         for node in stmts:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 qual = f"{prefix}.{node.name}"
-                comps = _make_components(ast.get_docstring(node), _find_iacs_meta(node.body))
+                calls, imports = _collect_body(node.body)
+                comps = _make_components(
+                    ast.get_docstring(node), _find_iacs_meta(node.body), calls, imports
+                )
                 if comps is not None:
                     entities[qual] = comps
                 _walk(node.body, qual)
             elif isinstance(node, ast.ClassDef):
                 qual = f"{prefix}.{node.name}"
-                comps = _make_components(ast.get_docstring(node), _find_iacs_meta(node.body))
+                calls, imports = _collect_body(node.body)
+                comps = _make_components(
+                    ast.get_docstring(node), _find_iacs_meta(node.body), calls, imports
+                )
                 if comps is not None:
                     entities[qual] = comps
                 _walk(node.body, qual)
