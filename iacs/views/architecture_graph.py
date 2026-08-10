@@ -170,11 +170,25 @@ def build_call_reachability(registrar: Registrar, root: str, max_depth: int | No
         )
     root_eid = candidates[0]
 
+    id_to_path = entity_id_df.set_index("value")["path"].to_dict() if "path" in entity_id_df.columns else {}
+    id_to_filepath = (
+        entity_id_df.set_index("value")["filepath"].to_dict() if "filepath" in entity_id_df.columns else {}
+    )
+
+    # A call target only ever means something once resolved to a .py-sourced
+    # entity -- Python code never calls a YAML-described requirement or
+    # schema entity, so a resolved-but-non-.py target (e.g. a bare `float(...)`
+    # builtin call coincidentally alias-matching iacs's own `float`
+    # schema-type entity in builtins/components.yaml) is a false positive
+    # of substring/alias resolution, not a real edge, and is dropped here.
     calls_df = registrar.get("calls").to_pandas()
     adjacency: dict[str, list[str]] = {}
     if not calls_df.empty and "value_eid" in calls_df.columns:
         for _, row in calls_df.dropna(subset=["value_eid"]).iterrows():
-            adjacency.setdefault(row["entity_id"], []).append(row["value_eid"])
+            target = row["value_eid"]
+            target_fp = id_to_filepath.get(target)
+            if target_fp and target_fp.endswith(".py"):
+                adjacency.setdefault(row["entity_id"], []).append(target)
 
     visited = {root_eid}
     order = [root_eid]
@@ -192,11 +206,6 @@ def build_call_reachability(registrar: Registrar, root: str, max_depth: int | No
                     next_frontier.append(target)
         frontier = next_frontier
         depth += 1
-
-    id_to_path = entity_id_df.set_index("value")["path"].to_dict() if "path" in entity_id_df.columns else {}
-    id_to_filepath = (
-        entity_id_df.set_index("value")["filepath"].to_dict() if "filepath" in entity_id_df.columns else {}
-    )
 
     nodes = [
         {

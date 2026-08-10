@@ -342,6 +342,28 @@ class TestBuildCallReachability:
         with pytest.raises(ValueError, match="foo"):
             build_call_reachability(registry, "foo")
 
+    def test_call_target_resolved_to_a_non_python_entity_is_not_followed(self):
+        """A bare-name call (e.g. the builtin `float(...)`) can coincidentally
+        substring/alias-match a YAML-sourced entity (e.g. iacs's own `float`
+        schema-type entity in builtins/components.yaml) -- that's never a
+        real call, so a target outside a .py file is dropped rather than
+        shown as a false-positive node/edge."""
+        registry = _reachability_registry(
+            entity_id_rows=[
+                {"value": "root_e", "entity_key": "main", "alias": "main",
+                 "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
+                {"value": "yaml_e", "entity_key": "float", "alias": "float",
+                 "path": "builtins/components.yaml:base_data_type.float",
+                 "filepath": "builtins/components.yaml"},
+            ],
+            calls_rows=[
+                {"entity_id": "root_e", "value": "float", "value_eid": "yaml_e"},
+            ],
+        )
+        graph = build_call_reachability(registry, "main")
+        assert [n["id"] for n in graph["nodes"]] == ["root_e"]
+        assert graph["edges"] == []
+
     def test_class_method_label_keeps_class_prefix(self):
         registry = _reachability_registry(entity_id_rows=[
             {"value": "root_e", "entity_key": "resolve", "alias": "resolve",
