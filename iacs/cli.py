@@ -132,6 +132,16 @@ def _build_parser() -> argparse.ArgumentParser:
         default="iacs_architecture.md",
         help="File path to write the diagram to (default: iacs_architecture.md).",
     )
+    p_ad.add_argument(
+        "--root",
+        metavar="ENTITY",
+        default=None,
+        help=(
+            "Entity hash, alias, or path substring to use as an entry point "
+            "(e.g. a function name). Renders the entity-level call trace "
+            "reachable from it instead of the whole-project file overview."
+        ),
+    )
 
     sub.add_parser(
         "describe-format",
@@ -185,7 +195,7 @@ def main() -> None:
         print(cmd_generate_report(reg, args.output))
 
     elif args.command == "generate-architecture-diagram":
-        print(cmd_generate_architecture_diagram(reg, args.output))
+        print(cmd_generate_architecture_diagram(reg, args.output, args.root))
 
     elif args.command == "list-types":
         print(cmd_list_component_types(reg))

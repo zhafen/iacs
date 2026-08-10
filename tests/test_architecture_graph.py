@@ -1,7 +1,14 @@
 """Tests for iacs.views.architecture_graph."""
 
+import pytest
+
 from tests.conftest import make_registry
-from iacs.views.architecture_graph import build_architecture_graph, render_mermaid
+from iacs.views.architecture_graph import (
+    build_architecture_graph,
+    build_call_reachability,
+    render_mermaid,
+    render_reachability_mermaid,
+)
 
 
 def _registry(entity_id_rows, calls_rows=None, imports_rows=None):
@@ -10,6 +17,13 @@ def _registry(entity_id_rows, calls_rows=None, imports_rows=None):
         components["calls"] = calls_rows
     if imports_rows:
         components["imports"] = imports_rows
+    return make_registry(components)
+
+
+def _reachability_registry(entity_id_rows, calls_rows=None):
+    components = {"entity_id": entity_id_rows}
+    if calls_rows:
+        components["calls"] = calls_rows
     return make_registry(components)
 
 
@@ -176,3 +190,210 @@ class TestRenderMermaid:
         }
         out = render_mermaid(graph)
         assert "pkg/sub.mod.py" not in out
+
+
+# ---------------------------------------------------------------------------
+# build_call_reachability
+# ---------------------------------------------------------------------------
+
+class TestBuildCallReachability:
+
+    def test_root_alone_when_no_calls(self):
+        registry = _reachability_registry(entity_id_rows=[
+            {"value": "root_e", "entity_key": "main", "alias": "main",
+             "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
+        ])
+        graph = build_call_reachability(registry, "main")
+        assert graph["root"] == "root_e"
+        assert graph["nodes"] == [
+            {"id": "root_e", "label": "main", "filepath": "mod_a.py"},
+        ]
+        assert graph["edges"] == []
+
+    def test_direct_call_is_included(self):
+        registry = _reachability_registry(
+            entity_id_rows=[
+                {"value": "root_e", "entity_key": "main", "alias": "main",
+                 "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
+                {"value": "helper_e", "entity_key": "helper", "alias": "helper",
+                 "path": "mod_a.py:mod_a.helper", "filepath": "mod_a.py"},
+            ],
+            calls_rows=[
+                {"entity_id": "root_e", "value": "helper", "value_eid": "helper_e"},
+            ],
+        )
+        graph = build_call_reachability(registry, "main")
+        ids = {n["id"] for n in graph["nodes"]}
+        assert ids == {"root_e", "helper_e"}
+        assert graph["edges"] == [{"source": "root_e", "target": "helper_e"}]
+
+    def test_transitive_call_two_hops_is_included(self):
+        registry = _reachability_registry(
+            entity_id_rows=[
+                {"value": "root_e", "entity_key": "main", "alias": "main",
+                 "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
+                {"value": "mid_e", "entity_key": "helper", "alias": "helper",
+                 "path": "mod_a.py:mod_a.helper", "filepath": "mod_a.py"},
+                {"value": "leaf_e", "entity_key": "util", "alias": "util",
+                 "path": "mod_b.py:mod_b.util", "filepath": "mod_b.py"},
+            ],
+            calls_rows=[
+                {"entity_id": "root_e", "value": "helper", "value_eid": "mid_e"},
+                {"entity_id": "mid_e", "value": "util", "value_eid": "leaf_e"},
+            ],
+        )
+        graph = build_call_reachability(registry, "main")
+        ids = {n["id"] for n in graph["nodes"]}
+        assert ids == {"root_e", "mid_e", "leaf_e"}
+        assert {"source": "mid_e", "target": "leaf_e"} in graph["edges"]
+
+    def test_max_depth_limits_traversal(self):
+        registry = _reachability_registry(
+            entity_id_rows=[
+                {"value": "root_e", "entity_key": "main", "alias": "main",
+                 "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
+                {"value": "mid_e", "entity_key": "helper", "alias": "helper",
+                 "path": "mod_a.py:mod_a.helper", "filepath": "mod_a.py"},
+                {"value": "leaf_e", "entity_key": "util", "alias": "util",
+                 "path": "mod_b.py:mod_b.util", "filepath": "mod_b.py"},
+            ],
+            calls_rows=[
+                {"entity_id": "root_e", "value": "helper", "value_eid": "mid_e"},
+                {"entity_id": "mid_e", "value": "util", "value_eid": "leaf_e"},
+            ],
+        )
+        graph = build_call_reachability(registry, "main", max_depth=1)
+        ids = {n["id"] for n in graph["nodes"]}
+        assert ids == {"root_e", "mid_e"}
+
+    def test_cycle_does_not_infinite_loop(self):
+        registry = _reachability_registry(
+            entity_id_rows=[
+                {"value": "a_e", "entity_key": "a", "alias": "a",
+                 "path": "mod_x.py:mod_x.a", "filepath": "mod_x.py"},
+                {"value": "b_e", "entity_key": "b", "alias": "b",
+                 "path": "mod_x.py:mod_x.b", "filepath": "mod_x.py"},
+            ],
+            calls_rows=[
+                {"entity_id": "a_e", "value": "b", "value_eid": "b_e"},
+                {"entity_id": "b_e", "value": "a", "value_eid": "a_e"},
+            ],
+        )
+        graph = build_call_reachability(registry, "a")
+        ids = {n["id"] for n in graph["nodes"]}
+        assert ids == {"a_e", "b_e"}
+        assert {"source": "a_e", "target": "b_e"} in graph["edges"]
+        assert {"source": "b_e", "target": "a_e"} in graph["edges"]
+
+    def test_unresolved_call_is_not_followed(self):
+        registry = _reachability_registry(
+            entity_id_rows=[
+                {"value": "root_e", "entity_key": "main", "alias": "main",
+                 "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
+                {"value": "helper_e", "entity_key": "helper", "alias": "helper",
+                 "path": "mod_a.py:mod_a.helper", "filepath": "mod_a.py"},
+            ],
+            calls_rows=[
+                # A None value_eid (no unique entity_ref match) doesn't
+                # expand, alongside one that legitimately does resolve --
+                # keeping both in the same table avoids an all-null column
+                # DuckDB can't infer a type for.
+                {"entity_id": "root_e", "value": "os.getcwd", "value_eid": None},
+                {"entity_id": "root_e", "value": "helper", "value_eid": "helper_e"},
+            ],
+        )
+        graph = build_call_reachability(registry, "main")
+        ids = {n["id"] for n in graph["nodes"]}
+        assert ids == {"root_e", "helper_e"}
+        assert graph["edges"] == [{"source": "root_e", "target": "helper_e"}]
+
+    def test_same_file_calls_are_kept_unlike_the_collapsed_graph(self):
+        registry = _reachability_registry(
+            entity_id_rows=[
+                {"value": "root_e", "entity_key": "main", "alias": "main",
+                 "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
+                {"value": "helper_e", "entity_key": "helper", "alias": "helper",
+                 "path": "mod_a.py:mod_a.helper", "filepath": "mod_a.py"},
+            ],
+            calls_rows=[
+                {"entity_id": "root_e", "value": "helper", "value_eid": "helper_e"},
+            ],
+        )
+        graph = build_call_reachability(registry, "main")
+        assert graph["edges"] == [{"source": "root_e", "target": "helper_e"}]
+
+    def test_root_not_found_raises(self):
+        registry = _reachability_registry(entity_id_rows=[
+            {"value": "root_e", "entity_key": "main", "alias": "main",
+             "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
+        ])
+        with pytest.raises(ValueError, match="does_not_exist"):
+            build_call_reachability(registry, "does_not_exist")
+
+    def test_ambiguous_root_raises(self):
+        # No `alias` column -- candidate_entity_ids falls straight through
+        # to substring-of-path matching, where "foo" matches both rows.
+        registry = _reachability_registry(entity_id_rows=[
+            {"value": "a_e", "entity_key": "helper_foo",
+             "path": "mod_a.py:mod_a.helper_foo", "filepath": "mod_a.py"},
+            {"value": "b_e", "entity_key": "other_foo",
+             "path": "mod_b.py:mod_b.other_foo", "filepath": "mod_b.py"},
+        ])
+        with pytest.raises(ValueError, match="foo"):
+            build_call_reachability(registry, "foo")
+
+    def test_class_method_label_keeps_class_prefix(self):
+        registry = _reachability_registry(entity_id_rows=[
+            {"value": "root_e", "entity_key": "resolve", "alias": "resolve",
+             "path": "story_simulator/resolve.py:story_simulator.resolve.TurnReplay.resolve",
+             "filepath": "story_simulator/resolve.py"},
+        ])
+        graph = build_call_reachability(registry, "root_e")
+        assert graph["nodes"][0]["label"] == "TurnReplay.resolve"
+
+    def test_module_entity_label_is_just_the_module_name(self):
+        registry = _reachability_registry(entity_id_rows=[
+            {"value": "root_e", "entity_key": "core", "alias": "core",
+             "path": "story_simulator/core.py:story_simulator.core",
+             "filepath": "story_simulator/core.py"},
+        ])
+        graph = build_call_reachability(registry, "root_e")
+        assert graph["nodes"][0]["label"] == "core"
+
+
+# ---------------------------------------------------------------------------
+# render_reachability_mermaid
+# ---------------------------------------------------------------------------
+
+class TestRenderReachabilityMermaid:
+
+    def test_empty_graph_renders_placeholder(self):
+        out = render_reachability_mermaid({"root": None, "nodes": [], "edges": []})
+        assert "flowchart" in out
+
+    def test_groups_nodes_into_one_subgraph_per_file(self):
+        graph = {
+            "root": "root_e",
+            "nodes": [
+                {"id": "root_e", "label": "main", "filepath": "a.py"},
+                {"id": "helper_e", "label": "helper", "filepath": "a.py"},
+                {"id": "util_e", "label": "util", "filepath": "b.py"},
+            ],
+            "edges": [
+                {"source": "root_e", "target": "helper_e"},
+                {"source": "helper_e", "target": "util_e"},
+            ],
+        }
+        out = render_reachability_mermaid(graph)
+        assert out.count("subgraph") == 2
+        assert '["main"]' in out
+        assert '["util"]' in out
+
+    def test_root_node_gets_the_root_class(self):
+        graph = {
+            "root": "root_e",
+            "nodes": [{"id": "root_e", "label": "main", "filepath": "a.py"}],
+            "edges": [],
+        }
+        out = render_reachability_mermaid(graph)
+        assert "rootNode" in out

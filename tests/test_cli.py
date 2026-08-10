@@ -379,6 +379,28 @@ class TestGenerateArchitectureDiagramCommand:
         assert str(out_path) in out
         assert out_path.exists()
 
+    def test_root_option_renders_reachability_trace(self, monkeypatch, capsys, tmp_path):
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "a.py").write_text(
+            '"""Module A."""\nfrom src.b import helper\n\n\ndef main():\n    """Main."""\n    helper()\n'
+        )
+        (tmp_path / "src" / "b.py").write_text(
+            '"""Module B."""\n\n\ndef helper():\n    """Helper."""\n    pass\n'
+        )
+        out_path = tmp_path / "trace.md"
+        out, _ = run_cli(
+            "--manifest", str(tmp_path / "src"),
+            "generate-architecture-diagram", "--output", str(out_path), "--root", "main",
+            monkeypatch=monkeypatch, capsys=capsys,
+        )
+        assert str(out_path) in out
+        content = out_path.read_text(encoding="utf-8")
+        assert "flowchart TD" in content
+        assert "subgraph" in content
+        assert "rootNode" in content
+        assert '["main"]' in content
+        assert '["helper"]' in content
+
 
 # ---------------------------------------------------------------------------
 # Argument parser structure
