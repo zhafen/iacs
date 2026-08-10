@@ -495,14 +495,15 @@ class TestRenderReachabilityMermaid:
         out = render_reachability_mermaid({"root": None, "nodes": [], "edges": []})
         assert "flowchart" in out
 
-    def test_cluster_backgrounds_are_transparent(self):
-        """A subgraph whose members get scattered across the layout (e.g.
-        a file subgraph after sequence boxes pull most of its nodes out)
-        can end up with a bounding box large enough to visually cover
-        unrelated edges underneath it -- transparent cluster fills (a
-        Mermaid init directive, must be the diagram's very first line)
-        keep whatever's underneath visible regardless of any one
-        subgraph's size."""
+    def test_uses_default_theme_no_init_directive(self):
+        """No `%%{init: ...}%%` override -- plain default Mermaid theme.
+
+        A transparent-cluster-background override was tried here at one
+        point while tracking down a boundary-crossing-edge rendering bug
+        (see `render_reachability_mermaid`'s own docstring for the actual
+        root cause and fix), but wasn't needed for correctness once that
+        bug was actually fixed, so it's gone: the diagram's first line is
+        the `flowchart` declaration itself, nothing before it."""
         graph = {
             "root": "root_e",
             "nodes": [{"id": "root_e", "label": "main", "filepath": "a.py"}],
@@ -510,10 +511,8 @@ class TestRenderReachabilityMermaid:
         }
         out = render_reachability_mermaid(graph)
         lines = out.splitlines()
-        assert lines[0].startswith("%%{init:")
-        assert "clusterBkg" in lines[0]
-        assert "'transparent'" in lines[0]
-        assert lines[1].startswith("flowchart")
+        assert lines[0].startswith("flowchart")
+        assert "%%{init:" not in out
 
     def test_groups_nodes_into_one_subgraph_per_file(self):
         graph = {
