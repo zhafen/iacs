@@ -427,6 +427,17 @@ iacs_component:
               value:
                   description: The entity being called.
                   type: entity_ref
+              seq:
+                  description: >
+                      0-indexed first-occurrence order among the source
+                      entity's distinct call targets (e.g. the 2nd distinct
+                      thing it calls gets seq=1), not a line number or a
+                      count of every call including repeats. Lets a
+                      consumer (e.g.
+                      ``architecture_graph.build_call_reachability``'s
+                      ``order_edges``) recover "this call happens before
+                      that one" without re-parsing the source.
+                  type: int
 
     imports:
         - description: >

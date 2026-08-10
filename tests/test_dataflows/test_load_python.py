@@ -353,9 +353,14 @@ class TestCollectBody:
         assert calls == ["foo"]
         assert imports == []
 
-    def test_collects_multiple_distinct_calls_sorted_and_deduped(self):
-        calls, _ = load_python._collect_body(self._body("bar()\nfoo()\nfoo()\n"))
-        assert calls == ["bar", "foo"]
+    def test_collects_multiple_distinct_calls_in_first_occurrence_order_deduped(self):
+        # "foo" appears (and repeats) before "bar" in source -- first-
+        # occurrence order, not alphabetical, is what a caller's actual
+        # call sequence needs (see architecture_graph.build_call_reachability's
+        # order_edges), so this deliberately picks names where the two
+        # orderings disagree.
+        calls, _ = load_python._collect_body(self._body("foo()\nbar()\nfoo()\n"))
+        assert calls == ["foo", "bar"]
 
     def test_does_not_descend_into_nested_function(self):
         # This body itself plays the role of an enclosing function's body --
@@ -427,7 +432,7 @@ class TestCallsAndImportsAsComponents:
         )
         entities = _all_entities(_load({"mod.py": src}))
         key = next(k for k in entities if k.endswith(".foo"))
-        assert {"calls": "bar"} in entities[key]
+        assert {"calls": {"value": "bar", "seq": 0}} in entities[key]
 
     def test_function_without_calls_has_no_calls_component(self):
         src = 'def foo():\n    """Just a plain docstring."""\n'
@@ -435,17 +440,19 @@ class TestCallsAndImportsAsComponents:
         key = next(k for k in entities if k.endswith(".foo"))
         assert entities[key] == [{"description": "Just a plain docstring."}]
 
-    def test_multiple_calls_become_multiple_calls_components(self):
+    def test_multiple_calls_become_multiple_calls_components_carrying_call_order(self):
         src = (
             'def foo():\n'
             '    """Foo."""\n'
-            '    bar()\n'
             '    baz()\n'
+            '    bar()\n'
         )
         entities = _all_entities(_load({"mod.py": src}))
         key = next(k for k in entities if k.endswith(".foo"))
-        assert {"calls": "bar"} in entities[key]
-        assert {"calls": "baz"} in entities[key]
+        # baz() is called first in source, despite sorting after "bar"
+        # alphabetically -- seq reflects call order, not alphabetical order.
+        assert {"calls": {"value": "baz", "seq": 0}} in entities[key]
+        assert {"calls": {"value": "bar", "seq": 1}} in entities[key]
 
     def test_module_level_import_becomes_imports_component(self):
         src = '"""Mod."""\nimport os\n'
@@ -463,7 +470,7 @@ class TestCallsAndImportsAsComponents:
         )
         entities = _all_entities(_load({"mod.py": src}))
         key = next(k for k in entities if k.endswith(".run"))
-        assert {"calls": "helper"} in entities[key]
+        assert {"calls": {"value": "helper", "seq": 0}} in entities[key]
 
     def test_entity_with_only_calls_has_no_description(self):
         src = 'def foo():\n    bar()\n'

@@ -219,7 +219,43 @@ def build_call_reachability(registrar: Registrar, root: str, max_depth: int | No
         "root": root_eid,
         "nodes": nodes,
         "edges": [{"source": s, "target": t} for s, t in edges],
+        "order_edges": [{"source": s, "target": t} for s, t in _order_edges(calls_df, visited)],
     }
+
+
+def _order_edges(calls_df, node_ids: set[str]) -> list[tuple[str, str]]:
+    """Consecutive-pair edges between one entity's own resolved call
+    targets, in call order (``load_python``'s ``seq`` field on ``calls``)
+    -- the "this call happens before that one" information a plain
+    caller->callee edge can't carry, since multiple calls from the same
+    entity collapse to one edge each regardless of which came first.
+
+    An unresolved or off-diagram call in the middle of the sequence is
+    skipped rather than breaking it -- the sequence still connects the
+    call before it to the next one actually drawn, same principle as
+    ``build_call_reachability`` itself only ever following resolved edges.
+    Consecutive repeats of the same target (calling the same thing twice
+    in a row) collapse to one node pair rather than a self-edge.
+
+    Args:
+        calls_df: The raw ``calls`` component table (as loaded by
+            ``registrar.get("calls").to_pandas()``).
+        node_ids: Entity ids actually present in this diagram -- both the
+            caller and each call target must be one of these, or the
+            row is skipped (a caller outside the diagram, e.g. beyond
+            ``max_depth``, has no business contributing order edges to it).
+    """
+    if calls_df.empty or "value_eid" not in calls_df.columns or "seq" not in calls_df.columns:
+        return []
+    resolved = calls_df.dropna(subset=["value_eid"])
+    edges: list[tuple[str, str]] = []
+    for entity_id, group in resolved.groupby("entity_id"):
+        if entity_id not in node_ids:
+            continue
+        targets = [t for t in group.sort_values("seq")["value_eid"] if t in node_ids]
+        deduped = [t for i, t in enumerate(targets) if i == 0 or t != targets[i - 1]]
+        edges.extend(zip(deduped, deduped[1:]))
+    return edges
 
 
 def render_reachability_mermaid(graph: dict, direction: str = "TD") -> str:
@@ -227,7 +263,13 @@ def render_reachability_mermaid(graph: dict, direction: str = "TD") -> str:
 
     The root node gets a distinct fill via a Mermaid ``rootNode`` class, so
     it stays visually anchored regardless of how large the reachable set
-    grows.
+    grows. ``order_edges`` (see ``build_call_reachability``/``_order_edges``)
+    are drawn as dotted arrows layered on top of the solid ``calls``
+    arrows -- "A then B", not "A calls B" (there usually is no direct call
+    between two of a caller's own successive call targets, so this rarely
+    duplicates a solid edge). Missing entirely from ``graph`` (e.g. an
+    older or hand-built graph dict) is treated the same as empty, so this
+    stays backward compatible.
 
     Args:
         graph: A graph dict as returned by ``build_call_reachability``.
@@ -257,6 +299,9 @@ def render_reachability_mermaid(graph: dict, direction: str = "TD") -> str:
 
     for e in graph["edges"]:
         lines.append(f'    {id_map[e["source"]]} --> {id_map[e["target"]]}')
+
+    for e in graph.get("order_edges", []):
+        lines.append(f'    {id_map[e["source"]]} -.-> {id_map[e["target"]]}')
 
     lines.append(f'    class {id_map[graph["root"]]} rootNode')
     lines.append("    classDef rootNode fill:#f96,stroke:#333,stroke-width:3px")

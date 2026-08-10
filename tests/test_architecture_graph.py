@@ -322,6 +322,82 @@ class TestBuildCallReachability:
         graph = build_call_reachability(registry, "main")
         assert graph["edges"] == [{"source": "root_e", "target": "helper_e"}]
 
+    def test_order_edges_connect_consecutive_resolved_call_targets(self):
+        registry = _reachability_registry(
+            entity_id_rows=[
+                {"value": "root_e", "entity_key": "main", "alias": "main",
+                 "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
+                {"value": "a_e", "entity_key": "call_a", "alias": "call_a",
+                 "path": "mod_a.py:mod_a.call_a", "filepath": "mod_a.py"},
+                {"value": "b_e", "entity_key": "call_b", "alias": "call_b",
+                 "path": "mod_a.py:mod_a.call_b", "filepath": "mod_a.py"},
+            ],
+            calls_rows=[
+                # call_b is called first in source (seq=0), call_a second
+                # (seq=1) -- order_edges must follow seq, not the "calls"
+                # rows' own order or alphabetical target order.
+                {"entity_id": "root_e", "value": "call_a", "value_eid": "a_e", "seq": 1},
+                {"entity_id": "root_e", "value": "call_b", "value_eid": "b_e", "seq": 0},
+            ],
+        )
+        graph = build_call_reachability(registry, "main")
+        assert graph["order_edges"] == [{"source": "b_e", "target": "a_e"}]
+
+    def test_order_edges_skip_over_an_unresolved_call_in_the_middle(self):
+        registry = _reachability_registry(
+            entity_id_rows=[
+                {"value": "root_e", "entity_key": "main", "alias": "main",
+                 "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
+                {"value": "a_e", "entity_key": "call_a", "alias": "call_a",
+                 "path": "mod_a.py:mod_a.call_a", "filepath": "mod_a.py"},
+                {"value": "b_e", "entity_key": "call_b", "alias": "call_b",
+                 "path": "mod_a.py:mod_a.call_b", "filepath": "mod_a.py"},
+            ],
+            calls_rows=[
+                {"entity_id": "root_e", "value": "call_a", "value_eid": "a_e", "seq": 0},
+                {"entity_id": "root_e", "value": "os.getcwd", "value_eid": None, "seq": 1},
+                {"entity_id": "root_e", "value": "call_b", "value_eid": "b_e", "seq": 2},
+            ],
+        )
+        graph = build_call_reachability(registry, "main")
+        assert graph["order_edges"] == [{"source": "a_e", "target": "b_e"}]
+
+    def test_no_order_edges_from_a_single_call(self):
+        registry = _reachability_registry(
+            entity_id_rows=[
+                {"value": "root_e", "entity_key": "main", "alias": "main",
+                 "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
+                {"value": "a_e", "entity_key": "call_a", "alias": "call_a",
+                 "path": "mod_a.py:mod_a.call_a", "filepath": "mod_a.py"},
+            ],
+            calls_rows=[
+                {"entity_id": "root_e", "value": "call_a", "value_eid": "a_e", "seq": 0},
+            ],
+        )
+        graph = build_call_reachability(registry, "main")
+        assert graph["order_edges"] == []
+
+    def test_order_edges_do_not_cross_between_different_callers(self):
+        registry = _reachability_registry(
+            entity_id_rows=[
+                {"value": "root_e", "entity_key": "main", "alias": "main",
+                 "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
+                {"value": "a_e", "entity_key": "call_a", "alias": "call_a",
+                 "path": "mod_a.py:mod_a.call_a", "filepath": "mod_a.py"},
+                {"value": "b_e", "entity_key": "call_b", "alias": "call_b",
+                 "path": "mod_a.py:mod_a.call_b", "filepath": "mod_a.py"},
+            ],
+            calls_rows=[
+                # root calls call_a, which itself calls call_b -- two
+                # different callers, each with exactly one call of their
+                # own, so no "next call" relationship exists between them.
+                {"entity_id": "root_e", "value": "call_a", "value_eid": "a_e", "seq": 0},
+                {"entity_id": "a_e", "value": "call_b", "value_eid": "b_e", "seq": 0},
+            ],
+        )
+        graph = build_call_reachability(registry, "main")
+        assert graph["order_edges"] == []
+
     def test_root_not_found_raises(self):
         registry = _reachability_registry(entity_id_rows=[
             {"value": "root_e", "entity_key": "main", "alias": "main",
@@ -419,3 +495,33 @@ class TestRenderReachabilityMermaid:
         }
         out = render_reachability_mermaid(graph)
         assert "rootNode" in out
+
+    def test_missing_order_edges_key_renders_fine_with_no_dotted_arrows(self):
+        """A hand-built graph dict (e.g. an older test, or a caller that
+        never populated order_edges) must not KeyError -- order_edges is
+        optional, defaulting to none rendered."""
+        graph = {
+            "root": "root_e",
+            "nodes": [{"id": "root_e", "label": "main", "filepath": "a.py"}],
+            "edges": [],
+        }
+        out = render_reachability_mermaid(graph)
+        assert "-.->" not in out
+
+    def test_order_edges_render_as_dotted_arrows(self):
+        graph = {
+            "root": "root_e",
+            "nodes": [
+                {"id": "root_e", "label": "main", "filepath": "a.py"},
+                {"id": "a_e", "label": "call_a", "filepath": "a.py"},
+                {"id": "b_e", "label": "call_b", "filepath": "a.py"},
+            ],
+            "edges": [
+                {"source": "root_e", "target": "a_e"},
+                {"source": "root_e", "target": "b_e"},
+            ],
+            "order_edges": [{"source": "a_e", "target": "b_e"}],
+        }
+        out = render_reachability_mermaid(graph)
+        assert out.count("-->") == 2
+        assert out.count("-.->") == 1

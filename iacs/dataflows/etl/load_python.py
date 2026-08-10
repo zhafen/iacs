@@ -137,14 +137,24 @@ class _BodyCollector(ast.NodeVisitor):
 
 
 def _collect_body(stmts: list) -> tuple[list[str], list[str]]:
-    """Return (sorted deduped calls, sorted deduped imports) made directly in stmts.
+    """Return (calls in first-occurrence order deduped, sorted deduped imports)
+    made directly in stmts.
+
+    Calls keep call order (not alphabetical) because that order is real,
+    caller-observable information -- see ``_make_components``'s ``seq``
+    field and ``architecture_graph.build_call_reachability``'s
+    ``order_edges``, which use it to draw "this call happens before that
+    one" arrows a diagram viewer couldn't otherwise recover (Mermaid edge
+    order isn't call order, and multiple calls to the same target collapse
+    to one edge either way). Imports have no analogous consumer, so they
+    stay alphabetical for stable, easy-to-scan output.
 
     See ``_BodyCollector`` for the "directly" scoping rule.
     """
     collector = _BodyCollector()
     for stmt in stmts:
         collector.visit(stmt)
-    return sorted(set(collector.calls)), sorted(set(collector.imports))
+    return list(dict.fromkeys(collector.calls)), sorted(set(collector.imports))
 
 
 def _make_components(
@@ -169,6 +179,13 @@ def _make_components(
     ever appended to an entity that already qualifies for another reason,
     never enough on their own to conjure one up (which would turn every
     undocumented helper function into a graph node).
+
+    Each ``calls`` entry carries its own 0-indexed ``seq`` (``calls``'s
+    first-occurrence position in the source, see ``_collect_body``) rather
+    than being a bare scalar like ``imports`` -- that's what lets
+    ``architecture_graph.build_call_reachability`` later recover "this
+    entity called A before B" as its own ``order_edges``, not just the
+    unordered set of what it called.
     """
     description, components_yaml = (
         _split_docstring_components(docstring) if docstring else (None, None)
@@ -183,8 +200,8 @@ def _make_components(
         components.extend(_parse_components_yaml(components_yaml))
     if not components:
         return None
-    for target in calls or []:
-        components.append({"calls": target})
+    for seq, target in enumerate(calls or []):
+        components.append({"calls": {"value": target, "seq": seq}})
     for target in imports or []:
         components.append({"imports": target})
     return components
