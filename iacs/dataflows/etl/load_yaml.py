@@ -7,29 +7,19 @@ def _find_malformed_entities(entities: dict) -> list[str]:
     """Scan a parsed entity-first dict for components given as a bare YAML
     mapping instead of the required list form (`alias:\\n    component:\\n
     value: x` instead of `alias:\\n    - component:\\n        value: x`).
+    Downstream flattening treats any dict value as a nested-entity container
+    rather than raising on the mistake, so it silently produces zero rows
+    instead of merging -- this is the only thing that catches it.
 
-    Downstream flattening (`load_manifest._flatten_to_pathvalue` /
-    `_collect_entity_paths`) treats any dict value as a nested-entity
-    container: an optional `data` key holds the entity's own component list,
-    every other key names a child entity, and a bare `null` value (a key
-    with nothing after the colon) is a valid, componentless placeholder
-    entity -- e.g. `iacs_manifest/iacs.yaml`'s `required_functionality:`
-    block, which stubs out `load_data:`/`coerce:`/etc. as not-yet-fleshed-out
-    entity names ahead of giving them real components. A bare mapping meant
-    as a component list looks exactly like a legitimate container up until
-    its innermost values turn out to be plain non-null scalars rather than
-    further lists/dicts/nulls -- at that point nothing downstream raises, it
-    just produces zero rows for that path, so the write silently does
-    nothing.
-
-    A dict value is ambiguous on its own: it's either a malformed component
-    list (the mistake above) or a legitimate nested-entity dict (each key
-    its own child entity, some possibly still null placeholders).
-    Distinguished here by recursing only when *every* value at this level is
-    itself a list, dict, or null -- a bare non-null scalar anywhere means
-    this level was meant as a component list, not further nesting. `"data"`
-    is skipped everywhere, matching EC's own freeform-notes convention
-    (never itself a component list).
+    A dict value is ambiguous on its own: legitimate nested-entity container,
+    or this mistake. Distinguished by recursing only while every value at
+    this level is itself a list, dict, or null -- a bare non-null scalar
+    means this level was meant as a component list. Null counts as valid
+    too: a bare `key:` with nothing after the colon is a real, componentless
+    placeholder entity (e.g. `iacs_manifest/iacs.yaml`'s
+    `required_functionality:` block) -- treating it as malformed broke real
+    data the first time this shipped. `"data"` is exempt everywhere,
+    matching EC's own freeform-notes convention.
 
     Parameters
     ----------
