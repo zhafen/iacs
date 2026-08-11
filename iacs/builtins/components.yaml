@@ -410,6 +410,48 @@ iacs_component:
                   description: The entity that this solution targets (what is being solved).
                   type: entity_ref
 
+    calls:
+        - description: >
+              A directed_relation indicating the source entity's code calls the
+              target entity's code -- a function/method call resolved
+              statically from the AST by
+              ``iacs.dataflows.etl.load_python``, not confirmed to execute at
+              runtime. The target is a best-effort dotted name (e.g.
+              ``module.func``, or a bare method name with any leading
+              ``self``/``cls`` dropped); it only resolves to an entity_ref
+              when exactly one loaded entity's key matches, same as any
+              other entity_ref, so calls to undocumented functions or
+              third-party/stdlib code simply stay unresolved.
+        - parent: directed_relation
+        - field:
+              value:
+                  description: The entity being called.
+                  type: entity_ref
+              seq:
+                  description: >
+                      0-indexed first-occurrence order among the source
+                      entity's distinct call targets (e.g. the 2nd distinct
+                      thing it calls gets seq=1), not a line number or a
+                      count of every call including repeats. Lets a
+                      consumer (e.g.
+                      ``architecture_graph.build_call_reachability``'s
+                      ``order_edges``) recover "this call happens before
+                      that one" without re-parsing the source.
+                  type: int
+
+    imports:
+        - description: >
+              A directed_relation indicating the source module imports the
+              target module (or a specific name from it), resolved
+              statically from the AST by
+              ``iacs.dataflows.etl.load_python``. Same best-effort,
+              may-stay-unresolved entity_ref resolution as ((calls)).
+        - parent: directed_relation
+        - field:
+              value:
+                  description: The module (or imported name) being imported.
+                  type: entity_ref
+
     cost:
         data:
             - description: >
@@ -507,7 +549,9 @@ iacs_component:
                   type: str
                   range:
                       - not started
+                      - planned
                       - in progress
+                      - interrupted
                       - complete
               result_state:
                   description: Outcome state of the task.

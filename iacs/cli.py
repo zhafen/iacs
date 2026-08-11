@@ -8,6 +8,7 @@ from iacs.commands import (
     MANIFEST_ENV_VAR,
     available_audit_components,
     build_format_description,
+    cmd_generate_architecture_diagram,
     cmd_generate_report,
     cmd_list_component_types,
     cmd_refresh,
@@ -116,6 +117,32 @@ def _build_parser() -> argparse.ArgumentParser:
         help="File path to write the report to (default: iacs_report.html).",
     )
 
+    p_ad = sub.add_parser(
+        "generate-architecture-diagram",
+        help=(
+            "Render a Mermaid file/call-structure diagram from parsed Python "
+            "source (solid arrows = calls, dashed = imports). Point --manifest "
+            "at a package directory, not just a requirement manifest, to pick "
+            "up its .py files."
+        ),
+    )
+    p_ad.add_argument(
+        "--output",
+        metavar="PATH",
+        default="iacs_architecture.md",
+        help="File path to write the diagram to (default: iacs_architecture.md).",
+    )
+    p_ad.add_argument(
+        "--root",
+        metavar="ENTITY",
+        default=None,
+        help=(
+            "Entity hash, alias, or path substring to use as an entry point "
+            "(e.g. a function name). Renders the entity-level call trace "
+            "reachable from it instead of the whole-project file overview."
+        ),
+    )
+
     sub.add_parser(
         "describe-format",
         help="Show the entity-first YAML format specification.",
@@ -166,6 +193,9 @@ def main() -> None:
 
     elif args.command == "generate-report":
         print(cmd_generate_report(reg, args.output))
+
+    elif args.command == "generate-architecture-diagram":
+        print(cmd_generate_architecture_diagram(reg, args.output, args.root))
 
     elif args.command == "list-types":
         print(cmd_list_component_types(reg))
