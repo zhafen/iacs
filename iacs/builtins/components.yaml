@@ -549,7 +549,9 @@ iacs_component:
                   type: str
                   range:
                       - not started
+                      - planned
                       - in progress
+                      - interrupted
                       - complete
               result_state:
                   description: Outcome state of the task.
