@@ -143,11 +143,14 @@ work through them.
   it. Don't start Phase 4 work for a task -- not even one that looks small or
   obviously correct -- until the user has said something that actually means
   "go" for that task specifically (or for a batch that clearly includes it,
-  e.g. "implement everything that's ready"). A settled design sitting in
-  CLARIFY/INVESTIGATE limbo is a normal, stable state, not an oversight to
-  fix by starting the build yourself. This was learned the hard way: mid-
-  investigation on one task, the assistant slid into re-implementing a
-  design decision without pausing to ask, duplicating work that already
+  e.g. "implement everything that's ready"). Adding a task to the queue (see
+  "The task queue" below) counts as this go-ahead -- naming a task for the
+  queue already is the user's "go," however far through the remaining phases
+  it needs to travel to get there. A settled design sitting in
+  CLARIFY/INVESTIGATE limbo and not queued is a normal, stable state, not an
+  oversight to fix by starting the build yourself. This was learned the hard
+  way: mid-investigation on one task, the assistant slid into re-implementing
+  a design decision without pausing to ask, duplicating work that already
   existed elsewhere -- see the next gate.
 - **Duplicate-work check.** Before implementing, check whether the work (or
   something covering the same ground) already exists somewhere you haven't
@@ -177,6 +180,39 @@ For each task, once both gates are cleared:
 5. When you finish a batch, show the task list again so the user can see
    what's done, what's still open, and why.
 
+## The task queue
+
+The task list (`TaskList`) is the whole backlog -- everything ever notated,
+whatever phase it's actually in. The queue is a narrower, separate thing:
+which tasks you should be actively driving forward *right now*, as opposed
+to sitting settled (or half-settled) and waiting, which is most of them,
+most of the time.
+
+Queue membership is plain task metadata, nothing more -- deliberately not a
+second phase-tracking field alongside the tracker's own `status`
+(`pending`/`in_progress`/`completed`), which already says enough. Mark it
+via `TaskUpdate`'s `metadata` with `queued: true`; clear it (`queued: null`)
+once the task reaches `completed`, or if the user explicitly pulls it back
+out of active work.
+
+**Adding to the queue.** The user names a task and says to queue it -- "add
+task 45 to the queue" is enough on its own; there's no separate stage to
+specify. This is also where Phase 4's "explicit per-task go-ahead" gate gets
+satisfied: naming a task for the queue already is the user's "go" for it,
+however far through the remaining phases it needs to travel to get there,
+implementation included.
+
+**Working the queue is its own explicit step, separate from queuing.** Being
+in the queue does not by itself mean act now -- most of a session is spent
+narrating, clarifying, and investigating without ever touching what's
+queued. Only start actually advancing queued tasks (moving each to
+`status: in_progress` while you work it -- whatever its next phase is --
+and pausing to ask if a genuine ambiguity or an unmet gate blocks it) when
+the user explicitly says something like "work the queue" or "process the
+queue." That instruction is the mode switch this exists for: narrating/
+notating versus actually doing the labor-intensive work of driving tasks
+forward.
+
 ## Phases aren't strictly sequential
 
 In a real session this looks less like four clean stages and more like a
@@ -192,4 +228,7 @@ across a long session or one that gets interrupted and resumed.
 When this skill is invoked, check `TaskList` first -- there may already be
 relevant tasks from earlier in the session worth continuing rather than
 starting fresh. Then tell the user briefly that you're ready for phase 1 and
-invite them to start narrating, rather than assuming silently.
+invite them to start narrating, rather than assuming silently. Don't start
+working anything sitting in the queue on your own initiative, even if items
+are already marked `queued` from earlier -- wait for the explicit "work the
+queue" instruction described above.
