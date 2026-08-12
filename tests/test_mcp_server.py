@@ -20,6 +20,7 @@ from iacs.mcp_server import (
     generate_report,
     get_manifest_path,
     list_component_types,
+    load_database,
     load_manifest,
     refresh,
     run_dataflow,
@@ -289,6 +290,58 @@ class TestGetRegistrarPrefersDatabaseUrl:
 
         reg = _registrars[ctx.request_context.session]
         assert len(reg.registry.component_types) > 0
+
+
+class TestLoadDatabase:
+    """`load_database` is the mid-session equivalent of IACS_DATABASE_URL --
+    for a URL only known once another tool has already opened its own
+    registry at runtime (e.g. story-simulator's start_world telling the
+    connected host what URL to pass), not knowable at server startup."""
+
+    def _save_sample_registry(self, tmp_path):
+        from tests.conftest import make_registry
+        from iacs.registrar import Registrar
+
+        db_path = tmp_path / "registry.duckdb"
+        Registrar(make_registry({"description": [{"entity_id": "e1", "value": "From the database."}]})).save(
+            db_path
+        )
+        return db_path
+
+    def test_returns_success_string(self, tmp_path):
+        db_path = self._save_sample_registry(tmp_path)
+        ctx = _make_ctx()
+        result = load_database(str(db_path), ctx)
+        assert "Connected to database registry" in result
+        assert str(db_path) in result
+
+    def test_stores_registrar_for_session(self, tmp_path):
+        db_path = self._save_sample_registry(tmp_path)
+        ctx = _make_ctx()
+        load_database(str(db_path), ctx)
+        assert ctx.request_context.session in _registrars
+
+    def test_loaded_registrar_reflects_database_data(self, tmp_path):
+        db_path = self._save_sample_registry(tmp_path)
+        ctx = _make_ctx()
+        load_database(str(db_path), ctx)
+        reg = _registrars[ctx.request_context.session]
+        desc = reg.registry.get("description").execute()
+        assert any("From the database" in str(v) for v in desc["value"])
+
+    def test_replaces_a_previously_loaded_manifest_registry(self, tmp_path):
+        """Calling load_database after load_manifest should switch this
+        session over entirely, not merge the two."""
+        db_path = self._save_sample_registry(tmp_path)
+        ctx = _make_ctx()
+        load_manifest([str(_IACS_MANIFEST_DIR)], ctx)
+        load_database(str(db_path), ctx)
+        reg = _registrars[ctx.request_context.session]
+        desc = reg.registry.get("description").execute()
+        assert list(desc["value"]) == ["From the database."]
+
+    def test_load_database_tool_is_registered(self):
+        assert "load_database" in {t.name for t in server._tool_manager.list_tools()}
 
 
 # ---------------------------------------------------------------------------
