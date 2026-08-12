@@ -8,6 +8,7 @@ from mcp.server.fastmcp import Context, FastMCP
 
 from iacs.commands import (
     MANIFEST_ENV_VAR as _MANIFEST_ENV_VAR,
+    DATABASE_URL_ENV_VAR as _DATABASE_URL_ENV_VAR,
     EXAMPLE_MANIFEST as _EXAMPLE_MANIFEST,
     BUILTINS_DIR as _BUILTINS_DIR,
     IACS_MANIFEST_DIR as _IACS_MANIFEST_DIR,
@@ -21,6 +22,8 @@ from iacs.commands import (
     cmd_view_entity,
     get_manifest_path_str,
     make_registrar,
+    make_registrar_from_database,
+    parse_database_url_env as _parse_database_url_env,
     parse_manifest_env as _parse_manifest_env,
     validate_yaml_string as _validate_yaml_string,
 )
@@ -32,9 +35,22 @@ _registrars: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 
 
 def _get_registrar(ctx: Context) -> "Registrar":
+    """Return this session's Registrar, creating it on first use.
+
+    Prefers an existing database-backed registry (IACS_DATABASE_URL) over
+    building a fresh one from a manifest, so this server can share a
+    single live registry with another tool (e.g. story-simulator's own
+    per-save Postgres schema) instead of each holding a separate,
+    independently-loaded copy -- see story_simulator.config.registry_url,
+    which computes the exact same kind of URL this env var expects.
+    """
     session = ctx.request_context.session
     if session not in _registrars:
-        _registrars[session] = make_registrar(_parse_manifest_env())
+        database_url = _parse_database_url_env()
+        if database_url:
+            _registrars[session] = make_registrar_from_database(database_url)
+        else:
+            _registrars[session] = make_registrar(_parse_manifest_env())
     return _registrars[session]
 
 
@@ -45,7 +61,13 @@ server = FastMCP(
         "registry before using any other tools. "
         f"Optionally set {_MANIFEST_ENV_VAR} (colon-separated on Unix) so a default "
         "set of manifest paths is available on startup. "
-        "Call `get_manifest_path` to confirm which paths are currently configured."
+        "Call `get_manifest_path` to confirm which paths are currently configured.\n\n"
+        f"If {_DATABASE_URL_ENV_VAR} is set instead, this server connects to that "
+        "existing database-backed registry directly (see `Registrar.load`) rather "
+        "than building one from a manifest -- use this to share a single live "
+        "registry with another tool that already has one open, instead of each "
+        "holding its own separate copy. Takes precedence over "
+        f"{_MANIFEST_ENV_VAR}/`load_manifest` when set."
     ),
 )
 
