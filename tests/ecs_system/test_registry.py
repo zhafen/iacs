@@ -567,6 +567,19 @@ class TestRegistryDeclareSchema:
         with pytest.raises(KeyError):
             sample_registry.view("nonexistent")
 
+    def test_known_component_types_includes_declared_but_dataless_type(self, sample_registry):
+        """component_types alone can't distinguish "this type doesn't exist"
+        from "this type exists but nobody's used it yet" -- known_component_types
+        can."""
+        schema = ibis.schema({"entity_id": "string", "component_index": "int64", "modifier": "string", "x": "float64"})
+        sample_registry.declare_schema("position", schema)
+        assert "position" not in sample_registry.component_types
+        assert "position" in sample_registry.known_component_types
+
+    def test_known_component_types_includes_data_bearing_types(self, sample_registry):
+        assert "entity_id" in sample_registry.known_component_types
+        assert "field" in sample_registry.known_component_types
+
     def test_declare_schema_is_noop_when_physical_table_exists(self, sample_registry):
         """Real data's own schema always wins over a merely declared one."""
         conn = sample_registry._con

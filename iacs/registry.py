@@ -12,6 +12,20 @@ from .utils import candidate_entity_ids
 _TABLE_META_COLS = {"entity_id", "component_index", "modifier"}
 
 
+def _format_field_value(value) -> str:
+    """Render a field value the way a caller reading this as plain text
+    expects -- YAML/JSON-style true/false/null rather than Python's
+    True/False/None or pandas's float NaN for a missing value, none of
+    which mean anything outside their own library's repr."""
+    if value is True:
+        return "true"
+    if value is False:
+        return "false"
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return "null"
+    return str(value)
+
+
 class Registry:
     """A registry that stores ECS component data as ibis tables.
 
@@ -277,6 +291,20 @@ class Registry:
     def component_types(self) -> list[str]:
         """Return the list of component types in the registry."""
         return list(self._component_types)
+
+    @property
+    def known_component_types(self) -> list[str]:
+        """Every component type this registry knows about, whether any
+        entity has written data to it yet or not -- a superset of
+        `component_types` (data-bearing only). Includes types declared via
+        `declare_schema` (e.g. carried forward on merge from a loaded
+        manifest, see `merge`'s own docstring) that nothing has recorded
+        data for yet -- `component_types` alone can't distinguish "this
+        type doesn't exist" from "this type exists but nobody's used it
+        yet", which is exactly the gap that let a type like `location` go
+        unnoticed until something actually wrote to it.
+        """
+        return list(self._schemas)
 
     def get(self, key: str):
         """Return the component table for the given component type.
@@ -598,15 +626,25 @@ class Registry:
         Args:
             entity_id: Entity hash, alias, or path fragment identifying the
                 entity (see `get_entity_id`).
-            format: Output format — "markdown" (default) or "csv".
+            format: Output format — "markdown" (default, a `key: value`
+                outline, not a table -- published LLM-parsing-accuracy
+                comparisons favor this over table/CSV formats, which is what
+                actually reads this output, not another program) or "csv".
         """
         components = self.view_entity_df(entity_id)
         if not components:
             return f"No data found for entity {entity_id!r}."
-        sections = []
+        if format != "markdown":
+            sections = [f"# {comp_type}\n\n{df.to_csv()}" for comp_type, df in components.items()]
+            return "\n\n".join(sections)
+        lines = [f"# {entity_id}"]
         for comp_type, df in components.items():
-            if format == "markdown":
-                sections.append(f"### {comp_type}\n\n{df.to_markdown()}")
-            else:
-                sections.append(f"# {comp_type}\n\n{df.to_csv()}")
-        return "\n\n".join(sections)
+            prefix = f"{comp_type}."
+            for _, row in df.reset_index().iterrows():
+                lines.append(f"\n## {comp_type}")
+                for k, v in row.items():
+                    if k in ("entity_id", "entity_id.alias"):
+                        continue
+                    field = k[len(prefix):] if k.startswith(prefix) else k
+                    lines.append(f"- {field}: {_format_field_value(v)}")
+        return "\n".join(lines)

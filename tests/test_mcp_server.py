@@ -490,11 +490,23 @@ class TestViewEntity:
         result = view_entity("make_cats_happy", ctx)
         assert "description" in result
 
-    def test_returns_markdown_by_default(self):
+    def test_returns_markdown_outline_by_default(self):
+        """Not a table (published LLM-parsing-accuracy comparisons favor a
+        key: value outline over table/CSV formats) -- a `##` heading per
+        component type, `- field: value` bullets."""
         ctx = _make_ctx()
         load_manifest([str(_EXAMPLE_MANIFEST)], ctx)
         result = view_entity("make_cats_happy", ctx)
-        assert "|" in result
+        assert "## description" in result
+        assert "- value:" in result
+        assert "|" not in result
+
+    def test_markdown_excludes_internal_entity_id_columns(self):
+        ctx = _make_ctx()
+        load_manifest([str(_EXAMPLE_MANIFEST)], ctx)
+        result = view_entity("make_cats_happy", ctx)
+        assert "entity_id.hash" not in result
+        assert "entity_id.path" not in result
 
     def test_returns_csv_when_requested(self):
         ctx = _make_ctx()
