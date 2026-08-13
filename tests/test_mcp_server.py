@@ -22,6 +22,7 @@ from iacs.mcp_server import (
     list_component_types,
     load_database,
     load_manifest,
+    merge_yaml,
     refresh,
     run_dataflow,
     view_entity,
@@ -369,6 +370,9 @@ class TestMcpToolRegistration:
         params = tools["describe_format"].parameters
         assert params.get("required", []) == []
 
+    def test_merge_yaml_is_registered(self):
+        assert "merge_yaml" in self._tool_names()
+
 
 # ---------------------------------------------------------------------------
 # Lifespan — startup prints invalid_field to stderr
@@ -624,3 +628,74 @@ class TestGenerateReport:
     def test_generate_report_tool_is_registered(self):
         tool_names = {t.name for t in server._tool_manager.list_tools()}
         assert "generate_report" in tool_names
+
+
+# ---------------------------------------------------------------------------
+# merge_yaml — MCP tool
+# ---------------------------------------------------------------------------
+
+class TestMergeYaml:
+
+    def test_valid_write_merges_and_reports_success(self):
+        ctx = _make_ctx()
+        load_manifest([str(_EXAMPLE_MANIFEST)], ctx)
+        result = merge_yaml(
+            "feed_cats:\n    - description:\n        value: A freshly-recorded note.\n",
+            ctx,
+        )
+        assert "Merged" in result
+
+    def test_valid_write_is_actually_persisted(self):
+        ctx = _make_ctx()
+        load_manifest([str(_EXAMPLE_MANIFEST)], ctx)
+        merge_yaml(
+            "feed_cats:\n    - description:\n        value: A freshly-recorded note.\n",
+            ctx,
+        )
+        reg = _registrars[ctx.request_context.session]
+        desc = reg.registry.get("description").execute()
+        assert any("A freshly-recorded note" in str(v) for v in desc["value"])
+
+    def test_bare_mapping_component_raises(self):
+        ctx = _make_ctx()
+        load_manifest([str(_EXAMPLE_MANIFEST)], ctx)
+        with pytest.raises(ValueError, match="bare mapping"):
+            merge_yaml("feed_cats:\n    description:\n        value: x\n", ctx)
+
+    def test_unknown_component_type_raises(self):
+        ctx = _make_ctx()
+        load_manifest([str(_EXAMPLE_MANIFEST)], ctx)
+        with pytest.raises(ValueError, match="Unknown component type"):
+            merge_yaml("feed_cats:\n    - definitely_not_a_real_component:\n        value: x\n", ctx)
+
+    def test_component_named_as_nested_entity_raises(self):
+        ctx = _make_ctx()
+        load_manifest([str(_EXAMPLE_MANIFEST)], ctx)
+        with pytest.raises(ValueError, match="nested"):
+            merge_yaml("feed_cats:\n    description:\n        - value: x\n", ctx)
+
+    def test_inline_component_type_definition_is_accepted(self):
+        """A write that declares a brand-new component type inline (its own
+        component_type marker) must not be rejected as unknown -- same
+        shape a manifest's own builtin component definitions use."""
+        ctx = _make_ctx()
+        load_manifest([str(_EXAMPLE_MANIFEST)], ctx)
+        result = merge_yaml(
+            "brand_new_component:\n"
+            "    - description: A freshly-declared component type.\n"
+            "    - component_type\n"
+            "    - field:\n"
+            "        value:\n"
+            "            description: Its one field.\n"
+            "            type: str\n"
+            "\n"
+            "feed_cats:\n"
+            "    - brand_new_component:\n"
+            "        value: hello\n",
+            ctx,
+        )
+        assert "Merged" in result
+
+    def test_merge_yaml_tool_is_registered(self):
+        tool_names = {t.name for t in server._tool_manager.list_tools()}
+        assert "merge_yaml" in tool_names

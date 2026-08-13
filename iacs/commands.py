@@ -100,6 +100,27 @@ def cmd_view_entity(reg: "Registrar", entity_id: str, format: str = "markdown") 
     return reg.view_entity(entity_id, format=format)
 
 
+# Fixed source key for every cmd_merge_yaml call, so repeated ad hoc
+# writes through this tool are attributed to the same source rather than
+# each getting its own synthetic file identity -- same convention
+# story-simulator's own WORLD_FILE_ID uses for its update_registry tool.
+MERGE_YAML_SOURCE_ID = "merge_yaml"
+
+
+def cmd_merge_yaml(reg: "Registrar", yaml_string: str) -> str:
+    """Validate then merge entity-first YAML into the registry.
+
+    Runs `Registrar.validate_write`'s mechanical safety checks first
+    (component-named-as-nested-entity, unknown component type) -- if
+    either fails, raises before anything is merged. The bare-mapping
+    check (a component given as a dict instead of a list) runs
+    automatically inside `update()` itself.
+    """
+    reg.validate_write(yaml_string)
+    reg.update(yaml_strings={MERGE_YAML_SOURCE_ID: yaml_string})
+    return "Merged into the registry."
+
+
 def cmd_review_components(reg: "Registrar", limit: int = 20) -> str:
     """Return every data-bearing component type at once, for consolidation review."""
     return reg.summarize_components(limit)

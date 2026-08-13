@@ -16,6 +16,7 @@ from iacs.commands import (
     build_format_description as _build_format_description,
     cmd_generate_report,
     cmd_list_component_types,
+    cmd_merge_yaml,
     cmd_refresh,
     cmd_review_components,
     cmd_run_dataflow,
@@ -173,6 +174,24 @@ def review_components(ctx: Context, limit: int = 20) -> str:
         limit: Max sample rows shown per component type (default 20).
     """
     return cmd_review_components(_get_registrar(ctx), limit)
+
+
+@server.tool()
+def merge_yaml(yaml_string: str, ctx: Context) -> str:
+    """Merge entity-first YAML into the registry, iacs's own native write tool.
+
+    Runs mechanical safety checks first -- a component given as a bare
+    YAML mapping instead of a list, a known component type's name
+    appearing as a nested dict key instead of a component-list item, or a
+    referenced component type nothing has ever declared (unless this same
+    write also declares it, e.g. a fresh component_type entity) -- and
+    raises with a targeted message before merging anything if any of them
+    fail.
+
+    Args:
+        yaml_string: Entity-first YAML content to merge.
+    """
+    return cmd_merge_yaml(_get_registrar(ctx), yaml_string)
 
 
 @server.tool()
