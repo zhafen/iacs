@@ -192,13 +192,14 @@ class TestViewComponentCommand:
 
 class TestViewEntityCommand:
 
-    def test_markdown_output_by_default(self, monkeypatch, capsys):
+    def test_markdown_outline_output_by_default(self, monkeypatch, capsys):
         out, _ = run_cli(
             "--manifest", str(EXAMPLE_MANIFEST),
             "view-entity", "make_cats_happy",
             monkeypatch=monkeypatch, capsys=capsys,
         )
-        assert "|" in out
+        assert "## description" in out
+        assert "|" not in out
 
     def test_csv_output(self, monkeypatch, capsys):
         out, _ = run_cli(

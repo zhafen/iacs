@@ -107,6 +107,70 @@ class TestRawEntityFirstData:
         assert "my_entity" in self._all_entities(result)
 
 
+class TestRawEntityFirstDataMalformedComponents:
+    """A component given as a bare mapping instead of a YAML list must raise,
+    not silently parse into a container that flattens to zero rows."""
+
+    def test_bare_mapping_component_raises(self):
+        given = {
+            "inline": "my_entity:\n    description:\n        value: A thing.\n"
+        }
+        with pytest.raises(ValueError, match="my_entity.description"):
+            load_yaml.raw_entity_first_data(given)
+
+    def test_error_names_the_offending_file(self):
+        given = {
+            "bad_file.yaml": "my_entity:\n    description:\n        value: A thing.\n"
+        }
+        with pytest.raises(ValueError, match="bad_file.yaml"):
+            load_yaml.raw_entity_first_data(given)
+
+    def test_well_formed_component_list_does_not_raise(self):
+        given = {"inline": "my_entity:\n- description: A thing.\n"}
+        result = load_yaml.raw_entity_first_data(given)
+        assert result["inline"] == {"my_entity": [{"description": "A thing."}]}
+
+    def test_legitimate_nested_entity_dict_does_not_raise(self):
+        given = {
+            "inline": (
+                "container:\n"
+                "    child_a:\n"
+                "    - description: First child.\n"
+                "    child_b:\n"
+                "    - description: Second child.\n"
+            )
+        }
+        result = load_yaml.raw_entity_first_data(given)
+        assert result["inline"]["container"]["child_a"] == [{"description": "First child."}]
+        assert result["inline"]["container"]["child_b"] == [{"description": "Second child."}]
+
+    def test_null_placeholder_entity_does_not_raise(self):
+        """A bare `key:` with nothing after the colon is a legitimate,
+        componentless placeholder entity (e.g. iacs_manifest/iacs.yaml's
+        `required_functionality:` block), not a malformed component list."""
+        given = {
+            "inline": (
+                "container:\n"
+                "    not_yet_fleshed_out:\n"
+                "    also_a_placeholder:\n"
+                "    nested:\n"
+                "        still_a_placeholder:\n"
+            )
+        }
+        result = load_yaml.raw_entity_first_data(given)
+        assert result["inline"]["container"]["not_yet_fleshed_out"] is None
+        assert result["inline"]["container"]["nested"]["still_a_placeholder"] is None
+
+    def test_data_key_is_exempt_from_the_check(self):
+        given = {"inline": "my_entity:\n    data: some freeform note, not a list\n"}
+        result = load_yaml.raw_entity_first_data(given)
+        assert result["inline"] == {"my_entity": {"data": "some freeform note, not a list"}}
+
+    def test_empty_yaml_does_not_raise(self):
+        result = load_yaml.raw_entity_first_data({"inline": ""})
+        assert result == {"inline": {}}
+
+
 # ---------------------------------------------------------------------------
 # raw_strings — combining input_dirs with directly-provided yaml/python strings
 # ---------------------------------------------------------------------------
