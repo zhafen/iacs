@@ -227,6 +227,10 @@ class Registrar:
         return self._registry.view_df
 
     @property
+    def summarize_components(self):
+        return self._registry.summarize_components
+
+    @property
     def get_entity_id(self):
         return self._registry.get_entity_id
 

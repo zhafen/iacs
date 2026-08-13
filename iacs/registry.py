@@ -565,6 +565,45 @@ class Registry:
         df = df.set_index("entity_id")
         return df
 
+    def summarize_components(self, limit: int = 20) -> str:
+        """Markdown review of every component type currently holding data
+        (`component_types`, not the larger `known_component_types` --
+        nothing to consolidate in a type nobody's written to yet), one
+        section per type with its row count and up to `limit` sample
+        rows, plus a trailing prompt asking the reader to consolidate
+        anything that shouldn't have been recorded as two separate facts
+        -- the same fact under a different (possibly invented) component
+        name, or a wrong-but-real component holding data that belongs
+        under the correct one instead.
+
+        Unlike `view_df` (one type at a time, no judgment attached),
+        this is meant to be read in full by whatever wrote the data, as a
+        single post-write self-check -- see story-simulator's
+        `consolidate_review`, a thin delegate to this same method for the
+        same tool-discoverability reason `view_registry`/`view_entity`
+        already are (docs/manifest/history.yaml in that repo:
+        project_history.story_simulator_view_tools_reinstated_as_iacs_delegates).
+        """
+        types = sorted(self.component_types)
+        if not types:
+            return "No component types have any data yet -- nothing to review."
+        sections = []
+        for component_type in types:
+            df = self.view_df(component_type).reset_index()
+            sample = df.head(limit).fillna("null").to_markdown(index=False)
+            if len(df) > limit:
+                sample += f"\n... ({len(df) - limit} more row(s) not shown)"
+            sections.append(f"### {component_type} ({len(df)} row(s))\n{sample}")
+        return (
+            "All component types currently recorded, one section per type:\n\n"
+            + "\n\n".join(sections)
+            + "\n\nReview the above for anything that should be consolidated -- e.g. the "
+            "same fact recorded twice under different (possibly invented) component "
+            "names, or a wrong-but-real component holding data that belongs under the "
+            "correct one instead. If you find something, write a correction; if "
+            "everything looks right, no action needed."
+        )
+
     def get_entity_id(self, entity_ref: str) -> str | None:
         """Resolve `entity_ref` to its canonical entity_id hash.
 
