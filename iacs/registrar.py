@@ -100,6 +100,53 @@ class Registrar:
         self._registry.merge(new_registry)
         new_registry.close()
 
+    def validate_write(self, yaml_string: str) -> set[str]:
+        """Mechanical safety checks (see `iacs.validate_write`) for
+        `yaml_string` against this registry's own `known_component_types`
+        -- run this before `update()`'ing it in, to raise on a
+        component-named-as-nested-entity mistake or an unknown component
+        type with a clearer, more targeted message than `update()`'s own
+        ETL failure would give. (The bare-mapping check runs
+        automatically inside `update()` itself, via `load_yaml`'s own
+        `raw_entity_first_data` -- not duplicated here.)
+
+        Returns the set of component types this write references, for a
+        caller that wants to show/log them (e.g. a preview step).
+        """
+        import yaml as _yaml
+
+        from iacs.validate_write import (
+            find_component_named_as_nested_entity,
+            find_unknown_component_types,
+            referenced_component_types,
+        )
+
+        known = set(self.registry.known_component_types)
+
+        nested = find_component_named_as_nested_entity(yaml_string, known)
+        if nested:
+            raise ValueError(
+                "A known component type's name appears as a nested dict key instead "
+                "of a component-list item (missing the leading `- `), which the "
+                "parser reads as a nested child entity, not a component attachment: "
+                f"{', '.join(nested)}."
+            )
+
+        unknown = find_unknown_component_types(yaml_string, known)
+        if unknown:
+            suggestions = "; ".join(
+                f"{name} (did you mean: {', '.join(close)}?)" if close else name
+                for name, close in unknown.items()
+            )
+            raise ValueError(
+                f"Unknown component type(s) referenced: {suggestions}. Define it "
+                "first (a top-level entity named after the type, with its own "
+                "component_type marker and field: block) if this is intentional."
+            )
+
+        parsed = _yaml.safe_load(yaml_string)
+        return referenced_component_types(parsed) if isinstance(parsed, dict) else set()
+
     def overwrite(self, component_type: str, table) -> None:
         """Replace `component_type`'s entire table in one step, bypassing the ETL pipeline.
 
