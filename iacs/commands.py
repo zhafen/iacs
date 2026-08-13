@@ -100,6 +100,11 @@ def cmd_view_entity(reg: "Registrar", entity_id: str, format: str = "markdown") 
     return reg.view_entity(entity_id, format=format)
 
 
+def cmd_review_components(reg: "Registrar", limit: int = 20) -> str:
+    """Return every data-bearing component type at once, for consolidation review."""
+    return reg.summarize_components(limit)
+
+
 def cmd_run_dataflow(reg: "Registrar", name: str) -> str:
     """Execute a dataflow, returning a status string listing any new component types."""
     before = set(reg.registry.component_types)

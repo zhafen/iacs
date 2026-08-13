@@ -17,6 +17,7 @@ from iacs.commands import (
     cmd_generate_report,
     cmd_list_component_types,
     cmd_refresh,
+    cmd_review_components,
     cmd_run_dataflow,
     cmd_view_component,
     cmd_view_entity,
@@ -155,6 +156,23 @@ def view_entity(entity_id: str, ctx: Context, format: str = "markdown") -> str:
         format: Output format — "markdown" (default) or "csv".
     """
     return cmd_view_entity(_get_registrar(ctx), entity_id, format)
+
+
+@server.tool()
+def review_components(ctx: Context, limit: int = 20) -> str:
+    """Show every component type currently holding data in one call, for the host to review and consolidate.
+
+    Unlike view_component (one type at a time, no judgment attached),
+    this covers everything recorded so far, so the host can notice
+    something worth consolidating -- the same fact recorded twice under
+    different (possibly invented) component names, or a wrong-but-real
+    component holding data that belongs under the correct one instead --
+    without already having to suspect which type to check.
+
+    Args:
+        limit: Max sample rows shown per component type (default 20).
+    """
+    return cmd_review_components(_get_registrar(ctx), limit)
 
 
 @server.tool()
