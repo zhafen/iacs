@@ -1,7 +1,6 @@
 """ECS Registry for storing and accessing component data."""
 from __future__ import annotations
 
-import warnings
 from pathlib import Path
 
 import ibis
@@ -10,20 +9,6 @@ import pandas as pd
 from .utils import candidate_entity_ids
 
 _TABLE_META_COLS = {"entity_id", "component_index", "modifier"}
-
-
-def _format_field_value(value) -> str:
-    """Render a field value the way a caller reading this as plain text
-    expects -- YAML/JSON-style true/false/null rather than Python's
-    True/False/None or pandas's float NaN for a missing value, none of
-    which mean anything outside their own library's repr."""
-    if value is True:
-        return "true"
-    if value is False:
-        return "false"
-    if value is None or (isinstance(value, float) and pd.isna(value)):
-        return "null"
-    return str(value)
 
 
 class Registry:
@@ -292,20 +277,6 @@ class Registry:
         """Return the list of component types in the registry."""
         return list(self._component_types)
 
-    @property
-    def known_component_types(self) -> list[str]:
-        """Every component type this registry knows about, whether any
-        entity has written data to it yet or not -- a superset of
-        `component_types` (data-bearing only). Includes types declared via
-        `declare_schema` (e.g. carried forward on merge from a loaded
-        manifest, see `merge`'s own docstring) that nothing has recorded
-        data for yet -- `component_types` alone can't distinguish "this
-        type doesn't exist" from "this type exists but nobody's used it
-        yet", which is exactly the gap that let a type like `location` go
-        unnoticed until something actually wrote to it.
-        """
-        return list(self._schemas)
-
     def get(self, key: str):
         """Return the component table for the given component type.
 
@@ -319,9 +290,7 @@ class Registry:
             return ibis.memtable([], schema=self._schemas[key])
         return ibis.memtable([], schema={"entity_id": "string", "value": "string"})
 
-    def view(
-        self, component_type: str | list[str], aliases: str | list[str] | None = None
-    ) -> ibis.Table:
+    def view(self, component_type: str | list[str]) -> ibis.Table:
         """Return a copy of the dataframe for the given component type(s).
 
         Args:
@@ -329,24 +298,13 @@ class Registry:
                 string, or a list of either. All results are inner-joined by
                 entity_id with columns named "table.field". ``entity_id.alias``
                 is prepended automatically unless already requested.
-            aliases: An entity ref, or list of them, to filter the result
-                down to. Each is resolved the same way `get_entity_id` does
-                (exact hash, else exact alias, else substring match), except
-                a ref matching more than one entity is not an error here —
-                every match is included, and a warning is raised (this is
-                one of the few contexts where an ambiguous ref is fine, since
-                the caller is filtering a view, not picking a single target
-                to write to). A ref matching zero entities also warns, and
-                contributes nothing to the result.
 
         Raises:
             KeyError: If a component type doesn't exist in the registry.
         """
-        return self._view(component_type, self._table_or_declared, aliases)
+        return self._view(component_type, self._table_or_declared)
 
-    def view_current(
-        self, component_type: str | list[str], aliases: str | list[str] | None = None
-    ) -> ibis.Table:
+    def view_current(self, component_type: str | list[str]) -> ibis.Table:
         """Like ``view``, but collapsed to the most recent version of each record.
 
         For any component type with a field flagged ``time_dimension: true`` in
@@ -366,40 +324,12 @@ class Registry:
 
         Args:
             component_type: Same as ``view``.
-            aliases: Same as ``view``.
 
         Raises:
             KeyError: If a component type doesn't exist in the registry.
             ValueError: If a component type has more than one time_dimension field.
         """
-        return self._view(component_type, self._current_table, aliases)
-
-    def _resolve_aliases(self, aliases: str | list[str]) -> set[str]:
-        """Resolve `aliases` to the union of entity_ids they match.
-
-        Unlike `get_entity_id`, a ref matching more than one entity isn't
-        collapsed to "unresolvable" here — all matches are kept, and a
-        warning is raised instead of silently picking or dropping one. A ref
-        matching no entity also warns, contributing nothing.
-        """
-        if isinstance(aliases, str):
-            aliases = [aliases]
-        entity_id_df = (
-            self._components["entity_id"].to_pandas()
-            if "entity_id" in self._components else pd.DataFrame(columns=["value"])
-        )
-        resolved: set[str] = set()
-        for alias in aliases:
-            candidates = candidate_entity_ids(alias, entity_id_df)
-            if not candidates:
-                warnings.warn(f"{alias!r} in `aliases` matched no entity.")
-            elif len(candidates) > 1:
-                warnings.warn(
-                    f"{alias!r} in `aliases` matched {len(candidates)} entities "
-                    f"({candidates}); including all of them."
-                )
-            resolved.update(candidates)
-        return resolved
+        return self._view(component_type, self._current_table)
 
     def _known(self, table_name: str) -> bool:
         """True if `table_name` has a physical table or a declared schema."""
@@ -418,12 +348,7 @@ class Registry:
             return self._con.table(table_name)
         return self.get(table_name)
 
-    def _view(
-        self,
-        component_type: str | list[str],
-        table_fn,
-        aliases: str | list[str] | None = None,
-    ) -> ibis.Table:
+    def _view(self, component_type: str | list[str], table_fn) -> ibis.Table:
         if isinstance(component_type, str):
             component_type = [component_type]
 
@@ -477,10 +402,6 @@ class Registry:
         result = tables_to_join[0]
         for t in tables_to_join[1:]:
             result = result.inner_join(t, "entity_id")
-
-        if aliases is not None:
-            resolved = self._resolve_aliases(aliases)
-            result = result.filter(result["entity_id"].isin(resolved))
 
         return result
 
@@ -556,11 +477,9 @@ class Registry:
             )
         return fields[0] if fields else None
 
-    def view_df(
-        self, component_type: str | list[str], aliases: str | list[str] | None = None
-    ) -> pd.DataFrame:
+    def view_df(self, component_type: str | list[str]) -> pd.DataFrame:
         """Convenience method to return the view as a DataFrame."""
-        result = self.view(component_type, aliases)
+        result = self.view(component_type)
         df = result.execute()
         df = df.set_index("entity_id")
         return df
@@ -626,25 +545,15 @@ class Registry:
         Args:
             entity_id: Entity hash, alias, or path fragment identifying the
                 entity (see `get_entity_id`).
-            format: Output format — "markdown" (default, a `key: value`
-                outline, not a table -- published LLM-parsing-accuracy
-                comparisons favor this over table/CSV formats, which is what
-                actually reads this output, not another program) or "csv".
+            format: Output format — "markdown" (default) or "csv".
         """
         components = self.view_entity_df(entity_id)
         if not components:
             return f"No data found for entity {entity_id!r}."
-        if format != "markdown":
-            sections = [f"# {comp_type}\n\n{df.to_csv()}" for comp_type, df in components.items()]
-            return "\n\n".join(sections)
-        lines = [f"# {entity_id}"]
+        sections = []
         for comp_type, df in components.items():
-            prefix = f"{comp_type}."
-            for _, row in df.reset_index().iterrows():
-                lines.append(f"\n## {comp_type}")
-                for k, v in row.items():
-                    if k in ("entity_id", "entity_id.alias"):
-                        continue
-                    field = k[len(prefix):] if k.startswith(prefix) else k
-                    lines.append(f"- {field}: {_format_field_value(v)}")
-        return "\n".join(lines)
+            if format == "markdown":
+                sections.append(f"### {comp_type}\n\n{df.to_markdown()}")
+            else:
+                sections.append(f"# {comp_type}\n\n{df.to_csv()}")
+        return "\n\n".join(sections)
