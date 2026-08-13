@@ -8,7 +8,6 @@ from mcp.server.fastmcp import Context, FastMCP
 
 from iacs.commands import (
     MANIFEST_ENV_VAR as _MANIFEST_ENV_VAR,
-    DATABASE_URL_ENV_VAR as _DATABASE_URL_ENV_VAR,
     EXAMPLE_MANIFEST as _EXAMPLE_MANIFEST,
     BUILTINS_DIR as _BUILTINS_DIR,
     IACS_MANIFEST_DIR as _IACS_MANIFEST_DIR,
@@ -22,8 +21,6 @@ from iacs.commands import (
     cmd_view_entity,
     get_manifest_path_str,
     make_registrar,
-    make_registrar_from_database,
-    parse_database_url_env as _parse_database_url_env,
     parse_manifest_env as _parse_manifest_env,
     validate_yaml_string as _validate_yaml_string,
 )
@@ -35,22 +32,9 @@ _registrars: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 
 
 def _get_registrar(ctx: Context) -> "Registrar":
-    """Return this session's Registrar, creating it on first use.
-
-    Prefers an existing database-backed registry (IACS_DATABASE_URL) over
-    building a fresh one from a manifest, so this server can share a
-    single live registry with another tool (e.g. story-simulator's own
-    per-save Postgres schema) instead of each holding a separate,
-    independently-loaded copy -- see story_simulator.config.registry_url,
-    which computes the exact same kind of URL this env var expects.
-    """
     session = ctx.request_context.session
     if session not in _registrars:
-        database_url = _parse_database_url_env()
-        if database_url:
-            _registrars[session] = make_registrar_from_database(database_url)
-        else:
-            _registrars[session] = make_registrar(_parse_manifest_env())
+        _registrars[session] = make_registrar(_parse_manifest_env())
     return _registrars[session]
 
 
@@ -61,18 +45,7 @@ server = FastMCP(
         "registry before using any other tools. "
         f"Optionally set {_MANIFEST_ENV_VAR} (colon-separated on Unix) so a default "
         "set of manifest paths is available on startup. "
-        "Call `get_manifest_path` to confirm which paths are currently configured.\n\n"
-        f"If {_DATABASE_URL_ENV_VAR} is set instead, this server connects to that "
-        "existing database-backed registry directly (see `Registrar.load`) rather "
-        "than building one from a manifest -- use this to share a single live "
-        "registry with another tool that already has one open, instead of each "
-        "holding its own separate copy. Takes precedence over "
-        f"{_MANIFEST_ENV_VAR}/`load_manifest` when set.\n\n"
-        "Call `load_database` instead, mid-session, if a URL like that only becomes "
-        "known after startup -- e.g. another connected tool's own docs or return "
-        "values may point you at its registry's URL once it's opened its own "
-        "session; connect this server to that same URL rather than treating its "
-        "registry as separate from what that other tool sees."
+        "Call `get_manifest_path` to confirm which paths are currently configured."
     ),
 )
 
@@ -98,28 +71,6 @@ def load_manifest(manifest_paths: list[str], ctx: Context) -> str:
     _registrars[ctx.request_context.session] = reg
     paths_str = ", ".join(repr(p) for p in manifest_paths)
     return f"Loaded manifest from {paths_str}. Component types: {reg.registry.component_types}"
-
-
-@server.tool()
-def load_database(database_url: str, ctx: Context) -> str:
-    """Connect to an existing database-backed registry, replacing the current one.
-
-    Unlike `load_manifest`, this doesn't load or validate anything -- it's
-    a straight connection to a registry another tool already populated
-    (e.g. another MCP server's own per-session registry), so this
-    session's tools (list_component_types, view_component, ...) start
-    operating on that same live data instead of a separately-loaded copy.
-    The same effect as setting IACS_DATABASE_URL before startup, but
-    usable mid-session, for a URL that isn't known until runtime (e.g. one
-    computed only after another tool opens its own save/world).
-
-    Args:
-        database_url: A URL or filesystem path resolvable by `ibis.connect`
-            (the same kind of value IACS_DATABASE_URL accepts).
-    """
-    reg = make_registrar_from_database(database_url)
-    _registrars[ctx.request_context.session] = reg
-    return f"Connected to database registry at {database_url!r}. Component types: {reg.registry.component_types}"
 
 
 @server.tool()

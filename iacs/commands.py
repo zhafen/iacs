@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from iacs.registrar import Registrar
 
 MANIFEST_ENV_VAR = "IACS_MANIFEST"
-DATABASE_URL_ENV_VAR = "IACS_DATABASE_URL"
 EXAMPLE_MANIFEST = Path(__file__).parent.parent / "examples" / "example"
 BUILTINS_DIR = Path(__file__).parent / "builtins"
 IACS_MANIFEST_DIR = Path(__file__).parent / "iacs_manifest"
@@ -25,15 +24,6 @@ def parse_manifest_env() -> list[str]:
     if not raw:
         return [str(EXAMPLE_MANIFEST)]
     return [p.strip() for p in raw.split(os.pathsep) if p.strip()]
-
-
-def parse_database_url_env() -> str | None:
-    """Return an existing registry's database URL from the environment
-    variable, if set -- lets a caller point this server at someone else's
-    already-populated registry (e.g. story-simulator's own per-save
-    Postgres schema) instead of always building a fresh one from a
-    manifest."""
-    return os.environ.get(DATABASE_URL_ENV_VAR) or None
 
 
 def get_manifest_path_str(manifest_paths: list[str] | None = None) -> str:
@@ -60,18 +50,6 @@ def make_registrar(manifest_paths: list[str]) -> "Registrar":
     """Create a Registrar loaded from the given manifest directory paths."""
     from iacs.registrar import Registrar
     return Registrar.from_manifest(manifest_paths)
-
-
-def make_registrar_from_database(url: str) -> "Registrar":
-    """Create a Registrar over an existing database-backed registry.
-
-    Unlike ``make_registrar``, this doesn't load or validate anything --
-    it's a straight connection to a registry someone else already
-    populated (see ``Registrar.load``), so multiple tools can share one
-    live registry instead of each holding their own separate copy.
-    """
-    from iacs.registrar import Registrar
-    return Registrar.load(url)
 
 
 def cmd_list_component_types(reg: "Registrar") -> str:
