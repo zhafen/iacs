@@ -1906,11 +1906,302 @@ text_discretization:
                   ontology-learning systems, and LLM-based structured-output
                   frameworks.
             - requirement
-            - todo: >
-                  Complete a landscape review of overlapping tools (e.g. Graphiti,
-                  Instructor, LlamaIndex property-graph extraction, DSPy, Marvin,
-                  Outlines, Langchain document transformers) and document pros/cons
-                  in this file before beginning implementation.
+        langextract:
+            data:
+                - description: >
+                      Google's open-source, Gemini-powered Python library
+                      (released 2025) purpose-built for extracting structured
+                      information from unstructured text against a few-shot-
+                      defined schema. Closest existing match, of the tools
+                      surveyed, to text_discretization's actual input/output
+                      shape: free text in, schema-conformant structured
+                      records out.
+            pro_source_grounding:
+                - description: >
+                      Every extraction is mapped back to its exact character
+                      span in the source text, giving traceable provenance
+                      similar in spirit to iacs's own entity_id.path field.
+                - weight: 0.8
+            pro_long_document_handling:
+                - description: >
+                      Purpose-built chunking, parallel processing, and
+                      multi-pass extraction address the "needle in a
+                      haystack" recall problem a single naive LLM call over
+                      a long source document would miss.
+                - weight: 0.7
+            con_output_schema_not_ec:
+                - description: >
+                      Native output is a flat list of (extraction_class,
+                      extraction_text, attributes) tuples, not iacs's
+                      entity/component/relation model — a mapping layer
+                      from its output to EC files would still be required.
+                - weight: -0.5
+            con_google_specific_defaults:
+                - description: >
+                      Documented as Gemini-first, and explicitly called out
+                      by Google as not an officially supported product,
+                      adding maintenance-continuity risk as a direct
+                      dependency.
+                - weight: -0.3
+        graphiti:
+            data:
+                - description: >
+                      Temporal knowledge-graph framework (Zep) for agent
+                      memory. Ingests "episodes" — freeform text, JSON, or
+                      conversation turns — and incrementally extracts
+                      entities/edges into a bi-temporal graph with hybrid
+                      (semantic + keyword + graph) retrieval.
+            pro_incremental_updates:
+                - description: >
+                      Designed for continuously growing input without
+                      recomputing the whole graph on every update — the
+                      same problem iacs's time_dimension components solve
+                      for collapsed vs. full-history exports.
+                - weight: 0.6
+            pro_temporal_edges:
+                - description: >
+                      Native fact-validity intervals on edges map naturally
+                      onto iacs's time_dimension flag pattern (see
+                      position.time / state.time in story-simulator).
+                - weight: 0.5
+            con_graph_not_component_table:
+                - description: >
+                      Entity/edge graph data model, not component-table
+                      rows — would need its own graph database (Neo4j/
+                      FalkorDB) running alongside, rather than feeding
+                      iacs's registry directly.
+                - weight: -0.7
+            con_heavy_infra:
+                - description: >
+                      Pulls in a graph database plus an LLM-call-per-episode
+                      cost model, disproportionate to iacs's current
+                      lightweight EC-file-as-source-of-truth approach.
+                - weight: -0.5
+        instructor:
+            data:
+                - description: >
+                      Thin wrapper around 15+ LLM providers that validates
+                      each response against a caller-supplied Pydantic
+                      model and automatically retries on validation
+                      failure. The closest fit, of the tools surveyed, to a
+                      minimal building block rather than a full framework.
+            pro_pydantic_native:
+                - description: >
+                      iacs components are already field-typed (see the
+                      field component type) closely enough to Pydantic
+                      models that generating one from a component schema,
+                      or the reverse, is a small amount of glue code rather
+                      than a rewrite.
+                - weight: 0.8
+            pro_provider_agnostic_lightweight:
+                - description: >
+                      No framework lock-in (unlike LlamaIndex/LangChain)
+                      and no separate storage engine (unlike Graphiti/
+                      GraphRAG) — pairs naturally with iacs's own
+                      dataflows/etl/load_python.py pattern.
+                - weight: 0.7
+            con_no_chunking_or_grounding:
+                - description: >
+                      No long-document chunking strategy or source-span
+                      grounding built in — user_defined_schema and
+                      model_inferred_schema would still need custom
+                      chunking/prompting logic layered on top.
+                - weight: -0.5
+        llamaindex_property_graph:
+            data:
+                - description: >
+                      LlamaIndex's Property Graph Index, with
+                      SchemaLLMPathExtractor performing schema-guided (or
+                      SimpleLLMPathExtractor's free-form) triple extraction
+                      into a labeled property graph.
+            pro_schema_guided_extraction:
+                - description: >
+                      SchemaLLMPathExtractor already implements close to
+                      the two-phase model_inferred_schema ->
+                      user_defined_schema workflow this requirement
+                      describes, just targeting a property graph instead
+                      of EC files.
+                - weight: 0.6
+            con_full_framework_dependency:
+                - description: >
+                      Using the extractor means adopting LlamaIndex's
+                      document/node/index abstractions wholesale, a large
+                      dependency for one component of text_discretization.
+                - weight: -0.6
+            con_triples_not_components:
+                - description: >
+                      Native output is (entity, relation, entity) triples,
+                      a strictly narrower model than iacs components
+                      (multi-field, multi-instance, typed).
+                - weight: -0.4
+        dspy:
+            data:
+                - description: >
+                      Programmatic prompting framework where typed
+                      Signatures declare extraction inputs/outputs and
+                      optimizers (e.g. GEPA) tune prompts/weights against
+                      labeled examples; used in published entity/relation-
+                      extraction pipelines.
+            pro_optimizable_against_examples:
+                - description: >
+                      If iacs accumulates a corpus of human-corrected EC
+                      files, DSPy's optimizers could tune discretization
+                      quality against that data automatically rather than
+                      hand-tuning prompts.
+                - weight: 0.6
+            con_requires_training_examples_and_infra:
+                - description: >
+                      The optimization loop needs labeled examples and its
+                      own eval harness up front — more investment than
+                      text_discretization's requirement currently
+                      justifies for a first implementation.
+                - weight: -0.6
+            con_signatures_not_ec_aware:
+                - description: >
+                      Same gap as Instructor — Signatures describe
+                      arbitrary typed I/O, not iacs's component/entity/
+                      relation vocabulary specifically.
+                - weight: -0.3
+        marvin:
+            data:
+                - description: >
+                      Prefect-backed library exposing a one-line
+                      marvin.extract()/marvin.cast() API over an LLM call —
+                      essentially Instructor's underlying approach with a
+                      friendlier surface and less configurability.
+            pro_minimal_api:
+                - description: >
+                      Lowest-friction of the surveyed libraries for
+                      prototyping the text_discretization pipeline's core
+                      extraction step.
+                - weight: 0.4
+            con_less_mature_narrower_adoption:
+                - description: >
+                      Smaller community/ecosystem than Instructor for the
+                      same underlying capability, with fewer worked
+                      examples of schema-heavy extraction.
+                - weight: -0.4
+            con_same_gaps_as_instructor:
+                - description: >
+                      Inherits Instructor's lack of chunking/grounding
+                      without adding anything iacs specifically needs
+                      beyond API ergonomics.
+                - weight: -0.3
+        outlines:
+            data:
+                - description: >
+                      Constrained-decoding library that masks invalid
+                      tokens during generation itself (grammar/JSON-Schema/
+                      regex-constrained) rather than validating-and-
+                      retrying after the fact; usable underneath any of the
+                      other tools surveyed here.
+            pro_guarantees_schema_validity:
+                - description: >
+                      Reports near-100% schema adherence with zero
+                      retries, valuable if text_discretization ever runs
+                      against local/self-hosted models where retries are
+                      expensive.
+                - weight: 0.6
+            con_orthogonal_not_a_pipeline:
+                - description: >
+                      Solves a different problem (decoding-time constraint
+                      enforcement) than text_discretization's actual gap
+                      (a text -> EC file pipeline design) — a component to
+                      use inside a chosen framework, not an alternative to
+                      one.
+                - weight: -0.3
+            con_best_with_local_models:
+                - description: >
+                      Its throughput/determinism advantages are strongest
+                      for self-hosted models served via vLLM; iacs's
+                      current LLM usage already gets structured-output
+                      guarantees from the provider, reducing the marginal
+                      benefit.
+                - weight: -0.4
+        langchain_document_transformers:
+            data:
+                - description: >
+                      LangChain's document loader/transformer/extraction-
+                      chain ecosystem, including LLM-based structured
+                      extraction chains, as one general-purpose option
+                      among many in the same framework.
+            pro_mature_document_ingestion:
+                - description: >
+                      Broad library of loaders/splitters for turning
+                      arbitrary source formats (PDF, HTML, email, etc.)
+                      into text — a real gap none of the extraction-
+                      focused tools above address.
+                - weight: 0.5
+            con_general_purpose_extraction_only:
+                - description: >
+                      Its extraction chains are thinner and less purpose-
+                      built than Instructor/LangExtract for the specific
+                      schema-conformant-output problem.
+                - weight: -0.4
+            con_large_surface_area:
+                - description: >
+                      Adopting LangChain for ingestion risks pulling its
+                      broader agent/chain abstractions into the dependency
+                      tree for what should be a narrow ETL step (see
+                      dataflows/etl's existing lightweight load_yaml/
+                      load_python pattern).
+                - weight: -0.5
+        microsoft_graphrag:
+            data:
+                - description: >
+                      Full knowledge-graph RAG pipeline: LLM (or NLP-
+                      library) entity/relationship extraction, community
+                      detection, and hierarchical summarization over a
+                      largely static corpus, then graph-aware retrieval.
+            pro_hybrid_extraction_option:
+                - description: >
+                      Supports cheaper NLP-library (NLTK/spaCy) entity
+                      extraction as a fallback to full LLM extraction, a
+                      cost lever text_discretization doesn't currently
+                      have.
+                - weight: 0.4
+            con_recompute_on_update:
+                - description: >
+                      Designed for a largely static corpus — updates
+                      trigger expensive recomputation of the graph and its
+                      summaries, a poor fit for iacs's continuously-edited
+                      EC files and story-simulator's live registry
+                      updates.
+                - weight: -0.7
+            con_heaviest_operational_footprint:
+                - description: >
+                      The largest infrastructure footprint of any tool
+                      surveyed (indexing pipeline, vector store, community-
+                      summary generation), disproportionate to a single
+                      ETL capability.
+                - weight: -0.6
+        recommendation:
+            - description: >
+                  No surveyed tool emits iacs's entity-first EC format
+                  directly, and none model components (typed, multi-
+                  instance, multi-field records per entity) as precisely
+                  as iacs's own schema — every option needs a mapping
+                  layer either way. Given that, the highest-leverage
+                  building block is a Pydantic-validated structured-output
+                  call (Instructor's approach, whether via that library
+                  directly or hand-rolled) targeting a schema generated
+                  from iacs's own component definitions, since it requires
+                  no new framework or storage engine and reuses the field/
+                  description component types the registry already has.
+                  LangExtract's chunking and source-grounding strategy is
+                  worth borrowing for the long-document case even if the
+                  library itself isn't adopted wholesale. The graph-native
+                  tools (Graphiti, LlamaIndex property graphs, GraphRAG)
+                  are a poor fit: their native output model doesn't match
+                  components, and their incremental-update story is either
+                  absent (GraphRAG) or aimed at a different storage engine
+                  (Graphiti) than iacs's own registry. This conclusion also
+                  reinforces the note in text_discretization.data that the
+                  pipeline should be its own repository rather than living
+                  inside iacs core: the chosen approach (Instructor-style
+                  calls + a custom EC-schema mapping layer) has no shared
+                  code with iacs's registry/audit internals, only a
+                  dependency on its component schema as data.
 cost_budgets:
     data:
         - description: >
