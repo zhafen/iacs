@@ -4,35 +4,19 @@ import yaml
 
 
 def _find_malformed_entities(entities: dict) -> list[str]:
-    """Scan a parsed entity-first dict for components given as a bare YAML
-    mapping instead of the required list form (`alias:\\n    component:\\n
-    value: x` instead of `alias:\\n    - component:\\n        value: x`).
-    Downstream flattening treats any dict value as a nested-entity container
-    rather than raising on the mistake, so it silently produces zero rows
-    instead of merging -- this is the only thing that catches it.
-
-    A dict value is ambiguous on its own: legitimate nested-entity container,
-    or this mistake. Distinguished by recursing only while every value at
-    this level is itself a list, dict, or null -- a bare non-null scalar
-    means this level was meant as a component list. Null counts as valid
-    too: a bare `key:` with nothing after the colon is a real, componentless
-    placeholder entity (e.g. `iacs_manifest/iacs.yaml`'s
-    `required_functionality:` block) -- treating it as malformed broke real
-    data the first time this shipped. `"data"` is exempt everywhere,
-    matching EC's own freeform-notes convention.
-
-    Parameters
-    ----------
-    entities : dict
-        A parsed entity-first dict, as returned per-file by
-        `raw_entity_first_data`.
-
-    Returns
-    -------
-    list[str]
-        Dotted paths (relative to this dict) of malformed components, empty
-        if none found.
-    """
+    # Scan for components given as a bare YAML mapping instead of the required
+    # list form. Downstream flattening treats a dict value as a nested-entity
+    # container rather than raising, so it silently produces zero rows --
+    # this check is the only thing that catches it before it reaches the merge step.
+    #
+    # A dict value is ambiguous: legitimate nested-entity container, or the mistake.
+    # Recurse only while every value is itself a list, dict, or null -- a non-null
+    # scalar means this level was meant as a component list.
+    # Null is valid: a bare `key:` is a real, componentless placeholder entity
+    # (e.g. `required_functionality:` in iacs.yaml) -- treating it as malformed
+    # broke real data. "data" is exempt everywhere (EC freeform-notes convention).
+    #
+    # Returns dotted paths of malformed components, empty if none found.
     malformed: list[str] = []
 
     def check(path: str, value) -> None:

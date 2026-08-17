@@ -1,0 +1,26 @@
+project_history:
+  validate_write_checks_ported_from_story_simulator:
+    summary: >
+      iacs.validate_write was ported from story-simulator's
+      story_simulator/core.py, which identified two recurring LLM mistakes
+      when composing entity-first YAML by hand: a component-type name used as
+      a nested dict key instead of a list item
+      (find_component_named_as_nested_entity), and a component type that was
+      never declared anywhere (find_unknown_component_types). Generalized here
+      since nothing about them is story-simulator-specific.
+    related_story_simulator_events:
+      - nested_component_name_collision_check_added
+      - mechanical_component_type_validation_added
+
+  view_entity_markdown_format:
+    summary: >
+      Registry.view_entity defaults to "markdown" (a key: value outline, not a
+      table) because published LLM-parsing-accuracy comparisons favor this
+      format over table/CSV for the agent callers that consume this output.
+
+  find_component_named_as_nested_entity_depth_limit:
+    summary: >
+      find_component_named_as_nested_entity only checks one level of nesting
+      below a top-level alias, matching the one live mistake actually observed.
+      No recursive walk was added since a collision at a deeper nesting level
+      had no evidence behind it at the time.

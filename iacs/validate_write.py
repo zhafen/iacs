@@ -1,18 +1,12 @@
 """Mechanical safety checks for a raw entity-first YAML write, run before
 merging it into a registry.
 
-Ported from story-simulator's own story_simulator/core.py, which found
-these are the exact failure modes a weak LLM actually hits composing
-entity-first YAML by hand -- see that repo's docs/manifest/history.yaml
-for the specific incidents each check targets
-(nested_component_name_collision_check_added,
-mechanical_component_type_validation_added). Generalized here since
-nothing about them is story-simulator-specific: pure functions over
-already-parsed YAML plus a registry's own known component types. The
-third check this session's write tools also run --
-`_find_malformed_entities`, the bare-mapping check -- already lives
-natively in `iacs.dataflows.etl.load_yaml` and runs automatically inside
-`Registrar.update()`'s own ETL, so it isn't duplicated here.
+These are the failure modes a weak LLM actually hits composing entity-first
+YAML by hand: a component-type name used as a nested dict key instead of a
+list item (``find_component_named_as_nested_entity``), and an unknown/invented
+component type (``find_unknown_component_types``). The bare-mapping check
+already lives in ``iacs.dataflows.etl.load_yaml`` and runs automatically
+inside ``Registrar.update()``, so it is not duplicated here.
 """
 
 import difflib
@@ -84,15 +78,10 @@ def find_component_named_as_nested_entity(yaml_string: str, known: set[str]) -> 
     nested entity, so the bare-mapping check can't catch it on shape
     alone.
 
-    Mechanical, not semantic, like `find_unknown_component_types`: a
-    nested child entity's alias coinciding with a real component type's
-    name is vanishingly unlikely to be intentional, so this flags every
-    such collision.
-
-    Only checks nesting one level below a top-level alias, matching the
-    one live mistake actually observed -- not a general recursive walk,
-    since a collision at a deeper nesting level has no evidence behind it
-    yet.
+    Mechanical, not semantic: a nested child entity's alias coinciding
+    with a real component type's name is vanishingly unlikely to be
+    intentional, so this flags every such collision. Only checks nesting
+    one level below a top-level alias.
     """
     try:
         parsed = yaml.safe_load(yaml_string)
@@ -122,12 +111,9 @@ def find_unknown_component_types(yaml_string: str, known: set[str]) -> dict[str,
     nothing here too, since `Registrar.update()`'s own error handling is
     authoritative for those.
 
-    Deliberately mechanical, not semantic -- catches an invented name
-    (`parked_at`) that was never declared anywhere, but not a real,
-    already-declared type used for the wrong purpose (e.g. writing a
-    car's location under `todo` instead of `location` -- both are
-    genuine, known component types, so this check has nothing to object
-    to).
+    Deliberately mechanical, not semantic -- catches an invented name that
+    was never declared, but not a real declared type used for the wrong
+    purpose (both would be known component types).
     """
     try:
         parsed = yaml.safe_load(yaml_string)

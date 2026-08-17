@@ -374,6 +374,16 @@ class Registry:
         """
         return self._view(component_type, self._current_table, aliases)
 
+    def _entity_id_df(self) -> pd.DataFrame:
+        """Return the entity_id component table as a pandas DataFrame.
+
+        Returns an empty DataFrame with a 'value' column if no entity_id
+        component has been written yet.
+        """
+        if "entity_id" in self._components:
+            return self._components["entity_id"].to_pandas()
+        return pd.DataFrame(columns=["value"])
+
     def _resolve_aliases(self, aliases: str | list[str]) -> set[str]:
         """Resolve `aliases` to the union of entity_ids they match.
 
@@ -384,10 +394,7 @@ class Registry:
         """
         if isinstance(aliases, str):
             aliases = [aliases]
-        entity_id_df = (
-            self._components["entity_id"].to_pandas()
-            if "entity_id" in self._components else pd.DataFrame(columns=["value"])
-        )
+        entity_id_df = self._entity_id_df()
         resolved: set[str] = set()
         for alias in aliases:
             candidates = candidate_entity_ids(alias, entity_id_df)
@@ -566,27 +573,12 @@ class Registry:
         return df
 
     def summarize_components(self, limit: int = 20) -> str:
-        """Markdown review of every component type currently holding data
-        (`component_types`, not the larger `known_component_types` --
-        nothing to consolidate in a type nobody's written to yet), one
-        section per type with its row count and up to `limit` sample
-        rows, plus a trailing prompt asking the reader to consolidate
-        anything that shouldn't have been recorded as two separate facts
-        -- the same fact under a different (possibly invented) component
-        name, or a wrong-but-real component holding data that belongs
-        under the correct one instead.
-
-        Unlike `view_df` (one type at a time, no judgment attached),
-        this is meant to be read in full by whatever wrote the data, as a
-        single post-write self-check -- see story-simulator's
-        `consolidate_review`, a thin delegate to this same method for the
-        same tool-discoverability reason `view_registry`/`view_entity`
-        already are (docs/manifest/history.yaml in that repo:
-        project_history.story_simulator_view_tools_reinstated_as_iacs_delegates).
+        """Markdown overview of every component type currently holding data,
+        one section per type with its row count and up to `limit` sample rows.
         """
         types = sorted(self.component_types)
         if not types:
-            return "No component types have any data yet -- nothing to review."
+            return "No component types have any data yet."
         sections = []
         for component_type in types:
             df = self.view_df(component_type).reset_index()
@@ -597,11 +589,6 @@ class Registry:
         return (
             "All component types currently recorded, one section per type:\n\n"
             + "\n\n".join(sections)
-            + "\n\nReview the above for anything that should be consolidated -- e.g. the "
-            "same fact recorded twice under different (possibly invented) component "
-            "names, or a wrong-but-real component holding data that belongs under the "
-            "correct one instead. If you find something, write a correction; if "
-            "everything looks right, no action needed."
         )
 
     def get_entity_id(self, entity_ref: str) -> str | None:
@@ -629,8 +616,7 @@ class Registry:
         """
         if "entity_id" not in self._components:
             return None
-        entity_id_df = self._components["entity_id"].to_pandas()
-        candidates = candidate_entity_ids(entity_ref, entity_id_df)
+        candidates = candidate_entity_ids(entity_ref, self._entity_id_df())
         return candidates[0] if len(candidates) == 1 else None
 
     def view_entity_df(self, entity_id: str) -> dict[str, pd.DataFrame]:
@@ -665,10 +651,7 @@ class Registry:
         Args:
             entity_id: Entity hash, alias, or path fragment identifying the
                 entity (see `get_entity_id`).
-            format: Output format — "markdown" (default, a `key: value`
-                outline, not a table -- published LLM-parsing-accuracy
-                comparisons favor this over table/CSV formats, which is what
-                actually reads this output, not another program) or "csv".
+            format: Output format — "markdown" (default) or "csv".
         """
         components = self.view_entity_df(entity_id)
         if not components:
