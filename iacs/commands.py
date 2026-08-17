@@ -33,7 +33,7 @@ def parse_database_url_env() -> str | None:
     already-populated registry (e.g. story-simulator's own per-save
     Postgres schema) instead of always building a fresh one from a
     manifest."""
-    return os.environ.get(DATABASE_URL_ENV_VAR) or None
+    return (os.environ.get(DATABASE_URL_ENV_VAR) or "").strip() or None
 
 
 def get_manifest_path_str(manifest_paths: list[str] | None = None) -> str:
