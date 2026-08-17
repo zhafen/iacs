@@ -382,7 +382,7 @@ class Registry:
         """
         if "entity_id" in self._components:
             return self._components["entity_id"].to_pandas()
-        return pd.DataFrame(columns=["value"])
+        return pd.DataFrame(columns=["value", "alias", "path"])
 
     def _resolve_aliases(self, aliases: str | list[str]) -> set[str]:
         """Resolve `aliases` to the union of entity_ids they match.
@@ -623,10 +623,8 @@ class Registry:
         """Return component data for a specific entity, keyed by component type.
 
         `entity_id` is resolved via `get_entity_id` first, so this accepts
-        anything that already does — the internal hash, an exact alias, or
-        an unambiguous path fragment — and returns `{}` for a ref that
-        doesn't resolve to exactly one entity, the same as it already did
-        for a bare unknown ref.
+        the internal hash, an exact alias, or an unambiguous path fragment.
+        Returns `{}` if `entity_id` doesn't resolve to exactly one entity.
 
         Args:
             entity_id: Entity hash, alias, or path fragment identifying the entity.

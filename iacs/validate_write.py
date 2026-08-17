@@ -1,12 +1,5 @@
 """Mechanical safety checks for a raw entity-first YAML write, run before
 merging it into a registry.
-
-These are the failure modes a weak LLM actually hits composing entity-first
-YAML by hand: a component-type name used as a nested dict key instead of a
-list item (``find_component_named_as_nested_entity``), and an unknown/invented
-component type (``find_unknown_component_types``). The bare-mapping check
-already lives in ``iacs.dataflows.etl.load_yaml`` and runs automatically
-inside ``Registrar.update()``, so it is not duplicated here.
 """
 
 import difflib
@@ -127,4 +120,5 @@ def find_unknown_component_types(yaml_string: str, known: set[str]) -> dict[str,
     unknown = referenced - known - defined_inline
     if not unknown:
         return {}
-    return {name: difflib.get_close_matches(name, known, n=3) for name in sorted(unknown)}
+    sorted_known = sorted(known)
+    return {name: difflib.get_close_matches(name, sorted_known, n=3) for name in sorted(unknown)}
