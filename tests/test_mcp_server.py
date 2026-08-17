@@ -6,6 +6,7 @@ import pytest
 from unittest.mock import MagicMock
 
 from iacs.mcp_server import (
+    _DATABASE_URL_ENV_VAR,
     _EXAMPLE_MANIFEST,
     _BUILTINS_DIR,
     _IACS_MANIFEST_DIR,
@@ -13,12 +14,15 @@ from iacs.mcp_server import (
     _registrars,
     _available_audit_components,
     _build_format_description,
+    _parse_database_url_env,
     _parse_manifest_env,
     _validate_yaml_string,
     generate_report,
     get_manifest_path,
     list_component_types,
+    load_database,
     load_manifest,
+    merge_yaml,
     refresh,
     run_dataflow,
     view_entity,
@@ -216,6 +220,131 @@ class TestGetManifestPath:
         assert p2 in result
 
 
+class TestParseDatabaseUrlEnv:
+
+    def test_returns_none_when_unset(self, monkeypatch):
+        monkeypatch.delenv(_DATABASE_URL_ENV_VAR, raising=False)
+        assert _parse_database_url_env() is None
+
+    def test_returns_value_when_set(self, monkeypatch, tmp_path):
+        db_path = str(tmp_path / "registry.duckdb")
+        monkeypatch.setenv(_DATABASE_URL_ENV_VAR, db_path)
+        assert _parse_database_url_env() == db_path
+
+    def test_returns_none_for_empty_string(self, monkeypatch):
+        """An empty env var (e.g. from an unset shell interpolation) should
+        fall back to manifest loading, not try to connect to "" as a URL."""
+        monkeypatch.setenv(_DATABASE_URL_ENV_VAR, "")
+        assert _parse_database_url_env() is None
+
+
+class TestGetRegistrarPrefersDatabaseUrl:
+    """`_get_registrar` should connect to an existing database-backed
+    registry instead of building one from a manifest when
+    IACS_DATABASE_URL is set -- this is what lets iacs-mcp share a single
+    live registry with another tool (e.g. story-simulator's own per-save
+    Postgres schema) instead of each holding its own separate copy."""
+
+    def test_uses_database_registry_when_env_set(self, monkeypatch, tmp_path):
+        from tests.conftest import make_registry
+        from iacs.registrar import Registrar
+
+        db_path = tmp_path / "registry.duckdb"
+        Registrar(make_registry({"description": [{"entity_id": "e1", "value": "From the database."}]})).save(
+            db_path
+        )
+        monkeypatch.setenv(_DATABASE_URL_ENV_VAR, str(db_path))
+
+        ctx = _make_ctx()
+        result = list_component_types(ctx)
+
+        assert "description" in result
+        reg = _registrars[ctx.request_context.session]
+        desc = reg.registry.get("description").execute()
+        assert any("From the database" in str(v) for v in desc["value"])
+
+    def test_ignores_manifest_env_when_database_url_set(self, monkeypatch, tmp_path):
+        """IACS_MANIFEST being set too shouldn't matter -- IACS_DATABASE_URL wins."""
+        from tests.conftest import make_registry
+        from iacs.registrar import Registrar
+
+        db_path = tmp_path / "registry.duckdb"
+        Registrar(make_registry({"description": [{"entity_id": "e1", "value": "From the database."}]})).save(
+            db_path
+        )
+        monkeypatch.setenv(_DATABASE_URL_ENV_VAR, str(db_path))
+        monkeypatch.setenv(_MANIFEST_ENV_VAR, str(_IACS_MANIFEST_DIR))
+
+        ctx = _make_ctx()
+        list_component_types(ctx)
+
+        reg = _registrars[ctx.request_context.session]
+        desc = reg.registry.get("description").execute()
+        assert any("From the database" in str(v) for v in desc["value"])
+
+    def test_falls_back_to_manifest_when_database_url_unset(self, monkeypatch):
+        monkeypatch.delenv(_DATABASE_URL_ENV_VAR, raising=False)
+        monkeypatch.setenv(_MANIFEST_ENV_VAR, str(_IACS_MANIFEST_DIR))
+
+        ctx = _make_ctx()
+        list_component_types(ctx)
+
+        reg = _registrars[ctx.request_context.session]
+        assert len(reg.registry.component_types) > 0
+
+
+class TestLoadDatabase:
+    """`load_database` is the mid-session equivalent of IACS_DATABASE_URL --
+    for a URL only known once another tool has already opened its own
+    registry at runtime (e.g. story-simulator's start_world telling the
+    connected host what URL to pass), not knowable at server startup."""
+
+    def _save_sample_registry(self, tmp_path):
+        from tests.conftest import make_registry
+        from iacs.registrar import Registrar
+
+        db_path = tmp_path / "registry.duckdb"
+        Registrar(make_registry({"description": [{"entity_id": "e1", "value": "From the database."}]})).save(
+            db_path
+        )
+        return db_path
+
+    def test_returns_success_string(self, tmp_path):
+        db_path = self._save_sample_registry(tmp_path)
+        ctx = _make_ctx()
+        result = load_database(str(db_path), ctx)
+        assert "Connected to database registry" in result
+        assert str(db_path) in result
+
+    def test_stores_registrar_for_session(self, tmp_path):
+        db_path = self._save_sample_registry(tmp_path)
+        ctx = _make_ctx()
+        load_database(str(db_path), ctx)
+        assert ctx.request_context.session in _registrars
+
+    def test_loaded_registrar_reflects_database_data(self, tmp_path):
+        db_path = self._save_sample_registry(tmp_path)
+        ctx = _make_ctx()
+        load_database(str(db_path), ctx)
+        reg = _registrars[ctx.request_context.session]
+        desc = reg.registry.get("description").execute()
+        assert any("From the database" in str(v) for v in desc["value"])
+
+    def test_replaces_a_previously_loaded_manifest_registry(self, tmp_path):
+        """Calling load_database after load_manifest should switch this
+        session over entirely, not merge the two."""
+        db_path = self._save_sample_registry(tmp_path)
+        ctx = _make_ctx()
+        load_manifest([str(_IACS_MANIFEST_DIR)], ctx)
+        load_database(str(db_path), ctx)
+        reg = _registrars[ctx.request_context.session]
+        desc = reg.registry.get("description").execute()
+        assert list(desc["value"]) == ["From the database."]
+
+    def test_load_database_tool_is_registered(self):
+        assert "load_database" in {t.name for t in server._tool_manager.list_tools()}
+
+
 # ---------------------------------------------------------------------------
 # MCP tool registration smoke tests
 # ---------------------------------------------------------------------------
@@ -240,6 +369,9 @@ class TestMcpToolRegistration:
         tools = {t.name: t for t in server._tool_manager.list_tools()}
         params = tools["describe_format"].parameters
         assert params.get("required", []) == []
+
+    def test_merge_yaml_is_registered(self):
+        assert "merge_yaml" in self._tool_names()
 
 
 # ---------------------------------------------------------------------------
@@ -362,11 +494,23 @@ class TestViewEntity:
         result = view_entity("make_cats_happy", ctx)
         assert "description" in result
 
-    def test_returns_markdown_by_default(self):
+    def test_returns_markdown_outline_by_default(self):
+        """Not a table (published LLM-parsing-accuracy comparisons favor a
+        key: value outline over table/CSV formats) -- a `##` heading per
+        component type, `- field: value` bullets."""
         ctx = _make_ctx()
         load_manifest([str(_EXAMPLE_MANIFEST)], ctx)
         result = view_entity("make_cats_happy", ctx)
-        assert "|" in result
+        assert "## description" in result
+        assert "- value:" in result
+        assert "|" not in result
+
+    def test_markdown_excludes_internal_entity_id_columns(self):
+        ctx = _make_ctx()
+        load_manifest([str(_EXAMPLE_MANIFEST)], ctx)
+        result = view_entity("make_cats_happy", ctx)
+        assert "entity_id.hash" not in result
+        assert "entity_id.path" not in result
 
     def test_returns_csv_when_requested(self):
         ctx = _make_ctx()
@@ -484,3 +628,74 @@ class TestGenerateReport:
     def test_generate_report_tool_is_registered(self):
         tool_names = {t.name for t in server._tool_manager.list_tools()}
         assert "generate_report" in tool_names
+
+
+# ---------------------------------------------------------------------------
+# merge_yaml — MCP tool
+# ---------------------------------------------------------------------------
+
+class TestMergeYaml:
+
+    def test_valid_write_merges_and_reports_success(self):
+        ctx = _make_ctx()
+        load_manifest([str(_EXAMPLE_MANIFEST)], ctx)
+        result = merge_yaml(
+            "feed_cats:\n    - description:\n        value: A freshly-recorded note.\n",
+            ctx,
+        )
+        assert "Merged" in result
+
+    def test_valid_write_is_actually_persisted(self):
+        ctx = _make_ctx()
+        load_manifest([str(_EXAMPLE_MANIFEST)], ctx)
+        merge_yaml(
+            "feed_cats:\n    - description:\n        value: A freshly-recorded note.\n",
+            ctx,
+        )
+        reg = _registrars[ctx.request_context.session]
+        desc = reg.registry.get("description").execute()
+        assert any("A freshly-recorded note" in str(v) for v in desc["value"])
+
+    def test_bare_mapping_component_raises(self):
+        ctx = _make_ctx()
+        load_manifest([str(_EXAMPLE_MANIFEST)], ctx)
+        with pytest.raises(ValueError, match="bare mapping"):
+            merge_yaml("feed_cats:\n    description:\n        value: x\n", ctx)
+
+    def test_unknown_component_type_raises(self):
+        ctx = _make_ctx()
+        load_manifest([str(_EXAMPLE_MANIFEST)], ctx)
+        with pytest.raises(ValueError, match="Unknown component type"):
+            merge_yaml("feed_cats:\n    - definitely_not_a_real_component:\n        value: x\n", ctx)
+
+    def test_component_named_as_nested_entity_raises(self):
+        ctx = _make_ctx()
+        load_manifest([str(_EXAMPLE_MANIFEST)], ctx)
+        with pytest.raises(ValueError, match="nested"):
+            merge_yaml("feed_cats:\n    description:\n        - value: x\n", ctx)
+
+    def test_inline_component_type_definition_is_accepted(self):
+        """A write that declares a brand-new component type inline (its own
+        component_type marker) must not be rejected as unknown -- same
+        shape a manifest's own builtin component definitions use."""
+        ctx = _make_ctx()
+        load_manifest([str(_EXAMPLE_MANIFEST)], ctx)
+        result = merge_yaml(
+            "brand_new_component:\n"
+            "    - description: A freshly-declared component type.\n"
+            "    - component_type\n"
+            "    - field:\n"
+            "        value:\n"
+            "            description: Its one field.\n"
+            "            type: str\n"
+            "\n"
+            "feed_cats:\n"
+            "    - brand_new_component:\n"
+            "        value: hello\n",
+            ctx,
+        )
+        assert "Merged" in result
+
+    def test_merge_yaml_tool_is_registered(self):
+        tool_names = {t.name for t in server._tool_manager.list_tools()}
+        assert "merge_yaml" in tool_names
