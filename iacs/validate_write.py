@@ -1,18 +1,13 @@
 """Mechanical safety checks for a raw entity-first YAML write, run before
 merging it into a registry.
 
-Ported from story-simulator's own story_simulator/core.py, which found
-these are the exact failure modes a weak LLM actually hits composing
-entity-first YAML by hand -- see that repo's docs/manifest/history.yaml
-for the specific incidents each check targets
-(nested_component_name_collision_check_added,
-mechanical_component_type_validation_added). Generalized here since
-nothing about them is story-simulator-specific: pure functions over
-already-parsed YAML plus a registry's own known component types. The
-third check this session's write tools also run --
-`_find_malformed_entities`, the bare-mapping check -- already lives
-natively in `iacs.dataflows.etl.load_yaml` and runs automatically inside
-`Registrar.update()`'s own ETL, so it isn't duplicated here.
+Pure functions over already-parsed YAML plus a registry's own known
+component types -- nothing about them is story-simulator-specific (see
+docs/manifest/history.yaml: validate_write_checks_ported_from_story_simulator
+for where they came from). The third check this module's callers also
+rely on -- `_find_malformed_entities`, the bare-mapping check -- already
+lives natively in `iacs.dataflows.etl.load_yaml` and runs automatically
+inside `Registrar.update()`'s own ETL, so it isn't duplicated here.
 """
 
 import difflib
