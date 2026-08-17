@@ -566,23 +566,18 @@ class Registry:
         return df
 
     def summarize_components(self, limit: int = 20) -> str:
-        """Markdown review of every component type currently holding data
+        """Markdown report of every component type currently holding data
         (`component_types`, not the larger `known_component_types` --
-        nothing to consolidate in a type nobody's written to yet), one
+        nothing to report on a type nobody's written to yet), one
         section per type with its row count and up to `limit` sample
-        rows, plus a trailing prompt asking the reader to consolidate
-        anything that shouldn't have been recorded as two separate facts
-        -- the same fact under a different (possibly invented) component
-        name, or a wrong-but-real component holding data that belongs
-        under the correct one instead.
+        rows.
 
-        Unlike `view_df` (one type at a time, no judgment attached),
-        this is meant to be read in full by whatever wrote the data, as a
-        single post-write self-check -- see story-simulator's
-        `consolidate_review`, a thin delegate to this same method for the
-        same tool-discoverability reason `view_registry`/`view_entity`
-        already are (docs/manifest/history.yaml in that repo:
-        project_history.story_simulator_view_tools_reinstated_as_iacs_delegates).
+        Unlike `view_df` (one type at a time), this covers everything in
+        one call. Purely a data report -- no judgment or instructions
+        attached to it; a caller wanting to prompt a reader toward
+        consolidating duplicate/misplaced data on top of this (e.g.
+        `validate_write`'s consolidation guidance, composed in by
+        `commands.cmd_review_components`) is free to add its own.
         """
         types = sorted(self.component_types)
         if not types:
@@ -597,11 +592,6 @@ class Registry:
         return (
             "All component types currently recorded, one section per type:\n\n"
             + "\n\n".join(sections)
-            + "\n\nReview the above for anything that should be consolidated -- e.g. the "
-            "same fact recorded twice under different (possibly invented) component "
-            "names, or a wrong-but-real component holding data that belongs under the "
-            "correct one instead. If you find something, write a correction; if "
-            "everything looks right, no action needed."
         )
 
     def get_entity_id(self, entity_ref: str) -> str | None:

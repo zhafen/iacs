@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 
 import yaml
 
+from .validate_write import CONSOLIDATION_GUIDANCE
+
 if TYPE_CHECKING:
     from iacs.registrar import Registrar
 
@@ -122,8 +124,9 @@ def cmd_merge_yaml(reg: "Registrar", yaml_string: str) -> str:
 
 
 def cmd_review_components(reg: "Registrar", limit: int = 20) -> str:
-    """Return every data-bearing component type at once, for consolidation review."""
-    return reg.summarize_components(limit)
+    """Return every data-bearing component type at once, plus consolidation
+    guidance, for the caller to review."""
+    return f"{reg.summarize_components(limit)}\n\n{CONSOLIDATION_GUIDANCE}"
 
 
 def cmd_run_dataflow(reg: "Registrar", name: str) -> str:

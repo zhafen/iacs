@@ -19,6 +19,19 @@ import difflib
 
 import yaml
 
+CONSOLIDATION_GUIDANCE = (
+    "Review the above for anything that should be consolidated -- e.g. the "
+    "same fact recorded twice under different (possibly invented) component "
+    "names, or a wrong-but-real component holding data that belongs under the "
+    "correct one instead. If you find something, write a correction; if "
+    "everything looks right, no action needed."
+)
+"""Agent-facing instruction for what to do with a `Registry.summarize_components`
+report -- kept here, not on `summarize_components` itself, so that method
+stays a plain data report and this module stays the one place holding
+guidance on how an agent should act on write-safety/data-quality concerns.
+Composed onto the report by `commands.cmd_review_components`."""
+
 
 def referenced_component_types(parsed: dict) -> set[str]:
     """Collect every component-type name referenced anywhere in `parsed`
