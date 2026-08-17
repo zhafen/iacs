@@ -141,4 +141,4 @@ def find_unknown_component_types(yaml_string: str, known: set[str]) -> dict[str,
     unknown = referenced - known - defined_inline
     if not unknown:
         return {}
-    return {name: difflib.get_close_matches(name, known, n=3) for name in sorted(unknown)}
+    return {name: difflib.get_close_matches(name, sorted(known), n=3) for name in sorted(unknown)}
