@@ -656,9 +656,7 @@ class Registry:
             entity_id: Entity hash, alias, or path fragment identifying the
                 entity (see `get_entity_id`).
             format: Output format — "markdown" (default, a `key: value`
-                outline, not a table -- published LLM-parsing-accuracy
-                comparisons favor this over table/CSV formats, which is what
-                actually reads this output, not another program) or "csv".
+                outline, not a table) or "csv".
         """
         components = self.view_entity_df(entity_id)
         if not components:
