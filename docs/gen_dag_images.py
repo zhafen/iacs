@@ -38,11 +38,15 @@ def _discover_modules():
     """Yield (module_path, short_name) for every non-package module under
     iacs.dataflows or emc2p.dataflows."""
     for base_pkg, pkg_module in _BASE_PKGS:
+        pkg_label = base_pkg.split(".", 1)[0]
         for _finder, module_path, ispkg in pkgutil.walk_packages(
             pkg_module.__path__, prefix=base_pkg + "."
         ):
             if not ispkg:
                 short = module_path.removeprefix(base_pkg + ".")
+                # Avoid filename/index collisions when iacs and emc2p share a module subpath.
+                if pkg_label != "iacs":
+                    short = f"{short}__{pkg_label}"
                 yield module_path, short
 
 
