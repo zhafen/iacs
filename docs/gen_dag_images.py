@@ -19,6 +19,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 import iacs.dataflows  # noqa: E402
+import emc2p.dataflows  # noqa: E402
 from hamilton import driver  # noqa: E402
 
 OUTPUT_DIR = Path(__file__).parent / "dataflows" / "img"
@@ -26,17 +27,23 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 INDEX_PATH = Path(__file__).parent / "dataflows" / "index.md"
 
-_BASE_PKG = "iacs.dataflows"
+# iacs's own domain-specific dataflows (audit/*, derive/impact_cost, ...) and
+# emc2p's generic ones (etl/*, validation/*, derive/* minus impact_cost) that
+# iacs's own base_etl subdags in -- both are part of the pipeline iacs users
+# actually run, so both are covered here.
+_BASE_PKGS = [("iacs.dataflows", iacs.dataflows), ("emc2p.dataflows", emc2p.dataflows)]
 
 
 def _discover_modules():
-    """Yield (module_path, short_name) for every non-package module under iacs.dataflows."""
-    for _finder, module_path, ispkg in pkgutil.walk_packages(
-        iacs.dataflows.__path__, prefix=_BASE_PKG + "."
-    ):
-        if not ispkg:
-            short = module_path.removeprefix(_BASE_PKG + ".")
-            yield module_path, short
+    """Yield (module_path, short_name) for every non-package module under
+    iacs.dataflows or emc2p.dataflows."""
+    for base_pkg, pkg_module in _BASE_PKGS:
+        for _finder, module_path, ispkg in pkgutil.walk_packages(
+            pkg_module.__path__, prefix=base_pkg + "."
+        ):
+            if not ispkg:
+                short = module_path.removeprefix(base_pkg + ".")
+                yield module_path, short
 
 
 def _collapsed_graph(dr) -> "graphviz.Digraph":

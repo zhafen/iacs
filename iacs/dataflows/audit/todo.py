@@ -4,7 +4,7 @@ from hamilton.function_modifiers import extract_fields
 import ibis
 import ibis.expr.types as ir
 
-from iacs.registry import Registry
+from emc2p.registry import Registry
 
 
 INPUT_COMPONENT_TYPES = ["todo"]

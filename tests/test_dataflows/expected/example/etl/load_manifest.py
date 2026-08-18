@@ -1,6 +1,6 @@
 import pandas as pd
 
-from iacs.utils import dhash
+from emc2p.utils import dhash
 
 filepath = "examples/example/manifest.yaml"
 

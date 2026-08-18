@@ -2,7 +2,7 @@
 
 Self-documents iacs the same way gen_dag_images.py does for its Hamilton
 dataflows: parses iacs's own package source (via
-iacs.dataflows.etl.load_python, driven through a full Registrar load) into
+emc2p.dataflows.etl.load_python, driven through a full Registrar load) into
 entities, then collapses their calls/imports relations into a file-level
 Mermaid flowchart -- solid arrows for calls, dashed arrows for imports.
 
@@ -30,7 +30,7 @@ mermaid = render_mermaid(graph)
 content = (
     "# Architecture\n\n"
     "File-level call/import structure of iacs's own codebase, parsed from "
-    "source the same way `iacs.dataflows.etl.load_python` parses any "
+    "source the same way `emc2p.dataflows.etl.load_python` parses any "
     "project's code -- solid arrows are function/method calls, dashed "
     "arrows are imports. Only entities with a docstring or `__iacs__` "
     "metadata become graph-relevant (see that module's own docstring for "

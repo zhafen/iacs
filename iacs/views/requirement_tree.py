@@ -5,7 +5,7 @@ from collections import defaultdict
 import networkx as nx
 
 from iacs.registrar import Registrar
-from iacs.utils import non_format_guide_ids
+from emc2p.utils import non_format_guide_ids
 
 
 def _requirement_node(node_id, children_map: dict, id_to_key: dict, id_to_priority: dict) -> dict:

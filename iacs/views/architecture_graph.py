@@ -1,7 +1,7 @@
 """View helpers for building architecture graphs from parsed Python source.
 
 Two complementary views over the same ``calls``/``imports`` entity_ref
-relations that ``iacs.dataflows.etl.load_python`` extracts (module/class/
+relations that ``emc2p.dataflows.etl.load_python`` extracts (module/class/
 function calls and imports, resolved to target entities where the target
 is itself a qualifying entity -- see that module's ``_make_components``):
 
@@ -17,7 +17,7 @@ is itself a qualifying entity -- see that module's ``_make_components``):
 from pathlib import Path
 
 from iacs.registrar import Registrar
-from iacs.utils import candidate_entity_ids
+from emc2p.utils import candidate_entity_ids
 
 
 def _module_label(filepath: str) -> str:

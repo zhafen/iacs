@@ -2,7 +2,7 @@
 
 import ibis
 
-from iacs.registry import Registry
+from emc2p.registry import Registry
 
 
 def description_table(registry: Registry) -> ibis.Table:

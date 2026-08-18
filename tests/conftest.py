@@ -4,7 +4,7 @@ import ibis
 import pandas as pd
 import pandas.testing as _pd_testing
 
-from iacs.registry import Registry
+from emc2p.registry import Registry
 
 
 def _assert_allclose(left, right, **kwargs):

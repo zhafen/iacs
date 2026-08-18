@@ -8,6 +8,7 @@ version = "0.1.5"
 description = "Infrastructure as Code Sketch"
 requires-python = ">=3.10"
 dependencies = [
+    "emc2p",
     "duckdb>=1.3.2",
     "fastapi[standard]>=0.111.0",
     "uvicorn[standard]>=0.29.0",
@@ -40,6 +41,12 @@ dev = [
 [project.scripts]
 iacs-mcp = "iacs.mcp_server:main"
 iacs = "iacs.cli:main"
+
+[tool.uv.sources]
+emc2p = { path = "emc2p", editable = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.setuptools]
 py-modules = ["app"]

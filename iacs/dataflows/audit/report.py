@@ -15,7 +15,7 @@ from pathlib import Path
 from hamilton.function_modifiers import extract_fields
 import ibis.expr.types as ir
 
-from ...registry import Registry
+from emc2p.registry import Registry
 from ...views.requirement_tree import build_requirement_forest
 
 
