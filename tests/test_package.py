@@ -11,12 +11,14 @@ def test_iacs_submodules_importable():
     modules = [
         "iacs",
         "iacs.registrar",
-        "iacs.registry",
-        "iacs.utils",
         "iacs.dataflows",
         "iacs.dataflows.base_etl",
+        "iacs.dataflows.derive.impact_cost",
         "iacs.views",
         "iacs.views.requirement_tree",
+        "emc2p",
+        "emc2p.registry",
+        "emc2p.utils",
     ]
     for module in modules:
         result = subprocess.run(

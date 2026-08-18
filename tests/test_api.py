@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import app
-from iacs.utils import get_id
+from emc2p.utils import get_id
 
 
 @pytest.fixture(scope="module")

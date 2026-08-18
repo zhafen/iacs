@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import yaml
 
-from .validate_write import CONSOLIDATION_GUIDANCE
+from emc2p.validate_write import CONSOLIDATION_GUIDANCE
 
 if TYPE_CHECKING:
     from iacs.registrar import Registrar

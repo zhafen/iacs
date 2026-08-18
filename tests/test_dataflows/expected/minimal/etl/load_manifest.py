@@ -1,6 +1,6 @@
 import pandas as pd
 
-from iacs.utils import dhash
+from emc2p.utils import dhash
 
 
 raw_entity_first_data = {

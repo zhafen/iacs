@@ -1,9 +1,13 @@
+"""iacs's own base ETL pipeline: emc2p's generic load/validate steps, with
+iacs's own derive_components (impact/cost scoring added on top of emc2p's
+generic derive pipeline) in the middle.
+"""
 from hamilton.function_modifiers import subdag, source
 
 import iacs.dataflows.derive.derive_components as _derive_components
-import iacs.dataflows.validation.validate_components as _validate_components
-from .etl import load_manifest
-from ..registry import Registry
+import emc2p.dataflows.validation.validate_components as _validate_components
+from emc2p.dataflows.etl import load_manifest
+from emc2p.registry import Registry
 
 
 @subdag(load_manifest, inputs={"input_dirs": source("input_dirs")}, config={})

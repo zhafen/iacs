@@ -14,7 +14,10 @@ from iacs.registrar import Registrar
 ROOT = Path(__file__).parent.parent
 EXAMPLES_DIR = ROOT / "examples"
 EXPECTED_DIR = ROOT / "tests" / "test_dataflows" / "expected"
-DATAFLOWS_MODULE_PREFIX = "iacs.dataflows."
+# Dataflow nodes now come from two packages: iacs's own domain-specific
+# dataflows, and emc2p's generic ones that iacs's base_etl subdags in. Both
+# map onto the same expected/<example>/<subpath>.py fixture layout.
+DATAFLOWS_MODULE_PREFIXES = ("iacs.dataflows.", "emc2p.dataflows.")
 
 
 def _example_dirs() -> list:
@@ -272,8 +275,15 @@ class _ExpectedValueChecker(NodeExecutionHook):
         if source_module is None:
             return
 
-        # The part after the dataflows prefix tells us where to find the expected values
-        dataflow_module_name = source_module[len(DATAFLOWS_MODULE_PREFIX) :]
+        # The part after whichever dataflows prefix matches tells us where to
+        # find the expected values.
+        dataflow_module_name = None
+        for prefix in DATAFLOWS_MODULE_PREFIXES:
+            if source_module.startswith(prefix):
+                dataflow_module_name = source_module[len(prefix):]
+                break
+        if dataflow_module_name is None:
+            return
         dataflow_module_subpath = dataflow_module_name.replace(".", "/")
         expected_filepath = (
             EXPECTED_DIR / self.example_dir.name / f"{dataflow_module_subpath}.py"

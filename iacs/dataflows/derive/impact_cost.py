@@ -8,8 +8,8 @@ import pandas as pd
 from hamilton.function_modifiers import extract_fields
 import ibis.expr.types as ir
 
-from iacs.registry import Registry
-from iacs.utils import candidate_entity_ids, non_format_guide_ids
+from emc2p.registry import Registry
+from emc2p.utils import candidate_entity_ids, non_format_guide_ids
 
 
 INPUT_COMPONENT_TYPES = [
