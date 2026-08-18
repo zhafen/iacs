@@ -1,0 +1,37 @@
+file_info:
+    - description: >
+          Non-actionable historical context pulled out of code comments and
+          docs, kept here instead of scattered across the codebase. Kept in
+          its own file, separate from iacs_manifest/, so it isn't scanned in
+          as part of assessing requirements (audit.traceability,
+          audit.requirement_coverage) -- load iacs_manifest/ alone for that;
+          load this file too only when the history itself is useful. Mirrors
+          story-simulator's own docs/manifest/history.yaml convention.
+    - file_info
+
+project_history:
+    data:
+        - description: >
+              Non-actionable historical record of how the project reached its
+              current shape.
+    validate_write_checks_ported_from_story_simulator:
+        - description: >
+              iacs.validate_write's two mechanical checks
+              (find_component_named_as_nested_entity,
+              find_unknown_component_types) were ported from
+              story-simulator's own story_simulator/core.py, which found
+              these are the exact failure modes a weak LLM actually hits
+              composing entity-first YAML by hand -- see that repo's
+              docs/manifest/history.yaml for the specific incidents each
+              check targets (nested_component_name_collision_check_added,
+              mechanical_component_type_validation_added). Generalized here
+              since nothing about them is story-simulator-specific.
+    view_entity_markdown_outline_favored_for_llm_parsing:
+        - description: >
+              Registry.view_entity's "markdown" format is a key: value
+              outline, not a table -- published LLM-parsing-accuracy
+              comparisons favor this over table/CSV formats, which is what
+              actually reads this output, not another program. Ported from
+              story-simulator's own hand-rolled version and generalized here
+              so every caller benefits, not just story-simulator's own
+              delegate.

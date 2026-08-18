@@ -9,10 +9,13 @@ from typing import TYPE_CHECKING
 
 import yaml
 
+from .validate_write import CONSOLIDATION_GUIDANCE
+
 if TYPE_CHECKING:
     from iacs.registrar import Registrar
 
 MANIFEST_ENV_VAR = "IACS_MANIFEST"
+DATABASE_URL_ENV_VAR = "IACS_DATABASE_URL"
 EXAMPLE_MANIFEST = Path(__file__).parent.parent / "examples" / "example"
 BUILTINS_DIR = Path(__file__).parent / "builtins"
 IACS_MANIFEST_DIR = Path(__file__).parent / "iacs_manifest"
@@ -24,6 +27,15 @@ def parse_manifest_env() -> list[str]:
     if not raw:
         return [str(EXAMPLE_MANIFEST)]
     return [p.strip() for p in raw.split(os.pathsep) if p.strip()]
+
+
+def parse_database_url_env() -> str | None:
+    """Return an existing registry's database URL from the environment
+    variable, if set -- lets a caller point this server at someone else's
+    already-populated registry (e.g. story-simulator's own per-save
+    Postgres schema) instead of always building a fresh one from a
+    manifest."""
+    return (os.environ.get(DATABASE_URL_ENV_VAR) or "").strip() or None
 
 
 def get_manifest_path_str(manifest_paths: list[str] | None = None) -> str:
@@ -52,6 +64,18 @@ def make_registrar(manifest_paths: list[str]) -> "Registrar":
     return Registrar.from_manifest(manifest_paths)
 
 
+def make_registrar_from_database(url: str) -> "Registrar":
+    """Create a Registrar over an existing database-backed registry.
+
+    Unlike ``make_registrar``, this doesn't load or validate anything --
+    it's a straight connection to a registry someone else already
+    populated (see ``Registrar.load``), so multiple tools can share one
+    live registry instead of each holding their own separate copy.
+    """
+    from iacs.registrar import Registrar
+    return Registrar.load(url)
+
+
 def cmd_list_component_types(reg: "Registrar") -> str:
     """Return a summary of loaded and available-but-ungenerated component types."""
     loaded = reg.registry.component_types
@@ -76,6 +100,33 @@ def cmd_view_component(reg: "Registrar", component_type: str, format: str = "csv
 def cmd_view_entity(reg: "Registrar", entity_id: str, format: str = "markdown") -> str:
     """Return all component data for a specific entity."""
     return reg.view_entity(entity_id, format=format)
+
+
+# Fixed source key for every cmd_merge_yaml call, so repeated ad hoc
+# writes through this tool are attributed to the same source rather than
+# each getting its own synthetic file identity -- same convention
+# story-simulator's own WORLD_FILE_ID uses for its update_registry tool.
+MERGE_YAML_SOURCE_ID = "merge_yaml"
+
+
+def cmd_merge_yaml(reg: "Registrar", yaml_string: str) -> str:
+    """Validate then merge entity-first YAML into the registry.
+
+    Runs `Registrar.validate_write`'s mechanical safety checks first
+    (component-named-as-nested-entity, unknown component type) -- if
+    either fails, raises before anything is merged. The bare-mapping
+    check (a component given as a dict instead of a list) runs
+    automatically inside `update()` itself.
+    """
+    reg.validate_write(yaml_string)
+    reg.update(yaml_strings={MERGE_YAML_SOURCE_ID: yaml_string})
+    return "Merged into the registry."
+
+
+def cmd_review_components(reg: "Registrar", limit: int = 20) -> str:
+    """Return every data-bearing component type at once, plus consolidation
+    guidance, for the caller to review."""
+    return f"{reg.summarize_components(limit)}\n\n{CONSOLIDATION_GUIDANCE}"
 
 
 def cmd_run_dataflow(reg: "Registrar", name: str) -> str:

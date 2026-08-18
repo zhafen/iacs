@@ -139,6 +139,92 @@ class TestRegistryView:
         assert original.loc["iacs", "description.value"] == "A tool for architects"
 
 
+class TestRegistryViewAliases:
+    """Tests for the `aliases` filter on view()/view_current()."""
+
+    @pytest.fixture
+    def sample_registry(self):
+        """Same shape as TestRegistryView's fixture of the same name --
+        duplicated locally since pytest doesn't share method-scoped
+        fixtures across classes."""
+        conn = ibis.duckdb.connect()
+        conn.create_table(
+            "entity_id",
+            {"value": ["iacs", "registry"], "alias": ["iacs", "registry"],
+             "path": ["test:iacs", "test:registry"], "entity_key": ["iacs", "registry"],
+             "filepath": ["test", "test"]},
+        )
+        conn.create_table(
+            "description",
+            {"entity_id": ["iacs", "registry"], "value": ["A tool for architects", "Stores ECS data"]},
+        )
+        conn.create_table(
+            "field",
+            pd.DataFrame({"entity_id": [], "value": [], "time_dimension": []}),
+        )
+        components = {
+            "entity_id": conn.table("entity_id"),
+            "description": conn.table("description"),
+            "field": conn.table("field"),
+        }
+        return Registry(conn, components)
+
+    @pytest.fixture
+    def registry_with_ambiguous_alias(self):
+        """Two entities whose paths both contain "shared", but neither is
+        aliased or hashed to exactly "shared" -- resolving "shared" can only
+        succeed via the substring fallback, and matches both."""
+        conn = ibis.duckdb.connect()
+        conn.create_table(
+            "entity_id",
+            {
+                "value": ["e1", "e2", "e3"],
+                "alias": ["shared_a", "shared_b", "unrelated"],
+                "path": ["test:shared_a", "test:shared_b", "test:unrelated"],
+                "entity_key": ["shared_a", "shared_b", "unrelated"],
+                "filepath": ["test", "test", "test"],
+            },
+        )
+        conn.create_table(
+            "description",
+            {"entity_id": ["e1", "e2", "e3"], "value": ["First", "Second", "Third"]},
+        )
+        components = {
+            "entity_id": conn.table("entity_id"),
+            "description": conn.table("description"),
+        }
+        return Registry(conn, components)
+
+    def test_aliases_filters_to_exact_match(self, sample_registry):
+        result = sample_registry.view_df("description", aliases="iacs")
+        assert list(result.index) == ["iacs"]
+
+    def test_aliases_accepts_a_list(self, sample_registry):
+        result = sample_registry.view_df("description", aliases=["iacs", "registry"])
+        assert set(result.index) == {"iacs", "registry"}
+
+    def test_aliases_multi_match_includes_all_matches(self, registry_with_ambiguous_alias):
+        result = registry_with_ambiguous_alias.view_df("description", aliases="shared")
+        assert set(result.index) == {"e1", "e2"}
+
+    def test_aliases_multi_match_warns(self, registry_with_ambiguous_alias):
+        with pytest.warns(UserWarning, match="shared"):
+            registry_with_ambiguous_alias.view_df("description", aliases="shared")
+
+    def test_aliases_zero_match_excludes_everything(self, sample_registry):
+        with pytest.warns(UserWarning, match="nonexistent"):
+            result = sample_registry.view_df("description", aliases="nonexistent")
+        assert len(result) == 0
+
+    def test_aliases_none_returns_everything(self, sample_registry):
+        result = sample_registry.view_df("description")
+        assert set(result.index) == {"iacs", "registry"}
+
+    def test_aliases_applies_to_view_current_too(self, sample_registry):
+        result = sample_registry.view_current("description", aliases="iacs").execute()
+        assert list(result["entity_id"]) == ["iacs"]
+
+
 class TestRegistryViewMultipleComponents:
     """Tests for viewing multiple components joined by entity_id."""
 
@@ -480,6 +566,19 @@ class TestRegistryDeclareSchema:
     def test_view_still_raises_keyerror_for_undeclared_type(self, sample_registry):
         with pytest.raises(KeyError):
             sample_registry.view("nonexistent")
+
+    def test_known_component_types_includes_declared_but_dataless_type(self, sample_registry):
+        """component_types alone can't distinguish "this type doesn't exist"
+        from "this type exists but nobody's used it yet" -- known_component_types
+        can."""
+        schema = ibis.schema({"entity_id": "string", "component_index": "int64", "modifier": "string", "x": "float64"})
+        sample_registry.declare_schema("position", schema)
+        assert "position" not in sample_registry.component_types
+        assert "position" in sample_registry.known_component_types
+
+    def test_known_component_types_includes_data_bearing_types(self, sample_registry):
+        assert "entity_id" in sample_registry.known_component_types
+        assert "field" in sample_registry.known_component_types
 
     def test_declare_schema_is_noop_when_physical_table_exists(self, sample_registry):
         """Real data's own schema always wins over a merely declared one."""
