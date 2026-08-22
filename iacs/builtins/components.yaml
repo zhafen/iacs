@@ -225,6 +225,15 @@ iacs_component:
                       Positive ratings are pros, negative ratings are cons.
                   type: float
                   range: [-1, 1]
+              effect:
+                  description: >
+                      Optional qualitative restatement of this rating's
+                      actual pro/con direction and size once combined with
+                      its own consideration's weight (i.e. of weight *
+                      rating, not of rating alone) -- for a reader who wants
+                      the verdict without doing the arithmetic themselves.
+                  type: str
+                  range: [major pro, minor pro, no effect, minor con, major con]
     task:
         - description: >
               Indicates that an entity represents a task that needs to be completed,
