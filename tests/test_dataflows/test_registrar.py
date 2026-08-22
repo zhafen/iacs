@@ -77,7 +77,7 @@ class TestExtendedDerivePipeline:
             "batch": (
                 "req_a:\n"
                 "    - description: Requirement A\n"
-                "    - requirement: 0.5\n"
+                "    - requirement_priority: 0.5\n"
             )
         })
         # resolved_impact_cost/priority_product only exist if impact_cost's

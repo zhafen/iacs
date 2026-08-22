@@ -83,7 +83,7 @@ class TestDescribeFormatCommand:
 VALID_YAML = """\
 my_requirement:
     - description: Something that must be done.
-    - requirement:
+    - requirement_priority:
           value: 0.8
 
 my_solution:

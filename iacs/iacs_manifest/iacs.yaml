@@ -6,39 +6,39 @@ iacs:
                   technical architects design arbitrary infrastructure in a code-first format
                   without worrying about the precise details of the implementation or the
                   system-specific syntax.
-            - requirement
+            - requirement_priority
             - mission
         provide_quality_end_to_end_documentation_of_infrastructure:
             data:
                 - description: >
                       Provide a means to comprehensively and accurately document
                       infrastructure.
-                - requirement: 1.0
+                - requirement_priority: 1.0
             provide_a_source_of_truth:
                 data:
-                    - requirement
+                    - requirement_priority
                 minimize_duplication:
                     data:
-                        - requirement: {type: quality}
+                        - requirement_priority: {type: quality}
                     parse_infrastructure_in_a_wide_variety_of_formats:
                         data:
                             - description: >
                                   If infrastructure is defined elsewhere in an
                                   existing format, we don't want to duplicate it and
                                   therefore introduce a source of uncertainty.
-                            - requirement
+                            - requirement_priority
                         parse_a_variety_of_IaC_formats:
                             - description: >
                                   We don't want to duplicate other IaC code if
                                   possible.
-                            - requirement
+                            - requirement_priority
                             - cost:
                                 value: 26
                                 type: high_intensity_development_hours
                         parse_code_languages:
                             - description: >
                                   Code such as Python also provides clear definitions.
-                            - requirement
+                            - requirement_priority
                             - cost:
                                 value: 16
                                 type: development_hours
@@ -51,112 +51,112 @@ iacs:
                                   into ECS data requires resolving coreferences, extracting
                                   atomic facts, and mapping them to canonical entity and
                                   component representations.
-                            - requirement
+                            - requirement_priority
                             - cost:
                                 value: 42
                                 type: high_intensity_development_hours
                 compatible_with_version_control:
                     - description: >
                           Version control is essential for reliability.
-                    - requirement: {type: constraint}
+                    - requirement_priority: {type: constraint}
                 aggregate_all_definitions_in_one_location:
                     - description: >
                           A source of truth is not *a* source of truth if it is
                           distributed.
-                    - requirement
+                    - requirement_priority
             comprehensively_document_infrastructure:
                 data:
                     - description: >
                           This is one of the key features iacs provides that other
                           modeling tools do not--the ability to define and model
                           every type of infrastructure conceivable.
-                    - requirement: 1.0
+                    - requirement_priority: 1.0
                 accept_user_defined_infrastructure:
                     data:
                         - description: >
                               Users need to be able to describe the infrastructure they
                               want to build.
-                        - requirement
+                        - requirement_priority
                     describe_infrastructure_with_ecs_framework:
                         - id: ecs_framework_base_requirement
                         - description: >
                               One potential solution for allowing users to define
                               infrastructure is via an ECS framework.
-                        - requirement
+                        - requirement_priority
                 compatible_with_any_type_of_infrastructure:
                     data:
-                        - requirement: {type: constraint}
+                        - requirement_priority: {type: constraint}
                     compatible_with_standard_components:
                         - description: >
                               We need to be able to define standard parts of solutions
                               architecture, e.g. users.
-                        - requirement: {type: constraint}
+                        - requirement_priority: {type: constraint}
                     compatible_with_human_executed_infrastructure:
                         - description: >
                               Human-executed infrastructure is infrastructure that is
                               not yet (or cannot be) automated. Bureaucracies have a lot
                               of this.
-                        - requirement: {type: constraint}
+                        - requirement_priority: {type: constraint}
                     compatible_with_abstract_components:
                         - description: >
                               Abstract components of infrastructure include
                               poorly-defined components and abstract concepts,
                               e.g. requirements.
-                        - requirement: {type: constraint}
+                        - requirement_priority: {type: constraint}
                 scales_well:
                     - description: >
                           We of course want the data format to be compatible with
                           expensive calculations, but this is definitely a lower
                           priority since we don't expect large volumes of data
                           in the course of planning.
-                    - requirement:
+                    - requirement_priority:
                           type: quality
                           value: 0.1
             provide_documentation_in_formats_meeting_all_common_needs:
                 data:
-                    - requirement
+                    - requirement_priority
                 have_good_formats:
                     have_human_and_agent_friendly_input_format:
                         - description: In the ECS framework this is the entity-first format.
-                        - requirement: 0.9
+                        - requirement_priority: 0.9
                     have_analysis_friendly_ingested_format:
                         - description: >
                             In the ECS framework this is the component-first format.
-                        - requirement: 0.9
+                        - requirement_priority: 0.9
                     export_infrastructure_to_wiki:
                         - description: >
                             Wikis are a very common and readable way of documenting
                             knowledge. This would be a good and easy default.
-                        - requirement
+                        - requirement_priority
                         - cost:
                             value: 10
                             type: low_intensity_development_hours
                 transform_between_formats:
                     data:
-                        - requirement: 0.9
+                        - requirement_priority: 0.9
                     transform_between_entity_first_and_component_first:
-                        - requirement: 0.9
+                        - requirement_priority: 0.9
                         - cost:
                             value: 16
                             type: development_hours
             address_issues_with_multiple_possible_representations:
                 data:
-                    - requirement: 0.7
+                    - requirement_priority: 0.7
                 address_when_to_make_fields_a_particular_object_type_vs_a_base_type:
-                    - requirement: 0.7
+                    - requirement_priority: 0.7
                 address_when_use_parents_vs_components:
-                    - requirement: 0.9
+                    - requirement_priority: 0.9
         help_improve_the_quality_of_system_designs:
             data:
-                - requirement
+                - requirement_priority
             improve_complex_solution_architectures:
                 data:
                     - description: >
                           Many solutions are too complex for a simple view, but they still
                           need to be assessed for completeness, accuracy, documentation, etc.
-                    - requirement
+                    - requirement_priority
                 provide_an_interface_for_interactive_development:
-                    - requirement
+                    - requirement_priority
                     - description: >
                         The start of this may be the d3js tree viewer we created.
                         But that feels like it's potentially starting from scratch.
@@ -167,35 +167,35 @@ iacs:
                         - description: >
                               Requiring solutions to pass well-defined tests sets a
                               baseline minimum quality.
-                        - requirement
+                        - requirement_priority
                     provide_tools_to_build_tests_for_system_designs:
-                        - requirement
+                        - requirement_priority
                     provide_default_tests_for_systems:
                         data:
-                            - requirement
+                            - requirement_priority
                         test_for_identifying_requirements_missing_solutions:
                             - description: >
                                   Tests for both requirements without solutions and
                                   requirements without adequate/implemented solutions.
-                            - requirement
+                            - requirement_priority
                         trace_every_component_to_a_requirement:
                             - description: >
                                   There should be a motivation for every piece of
                                   infrastructure.
-                            - requirement
+                            - requirement_priority
                         test_for_invalid_definitions:
-                            - requirement
+                            - requirement_priority
                         test_for_siloed_infrastructure:
                             - description: >
                                   Everything should be part of one big solution.
-                            - requirement
+                            - requirement_priority
                         test_for_completed_todos:
-                            - requirement
+                            - requirement_priority
                 convey_complex_architectures:
                     - description: >
                           Part of validation is also understanding how an architecture
                           works, for which we need views into the architecture.
-                    - requirement
+                    - requirement_priority
             create_a_procedure_for_designing_systems:
                 data:
                     - description: >
@@ -205,7 +205,7 @@ iacs:
 
                           Our series of steps revolves around requirements and the
                           systems that solve them.
-                    - requirement
+                    - requirement_priority
                 requirement_design_process:
                     - description: >
                           First step of the process is to identify the big picture
@@ -213,17 +213,17 @@ iacs:
                           picture requirement down into smaller ones recursively,
                           until reaching atomic requirements, i.e. ones that cannot be
                           further divided.
-                    - requirement
+                    - requirement_priority
                 system_design_process:
                     - description: >
                           For each entity with a requirement component it must also
                           have a solution component. The requirements are prioritized
                           by priority at each level and addressed, even if only the
                           skeleton at first.
-                    - requirement
+                    - requirement_priority
                 have_a_good_scoring_system:
                     data:
-                        - requirement
+                        - requirement_priority
                         - description: >
                               Once multiple candidate solutions exist for a
                               requirement, we need a way to choose among them --
@@ -242,7 +242,7 @@ iacs:
                               enough to just implement.
                     consideration_scoring_system:
                         data:
-                            - solution of: have_a_good_scoring_system
+                            - solution of: create_a_procedure_for_designing_systems.have_a_good_scoring_system
                             - description: >
                                   Score each candidate solution's pros and cons
                                   using iacs's own consideration/
@@ -251,7 +251,7 @@ iacs:
                                   solution's rating against that axis.
                             - work_state: in progress
                         capture_pros_and_cons:
-                            - requirement
+                            - requirement_priority
                             - description: >
                                   The scoring system must capture both pros
                                   and cons. Already met directly by
@@ -260,12 +260,12 @@ iacs:
                                   solution is needed here.
                         intuitive_weight_scale:
                             data:
-                                - requirement
+                                - requirement_priority
                                 - description: >
                                       An axis's importance (weight) must
                                       reflect human judgment intuitively.
                             log_scale_weights:
-                                - solution of: intuitive_weight_scale
+                                - solution of: consideration_scoring_system.intuitive_weight_scale
                                 - description: >
                                       Discrete multiplicative grades --
                                       baseline 8, 1 = low importance,
@@ -275,14 +275,14 @@ iacs:
                                       once the axes for evaluating scale
                                       formats themselves are decided.
                             integer_scale_weights:
-                                - solution of: intuitive_weight_scale
+                                - solution of: consideration_scoring_system.intuitive_weight_scale
                                 - description: Small signed integers.
                                 - todo: >
                                       Fill in consideration_rating pros/cons
                                       once the axes for evaluating scale
                                       formats themselves are decided.
                             float_unbounded_weights:
-                                - solution of: intuitive_weight_scale
+                                - solution of: consideration_scoring_system.intuitive_weight_scale
                                 - description: >
                                       Continuous float, -inf to inf (the
                                       current approach).
@@ -292,26 +292,26 @@ iacs:
                                       formats themselves are decided.
                         intuitive_rating_scale:
                             data:
-                                - requirement
+                                - requirement_priority
                                 - description: >
                                       Each solution's per-axis rating must
                                       reflect human judgment intuitively.
                             log_scale_ratings:
-                                - solution of: intuitive_rating_scale
+                                - solution of: consideration_scoring_system.intuitive_rating_scale
                                 - description: Discrete multiplicative grades.
                                 - todo: >
                                       Fill in consideration_rating pros/cons
                                       once the axes for evaluating scale
                                       formats themselves are decided.
                             integer_scale_ratings:
-                                - solution of: intuitive_rating_scale
+                                - solution of: consideration_scoring_system.intuitive_rating_scale
                                 - description: Small signed integers.
                                 - todo: >
                                       Fill in consideration_rating pros/cons
                                       once the axes for evaluating scale
                                       formats themselves are decided.
                             float_unbounded_ratings:
-                                - solution of: intuitive_rating_scale
+                                - solution of: consideration_scoring_system.intuitive_rating_scale
                                 - description: >
                                       Continuous float, -1 to 1 (the current
                                       approach).
@@ -321,7 +321,7 @@ iacs:
                                       formats themselves are decided.
                         handle_all_sign_combinations:
                             data:
-                                - requirement
+                                - requirement_priority
                                 - description: >
                                       good axis + good rating = pro, good axis
                                       + bad rating = con, bad axis + good
@@ -329,7 +329,7 @@ iacs:
                                       bad rating = con -- all four must come
                                       out intuitively.
                             signed_weight_times_signed_rating:
-                                - solution of: handle_all_sign_combinations
+                                - solution of: consideration_scoring_system.handle_all_sign_combinations
                                 - description: >
                                       contribution = weight * rating; the
                                       product's sign determines pro/con.
@@ -339,7 +339,7 @@ iacs:
                                 - work_state: in progress
         provide_a_launching_point_for_infrastructure_implementation:
             data:
-                - requirement
+                - requirement_priority
             provide_a_guided_process_for_developing_solutions:
                 data:
                     - description: >
@@ -347,27 +347,27 @@ iacs:
                             - Hierarchical requirements
                             - categorize requirements
                             - convert functional requirements into systems
-                    - requirement: {type: constraint}
+                    - requirement_priority: {type: constraint}
                 provide_functionality_for_prioritizing:
                     - description: >
                         We desperately need this in order to use it on development
                         and continue making progress.
-                    - requirement: 1.0
+                    - requirement_priority: 1.0
                     - cost:
                         value: 16
                         type: development_hours
             facilitate_compatibility_with_agents:
-                - requirement: {type: constraint}
+                - requirement_priority: {type: constraint}
                 - cost:
                     value: 16
                     type: development_hours
             facilitate_compatibility_with_terraform:
-                - requirement: {type: constraint}
+                - requirement_priority: {type: constraint}
                 - cost:
                     value: 26
                     type: high_intensity_development_hours
             facilitate_compatibility_with_relational_databases:
-                - requirement: {type: constraint}
+                - requirement_priority: {type: constraint}
                 - cost:
                     value: 16
                     type: development_hours
@@ -687,13 +687,13 @@ iacs:
                         make_cats_happy:
                             data:
                                 - description: The mission.
-                                - requirement: 1
+                                - requirement_priority: 1
                             feed_and_water_cats:
                                 data:
                                     - description: Obviously.
-                                    - requirement: 1
+                                    - requirement_priority: 1
                                 water_cats:
-                                    - requirement
+                                    - requirement_priority
                                     - alias: water_cats
                         cat_happiness_device:
                             data:
@@ -767,6 +767,81 @@ iacs:
                   elsewhere: confirm each one is still needed for startup
                   performance or to avoid a circular import, and move any that
                   aren't back to the top of the file.
+        requirement_solution_modeling_discussion:
+            data:
+                - description: >
+                      The problem this whole file's requirement/solution
+                      tree is itself a solution to: making sure
+                      requirements are met -- identifying clear goals and
+                      finding ways to fulfill them. This entry tries a
+                      third way of connecting things, to compare against
+                      the two already in use elsewhere in this file: no
+                      ``- requirement_priority``/``- solution`` tags at
+                      all, entities related purely through ((solution))
+                      and ((requirement)), an entity's role implied
+                      entirely by which relations point at it rather than
+                      by a label.
+            mirrored_two_tree_architecture:
+                - description: >
+                      What the rest of this file does: a requirement tree
+                      (``iacs:``) and a separate solution tree
+                      (``iacs_solution:``) that mirror each other,
+                      connected by ``solution of:`` links across the two
+                      trees.
+                - solution of: iacs_meta_discussion.requirement_solution_modeling_discussion
+            alternating_nested_tree_architecture:
+                - description: >
+                      A single tree where requirement and solution entities
+                      nest directly inside each other instead of mirroring
+                      two separate trees -- see this file's
+                      have_a_good_scoring_system for the worked example.
+                      Still uses ``- requirement_priority``/``- solution
+                      of:`` tags at each level; in practice it ended up
+                      feeling like just two separate trees again, one per
+                      branch, rather than a real simplification.
+                - solution of: iacs_meta_discussion.requirement_solution_modeling_discussion
+            pure_connection_architecture:
+                data:
+                    - description: >
+                          No ``- requirement_priority``/``- solution``
+                          tags anywhere: an entity's role is implied
+                          entirely by which ((solution))/((requirement))
+                          relations point at it, not by a label. This
+                          entry (and its children below) is itself
+                          written this way, as the trial.
+                    - solution of: iacs_meta_discussion.requirement_solution_modeling_discussion
+                optional_consideration_linkage:
+                    data:
+                        - description: >
+                              A consideration_rating's own consideration
+                              key (``value``) can be left null for a plain,
+                              uncategorized pro/con -- just "is this strong
+                              or weak," no shared axis to weigh it against
+                              others by. Its effective weight then defaults
+                              to 1 (same as an explicit weight-1
+                              consideration) rather than 0, so it still
+                              counts in a weighted total instead of
+                              vanishing. One architecture covers both the
+                              weighted and the unweighted case: a
+                              consideration component plus a
+                              consideration_rating component, using the
+                              consideration's weight when a match exists
+                              and defaulting to 1 when it doesn't.
+
+                              Deferred, not built: auto-creating a
+                              consideration from a rating's own category
+                              when that category isn't shared with any
+                              other rating.
+                        - solution of: create_a_procedure_for_designing_systems.have_a_good_scoring_system
+                    null_value_representation:
+                        - description: >
+                              Needs YAML's null (an omitted ``value:``
+                              field, or an explicit ``value: null``) to
+                              actually mean "no category," not the empty
+                              string -- an empty string would just be a
+                              consideration keyed "" rather than an
+                              absence of one.
+                        - requirement of: pure_connection_architecture.optional_consideration_linkage
 
 ecs_framework:
     data:
@@ -782,13 +857,13 @@ ecs_framework:
         data:
             - id: ecs_framework_requirements
             - description: The requirements specifically for our ECS framework.
-            - requirement
+            - requirement_priority
         describe_requirements:
             data:
                 - description: >
                       Our approach to solution design centers on requirements, so we
                       better be able to document them.
-                - requirement
+                - requirement_priority
             describe_hierarchical_requirements:
                 data:
                     - id: describe_hierarchical_requirements
@@ -797,7 +872,7 @@ ecs_framework:
                           fundamental requirements and break them into subrequirements.
                           Child requirements are requirements that need to be
                           satisfied for the parent requirement to be satisfied.
-                    - requirement
+                    - requirement_priority
                 enable_multiple_inheritance_for_requirements:
                     - id: enable_multiple_inheritance_for_requirements
                     - description: >
@@ -805,23 +880,23 @@ ecs_framework:
                           relationship to that requirement. When multiple requirements
                           depend on a single requirement, that subsequently implies
                           multiple inheritance.
-                    - requirement
+                    - requirement_priority
             handle_complex_requirement_structure:
                 - description: >
                       In advanced systems, the motivations for any one solution
                       can be manifold and complex. We need a way to make sense of it.
-                - requirement
+                - requirement_priority
         describe_systems:
             data:
                 - description: >
                       We need to be able to describe systems built to fulfill
                       requirements.
-                - requirement
+                - requirement_priority
             describe_entities:
                 data:
                     - description: >
                           We need to be able to describe entities as sets of components.
-                    - requirement
+                    - requirement_priority
                 have_unique_identifiers:
                     - description: We need a method to uniquely identify entities.
             describe_hierarchical_systems:
@@ -834,7 +909,7 @@ ecs_framework:
                 - description: >
                       A generalized requirement of several other requirements is the ability
                       to describe hierarchical structure.
-                - requirement
+                - requirement_priority
                 - parent:
                     - describe_hierarchical_requirements
                     - describe_hierarchical_systems
@@ -849,60 +924,60 @@ ecs_framework:
                           This is also consistent with path-like
                           syntax, e.g. for Python modules, classes, and functions and
                           for filepaths.
-                    - requirement
+                    - requirement_priority
                 handle_multiple_inheritance_for_entity_ids_defined_by_hierarchy:
                     data:
                         - description: >
                               When there are multiple parents we need a way to uniquely
                               define the entity ID.
                         - parent: enable_multiple_inheritance
-                        - requirement
+                        - requirement_priority
                     require_id_override_for_multiparent_entities:
                         - description: >
                               One solution is to just force define a new ID.
-                        - requirement
+                        - requirement_priority
             enable_multiple_inheritance:
                 - parent: enable_multiple_inheritance_for_requirements
-                - requirement
+                - requirement_priority
             enable_flexible_syntax:
                 enable_per_entity_format:
                     - description: >
                           A guaranteed format to describe any entity is only
                           describing one entity at a time.
-                    - requirement
+                    - requirement_priority
                 enable_nested_format:
                     - description: >
                           It can be much easier to describe hierarchical systems if
                           the nesting of entities reflects a parent-child relation.
-                    - requirement: {type: quality}
+                    - requirement_priority: {type: quality}
             enable_inherited_components:
                 - description: >
                       When children share something in common with their parents
                       (e.g. they are all requirements) repeating a "requirement"
                       component can be verbose and exhausting.
-                - requirement: {type: quality}
+                - requirement_priority: {type: quality}
         be_easy_to_use:
             data:
-                - requirement: {type: quality}
+                - requirement_priority: {type: quality}
             have_good_formatting:
                 data:
                     - description: >
                           As defined by the sub-requirements.
-                    - requirement: {type: quality}
+                    - requirement_priority: {type: quality}
                 have_good_formatting_across_formats:
                     data:
-                        - requirement: {type: quality}
+                        - requirement_priority: {type: quality}
                     have_good_yaml_formatting:
-                        - requirement: {type: quality}
+                        - requirement_priority: {type: quality}
                     have_good_ecs_formatting:
-                        - requirement: {type: quality}
+                        - requirement_priority: {type: quality}
                 formatting_is_powerful:
                     enable_pointing_to_entities:
                         - description: >
                               This is required for ((relation)) components. The
                               fundamental ask is that we need a convenient means
                               to identify another entity.
-                        - requirement:
+                        - requirement_priority:
                               type: quality
                               value: 0.9
                         - parent: have_good_yaml_formatting
@@ -911,7 +986,7 @@ ecs_framework:
                               We frequently want to edit entity entries in manifests based
                               on something we see when exploring the ECS-formatted data
                               so we want to be able to get to it easily.
-                        - requirement:
+                        - requirement_priority:
                               type: quality
                         - parent: have_good_ecs_formatting
                     concisely_store_subtype_data:
@@ -921,11 +996,11 @@ ecs_framework:
                             either have a separate table or have a column that
                             differentiates them. We need to evaluate the pros and cons
                             of each.
-                        - requirement
+                        - requirement_priority
                 formatting_is_concise:
                     children_inherit_components_of_parents:
                         data:
-                            - requirement:
+                            - requirement_priority:
                                   type: quality
                                   value: 0.7
                             - parent: have_good_yaml_formatting
@@ -965,7 +1040,7 @@ ecs_framework:
                               For example, it would be nice to concisely define a
                               field with something like "my_field[str] = 'default': a
                               description of my field".
-                        - requirement:
+                        - requirement_priority:
                               type: quality
                               value: 0.6
                         - parent: have_good_yaml_formatting
@@ -973,12 +1048,12 @@ ecs_framework:
                         - description: >
                               A component table without knowing what entities the
                               components are associated with at a glance is hard to use.
-                        - requirement: {type: quality}
+                        - requirement_priority: {type: quality}
                         - parent: have_good_ecs_formatting
                 formatting_is_flexible:
                     allow_relations_to_be_defined_as_part_of_target_entities:
                         - description: I.e, enable use of "parent of".
-                        - requirement:
+                        - requirement_priority:
                               type: quality
                               value: 0.5
                         - parent: have_good_yaml_formatting
@@ -1506,12 +1581,12 @@ ecs_framework:
                       The component-first ECS format organizes the data around
                       component types, grouping together component instances of the
                       same type. This format is best for querying and analysis.
-                - requirement: {type: constraint}
+                - requirement_priority: {type: constraint}
             registry:
                 - description: >
                       Component-centered data is stored in a registry, which contains
                       one component table per component type.
-                - requirement: {type: constraint}
+                - requirement_priority: {type: constraint}
             entity_id:
                 data:
                     - description: >
@@ -1572,7 +1647,7 @@ ecs_framework:
                     - description: >
                           Each component table stores all component instances for a
                           given component type, with one row per component instance.
-                    - requirement: {type: constraint}
+                    - requirement_priority: {type: constraint}
                 table_index:
                     - description: >
                           The index for a component table is a multi-index consisting
@@ -1585,19 +1660,19 @@ ecs_framework:
                           - Load data via functions, defined in their own specific module.
                           - Take that loaded data, and transform/ensure indexes match the output you want to create.
                           - Continue with transformations.
-                    - requirement: {type: constraint}
+                    - requirement_priority: {type: constraint}
                 subtype_column:
                     - description: >
                           Components of different subtypes (i.e. components that are
                           subsets of the same component and share the same schema)
                           can reside in the same table. A "component_type" column
                           distinguishes them.
-                    - requirement: {type: constraint}
+                    - requirement_priority: {type: constraint}
                 schema_columns:
                     - description: >
                           The remaining columns in a component table are the columns
                           defined by the component schema.
-                    - requirement: {type: constraint}
+                    - requirement_priority: {type: constraint}
 
 audit_system:
     data:
@@ -1665,14 +1740,14 @@ audit_system:
                                   placed on a common scale. Raw values may use
                                   incompatible units or ranges, so normalization is
                                   required for meaningful comparison.
-                            - requirement
+                            - requirement_priority
                         store_normalized_data:
                             data:
                                 - description: >
                                       Once normalized values are computed, they must
                                       be persisted somewhere in the registry. Several
                                       strategies exist for where and how to store them.
-                                - requirement
+                                - requirement_priority
                             overwrite_original_column:
                                 data:
                                     - description: >
@@ -1806,7 +1881,7 @@ audit_system:
                         binding constraint identification, impact-per-cost
                         ranking, and dual solution when constraints bind
                         simultaneously.
-                    - requirement
+                    - requirement_priority
         requirement_coverage_audit:
             - description: >
                   Checks that requirements have implementing solutions.
@@ -1961,7 +2036,7 @@ dataflow_system:
               into a registry. They cover extracting raw data from source formats
               (e.g. EC files, CSV files), transforming it into component
               tables, and loading the result into the registry.
-        - requirement: 1.0
+        - requirement_priority: 1.0
     validation:
         - description: >
               Validation dataflows are operations that can be run routinely on a
@@ -1969,7 +2044,7 @@ dataflow_system:
               verify that component data conforms to schema constraints, that
               relationships between entities are consistent, and that derived
               components are up to date.
-        - requirement: 0.8
+        - requirement_priority: 0.8
     audit:
         - description: >
               Audit dataflows are operations that audit the infrastructure defined
@@ -1977,7 +2052,7 @@ dataflow_system:
               audits evaluate the quality and completeness of the design itself—for
               example checking requirement coverage, traceability, and outstanding
               todos.
-        - requirement: 0.6
+        - requirement_priority: 0.6
 
 text_discretization:
     data:
@@ -1993,7 +2068,7 @@ text_discretization:
               separate from the core iacs repo. At minimum the split is two repos:
               one for iacs core functionality and one for the text-discretization
               pipeline.
-        - requirement
+        - requirement_priority
     user_defined_schema:
         data:
             - description: >
@@ -2002,7 +2077,7 @@ text_discretization:
                   fields the discretized output should use). This allows domain-
                   specific vocabularies to be encoded and enforced rather than
                   relying on a generic default schema.
-            - requirement
+            - requirement_priority
     model_inferred_schema:
         data:
             - description: >
@@ -2011,7 +2086,7 @@ text_discretization:
                   schema (component definitions) before producing EC file output.
                   The proposed schema is presented to the user for review and
                   refinement before the full discretization run.
-            - requirement
+            - requirement_priority
     compare_existing_tools:
         data:
             - description: >
@@ -2021,7 +2096,7 @@ text_discretization:
                   knowledge-graph extractors, information-extraction pipelines,
                   ontology-learning systems, and LLM-based structured-output
                   frameworks.
-            - requirement
+            - requirement_priority
             - todo: >
                   Complete a landscape review of overlapping tools (e.g. Graphiti,
                   Instructor, LlamaIndex property-graph extraction, DSPy, Marvin,

@@ -7,7 +7,7 @@ import ibis.expr.types as ir
 from emc2p.registry import Registry
 
 
-INPUT_COMPONENT_TYPES = ["requirement", "solution_of", "entity_id"]
+INPUT_COMPONENT_TYPES = ["requirement_priority", "solution_of", "entity_id"]
 
 
 @extract_fields({ct: ir.Table for ct in INPUT_COMPONENT_TYPES})
@@ -27,9 +27,9 @@ def all_entities(entity_id: ir.Table) -> ibis.expr.types.Table:
     return entity_id.select(entity_id["value"].name("entity_id")).distinct()
 
 
-def req_entities(requirement: ir.Table) -> ibis.expr.types.Table:
-    """Get entities with requirement components."""
-    return requirement.select("entity_id").distinct()
+def req_entities(requirement_priority: ir.Table) -> ibis.expr.types.Table:
+    """Get entities with requirement_priority components."""
+    return requirement_priority.select("entity_id").distinct()
 
 
 def solution_entities(solution_of: ir.Table) -> ibis.expr.types.Table:

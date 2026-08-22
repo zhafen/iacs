@@ -11,12 +11,12 @@ _hierarchical_file_str = """
 make_cats_happy:
     data:
         - description: The mission of our cat-happiness device.
-        - requirement:
+        - requirement_priority:
             value: 1.0
             type: functional
     feed_and_water_cats:
         - description: Obviously.
-        - requirement:
+        - requirement_priority:
             value: 1.0
             type: functional
 """
@@ -25,22 +25,22 @@ make_cats_happy:
 entity_first_data = {
     _eid("make_cats_happy"): [
         (0, {"description": {"value": "The mission of our cat-happiness device."}}),
-        (1, {"requirement": {"value": 1.0, "type": "functional"}}),
+        (1, {"requirement_priority": {"value": 1.0, "type": "functional"}}),
     ],
     _eid("make_cats_happy.feed_and_water_cats"): [
         (0, {"description": {"value": "Obviously."}}),
-        (1, {"requirement": {"value": 1.0, "type": "functional"}}),
+        (1, {"requirement_priority": {"value": 1.0, "type": "functional"}}),
     ],
 }
 
 condensed_entity_first_data = {
     _eid("make_cats_happy"): [
         (0, {"description": "The mission of our cat-happiness device."}),
-        (1, {"requirement": {"value": 1.0, "type": "functional"}}),
+        (1, {"requirement_priority": {"value": 1.0, "type": "functional"}}),
     ],
     _eid("make_cats_happy.feed_and_water_cats"): [
         (0, {"description": "Obviously."}),
-        (1, {"requirement": {"value": 1.0, "type": "functional"}}),
+        (1, {"requirement_priority": {"value": 1.0, "type": "functional"}}),
     ],
 }
 

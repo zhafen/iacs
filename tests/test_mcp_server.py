@@ -117,7 +117,7 @@ class TestDescribeFormat:
 VALID_YAML = """\
 my_requirement:
     - description: Something that must be done.
-    - requirement:
+    - requirement_priority:
           value: 0.8
 
 my_solution:
@@ -157,11 +157,11 @@ class TestValidateYamlString:
 parent_req:
     data:
         - description: A parent requirement.
-        - requirement:
+        - requirement_priority:
               value: 1
     child_req:
         - description: A child requirement.
-        - requirement:
+        - requirement_priority:
               value: 0.5
 """
         result = _validate_yaml_string(nested)
@@ -170,7 +170,7 @@ parent_req:
     def test_solution_of_is_valid(self):
         yaml_str = """\
 req:
-    - requirement:
+    - requirement_priority:
           value: 1
 
 sol:

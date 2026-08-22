@@ -14,29 +14,29 @@ raw_entity_first_data = {
         "make_cats_happy": {
             "data": [
                 {"description": "The mission of our cat-happiness device."},
-                {"requirement": 1},
+                {"requirement_priority": 1},
             ],
             "feed_and_water_cats": {
                 "data": [
                     {"description": "Obviously."},
-                    {"requirement": 1},
+                    {"requirement_priority": 1},
                 ],
                 "feed_cats": [
-                    {"requirement": 0.9},
+                    {"requirement_priority": 0.9},
                     {"alias": "feed_cats"},
                 ],
                 "water_cats": [
-                    "requirement",
+                    "requirement_priority",
                     {"alias": "water_cats"},
                 ],
             },
             "sift_cat_box": [
                 {"description": "Unfortunately."},
-                {"requirement": 0.8},
+                {"requirement_priority": 0.8},
             ],
             "adore_cats": [
                 {"description": "Of course."},
-                "requirement",
+                "requirement_priority",
             ],
         },
         "cat_happiness_device": {
@@ -168,7 +168,7 @@ component_tables = {
             }
         ]
     ),
-    "requirement": pd.DataFrame(
+    "requirement_priority": pd.DataFrame(
         [
             {
                 "entity_id": main_req_id,

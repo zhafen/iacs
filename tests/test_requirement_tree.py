@@ -12,7 +12,7 @@ def _registry(entity_id_rows, parent_rows, requirement_rows):
     if parent_rows:
         components["parent"] = parent_rows
     if requirement_rows:
-        components["requirement"] = requirement_rows
+        components["requirement_priority"] = requirement_rows
     return make_registry(components)
 
 

@@ -7,7 +7,7 @@ raw_entity_first_data = {
     "examples/minimal/minimal.yaml": {
         "my_requirement": [
             {"description": "A task I need to complete."},
-            "requirement",
+            "requirement_priority",
             {"solution": "my_infrastructure"},
         ],
         "my_infrastructure": [

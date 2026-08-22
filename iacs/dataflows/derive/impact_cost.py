@@ -13,7 +13,7 @@ from emc2p.utils import candidate_entity_ids, non_format_guide_ids
 
 
 INPUT_COMPONENT_TYPES = [
-    "entity_id", "parent", "requirement", "impact", "cost", "impact_budget", "cost_budget",
+    "entity_id", "parent", "requirement_priority", "impact", "cost", "impact_budget", "cost_budget",
 ]
 
 
@@ -185,12 +185,12 @@ def normalized_cost_total(normalized_cost_sum: pd.DataFrame, cost_time_period: s
     return result
 
 
-def priority_product(parent: ir.Table, entity_id: ir.Table, requirement: ir.Table) -> pd.DataFrame:
+def priority_product(parent: ir.Table, entity_id: ir.Table, requirement_priority: ir.Table) -> pd.DataFrame:
     """Compute the product of requirement priorities for an entity and its ancestors.
 
-    For each entity that has a requirement component itself or has at least one
-    ancestor with a requirement component, multiplies together the priority values
-    of the entity and all its requirement ancestors.
+    For each entity that has a requirement_priority component itself or has at least
+    one ancestor with a requirement_priority component, multiplies together the
+    priority values of the entity and all its requirement_priority ancestors.
 
     Parameters
     ----------
@@ -198,16 +198,17 @@ def priority_product(parent: ir.Table, entity_id: ir.Table, requirement: ir.Tabl
         The parent component table from the registry.
     entity_id : ir.Table
         The entity_id component table from the registry.
-    requirement : ir.Table
-        The requirement component table from the registry.
+    requirement_priority : ir.Table
+        The requirement_priority component table from the registry.
 
     Returns
     -------
     pd.DataFrame
         Columns: entity_id, priority_product.  One row per entity that has
-        a requirement component or at least one ancestor with a requirement component.
+        a requirement_priority component or at least one ancestor with a
+        requirement_priority component.
     """
-    req_df = requirement.to_pandas()
+    req_df = requirement_priority.to_pandas()
     if req_df.empty or "value" not in req_df.columns:
         return pd.DataFrame(columns=["entity_id", "priority_product"])
 
@@ -240,21 +241,21 @@ def priority_product(parent: ir.Table, entity_id: ir.Table, requirement: ir.Tabl
     return pd.DataFrame(rows, columns=["entity_id", "priority_product"])
 
 
-def impact_from_requirement(requirement: ir.Table, entity_id: ir.Table) -> pd.DataFrame:
+def impact_from_requirement(requirement_priority: ir.Table, entity_id: ir.Table) -> pd.DataFrame:
     """Synthesize impact rows from each requirement's priority value.
 
-    ``requirement`` is schema-declared as a child of ``impact`` and its
-    ``value`` field is documented as "the priority/impact score for the
+    ``requirement_priority`` is schema-declared as a child of ``impact`` and
+    its ``value`` field is documented as "the priority/impact score for the
     requirement", so a requirement's priority doubles as its impact score
     without needing separately-authored impact data. format_guide.yaml's
-    self-documentation entities (which also carry ``requirement`` tags to
-    describe the EC format spec itself) are excluded, since they aren't
-    project data.
+    self-documentation entities (which also carry ``requirement_priority``
+    tags to describe the EC format spec itself) are excluded, since they
+    aren't project data.
 
     Parameters
     ----------
-    requirement : ir.Table
-        The requirement component table from the registry.
+    requirement_priority : ir.Table
+        The requirement_priority component table from the registry.
     entity_id : ir.Table
         The entity spine table, used to exclude format_guide.yaml entities.
 
@@ -264,7 +265,7 @@ def impact_from_requirement(requirement: ir.Table, entity_id: ir.Table) -> pd.Da
         Columns: entity_id, value, type ("impact"). One row per requirement
         entity outside of format_guide.yaml.
     """
-    req_df = requirement.to_pandas()
+    req_df = requirement_priority.to_pandas()
     if req_df.empty or "value" not in req_df.columns:
         return pd.DataFrame(columns=["entity_id", "value", "type"])
 

@@ -3,15 +3,15 @@ raw_entity_first_data = {
         "core_requirement": {
             "data": [
                 {"description": "The main requirement the infrastructure must complete."},
-                "requirement",
+                "requirement_priority",
             ],
             "first_subrequirement": [
                 {"description": "This requirement is a subrequirement of the core requirement, necessary to complete the core requirement.\n"},
-                "requirement",
+                "requirement_priority",
             ],
             "second_subrequirement": [
                 {"description": "This requirement is also a subrequirement of the core requirement, necessary to complete the core requirement.\n"},
-                "requirement",
+                "requirement_priority",
             ],
         },
         "my_infrastructure": {

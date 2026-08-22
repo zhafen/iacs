@@ -41,7 +41,7 @@ def build_requirement_tree(registrar: Registrar, ancestor_key: str) -> dict:
     """
     entity_ids_pd = registrar.get("entity_id").to_pandas()
     parents_pd = registrar.get("parent").to_pandas()
-    reqs_pd = registrar.get("requirement").to_pandas()
+    reqs_pd = registrar.get("requirement_priority").to_pandas()
 
     id_to_key = entity_ids_pd.set_index("value")["entity_key"].to_dict()
     req_ids = non_format_guide_ids(entity_ids_pd, set(reqs_pd["entity_id"].unique()))
@@ -96,7 +96,7 @@ def build_requirement_forest(registrar: Registrar) -> dict:
     """
     entity_ids_pd = registrar.get("entity_id").to_pandas()
     parents_pd = registrar.get("parent").to_pandas()
-    reqs_pd = registrar.get("requirement").to_pandas()
+    reqs_pd = registrar.get("requirement_priority").to_pandas()
     mission_pd = registrar.get("mission").to_pandas()
 
     req_ids = non_format_guide_ids(entity_ids_pd, set(reqs_pd["entity_id"].unique()))
