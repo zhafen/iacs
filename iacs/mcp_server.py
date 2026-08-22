@@ -11,6 +11,7 @@ from iacs.commands import (
     DATABASE_URL_ENV_VAR as _DATABASE_URL_ENV_VAR,
     EXAMPLE_MANIFEST as _EXAMPLE_MANIFEST,
     BUILTINS_DIR as _BUILTINS_DIR,
+    EMC2P_BUILTINS_DIR as _EMC2P_BUILTINS_DIR,
     IACS_MANIFEST_DIR as _IACS_MANIFEST_DIR,
     available_audit_components as _available_audit_components,
     build_format_description as _build_format_description,

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import yaml
+import emc2p
 
 from emc2p.validate_write import CONSOLIDATION_GUIDANCE
 
@@ -19,6 +20,7 @@ DATABASE_URL_ENV_VAR = "IACS_DATABASE_URL"
 EXAMPLE_MANIFEST = Path(__file__).parent.parent / "examples" / "example"
 BUILTINS_DIR = Path(__file__).parent / "builtins"
 IACS_MANIFEST_DIR = Path(__file__).parent / "iacs_manifest"
+EMC2P_BUILTINS_DIR = Path(emc2p.__file__).parent / "builtins"
 
 
 def parse_manifest_env() -> list[str]:
@@ -303,6 +305,15 @@ def build_format_description() -> str:
                 _collect_specs({k: v for k, v in comp_val.items() if k != "data"})
 
     _collect_specs(iacs_comp)
+
+    # requirement, solution, consideration, and consideration_rating live in
+    # emc2p now, not iacs_component -- see emc2p/builtins/iacs.yaml. Their
+    # top-level keys aren't nested under an iacs_component-style wrapper,
+    # so collect them directly.
+    emc2p_iacs_data = yaml.safe_load(
+        (EMC2P_BUILTINS_DIR / "iacs.yaml").read_text(encoding="utf-8")
+    )
+    _collect_specs({k: v for k, v in emc2p_iacs_data.items() if k != "file_info"})
 
     ds = comp_data.get("data_structure", {})
     if isinstance(ds.get("field"), list):

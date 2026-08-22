@@ -221,6 +221,122 @@ iacs:
                           by priority at each level and addressed, even if only the
                           skeleton at first.
                     - requirement
+                have_a_good_scoring_system:
+                    data:
+                        - requirement
+                        - description: >
+                              Once multiple candidate solutions exist for a
+                              requirement, we need a way to choose among them --
+                              a good scoring system.
+
+                              Unlike the rest of this file, this subtree nests
+                              requirement and solution entities directly inside
+                              each other, alternating, rather than mirroring a
+                              separate requirement tree against a separate
+                              solution tree connected by `solution of:`. Each
+                              solution below still needs a requirement's
+                              worth of design once you look closely at what it
+                              takes to make it work, and each of those
+                              requirements has its own candidate solutions in
+                              turn -- recursing until a solution is simple
+                              enough to just implement.
+                    consideration_scoring_system:
+                        data:
+                            - solution of: have_a_good_scoring_system
+                            - description: >
+                                  Score each candidate solution's pros and cons
+                                  using iacs's own consideration/
+                                  consideration_rating types: a named axis
+                                  (consideration) with a weight, and each
+                                  solution's rating against that axis.
+                            - work_state: in progress
+                        capture_pros_and_cons:
+                            - requirement
+                            - description: >
+                                  The scoring system must capture both pros
+                                  and cons. Already met directly by
+                                  consideration_rating's own note + signed
+                                  rating fields, so no separate nested
+                                  solution is needed here.
+                        intuitive_weight_scale:
+                            data:
+                                - requirement
+                                - description: >
+                                      An axis's importance (weight) must
+                                      reflect human judgment intuitively.
+                            log_scale_weights:
+                                - solution of: intuitive_weight_scale
+                                - description: >
+                                      Discrete multiplicative grades --
+                                      baseline 8, 1 = low importance,
+                                      64 = high importance.
+                                - todo: >
+                                      Fill in consideration_rating pros/cons
+                                      once the axes for evaluating scale
+                                      formats themselves are decided.
+                            integer_scale_weights:
+                                - solution of: intuitive_weight_scale
+                                - description: Small signed integers.
+                                - todo: >
+                                      Fill in consideration_rating pros/cons
+                                      once the axes for evaluating scale
+                                      formats themselves are decided.
+                            float_unbounded_weights:
+                                - solution of: intuitive_weight_scale
+                                - description: >
+                                      Continuous float, -inf to inf (the
+                                      current approach).
+                                - todo: >
+                                      Fill in consideration_rating pros/cons
+                                      once the axes for evaluating scale
+                                      formats themselves are decided.
+                        intuitive_rating_scale:
+                            data:
+                                - requirement
+                                - description: >
+                                      Each solution's per-axis rating must
+                                      reflect human judgment intuitively.
+                            log_scale_ratings:
+                                - solution of: intuitive_rating_scale
+                                - description: Discrete multiplicative grades.
+                                - todo: >
+                                      Fill in consideration_rating pros/cons
+                                      once the axes for evaluating scale
+                                      formats themselves are decided.
+                            integer_scale_ratings:
+                                - solution of: intuitive_rating_scale
+                                - description: Small signed integers.
+                                - todo: >
+                                      Fill in consideration_rating pros/cons
+                                      once the axes for evaluating scale
+                                      formats themselves are decided.
+                            float_unbounded_ratings:
+                                - solution of: intuitive_rating_scale
+                                - description: >
+                                      Continuous float, -1 to 1 (the current
+                                      approach).
+                                - todo: >
+                                      Fill in consideration_rating pros/cons
+                                      once the axes for evaluating scale
+                                      formats themselves are decided.
+                        handle_all_sign_combinations:
+                            data:
+                                - requirement
+                                - description: >
+                                      good axis + good rating = pro, good axis
+                                      + bad rating = con, bad axis + good
+                                      rating = pro (two negatives), bad axis +
+                                      bad rating = con -- all four must come
+                                      out intuitively.
+                            signed_weight_times_signed_rating:
+                                - solution of: handle_all_sign_combinations
+                                - description: >
+                                      contribution = weight * rating; the
+                                      product's sign determines pro/con.
+                                      Already implemented (see story-
+                                      simulator's live_testing_framework and
+                                      its generate_live_testing_report.py).
+                                - work_state: in progress
         provide_a_launching_point_for_infrastructure_implementation:
             data:
                 - requirement

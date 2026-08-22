@@ -9,6 +9,7 @@ from iacs.mcp_server import (
     _DATABASE_URL_ENV_VAR,
     _EXAMPLE_MANIFEST,
     _BUILTINS_DIR,
+    _EMC2P_BUILTINS_DIR,
     _IACS_MANIFEST_DIR,
     _MANIFEST_ENV_VAR,
     _registrars,
@@ -80,14 +81,31 @@ class TestDescribeFormat:
         )
         result = _build_format_description()
         # Check that descriptions from components.yaml appear in the output
-        req_entity = comp_data["iacs_component"]["impact"]["requirement"]
+        impact_entity = comp_data["iacs_component"]["impact"]["data"]
+        impact_desc = next(
+            (item["description"] for item in impact_entity
+             if isinstance(item, dict) and "description" in item),
+            None,
+        )
+        assert impact_desc is not None
+        # First sentence of the description should appear in the output
+        first_sentence = impact_desc.strip().split(".")[0]
+        assert first_sentence in result
+
+    def test_component_specs_sourced_from_emc2p_iacs_yaml(self):
+        """requirement/solution/consideration/consideration_rating moved to
+        emc2p (see emc2p/builtins/iacs.yaml) -- their descriptions should
+        still come through into the format description."""
+        emc2p_data = yaml.safe_load(
+            (_EMC2P_BUILTINS_DIR / "iacs.yaml").read_text(encoding="utf-8")
+        )
+        result = _build_format_description()
         req_desc = next(
-            (item["description"] for item in req_entity
+            (item["description"] for item in emc2p_data["requirement"]
              if isinstance(item, dict) and "description" in item),
             None,
         )
         assert req_desc is not None
-        # First sentence of the description should appear in the output
         first_sentence = req_desc.strip().split(".")[0]
         assert first_sentence in result
 
