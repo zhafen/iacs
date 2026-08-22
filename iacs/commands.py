@@ -307,13 +307,13 @@ def build_format_description() -> str:
     _collect_specs(iacs_comp)
 
     # requirement, solution, consideration, and consideration_rating live in
-    # emc2p now, not iacs_component -- see emc2p/builtins/iacs.yaml. Their
-    # top-level keys aren't nested under an iacs_component-style wrapper,
-    # so collect them directly.
-    emc2p_iacs_data = yaml.safe_load(
-        (EMC2P_BUILTINS_DIR / "iacs.yaml").read_text(encoding="utf-8")
+    # emc2p now, not iacs_component -- see emc2p/builtins/auditing.yaml.
+    # Their top-level keys aren't nested under an iacs_component-style
+    # wrapper, so collect them directly.
+    emc2p_auditing_data = yaml.safe_load(
+        (EMC2P_BUILTINS_DIR / "auditing.yaml").read_text(encoding="utf-8")
     )
-    _collect_specs({k: v for k, v in emc2p_iacs_data.items() if k != "file_info"})
+    _collect_specs({k: v for k, v in emc2p_auditing_data.items() if k != "file_info"})
 
     ds = comp_data.get("data_structure", {})
     if isinstance(ds.get("field"), list):

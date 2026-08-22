@@ -92,12 +92,12 @@ class TestDescribeFormat:
         first_sentence = impact_desc.strip().split(".")[0]
         assert first_sentence in result
 
-    def test_component_specs_sourced_from_emc2p_iacs_yaml(self):
+    def test_component_specs_sourced_from_emc2p_auditing_yaml(self):
         """requirement/solution/consideration/consideration_rating moved to
-        emc2p (see emc2p/builtins/iacs.yaml) -- their descriptions should
-        still come through into the format description."""
+        emc2p (see emc2p/builtins/auditing.yaml) -- their descriptions
+        should still come through into the format description."""
         emc2p_data = yaml.safe_load(
-            (_EMC2P_BUILTINS_DIR / "iacs.yaml").read_text(encoding="utf-8")
+            (_EMC2P_BUILTINS_DIR / "auditing.yaml").read_text(encoding="utf-8")
         )
         result = _build_format_description()
         req_desc = next(
