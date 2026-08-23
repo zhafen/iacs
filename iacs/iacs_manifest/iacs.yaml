@@ -213,7 +213,7 @@ iacs:
                             selected: true
                         - pro: Less interruption of flow.
                         - con: The implementation is more complicated.
-            procedure_for_designing_systems:
+            procedure_for_designing_and_implementing_systems:
                 data:
                     - description: >
                           Coming up with a series of steps to design infrastructure
@@ -292,6 +292,7 @@ iacs:
                             selected: True
                         - pro: Reduced code duplication.
                         - pro: Bounces back up to top level to refocus on the big picture.
+                        - con: If the process isn't interrupted this isn't any better than [requirement_or_solution_creation_process].
                 propose_solutions:
                     data:
                         - requirement
@@ -349,7 +350,7 @@ iacs:
                             data:
                                 - solution
                                 - con: How do we handle when the combination of ideal individual solutions isn't an overall solution?
-                            select_ideal_solution_for_a_given_requirement_in_isolation:
+                            have_approach_for_evaluating_solutions_for_a_single_requirement:
                                 data:
                                     - requirement
                                 qualitative_evaluation:
@@ -357,7 +358,7 @@ iacs:
                                     - solution
                         consideration_scoring_process:
                             data:
-                                - solution of: create_a_procedure_for_designing_systems.have_a_good_scoring_system
+                                - solution
                                 - description: >
                                     Score each candidate solution's pros and cons
                                     using iacs's own consideration/
@@ -464,10 +465,55 @@ iacs:
                                         simulator's live_testing_framework and
                                         its generate_live_testing_report.py).
                                     - work_state: in progress
-                            value: 16
-                            type: development_hours
                 implement_solutions:
-                    - requirement
+                    data:
+                        - requirement
+                    design_architecture:
+                        data:
+                            - requirement
+                        derive_architecture_from_requirement_tree:
+                            - solution
+                            - pro: If this works, it would reduce effort required.
+                            - con: If this doesn't work, a lot of time might be required to fix it.
+                        lay_out_solutions_and_organize:
+                            - solution
+                            - pro: Failsafe. Likely to create sound infrastructure.
+                            - con: Time intensive.
+                        lay_out_solution_and_have_agent_organize:
+                            - solution
+                            - pro: Saves time.
+                            - con: Architecture has to be evaluated.
+                    code_up_solutions:
+                        data:
+                            - requirement
+                        agent_assisted_coding:
+                            data:
+                                - description: |
+                                    Use one or more agents to code.
+
+                                    Avoiding the term "vibe coding" because that doesn't
+                                    imply validation.
+                                - solution
+                            test_driven_development:
+                                data:
+                                    - description: Start with a test, ask the agent to pass it.
+                                    - solution
+                                natural_language_driven_tdd:
+                                    - description: Describe the conditions for passing, but the agent still creates the test.
+                                    - solution
+                                human_validated_tdd:
+                                    - description: Create a suite of well-understood gold standard tests the code must pass.
+                                    - solution
+                            batches_of_tasks:
+                                data:
+                                    - description: After an agent has implemented something record feedback and have the agent address as a batch.
+                                    - solution
+                                github_review_task_batches:
+                                    - description: Add comments as a review on github, then ask agent to address.
+                                    - solution
+                                narrated_task_batches:
+                                    - description: Review implementation and narrate thoughts as doing so. Then organize into tasks, and have the agent work on the tasks.
+                                    - solution
                 conditions_for_switching_active_stages:
                     data:
                         - requirement
@@ -484,49 +530,18 @@ iacs:
                         - con: How?
                 incorporate_new_ideas_and_information:
                     - requirement
-
-
-                requirement_first_design_process:
-                    - description: >
-                          First step of the process is to identify the big picture
-                          requirements of the system. Then the user splits each big
-                          picture requirement down into smaller ones recursively,
-                          until reaching atomic requirements, i.e. ones that cannot be
-                          further divided.
-                    - solution of: create_a_procedure_for_designing_systems
-                system_design_process:
-                    - description: >
-                          For each entity with a requirement component it must also
-                          have a solution component. The requirements are prioritized
-                          by priority at each level and addressed, even if only the
-                          skeleton at first.
-                    - requirement_priority
-        improve_implementation:
-            data:
-                - requirement
-            have_process_for_implementation:
+            launching_pad_for_implementation:
                 data:
-                    - requirement
-                top_down:
-                    - description: Start at the fundamental requirement and then choose forking paths according to preferred prioritization. Clarify along the way.
+                    - description: Allow the IaC created via iacs to be converted into deployments.
                     - solution
-                    - pro: simple in principle
-                    - con: impact/cost isn't clearly included.
-            facilitate_compatibility_with_agents:
-                - requirement_priority: {type: constraint}
-                - cost:
-                    value: 16
-                    type: development_hours
-            facilitate_compatibility_with_terraform:
-                - requirement_priority: {type: constraint}
-                - cost:
-                    value: 26
-                    type: high_intensity_development_hours
-            facilitate_compatibility_with_relational_databases:
-                - requirement_priority: {type: constraint}
-                - cost:
-                    value: 16
-                    type: development_hours
+                deploy_terraform_from_ec_files:
+                    - requirement_priority: {type: constraint}
+                    - cost:
+                        value: 26
+                        type: high_intensity_development_hours
+                deploy_relational_databases_from_ec_files:
+                    - requirement_priority: {type: constraint}
+                    - work_state: done
 iacs_solution:
     data:
         - description: >
