@@ -53,6 +53,9 @@ emc2p = { git = "https://github.com/zhafen/emc2p", rev = "a588ade083e766fa998636
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "slow: tests that reload a full manifest/registrar, exercise end-to-end example manifests, or measure import/startup time -- individually fast but numerous enough to dominate the full suite's wall time. Skip with `-m \"not slow\"` for a quick check.",
+]
 
 [tool.setuptools]
 py-modules = ["app"]

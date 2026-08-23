@@ -19,6 +19,8 @@ import pytest
 
 from iacs.registrar import Registrar
 
+pytestmark = pytest.mark.slow
+
 ROOT = Path(__file__).parent.parent
 EXAMPLES_DIR = ROOT / "examples"
 EXPECTED_DIR = ROOT / "tests" / "test_dataflows" / "expected"

@@ -3,6 +3,8 @@
 import yaml
 import pytest
 
+pytestmark = pytest.mark.slow
+
 from unittest.mock import MagicMock
 
 from iacs.mcp_server import (

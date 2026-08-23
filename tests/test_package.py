@@ -5,7 +5,10 @@ data files) that unit tests running against the source tree cannot detect."""
 import subprocess
 import sys
 
+import pytest
 
+
+@pytest.mark.slow
 def test_iacs_submodules_importable():
     """All public sub-packages must be importable from a clean Python process."""
     modules = [
