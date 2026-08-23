@@ -196,6 +196,23 @@ iacs:
                           Part of validation is also understanding how an architecture
                           works, for which we need views into the architecture.
                     - requirement_priority
+                compatible_with_jotting_down_ideas:
+                    data:
+                        - requirement
+                        - description: Each idea is a piece of a puzzle, which we need to then connect. So we need to capture the pieces when they show up.
+                    easily_navigate_the_written_format:
+                        data:
+                            - solution:
+                                selected: true
+                            - pro: Already nice to have this.
+                            - con: Non-negligible time to do this.
+                        fast_keybindings:
+                            - requirement
+                    drop_ideas_in_and_connect_later:
+                        - solution:
+                            selected: true
+                        - pro: Less interruption of flow.
+                        - con: The implementation is more complicated.
             create_a_procedure_for_designing_systems:
                 data:
                     - description: >
@@ -206,14 +223,35 @@ iacs:
                           Our series of steps revolves around requirements and the
                           systems that solve them.
                     - requirement_priority
-                requirement_design_process:
+                requirement_first_design_process:
                     - description: >
                           First step of the process is to identify the big picture
                           requirements of the system. Then the user splits each big
                           picture requirement down into smaller ones recursively,
                           until reaching atomic requirements, i.e. ones that cannot be
                           further divided.
-                    - requirement_priority
+                    - solution of: create_a_procedure_for_designing_systems
+                requirement_solution_tree:
+                    data:
+                        - description: >
+                            Interwoven requirements
+                        - solution of: create_a_procedure_for_designing_systems
+                    concise_and_intuitive_syntax:
+                        data:
+                            - requirement of: requirement_solution_tree
+                        relationship_syntax_for_children:
+                            data:
+                                - requirement of: concise_and_intuitive_syntax
+                            use_relative_path_in_relation:
+                            implied_relationship:
+                                - description: Any parent-child relationship is
+                                    implicitly a requirement or solution relationship,
+                                    though which is not specified.
+                                - pro: What if we need to use the implied relationship for other things? In fact, we already do that for component inheritance.
+                            implied_relationship_with_comp:
+                                - description: If the entity owns a requirement or
+                                    solution with no target then it is the
+                                    requirement/solution to its parent.
                 system_design_process:
                     - description: >
                           For each entity with a requirement component it must also
@@ -221,13 +259,13 @@ iacs:
                           by priority at each level and addressed, even if only the
                           skeleton at first.
                     - requirement_priority
-                have_a_good_scoring_system:
+                solution_selection_process:
                     data:
                         - requirement_priority
                         - description: >
                               Once multiple candidate solutions exist for a
                               requirement, we need a way to choose among them --
-                              a good scoring system.
+                              for example, a good scorint system.
 
                               Unlike the rest of this file, this subtree nests
                               requirement and solution entities directly inside
@@ -240,7 +278,13 @@ iacs:
                               requirements has its own candidate solutions in
                               turn -- recursing until a solution is simple
                               enough to just implement.
-                    consideration_scoring_system:
+                    cost_evaluation_process:
+                    impact_evaluation_process:
+                        easy_to_use:
+                            good_flow_for_choosing_categories:
+                                no_categories:
+                                simple_categories:
+                    consideration_scoring_process:
                         data:
                             - solution of: create_a_procedure_for_designing_systems.have_a_good_scoring_system
                             - description: >
@@ -251,13 +295,25 @@ iacs:
                                   solution's rating against that axis.
                             - work_state: in progress
                         capture_pros_and_cons:
-                            - requirement_priority
-                            - description: >
-                                  The scoring system must capture both pros
-                                  and cons. Already met directly by
-                                  consideration_rating's own note + signed
-                                  rating fields, so no separate nested
-                                  solution is needed here.
+                            data:
+                                - requirement
+                                - requirement_priority
+                                - description: >
+                                    The scoring system must capture both pros
+                                    and cons. Already met directly by
+                                    consideration_rating's own note + signed
+                                    rating fields, so no separate nested
+                                    solution is needed here.
+                            consideration_and_consideration_rating_components:
+                                - solution
+                                - pro: Precise.
+                            pro_con_components:
+                                data:
+                                    - solution
+                                    - pro: Very intuitive, very quick to write. Can come back and refine later.
+                                    - con: Multiple component types for one table.
+                                handle_multiple_component_types_in_one_table:
+                                    - requirement
                         intuitive_weight_scale:
                             data:
                                 - requirement_priority
@@ -2124,3 +2180,104 @@ cost_budgets:
                     An hour of low-intensity development work, e.g. routine
                     or easily-interruptible tasks. Weighted below baseline
                     since it is more abundant and less costly to supply.
+
+way_to_indicate_which_solutions_we_will_use:
+    data:
+        - description: If we have multiple solutions in one place, we need a way to record which ones we've decided to use.
+        - requirement
+    selected_field:
+        - description: A new field "selected" that's part of the requirement and solution components and is True when we're using the solution.
+        - solution
+
+linking_process:
+    data:
+        - description: If we can just drop entities at the bottom of a file and then link them together later that would be convenient.
+        - solution of: <<Quickly dropping in ideas.>>
+    address_no_links:
+        - requirement
+    address_approximate_links:
+        data:
+            - requirement
+        relationship_resolution_dataflow:
+            data:
+                - solution
+                - con: How do we handle when the dataflow fails?
+            have_syntax_for_approximate_links:
+                data:
+                    - requirement
+                use_carrots:
+                    - solution
+                use_double_carrots:
+                    - solution
+            way_to_resolve_the_syntax_for_approximate_links:
+                data:
+                    - requirement
+                natural_language_linker:
+                    - solution
+            handle_failure:
+                - description: What happens when the links don't resolve to a single neat entity?
+                - requirement
+    address_duplicates:
+        - description: We'll inevitably have duplicated work.
+        - requirement
+
+requirement_and_solution_constraints:
+    data:
+        - description: By placing constraints on the requirement-solution graph we may be able to improve system design.
+        - solution: <<improve system design>>
+        - pro: Depending on the exact solution, may be useful.
+        - con: What is this actually capturing, other than ensuring things look pretty?
+    requirements_and_solutions_must_alternate:
+        - description: In a tree we enforce requirements and solutions to alternate.
+        - solution:
+            selected: False
+        - pro: Helps validate tree structure.
+        - pro: May provide some base structure.
+        - con: Requires more thought when writing.
+        - con: Doesn't really reflect how things are. For example, must_have_stopping_points has sub requirements that elaborate on the main requirement.
+    no_solutions_of_solutions:
+        - solution
+        - pro: Meaning of solution of a solution is unintuitive.
+        - con: If a requirement of a requirement is just an elaboration and/or subentity, we can do the same thing for solutions.
+    no_mixing_requirements_and_solutions_at_same_depth:
+        - solution
+        - pro: Seems like it could increase messiness drastically.
+        - con: Currently just a bad feeling, mostly.
+
+handle_when_to_use_solutions_vs_requirements:
+    data:
+        - description: When the user creates a new requirement or solution, what do they write?
+        - requirement
+    no_distinction:
+        - solution
+        - pro: simplest on its face
+        - con: what do we even call it? A dependency?
+        - con: Are we going to get broken structures this way?
+    objective_vs_object:
+        - description: Requirements are goals. Solutions are concrete objects that contribute to fulfilling objectives.
+        - pro: Matches intuition.
+        - con: definition is maybe still a little vague.
+
+design_implement_cycle_workflow:
+    design_phase_must_have_stopping_points:
+        data:
+            - description: It's not clear how long the process of laying out requirements and solutions could take. Maybe an arbitrarily long time. If we never move on from this stage to the implementation stage we will never get anything done.
+            - requirement
+        intermediate_results_dont_corrupt_data:
+            - requirement
+        must_have_units_of_work:
+            data:
+                - description: If we stop, we need to be able to pick a part and move forward.
+                - requirement
+            pre_stop_cleanup_hook:
+                - solution
+                - pro: Can help ensure there are discrete units.
+                - con: Still takes time.
+            well_defined_branches_can_be_worked_on_independently:
+                data:
+                    - solution
+            must_be_able_to_list_units_of_work:
+                data:
+                    - requirement
+                must_include_high_priority_branches_that_are_not_quite_right:
+                    - description: If there's an important branch we don't want it to be ignored because
