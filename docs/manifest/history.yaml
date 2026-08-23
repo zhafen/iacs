@@ -35,3 +35,98 @@ project_history:
               story-simulator's own hand-rolled version and generalized here
               so every caller benefits, not just story-simulator's own
               delegate.
+    human_validated_tests_reused_emc2p_shared_framework:
+        - description: >
+              tests/test_human_validated.py's load-manifest / apply-
+              transformation / compare-to-expected.py pattern predates the
+              3-repo split -- emc2p's own emc2p.testing.expected_fixtures
+              generalizes exactly this shape (example_dirs,
+              load_expected_module, assert_subset/assert_not_subset,
+              assert_registries_equal, ExpectedValueChecker). Rewritten to
+              import from there instead of keeping its own copy; iacs still
+              supplies its own examples/expected/ layout and
+              DATAFLOW_MODULE_PREFIXES (iacs.dataflows./emc2p.dataflows.),
+              nothing else.
+    emc2p_submodule_dropped_for_pinned_git_dependency:
+        - description: >
+              emc2p was vendored as a git submodule at ./emc2p purely so a
+              single-repo-attached Claude Code session could reach its
+              source for editable local dev -- no longer needed once
+              multiple repos could be attached to one session directly.
+              Replaced with a plain pinned dependency in pyproject.toml's
+              [tool.uv.sources] (commit SHA, not branch, bumped explicitly
+              the same way the submodule pointer used to be). A gitignored,
+              uncommitted uv.toml can still override it to a local editable
+              path for fast co-development iteration.
+    requirement_solution_consideration_moved_to_emc2p:
+        - description: >
+              requirement, solution, consideration, and
+              consideration_rating moved from iacs/builtins/components.yaml
+              to emc2p/builtins/auditing.yaml -- they're generic
+              requirement/solution-scoring vocabulary, not
+              infrastructure-as-code-specific, and a downstream project
+              (story-simulator) was already using them without depending on
+              iacs at all, relying on emc2p's schema-optional duck-typing
+              instead of a real schema. See emc2p's own history.yaml for
+              the corresponding entry (requirement's reshape into a
+              directed_relation, requirement_priority, required_by,
+              consideration_rating.value becoming nullable) -- this repo's
+              side of the move was updating every reference: iacs/dataflows/
+              derive/impact_cost.py, audit/traceability.py, audit/
+              requirement_coverage.py, views/requirement_tree.py, the
+              iacs_manifest/ files themselves, examples/, and their
+              expected fixtures.
+
+              iacs/mcp_server.py's build_format_description() read
+              component specs only from iacs's own components.yaml, so it
+              silently stopped documenting these four types the moment
+              they moved -- caught by an existing test
+              (test_component_specs_sourced_from_components_yaml).
+              Fixed by also reading emc2p/builtins/auditing.yaml, with a
+              second test confirming that path specifically.
+    pure_connection_architecture_added_as_a_third_modeling_style:
+        - description: >
+              iacs_manifest/iacs.yaml uses one convention throughout: a
+              requirement tree (iacs:) mirrored against a separate solution
+              tree (iacs_solution:), connected by solution of: links across
+              the two. A new subtree (iacs_meta_discussion.
+              requirement_solution_modeling_discussion) tries two
+              alternatives explicitly, to compare: an alternating-nested
+              tree (requirement/solution entities nested directly inside
+              each other instead of two mirrored trees -- see
+              have_a_good_scoring_system), and a pure_connection_architecture
+              with no `- requirement`/`- solution` tags at all, entities
+              related purely through the solution/required_by relations
+              (see emc2p's own history.yaml) -- an entity's role implied
+              entirely by which relations point at it.
+
+              Building the second one surfaced a real entity_ref
+              resolution gap, pre-existing and not limited to the new
+              content: Registry.get_entity_id resolves a bare name via
+              exact hash, then exact alias (a two-segment "parent_key.
+              entity_key" string, not the bare key alone unless the entity
+              is top-level), then substring-match against every entity's
+              full path. A non-top-level entity with any children is
+              therefore ambiguous under its own bare name -- the entity's
+              own path is a prefix of each child's path, so a substring
+              search matches both. Confirmed this already silently broke
+              every solution of: reference in the pre-existing
+              iacs_solution: mirrored tree (their value_eid never
+              resolves); fixed the new content's own references by using
+              the full two-segment alias instead of the bare name. The
+              pre-existing tree's own references are still unresolved --
+              not fixed here, out of scope for this change.
+    slow_pytest_marker_added_for_a_quick_check_command:
+        - description: >
+              No fast test subset existed. Profiled with --durations=30:
+              no single dominant offender, but tests/test_mcp_server.py (76
+              tests, each reloading a fresh Registrar), tests/
+              test_human_validated.py (end-to-end example manifests),
+              tests/test_startup_performance.py (subprocess-based import/
+              install timing), and test_package.py's one submodule-import
+              smoke test account for most of the full suite's wall time via
+              sheer test volume, not any one slow operation. Marked `slow`;
+              `uv run pytest -m "not slow"` cuts local wall time from ~285s
+              to ~90s with the full suite still passing unchanged --
+              documented in README.md, mirroring emc2p's own `live` marker
+              convention.
