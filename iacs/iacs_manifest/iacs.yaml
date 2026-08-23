@@ -2281,3 +2281,20 @@ design_implement_cycle_workflow:
                     - requirement
                 must_include_high_priority_branches_that_are_not_quite_right:
                     - description: If there's an important branch we don't want it to be ignored because
+                    - requirement
+                walk_top_to_bottom:
+                    - description: Start from the top then successively navigate branches.
+                    - solution
+                    - pro: Refocuses on goals.
+                    - con: Might be hard to design.
+                    - con: How do we handle incomplete branches?
+                    - con: This seems like it will take a while.
+                walk_from_most_to_least_complete:
+                    - solution
+                    - pro: Focuses on well defined work.
+                    - con: Not related to project goals.
+
+visualization_of_requirement_solution_graph:
+    - description: What does this look like?
+    - solution
+    - pro: Satisfies my curiousity.
