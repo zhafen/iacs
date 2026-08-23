@@ -146,17 +146,17 @@ iacs:
                     - requirement_priority: 0.7
                 address_when_use_parents_vs_components:
                     - requirement_priority: 0.9
-        help_improve_the_quality_of_system_designs:
+        improve_system_design_and_implementation:
             data:
-                - requirement_priority
-            improve_complex_solution_architectures:
+                - requirement
+            various_minor_features:
                 data:
                     - description: >
                           Many solutions are too complex for a simple view, but they still
                           need to be assessed for completeness, accuracy, documentation, etc.
-                    - requirement_priority
+                    - solution
                 provide_an_interface_for_interactive_development:
-                    - requirement_priority
+                    - requirement
                     - description: >
                         The start of this may be the d3js tree viewer we created.
                         But that feels like it's potentially starting from scratch.
@@ -213,7 +213,7 @@ iacs:
                             selected: true
                         - pro: Less interruption of flow.
                         - con: The implementation is more complicated.
-            create_a_procedure_for_designing_systems:
+            procedure_for_designing_systems:
                 data:
                     - description: >
                           Coming up with a series of steps to design infrastructure
@@ -222,7 +222,270 @@ iacs:
 
                           Our series of steps revolves around requirements and the
                           systems that solve them.
-                    - requirement_priority
+                    - solution
+                    - pro: Can offload a lot of the hard decisions.
+                    - con: Has to be designed.
+                structure_requirements_and_solutions:
+                    data:
+                        - requirement
+                    requirement_solution_tree:
+                        data:
+                            - description: A nested tree of both requirements and solutions.
+                            - solution
+                        concise_and_intuitive_syntax:
+                            data:
+                                - requirement of: requirement_solution_tree
+                            relationship_syntax_for_children:
+                                data:
+                                    - requirement of: concise_and_intuitive_syntax
+                                use_relative_path_in_relation:
+                                implied_relationship:
+                                    - description: Any parent-child relationship is
+                                        implicitly a requirement or solution relationship,
+                                        though which is not specified.
+                                    - pro: What if we need to use the implied relationship for other things? In fact, we already do that for component inheritance.
+                                implied_relationship_with_comp:
+                                    - description: If the entity owns a requirement or
+                                        solution with no target then it is the
+                                        requirement/solution to its parent.
+                identify_requirements:
+                    data:
+                        - requirement
+                    requirement_creation_and_population_process:
+                        - description: |
+                            1. Select an entity alias. It should be short and meaningful.
+                            2. Add a description component with a value if not yet present.
+                            3. Add a bare requirement component if not yet present.
+                            4. Attempt to assemble a dictionary of solutions. Each key is the entity alias, and each value is a description.
+                            5. For each solution create a new child entity.
+                                a. Use the key as the alias.
+                                b. Use the value as the value for a description component.
+                                c. Add a bare solution component.
+                                d. For each solution, follow the solution_creation_and_population_process.
+                            6. If no solutions were identified, attempt to break the problem down into smaller pieces by creating a dictionary of sub-requirements. Each key is the entity alias, and each value is a description.
+                            7. For each requirement create a new child entity.
+                                a. Use the key as the alias.
+                                b. Use the value as the value for a description component.
+                                c. Add a bare requirement component.
+                                d. For each requirement, follow the requirement_creation_and_population_process.
+                        - solution
+                        - solution of: procedure_for_designing_systems.identify_relationships
+                        - pro: Straightforward.
+                        - con: Goes deep quickly, which may put effort where it's not needed.
+                    requirement_or_solution_creation_process:
+                        - description: Condensation of the logic from [requirement_creation_and_population_process] and [solution_creation_and_population_process].
+                        - solution
+                        - solution of: procedure_for_designing_systems.identify_solutions
+                        - solution of: procedure_for_designing_systems.identify_relationships
+                        - pro: Reduced code duplication.
+                        - con: The condensed logic obfuscates what's going on.
+                        - con: Goes deep quickly, which may put effort where it's not needed.
+                    shallow_requirement_or_solution_creation_process:
+                        - description: Same as [requirement_or_solution_creation_process], but after the minimal child entities are created, go back up one level and proceed to the next minimal entity.
+                        - solution:
+                            selected: True
+                        - solution of:
+                            value: procedure_for_designing_systems.identify_solutions
+                            selected: True
+                        - solution of:
+                            value: procedure_for_designing_systems.identify_relationships
+                            selected: True
+                        - pro: Reduced code duplication.
+                        - pro: Bounces back up to top level to refocus on the big picture.
+                propose_solutions:
+                    data:
+                        - requirement
+                    solution_creation_and_population_process:
+                        - description: |
+                            1. Select an entity alias. It should be short and meaningful.
+                            2. Add a description component with a value if not yet present.
+                            3. Add a bare solution component if not yet present.
+                            4. Is how to implement the solution self-evident? If so, return.
+                            5. Attempt to assemble a dictionary of requirements for the solution to function. Each key is the entity alias, and each value is a description.
+                            6. For each requirement create a new child entity.
+                                a. Use the key as the alias.
+                                b. Use the value as the value for a description component.
+                                c. Add a bare requirement component.
+                                d. For each requirement, follow the requirement_creation_and_population_process.
+                        - solution
+                        - solution of: procedure_for_designing_systems.identify_relationships
+                        - pro: Straightforward.
+                        - con: Goes deep quickly, which may put effort where it's not needed.
+                identify_relationships:
+                    - description: We need to understand how requirements and solutions relate to each other.
+                    - requirement
+                select_solutions:
+                    data:
+                        - description:
+                            Once multiple candidate solutions exist for a
+                            requirement, we need a way to choose among them --
+                            for example, a good scorint system.
+                        - requirement
+                    identify_valid_solutions:
+                        data:
+                            - requirement
+                        brute_force_combinations_evaluation:
+                            - description: Each solution is for one or more requirements. Try all combinations of solutions and include only those where all requirements are satisfied.
+                            - solution
+                    select_among_valid_solutions:
+                        data:
+                            - requirement
+                        choose_highest_impact_cost_ratio:
+                            data:
+                                - solution
+                            evaluate_impact:
+                                data:
+                                    - requirement
+                                have_a_good_flow_for_choosing_categories:
+                                    data:
+                                        - requirement
+                                    no_categories:
+                                        - solution
+                                    simple_categories:
+                                        - solution
+                            evaluate_cost:
+                                - requirement
+                        select_ideal_solution_for_each_requirement:
+                            data:
+                                - solution
+                                - con: How do we handle when the combination of ideal individual solutions isn't an overall solution?
+                            select_ideal_solution_for_a_given_requirement_in_isolation:
+                                data:
+                                    - requirement
+                                qualitative_evaluation:
+                                    - description: Read the possible options and then make a choice.
+                                    - solution
+                        consideration_scoring_process:
+                            data:
+                                - solution of: create_a_procedure_for_designing_systems.have_a_good_scoring_system
+                                - description: >
+                                    Score each candidate solution's pros and cons
+                                    using iacs's own consideration/
+                                    consideration_rating types: a named axis
+                                    (consideration) with a weight, and each
+                                    solution's rating against that axis.
+                                - work_state: in progress
+                            capture_pros_and_cons:
+                                data:
+                                    - requirement
+                                    - requirement_priority
+                                    - description: >
+                                        The scoring system must capture both pros
+                                        and cons. Already met directly by
+                                        consideration_rating's own note + signed
+                                        rating fields, so no separate nested
+                                        solution is needed here.
+                                consideration_and_consideration_rating_components:
+                                    - solution
+                                    - pro: Precise.
+                                pro_con_components:
+                                    data:
+                                        - solution
+                                        - pro: Very intuitive, very quick to write. Can come back and refine later.
+                                        - con: Multiple component types for one table.
+                                    handle_multiple_component_types_in_one_table:
+                                        - requirement
+                            intuitive_weight_scale:
+                                data:
+                                    - requirement_priority
+                                    - description: >
+                                        An axis's importance (weight) must
+                                        reflect human judgment intuitively.
+                                log_scale_weights:
+                                    - solution of: consideration_scoring_system.intuitive_weight_scale
+                                    - description: >
+                                        Discrete multiplicative grades --
+                                        baseline 8, 1 = low importance,
+                                        64 = high importance.
+                                    - todo: >
+                                        Fill in consideration_rating pros/cons
+                                        once the axes for evaluating scale
+                                        formats themselves are decided.
+                                integer_scale_weights:
+                                    - solution of: consideration_scoring_system.intuitive_weight_scale
+                                    - description: Small signed integers.
+                                    - todo: >
+                                        Fill in consideration_rating pros/cons
+                                        once the axes for evaluating scale
+                                        formats themselves are decided.
+                                float_unbounded_weights:
+                                    - solution of: consideration_scoring_system.intuitive_weight_scale
+                                    - description: >
+                                        Continuous float, -inf to inf (the
+                                        current approach).
+                                    - todo: >
+                                        Fill in consideration_rating pros/cons
+                                        once the axes for evaluating scale
+                                        formats themselves are decided.
+                            intuitive_rating_scale:
+                                data:
+                                    - requirement_priority
+                                    - description: >
+                                        Each solution's per-axis rating must
+                                        reflect human judgment intuitively.
+                                log_scale_ratings:
+                                    - solution of: consideration_scoring_system.intuitive_rating_scale
+                                    - description: Discrete multiplicative grades.
+                                    - todo: >
+                                        Fill in consideration_rating pros/cons
+                                        once the axes for evaluating scale
+                                        formats themselves are decided.
+                                integer_scale_ratings:
+                                    - solution of: consideration_scoring_system.intuitive_rating_scale
+                                    - description: Small signed integers.
+                                    - todo: >
+                                        Fill in consideration_rating pros/cons
+                                        once the axes for evaluating scale
+                                        formats themselves are decided.
+                                float_unbounded_ratings:
+                                    - solution of: consideration_scoring_system.intuitive_rating_scale
+                                    - description: >
+                                        Continuous float, -1 to 1 (the current
+                                        approach).
+                                    - todo: >
+                                        Fill in consideration_rating pros/cons
+                                        once the axes for evaluating scale
+                                        formats themselves are decided.
+                            handle_all_sign_combinations:
+                                data:
+                                    - requirement_priority
+                                    - description: >
+                                        good axis + good rating = pro, good axis
+                                        + bad rating = con, bad axis + good
+                                        rating = pro (two negatives), bad axis +
+                                        bad rating = con -- all four must come
+                                        out intuitively.
+                                signed_weight_times_signed_rating:
+                                    - solution of: consideration_scoring_system.handle_all_sign_combinations
+                                    - description: >
+                                        contribution = weight * rating; the
+                                        product's sign determines pro/con.
+                                        Already implemented (see story-
+                                        simulator's live_testing_framework and
+                                        its generate_live_testing_report.py).
+                                    - work_state: in progress
+                            value: 16
+                            type: development_hours
+                implement_solutions:
+                    - requirement
+                conditions_for_switching_active_stages:
+                    data:
+                        - requirement
+                    allow_each_stage_to_complete_fully:
+                        - solution
+                        - pro: Straightforward.
+                        - con: Not clear how long this will take.
+                    start_implementation_immediately_on_reaching_max_depth:
+                        - solution
+                        - pro: Full route doesn't complete.
+                        - con: May not have sufficient context to implement.
+                    select_highest_priority_leaf:
+                        - solution
+                        - con: How?
+                incorporate_new_ideas_and_information:
+                    - requirement
+
+
                 requirement_first_design_process:
                     - description: >
                           First step of the process is to identify the big picture
@@ -231,27 +494,6 @@ iacs:
                           until reaching atomic requirements, i.e. ones that cannot be
                           further divided.
                     - solution of: create_a_procedure_for_designing_systems
-                requirement_solution_tree:
-                    data:
-                        - description: >
-                            Interwoven requirements
-                        - solution of: create_a_procedure_for_designing_systems
-                    concise_and_intuitive_syntax:
-                        data:
-                            - requirement of: requirement_solution_tree
-                        relationship_syntax_for_children:
-                            data:
-                                - requirement of: concise_and_intuitive_syntax
-                            use_relative_path_in_relation:
-                            implied_relationship:
-                                - description: Any parent-child relationship is
-                                    implicitly a requirement or solution relationship,
-                                    though which is not specified.
-                                - pro: What if we need to use the implied relationship for other things? In fact, we already do that for component inheritance.
-                            implied_relationship_with_comp:
-                                - description: If the entity owns a requirement or
-                                    solution with no target then it is the
-                                    requirement/solution to its parent.
                 system_design_process:
                     - description: >
                           For each entity with a requirement component it must also
@@ -259,159 +501,17 @@ iacs:
                           by priority at each level and addressed, even if only the
                           skeleton at first.
                     - requirement_priority
-                solution_selection_process:
-                    data:
-                        - requirement_priority
-                        - description: >
-                              Once multiple candidate solutions exist for a
-                              requirement, we need a way to choose among them --
-                              for example, a good scorint system.
-
-                              Unlike the rest of this file, this subtree nests
-                              requirement and solution entities directly inside
-                              each other, alternating, rather than mirroring a
-                              separate requirement tree against a separate
-                              solution tree connected by `solution of:`. Each
-                              solution below still needs a requirement's
-                              worth of design once you look closely at what it
-                              takes to make it work, and each of those
-                              requirements has its own candidate solutions in
-                              turn -- recursing until a solution is simple
-                              enough to just implement.
-                    cost_evaluation_process:
-                    impact_evaluation_process:
-                        easy_to_use:
-                            good_flow_for_choosing_categories:
-                                no_categories:
-                                simple_categories:
-                    consideration_scoring_process:
-                        data:
-                            - solution of: create_a_procedure_for_designing_systems.have_a_good_scoring_system
-                            - description: >
-                                  Score each candidate solution's pros and cons
-                                  using iacs's own consideration/
-                                  consideration_rating types: a named axis
-                                  (consideration) with a weight, and each
-                                  solution's rating against that axis.
-                            - work_state: in progress
-                        capture_pros_and_cons:
-                            data:
-                                - requirement
-                                - requirement_priority
-                                - description: >
-                                    The scoring system must capture both pros
-                                    and cons. Already met directly by
-                                    consideration_rating's own note + signed
-                                    rating fields, so no separate nested
-                                    solution is needed here.
-                            consideration_and_consideration_rating_components:
-                                - solution
-                                - pro: Precise.
-                            pro_con_components:
-                                data:
-                                    - solution
-                                    - pro: Very intuitive, very quick to write. Can come back and refine later.
-                                    - con: Multiple component types for one table.
-                                handle_multiple_component_types_in_one_table:
-                                    - requirement
-                        intuitive_weight_scale:
-                            data:
-                                - requirement_priority
-                                - description: >
-                                      An axis's importance (weight) must
-                                      reflect human judgment intuitively.
-                            log_scale_weights:
-                                - solution of: consideration_scoring_system.intuitive_weight_scale
-                                - description: >
-                                      Discrete multiplicative grades --
-                                      baseline 8, 1 = low importance,
-                                      64 = high importance.
-                                - todo: >
-                                      Fill in consideration_rating pros/cons
-                                      once the axes for evaluating scale
-                                      formats themselves are decided.
-                            integer_scale_weights:
-                                - solution of: consideration_scoring_system.intuitive_weight_scale
-                                - description: Small signed integers.
-                                - todo: >
-                                      Fill in consideration_rating pros/cons
-                                      once the axes for evaluating scale
-                                      formats themselves are decided.
-                            float_unbounded_weights:
-                                - solution of: consideration_scoring_system.intuitive_weight_scale
-                                - description: >
-                                      Continuous float, -inf to inf (the
-                                      current approach).
-                                - todo: >
-                                      Fill in consideration_rating pros/cons
-                                      once the axes for evaluating scale
-                                      formats themselves are decided.
-                        intuitive_rating_scale:
-                            data:
-                                - requirement_priority
-                                - description: >
-                                      Each solution's per-axis rating must
-                                      reflect human judgment intuitively.
-                            log_scale_ratings:
-                                - solution of: consideration_scoring_system.intuitive_rating_scale
-                                - description: Discrete multiplicative grades.
-                                - todo: >
-                                      Fill in consideration_rating pros/cons
-                                      once the axes for evaluating scale
-                                      formats themselves are decided.
-                            integer_scale_ratings:
-                                - solution of: consideration_scoring_system.intuitive_rating_scale
-                                - description: Small signed integers.
-                                - todo: >
-                                      Fill in consideration_rating pros/cons
-                                      once the axes for evaluating scale
-                                      formats themselves are decided.
-                            float_unbounded_ratings:
-                                - solution of: consideration_scoring_system.intuitive_rating_scale
-                                - description: >
-                                      Continuous float, -1 to 1 (the current
-                                      approach).
-                                - todo: >
-                                      Fill in consideration_rating pros/cons
-                                      once the axes for evaluating scale
-                                      formats themselves are decided.
-                        handle_all_sign_combinations:
-                            data:
-                                - requirement_priority
-                                - description: >
-                                      good axis + good rating = pro, good axis
-                                      + bad rating = con, bad axis + good
-                                      rating = pro (two negatives), bad axis +
-                                      bad rating = con -- all four must come
-                                      out intuitively.
-                            signed_weight_times_signed_rating:
-                                - solution of: consideration_scoring_system.handle_all_sign_combinations
-                                - description: >
-                                      contribution = weight * rating; the
-                                      product's sign determines pro/con.
-                                      Already implemented (see story-
-                                      simulator's live_testing_framework and
-                                      its generate_live_testing_report.py).
-                                - work_state: in progress
-        provide_a_launching_point_for_infrastructure_implementation:
+        improve_implementation:
             data:
-                - requirement_priority
-            provide_a_guided_process_for_developing_solutions:
+                - requirement
+            have_process_for_implementation:
                 data:
-                    - description: >
-                        Steps considered so far:
-                            - Hierarchical requirements
-                            - categorize requirements
-                            - convert functional requirements into systems
-                    - requirement_priority: {type: constraint}
-                provide_functionality_for_prioritizing:
-                    - description: >
-                        We desperately need this in order to use it on development
-                        and continue making progress.
-                    - requirement_priority: 1.0
-                    - cost:
-                        value: 16
-                        type: development_hours
+                    - requirement
+                top_down:
+                    - description: Start at the fundamental requirement and then choose forking paths according to preferred prioritization. Clarify along the way.
+                    - solution
+                    - pro: simple in principle
+                    - con: impact/cost isn't clearly included.
             facilitate_compatibility_with_agents:
                 - requirement_priority: {type: constraint}
                 - cost:
@@ -427,477 +527,477 @@ iacs:
                 - cost:
                     value: 16
                     type: development_hours
-    iacs_solution:
+iacs_solution:
+    data:
+        - description: >
+                The iacs solution as a whole: a tool for solutions architecture that
+                documents infrastructure, improves design quality, and launches
+                implementations.
+        - solution of: be_a_powerful_tool_for_solutions_architecture
+    documentation_system:
         data:
             - description: >
-                  The iacs solution as a whole: a tool for solutions architecture that
-                  documents infrastructure, improves design quality, and launches
-                  implementations.
-            - solution of: be_a_powerful_tool_for_solutions_architecture
-        documentation_system:
+                    Provides quality end-to-end documentation of infrastructure.
+            - solution of: provide_quality_end_to_end_documentation_of_infrastructure
+        source_of_truth_system:
             data:
                 - description: >
-                      Provides quality end-to-end documentation of infrastructure.
-                - solution of: provide_quality_end_to_end_documentation_of_infrastructure
-            source_of_truth_system:
+                        Provides a single source of truth for infrastructure definitions.
+                - solution of: provide_a_source_of_truth
+            deduplication_system:
                 data:
                     - description: >
-                          Provides a single source of truth for infrastructure definitions.
-                    - solution of: provide_a_source_of_truth
-                deduplication_system:
+                            Minimizes duplication across infrastructure definitions.
+                    - solution of: minimize_duplication
+                parser_system:
                     data:
                         - description: >
-                              Minimizes duplication across infrastructure definitions.
-                        - solution of: minimize_duplication
-                    parser_system:
+                                Parses infrastructure defined in a wide variety of formats.
+                        - solution of: parse_infrastructure_in_a_wide_variety_of_formats
+                    iac_format_parser:
+                        data:
+                            - description: Parses a variety of IaC formats.
+                            - solution of: parse_a_variety_of_IaC_formats
+                    code_language_parser:
+                        data:
+                            - description: Parses code languages such as Python.
+                            - solution of: parse_code_languages
+                    natural_language_parser:
                         data:
                             - description: >
-                                  Parses infrastructure defined in a wide variety of formats.
-                            - solution of: parse_infrastructure_in_a_wide_variety_of_formats
-                        iac_format_parser:
-                            data:
-                                - description: Parses a variety of IaC formats.
-                                - solution of: parse_a_variety_of_IaC_formats
-                        code_language_parser:
-                            data:
-                                - description: Parses code languages such as Python.
-                                - solution of: parse_code_languages
-                        natural_language_parser:
-                            data:
-                                - description: >
-                                      Parses natural language descriptions of infrastructure.
-                                - solution of: parse_natural_language
-                version_control_integration:
-                    data:
-                        - description: >
-                              Ensures infrastructure definitions are compatible with
-                              version control systems.
-                        - solution of: compatible_with_version_control
-                manifest_aggregator:
-                    data:
-                        - description: >
-                              Aggregates all infrastructure definitions in one location.
-                        - solution of: aggregate_all_definitions_in_one_location
-            comprehensive_documentation:
+                                    Parses natural language descriptions of infrastructure.
+                            - solution of: parse_natural_language
+            version_control_integration:
                 data:
                     - description: >
-                          Comprehensively documents all types of infrastructure.
-                    - solution of: comprehensively_document_infrastructure
-                entity_definition_system:
-                    data:
-                        - description: Accepts user-defined infrastructure descriptions.
-                        - solution of: accept_user_defined_infrastructure
-                    ecs_framework:
-                        data:
-                            - description: >
-                                  Describes infrastructure using an ECS framework.
-                            - solution of: describe_infrastructure_with_ecs_framework
-                infrastructure_compatibility_system:
-                    data:
-                        - description: >
-                              Ensures compatibility with any type of infrastructure.
-                        - solution of: compatible_with_any_type_of_infrastructure
-                    standard_components_support:
-                        data:
-                            - description: Supports standard infrastructure components.
-                            - solution of: compatible_with_standard_components
-                    human_execution_support:
-                        data:
-                            - description: Supports human-executed infrastructure.
-                            - solution of: compatible_with_human_executed_infrastructure
-                    abstract_components_support:
-                        data:
-                            - description: Supports abstract infrastructure components.
-                            - solution of: compatible_with_abstract_components
-                scalability_system:
-                    data:
-                        - description: Ensures infrastructure documentation scales well.
-                        - solution of: scales_well
-            format_system:
+                            Ensures infrastructure definitions are compatible with
+                            version control systems.
+                    - solution of: compatible_with_version_control
+            manifest_aggregator:
                 data:
                     - description: >
-                          Provides documentation in formats meeting all common needs.
-                    - solution of: provide_documentation_in_formats_meeting_all_common_needs
-                format_design:
-                    data:
-                        - description: Provides good input and output formats.
-                        - solution of: have_good_formats
-                    entity_first_format:
-                        data:
-                            - description: >
-                                  Provides a human- and agent-friendly input format
-                                  (entity-first YAML).
-                            - solution of: have_human_and_agent_friendly_input_format
-                    component_first_format:
-                        data:
-                            - description: >
-                                  Provides an analysis-friendly ingested format
-                                  (component-first registry).
-                            - solution of: have_analysis_friendly_ingested_format
-                    wiki_exporter:
-                        data:
-                            - description: Exports infrastructure to wiki format.
-                            - solution of: export_infrastructure_to_wiki
-                format_transformer:
-                    data:
-                        - description: Transforms infrastructure data between formats.
-                        - solution of: transform_between_formats
-                    ecs_transformer:
-                        data:
-                            - description: >
-                                  Transforms between entity-first and component-first formats.
-                            - solution of: transform_between_entity_first_and_component_first
-        quality_improvement_system:
-            data:
-                - description: Helps improve the quality of system designs.
-                - solution of: help_improve_the_quality_of_system_designs
-            architecture_improvement_system:
-                data:
-                    - description: Improves complex solution architectures.
-                    - solution of: improve_complex_solution_architectures
-                interactive_dev_interface:
-                    data:
-                        - description: >
-                              Provides an interface for interactive development of
-                              solution designs.
-                        - solution of: provide_an_interface_for_interactive_development
-                testing_system:
-                    data:
-                        - description: Allows solution designs to be tested.
-                        - solution of: allow_solution_designs_to_be_tested
-                    test_builder:
-                        data:
-                            - description: >
-                                  Provides tools to build tests for system designs.
-                            - solution of: provide_tools_to_build_tests_for_system_designs
-                    builtin_tests:
-                        data:
-                            - description: Provides default tests for systems.
-                            - solution of: provide_default_tests_for_systems
-                        requirement_coverage_audit:
-                            data:
-                                - description: Identifies requirements missing solutions.
-                                - solution of: test_for_identifying_requirements_missing_solutions
-                        traceability_audit:
-                            data:
-                                - description: Traces every component to a requirement.
-                                - solution of: trace_every_component_to_a_requirement
-                        definition_audit:
-                            data:
-                                - description: Tests for invalid definitions.
-                                - solution of: test_for_invalid_definitions
-                        connectivity_audit:
-                            data:
-                                - description: Tests for siloed infrastructure.
-                                - solution of: test_for_siloed_infrastructure
-                        todo_audit:
-                            data:
-                                - description: Tests for completed todos.
-                                - solution of: test_for_completed_todos
-                architecture_viewer:
-                    data:
-                        - description: Conveys complex architectures visually.
-                        - solution of: convey_complex_architectures
-            design_procedure_system:
-                data:
-                    - description: Creates a procedure for designing systems.
-                    - solution of: create_a_procedure_for_designing_systems
-                requirement_decomposition_process:
-                    data:
-                        - description: >
-                              The process for decomposing requirements hierarchically.
-                        - solution of: requirement_design_process
-                solution_development_process:
-                    data:
-                        - description: >
-                              The process for developing solutions for each requirement.
-                        - solution of: system_design_process
-        implementation_system:
+                            Aggregates all infrastructure definitions in one location.
+                    - solution of: aggregate_all_definitions_in_one_location
+        comprehensive_documentation:
             data:
                 - description: >
-                      Provides a launching point for infrastructure implementation.
-                - solution of: provide_a_launching_point_for_infrastructure_implementation
-            guided_development_system:
+                        Comprehensively documents all types of infrastructure.
+                - solution of: comprehensively_document_infrastructure
+            entity_definition_system:
                 data:
-                    - description: Provides a guided process for developing solutions.
-                    - solution of: provide_a_guided_process_for_developing_solutions
-                prioritization_system:
+                    - description: Accepts user-defined infrastructure descriptions.
+                    - solution of: accept_user_defined_infrastructure
+                ecs_framework:
                     data:
-                        - description: Provides functionality for prioritizing work.
-                        - solution of: provide_functionality_for_prioritizing
-            agent_integration:
+                        - description: >
+                                Describes infrastructure using an ECS framework.
+                        - solution of: describe_infrastructure_with_ecs_framework
+            infrastructure_compatibility_system:
                 data:
-                    - description: Facilitates compatibility with AI agents.
-                    - solution of: facilitate_compatibility_with_agents
-            terraform_integration:
+                    - description: >
+                            Ensures compatibility with any type of infrastructure.
+                    - solution of: compatible_with_any_type_of_infrastructure
+                standard_components_support:
+                    data:
+                        - description: Supports standard infrastructure components.
+                        - solution of: compatible_with_standard_components
+                human_execution_support:
+                    data:
+                        - description: Supports human-executed infrastructure.
+                        - solution of: compatible_with_human_executed_infrastructure
+                abstract_components_support:
+                    data:
+                        - description: Supports abstract infrastructure components.
+                        - solution of: compatible_with_abstract_components
+            scalability_system:
                 data:
-                    - description: Facilitates compatibility with Terraform.
-                    - solution of: facilitate_compatibility_with_terraform
-            database_integration:
+                    - description: Ensures infrastructure documentation scales well.
+                    - solution of: scales_well
+        format_system:
+            data:
+                - description: >
+                        Provides documentation in formats meeting all common needs.
+                - solution of: provide_documentation_in_formats_meeting_all_common_needs
+            format_design:
                 data:
-                    - description: Facilitates compatibility with relational databases.
-                    - solution of: facilitate_compatibility_with_relational_databases
-
-    iacs_meta_discussion:
+                    - description: Provides good input and output formats.
+                    - solution of: have_good_formats
+                entity_first_format:
+                    data:
+                        - description: >
+                                Provides a human- and agent-friendly input format
+                                (entity-first YAML).
+                        - solution of: have_human_and_agent_friendly_input_format
+                component_first_format:
+                    data:
+                        - description: >
+                                Provides an analysis-friendly ingested format
+                                (component-first registry).
+                        - solution of: have_analysis_friendly_ingested_format
+                wiki_exporter:
+                    data:
+                        - description: Exports infrastructure to wiki format.
+                        - solution of: export_infrastructure_to_wiki
+            format_transformer:
+                data:
+                    - description: Transforms infrastructure data between formats.
+                    - solution of: transform_between_formats
+                ecs_transformer:
+                    data:
+                        - description: >
+                                Transforms between entity-first and component-first formats.
+                        - solution of: transform_between_entity_first_and_component_first
+    quality_improvement_system:
+        data:
+            - description: Helps improve the quality of system designs.
+            - solution of: help_improve_the_quality_of_system_designs
+        architecture_improvement_system:
+            data:
+                - description: Improves complex solution architectures.
+                - solution of: improve_complex_solution_architectures
+            interactive_dev_interface:
+                data:
+                    - description: >
+                            Provides an interface for interactive development of
+                            solution designs.
+                    - solution of: provide_an_interface_for_interactive_development
+            testing_system:
+                data:
+                    - description: Allows solution designs to be tested.
+                    - solution of: allow_solution_designs_to_be_tested
+                test_builder:
+                    data:
+                        - description: >
+                                Provides tools to build tests for system designs.
+                        - solution of: provide_tools_to_build_tests_for_system_designs
+                builtin_tests:
+                    data:
+                        - description: Provides default tests for systems.
+                        - solution of: provide_default_tests_for_systems
+                    requirement_coverage_audit:
+                        data:
+                            - description: Identifies requirements missing solutions.
+                            - solution of: test_for_identifying_requirements_missing_solutions
+                    traceability_audit:
+                        data:
+                            - description: Traces every component to a requirement.
+                            - solution of: trace_every_component_to_a_requirement
+                    definition_audit:
+                        data:
+                            - description: Tests for invalid definitions.
+                            - solution of: test_for_invalid_definitions
+                    connectivity_audit:
+                        data:
+                            - description: Tests for siloed infrastructure.
+                            - solution of: test_for_siloed_infrastructure
+                    todo_audit:
+                        data:
+                            - description: Tests for completed todos.
+                            - solution of: test_for_completed_todos
+            architecture_viewer:
+                data:
+                    - description: Conveys complex architectures visually.
+                    - solution of: convey_complex_architectures
+        design_procedure_system:
+            data:
+                - description: Creates a procedure for designing systems.
+                - solution of: create_a_procedure_for_designing_systems
+            requirement_decomposition_process:
+                data:
+                    - description: >
+                            The process for decomposing requirements hierarchically.
+                    - solution of: requirement_design_process
+            solution_development_process:
+                data:
+                    - description: >
+                            The process for developing solutions for each requirement.
+                    - solution of: system_design_process
+    implementation_system:
         data:
             - description: >
-                  Ongoing design discussions and open questions about the syntax and
-                  capabilities of the iacs system itself.
-        syntax_challenges:
-            - todo:
-                - "Is this redundant with [field.range]? (re: categorical data type)"
-                - >
-                  Should we use "domain" instead of "range" for the field component?
-                  Is there a better other term?
-                - Determine how we want to calculate the entity_id.
-                - >
-                  Have files be the topmost entities.
-                - >
-                  Notation for multiple components of the same type. Maybe "component_type s"?
-                - >
-                  Binary relationship notation going both ways.
-                  Maybe "component_type of:" and "component_type:"?
-                - >
-                  Notation for indicating that a component is a row-wise subset of another
-                  component, i.e. that it has the same fields but additional constraints.
-                  Maybe "subset of:" and "subset s", i.e. we use a "subset" relation?
-                - >
-                  Notation for defining an entity in-line vs linking to an existing entity.
-                  Maybe "(entity_name)"?
-                - >
-                  Notation for indicating that a component must be joined with another component
-                  to be interpreted correctly. Maybe: "required:"?
-                - >
-                  Notation for working with a component that would be a subset of another
-                  component, except it has additional required associated components or is
-                  an extension of that component. Maybe we allow "inheritance" where the child
-                  component is a subset of the parent component that also has required components
-                  defined for the purpose of extending the component.
-                - >
-                  Notation for subsets with constant values for one or more fields.
-                - >
-                  Notation for functions and classes.
-                - >
-                  Notation for a component that is at the intersection of two subsets.
-        infrastructure_as_data_discussion:
+                    Provides a launching point for infrastructure implementation.
+            - solution of: provide_a_launching_point_for_infrastructure_implementation
+        guided_development_system:
             data:
-                - description: >
-                      Discussion on reframing iacs from "infrastructure as code" to
-                      "infrastructure as data". The distinction matters for storage and
-                      tooling choices: code implies files and text editors, while data
-                      implies databases, queries, and structured exports.
-            primary_storage:
-                - description: >
-                      If infrastructure is data, databases are the more natural primary
-                      storage medium rather than EC files on disk. This would make
-                      querying, diffing, and auditing infrastructure more tractable.
-                - todo: >
-                      Evaluate database backends as primary storage for iacs, with EC files
-                      serving only as an ingestion and interchange format. See also:
-                      facilitate_compatibility_with_relational_databases.
-            yaml_as_ingestion_format:
-                - description: >
-                      Even with a database backend, EC files remain valuable as the human-
-                      authored input format. Users write EC files, iacs ingests them into
-                      the database. The round-trip direction — exporting arbitrary slices of
-                      the infrastructure back to EC files for viewing and editing — is a
-                      strong candidate for the primary editing workflow.
-                - todo: >
-                      Design the EC file round-trip: exporting a subgraph of the database
-                      back to entity-first EC files, letting the user modify them, and
-                      re-ingesting the result cleanly.
-            viewing_and_editing:
-                - description: >
-                      Open question: how do users view and edit infrastructure once it
-                      lives in a database? Two candidate approaches are (1) exposing
-                      arbitrary subsets as editable EC files, and (2) a generated wiki
-                      or documentation site. Both may be needed simultaneously.
-                - todo: >
-                      Decide on the primary interface for browsing and editing persisted
-                      infrastructure. Evaluate editable EC file exports vs. a generated
-                      wiki. See also: export_infrastructure_to_wiki.
-        alternate_yaml_format_discussion:
-            data:
-                - description: >
-                      An alternate entity-first YAML format was explored where all
-                      entities are dicts rather than lists. Components are distinguished
-                      from child entities purely by value type, eliminating list syntax
-                      for single-instance entities and the "data:" wrapper for entities
-                      that have both own components and children.
-
-                      Decided against adopting at this time—the format has real
-                      ergonomic costs that outweigh the visual savings.
-            format_rules:
-                - description: >
-                      Within an entity dict each key maps to either a component or a
-                      child entity, determined by value type:
-                        null (~)           tag component (presence-only)
-                        atomic scalar      scalar component
-                        list               multiple instances of that component type;
-                                           each item is a scalar or sub-field dict
-                        dict               child entity (recurse)
-            example:
-                - description: >
-                      Classic format:
-
-                        make_cats_happy:
-                            data:
-                                - description: The mission.
-                                - requirement_priority: 1
-                            feed_and_water_cats:
-                                data:
-                                    - description: Obviously.
-                                    - requirement_priority: 1
-                                water_cats:
-                                    - requirement_priority
-                                    - alias: water_cats
-                        cat_happiness_device:
-                            data:
-                                - description: An all-in-one tool.
-                                - solution of: make_cats_happy
-                                - system
-                            feeding_system:
-                                data:
-                                    - effort: 2
-                                feed_cats:
-                                    - effort:
-                                        - 8
-                                        - value: 2
-                                          schedule: weekly
-
-                      Alternate format (same data):
-
-                        make_cats_happy:
-                            description: The mission.
-                            requirement: 1
-                            feed_and_water_cats:
-                                description: Obviously.
-                                requirement: 1
-                                water_cats:
-                                    requirement: ~
-                                    alias: water_cats
-                        cat_happiness_device:
-                            description: An all-in-one tool.
-                            solution of: make_cats_happy
-                            system: ~
-                            feeding_system:
-                                effort: 2
-                                feed_cats:
-                                    effort:
-                                        - 8
-                                        - value: 2
-                                          schedule: weekly
-            tradeoffs:
+                - description: Provides a guided process for developing solutions.
+                - solution of: provide_a_guided_process_for_developing_solutions
+            prioritization_system:
                 data:
-                    - description: Why the format was not adopted.
-                pro_no_list_syntax:
-                    - description: >
-                          Single-component entities are more readable without leading
-                          dashes. Nested structure directly mirrors the entity hierarchy.
-                con_tags_need_explicit_null:
-                    - description: >
-                          Tag components require "component_name: ~" instead of the
-                          clean bare-string "- component_name". The null syntax is less
-                          visually distinct and more surprising to readers.
-                con_subfield_components_need_list:
-                    - description: >
-                          Because any dict value is interpreted as a child entity,
-                          a single-instance component with sub-fields must be wrapped
-                          in a one-element list (e.g. "link: [{source: A, target: B}]")
-                          rather than the natural "link: {source: A, target: B}".
-                          This is worse than the problem it was meant to solve.
-                con_migration_cost:
-                    - description: >
-                          All existing manifests, the load/export pipeline, and tooling
-                          use the classic list-based format. Migration would require
-                          converting every file and rewriting the core ETL path.
-        inline_imports_discussion:
+                    - description: Provides functionality for prioritizing work.
+                    - solution of: provide_functionality_for_prioritizing
+        agent_integration:
+            data:
+                - description: Facilitates compatibility with AI agents.
+                - solution of: facilitate_compatibility_with_agents
+        terraform_integration:
+            data:
+                - description: Facilitates compatibility with Terraform.
+                - solution of: facilitate_compatibility_with_terraform
+        database_integration:
+            data:
+                - description: Facilitates compatibility with relational databases.
+                - solution of: facilitate_compatibility_with_relational_databases
+
+iacs_meta_discussion:
+    data:
+        - description: >
+                Ongoing design discussions and open questions about the syntax and
+                capabilities of the iacs system itself.
+    syntax_challenges:
+        - todo:
+            - "Is this redundant with [field.range]? (re: categorical data type)"
+            - >
+                Should we use "domain" instead of "range" for the field component?
+                Is there a better other term?
+            - Determine how we want to calculate the entity_id.
+            - >
+                Have files be the topmost entities.
+            - >
+                Notation for multiple components of the same type. Maybe "component_type s"?
+            - >
+                Binary relationship notation going both ways.
+                Maybe "component_type of:" and "component_type:"?
+            - >
+                Notation for indicating that a component is a row-wise subset of another
+                component, i.e. that it has the same fields but additional constraints.
+                Maybe "subset of:" and "subset s", i.e. we use a "subset" relation?
+            - >
+                Notation for defining an entity in-line vs linking to an existing entity.
+                Maybe "(entity_name)"?
+            - >
+                Notation for indicating that a component must be joined with another component
+                to be interpreted correctly. Maybe: "required:"?
+            - >
+                Notation for working with a component that would be a subset of another
+                component, except it has additional required associated components or is
+                an extension of that component. Maybe we allow "inheritance" where the child
+                component is a subset of the parent component that also has required components
+                defined for the purpose of extending the component.
+            - >
+                Notation for subsets with constant values for one or more fields.
+            - >
+                Notation for functions and classes.
+            - >
+                Notation for a component that is at the intersection of two subsets.
+    infrastructure_as_data_discussion:
+        data:
             - description: >
-                  Several classes (e.g. Registrar) import modules such as ibis
-                  inside methods rather than at the top of the file, primarily
-                  to keep expensive imports out of light-weight import paths
-                  such as the MCP server (see tests/test_startup_performance.py,
-                  which enforces an import-time threshold).
+                    Discussion on reframing iacs from "infrastructure as code" to
+                    "infrastructure as data". The distinction matters for storage and
+                    tooling choices: code implies files and text editors, while data
+                    implies databases, queries, and structured exports.
+        primary_storage:
+            - description: >
+                    If infrastructure is data, databases are the more natural primary
+                    storage medium rather than EC files on disk. This would make
+                    querying, diffing, and auditing infrastructure more tractable.
             - todo: >
-                  Re-evaluate the inline imports in iacs/registrar.py and
-                  elsewhere: confirm each one is still needed for startup
-                  performance or to avoid a circular import, and move any that
-                  aren't back to the top of the file.
-        requirement_solution_modeling_discussion:
+                    Evaluate database backends as primary storage for iacs, with EC files
+                    serving only as an ingestion and interchange format. See also:
+                    facilitate_compatibility_with_relational_databases.
+        yaml_as_ingestion_format:
+            - description: >
+                    Even with a database backend, EC files remain valuable as the human-
+                    authored input format. Users write EC files, iacs ingests them into
+                    the database. The round-trip direction — exporting arbitrary slices of
+                    the infrastructure back to EC files for viewing and editing — is a
+                    strong candidate for the primary editing workflow.
+            - todo: >
+                    Design the EC file round-trip: exporting a subgraph of the database
+                    back to entity-first EC files, letting the user modify them, and
+                    re-ingesting the result cleanly.
+        viewing_and_editing:
+            - description: >
+                    Open question: how do users view and edit infrastructure once it
+                    lives in a database? Two candidate approaches are (1) exposing
+                    arbitrary subsets as editable EC files, and (2) a generated wiki
+                    or documentation site. Both may be needed simultaneously.
+            - todo: >
+                    Decide on the primary interface for browsing and editing persisted
+                    infrastructure. Evaluate editable EC file exports vs. a generated
+                    wiki. See also: export_infrastructure_to_wiki.
+    alternate_yaml_format_discussion:
+        data:
+            - description: >
+                    An alternate entity-first YAML format was explored where all
+                    entities are dicts rather than lists. Components are distinguished
+                    from child entities purely by value type, eliminating list syntax
+                    for single-instance entities and the "data:" wrapper for entities
+                    that have both own components and children.
+
+                    Decided against adopting at this time—the format has real
+                    ergonomic costs that outweigh the visual savings.
+        format_rules:
+            - description: >
+                    Within an entity dict each key maps to either a component or a
+                    child entity, determined by value type:
+                    null (~)           tag component (presence-only)
+                    atomic scalar      scalar component
+                    list               multiple instances of that component type;
+                                        each item is a scalar or sub-field dict
+                    dict               child entity (recurse)
+        example:
+            - description: >
+                    Classic format:
+
+                    make_cats_happy:
+                        data:
+                            - description: The mission.
+                            - requirement_priority: 1
+                        feed_and_water_cats:
+                            data:
+                                - description: Obviously.
+                                - requirement_priority: 1
+                            water_cats:
+                                - requirement_priority
+                                - alias: water_cats
+                    cat_happiness_device:
+                        data:
+                            - description: An all-in-one tool.
+                            - solution of: make_cats_happy
+                            - system
+                        feeding_system:
+                            data:
+                                - effort: 2
+                            feed_cats:
+                                - effort:
+                                    - 8
+                                    - value: 2
+                                        schedule: weekly
+
+                    Alternate format (same data):
+
+                    make_cats_happy:
+                        description: The mission.
+                        requirement: 1
+                        feed_and_water_cats:
+                            description: Obviously.
+                            requirement: 1
+                            water_cats:
+                                requirement: ~
+                                alias: water_cats
+                    cat_happiness_device:
+                        description: An all-in-one tool.
+                        solution of: make_cats_happy
+                        system: ~
+                        feeding_system:
+                            effort: 2
+                            feed_cats:
+                                effort:
+                                    - 8
+                                    - value: 2
+                                        schedule: weekly
+        tradeoffs:
+            data:
+                - description: Why the format was not adopted.
+            pro_no_list_syntax:
+                - description: >
+                        Single-component entities are more readable without leading
+                        dashes. Nested structure directly mirrors the entity hierarchy.
+            con_tags_need_explicit_null:
+                - description: >
+                        Tag components require "component_name: ~" instead of the
+                        clean bare-string "- component_name". The null syntax is less
+                        visually distinct and more surprising to readers.
+            con_subfield_components_need_list:
+                - description: >
+                        Because any dict value is interpreted as a child entity,
+                        a single-instance component with sub-fields must be wrapped
+                        in a one-element list (e.g. "link: [{source: A, target: B}]")
+                        rather than the natural "link: {source: A, target: B}".
+                        This is worse than the problem it was meant to solve.
+            con_migration_cost:
+                - description: >
+                        All existing manifests, the load/export pipeline, and tooling
+                        use the classic list-based format. Migration would require
+                        converting every file and rewriting the core ETL path.
+    inline_imports_discussion:
+        - description: >
+                Several classes (e.g. Registrar) import modules such as ibis
+                inside methods rather than at the top of the file, primarily
+                to keep expensive imports out of light-weight import paths
+                such as the MCP server (see tests/test_startup_performance.py,
+                which enforces an import-time threshold).
+        - todo: >
+                Re-evaluate the inline imports in iacs/registrar.py and
+                elsewhere: confirm each one is still needed for startup
+                performance or to avoid a circular import, and move any that
+                aren't back to the top of the file.
+    requirement_solution_modeling_discussion:
+        data:
+            - description: >
+                    The problem this whole file's requirement/solution
+                    tree is itself a solution to: making sure
+                    requirements are met -- identifying clear goals and
+                    finding ways to fulfill them. This entry tries a
+                    third way of connecting things, to compare against
+                    the two already in use elsewhere in this file: no
+                    ``- requirement_priority``/``- solution`` tags at
+                    all, entities related purely through ((solution))
+                    and ((requirement)), an entity's role implied
+                    entirely by which relations point at it rather than
+                    by a label.
+        mirrored_two_tree_architecture:
+            - description: >
+                    What the rest of this file does: a requirement tree
+                    (``iacs:``) and a separate solution tree
+                    (``iacs_solution:``) that mirror each other,
+                    connected by ``solution of:`` links across the two
+                    trees.
+            - solution of: iacs_meta_discussion.requirement_solution_modeling_discussion
+        alternating_nested_tree_architecture:
+            - description: >
+                    A single tree where requirement and solution entities
+                    nest directly inside each other instead of mirroring
+                    two separate trees -- see this file's
+                    have_a_good_scoring_system for the worked example.
+                    Still uses ``- requirement_priority``/``- solution
+                    of:`` tags at each level; in practice it ended up
+                    feeling like just two separate trees again, one per
+                    branch, rather than a real simplification.
+            - solution of: iacs_meta_discussion.requirement_solution_modeling_discussion
+        pure_connection_architecture:
             data:
                 - description: >
-                      The problem this whole file's requirement/solution
-                      tree is itself a solution to: making sure
-                      requirements are met -- identifying clear goals and
-                      finding ways to fulfill them. This entry tries a
-                      third way of connecting things, to compare against
-                      the two already in use elsewhere in this file: no
-                      ``- requirement_priority``/``- solution`` tags at
-                      all, entities related purely through ((solution))
-                      and ((requirement)), an entity's role implied
-                      entirely by which relations point at it rather than
-                      by a label.
-            mirrored_two_tree_architecture:
-                - description: >
-                      What the rest of this file does: a requirement tree
-                      (``iacs:``) and a separate solution tree
-                      (``iacs_solution:``) that mirror each other,
-                      connected by ``solution of:`` links across the two
-                      trees.
+                        No ``- requirement_priority``/``- solution``
+                        tags anywhere: an entity's role is implied
+                        entirely by which ((solution))/((requirement))
+                        relations point at it, not by a label. This
+                        entry (and its children below) is itself
+                        written this way, as the trial.
                 - solution of: iacs_meta_discussion.requirement_solution_modeling_discussion
-            alternating_nested_tree_architecture:
-                - description: >
-                      A single tree where requirement and solution entities
-                      nest directly inside each other instead of mirroring
-                      two separate trees -- see this file's
-                      have_a_good_scoring_system for the worked example.
-                      Still uses ``- requirement_priority``/``- solution
-                      of:`` tags at each level; in practice it ended up
-                      feeling like just two separate trees again, one per
-                      branch, rather than a real simplification.
-                - solution of: iacs_meta_discussion.requirement_solution_modeling_discussion
-            pure_connection_architecture:
+            optional_consideration_linkage:
                 data:
                     - description: >
-                          No ``- requirement_priority``/``- solution``
-                          tags anywhere: an entity's role is implied
-                          entirely by which ((solution))/((requirement))
-                          relations point at it, not by a label. This
-                          entry (and its children below) is itself
-                          written this way, as the trial.
-                    - solution of: iacs_meta_discussion.requirement_solution_modeling_discussion
-                optional_consideration_linkage:
-                    data:
-                        - description: >
-                              A consideration_rating's own consideration
-                              key (``value``) can be left null for a plain,
-                              uncategorized pro/con -- just "is this strong
-                              or weak," no shared axis to weigh it against
-                              others by. Its effective weight then defaults
-                              to 1 (same as an explicit weight-1
-                              consideration) rather than 0, so it still
-                              counts in a weighted total instead of
-                              vanishing. One architecture covers both the
-                              weighted and the unweighted case: a
-                              consideration component plus a
-                              consideration_rating component, using the
-                              consideration's weight when a match exists
-                              and defaulting to 1 when it doesn't.
+                            A consideration_rating's own consideration
+                            key (``value``) can be left null for a plain,
+                            uncategorized pro/con -- just "is this strong
+                            or weak," no shared axis to weigh it against
+                            others by. Its effective weight then defaults
+                            to 1 (same as an explicit weight-1
+                            consideration) rather than 0, so it still
+                            counts in a weighted total instead of
+                            vanishing. One architecture covers both the
+                            weighted and the unweighted case: a
+                            consideration component plus a
+                            consideration_rating component, using the
+                            consideration's weight when a match exists
+                            and defaulting to 1 when it doesn't.
 
-                              Deferred, not built: auto-creating a
-                              consideration from a rating's own category
-                              when that category isn't shared with any
-                              other rating.
-                        - solution of: create_a_procedure_for_designing_systems.have_a_good_scoring_system
-                    null_value_representation:
-                        - description: >
-                              Needs YAML's null (an omitted ``value:``
-                              field, or an explicit ``value: null``) to
-                              actually mean "no category," not the empty
-                              string -- an empty string would just be a
-                              consideration keyed "" rather than an
-                              absence of one.
-                        - requirement of: pure_connection_architecture.optional_consideration_linkage
+                            Deferred, not built: auto-creating a
+                            consideration from a rating's own category
+                            when that category isn't shared with any
+                            other rating.
+                    - solution of: create_a_procedure_for_designing_systems.have_a_good_scoring_system
+                null_value_representation:
+                    - description: >
+                            Needs YAML's null (an omitted ``value:``
+                            field, or an explicit ``value: null``) to
+                            actually mean "no category," not the empty
+                            string -- an empty string would just be a
+                            consideration keyed "" rather than an
+                            absence of one.
+                    - requirement of: pure_connection_architecture.optional_consideration_linkage
 
 ecs_framework:
     data:
@@ -2220,6 +2320,20 @@ linking_process:
     address_duplicates:
         - description: We'll inevitably have duplicated work.
         - requirement
+    validate_linking_process:
+        data:
+            - requirement
+        scrambled_tree_test:
+            - description: Start with a tree, then remove all linkings and test re-assembly.
+            - solution
+            - pro: Easy to create.
+            - con: Doesn't test incorrect data, just structure.
+        scored_against_human:
+            - description: Have a human go through the same process.
+            - solution
+            - pro: Can test data incorrectness.
+            - con: More open to interpretation.
+            - con: Creating the test is time intensive.
 
 requirement_and_solution_constraints:
     data:
@@ -2265,6 +2379,7 @@ design_implement_cycle_workflow:
             - requirement
         intermediate_results_dont_corrupt_data:
             - requirement
+        must_be_compatible_with_determining_what_to_work_on_next:
         must_have_units_of_work:
             data:
                 - description: If we stop, we need to be able to pick a part and move forward.
@@ -2276,6 +2391,8 @@ design_implement_cycle_workflow:
             well_defined_branches_can_be_worked_on_independently:
                 data:
                     - solution
+            must_handle_broken_links:
+                - requirement
             must_be_able_to_list_units_of_work:
                 data:
                     - requirement
@@ -2289,10 +2406,15 @@ design_implement_cycle_workflow:
                     - con: Might be hard to design.
                     - con: How do we handle incomplete branches?
                     - con: This seems like it will take a while.
+                    - con: How do we handle branches not connected?
                 walk_from_most_to_least_complete:
                     - solution
                     - pro: Focuses on well defined work.
                     - con: Not related to project goals.
+                walk_impact_cost_graph:
+                    - solution
+                    - pro: Good return on investment.
+                    - con: Requires impact and cost to be defined, and it might be too early for that.
 
 visualization_of_requirement_solution_graph:
     - description: What does this look like?
