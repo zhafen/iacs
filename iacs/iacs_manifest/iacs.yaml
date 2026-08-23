@@ -514,17 +514,74 @@ iacs:
                                 narrated_task_batches:
                                     - description: Review implementation and narrate thoughts as doing so. Then organize into tasks, and have the agent work on the tasks.
                                     - solution
-                conditions_for_switching_active_stages:
+                prioritize_solutions:
                     data:
                         - requirement
-                    allow_each_stage_to_complete_fully:
+                    impact_cost_weighted_features:
+                        - description: >
+                            Among the overall requirement-solution tree identify
+                            individual features that stand alone, then implement them.
                         - solution
-                        - pro: Straightforward.
-                        - con: Not clear how long this will take.
-                    start_implementation_immediately_on_reaching_max_depth:
-                        - solution
-                        - pro: Full route doesn't complete.
-                        - con: May not have sufficient context to implement.
+                design_prioritize_implement_workflow:
+                    data:
+                        - description: We have a process for each individually, but we also need a workflow to connect them.
+                        - requirement
+                    design_prioritize_implement_loop:
+                        data:
+                            - description: Design -> prioritize -> implement, repeat.
+                            - solution
+                        condition_for_ending_design_phase:
+                            data:
+                                - requirement
+                            allow_each_design_to_complete_fully:
+                                - solution
+                                - pro: Straightforward.
+                                - con: Not clear how long this will take.
+                                - con: Likely to learn things during implementation that change the approach.
+                            start_implementation_immediately_on_reaching_max_depth:
+                                - solution
+                                - pro: Start work getting done.
+                                - con: May not have sufficient context to implement.
+                                - con: Prioritization is auto-done to just be what you reach first.
+                            minimum_feature_count:
+                                data:
+                                    - description: >
+                                        Identify features, stand-alone parts of the
+                                        solution, and when N features are defined move on to
+                                        the next stage.
+                                    - solution
+                                    - pro: Balance between getting everything done and jumping in blindly.
+                                identify_features:
+                                    data:
+                                        - requirement
+                                    top_down:
+                                        - description: >
+                                            Start at the top and for each child evaluate if it's a feature, aka standalone.
+                                determine_what_n_is:
+                                    data:
+                                        - requirement
+                                    arbitrary_choice_of_three:
+                                        - solution
+                                ensure_features_are_ready_for_implementation:
+                                    - requirement
+                        condition_for_ending_prioritize_phase:
+                            data:
+                                - requirement
+                            all_features_are_prioritized:
+                                - solution
+                        condition_for_ending_implement_phase:
+                            data:
+                                - requirement
+                            one_feature_complete:
+                                - description: As soon as a feature is complete, return to the design phase.
+                                - solution
+                                - con: Too much time in design phase?
+                            two_features_complete:
+                                - description
+                                - solution
+                            all_features_complete:
+                                - solution
+                                - con: Not enough anchored to design?
                     select_highest_priority_leaf:
                         - solution
                         - con: How?
