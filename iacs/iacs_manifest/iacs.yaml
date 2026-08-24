@@ -2590,8 +2590,19 @@ prior_art_for_alternating_requirement_solution_trees:
           sub-goals, eventually reaching tasks/operationalizations
           (solutions) via means-ends and task-decomposition links. Same
           shape as this file's own requirement/solution tree, "goal"/
-          "task" instead of "requirement"/"solution."
-          https://www.cs.utoronto.ca/~alexei/pub/Lapouchnian-Depth.pdf
+          "task" instead of "requirement"/"solution." Foundational paper:
+          van Lamsweerde, "Goal-Oriented Requirements Engineering: A
+          Guided Tour," Proceedings RE'01, 2001, pp. 249-263 --
+          https://webperso.info.ucl.ac.be/~avl/files/RE01.pdf (author's
+          own hosted copy). Overview a few years on: Lapouchnian,
+          "Goal-Oriented Requirements Engineering: An Overview of the
+          Current Research," 2005 --
+          https://www.cs.utoronto.ca/~alexei/pub/Lapouchnian-Depth.pdf.
+          More recent still: Horkoff et al., "Goal-oriented requirements
+          engineering: an extended systematic mapping study,"
+          Requirements Engineering 24, 133-160 (2019), a systematic
+          mapping study of 246 top-cited GORE papers --
+          https://link.springer.com/article/10.1007/s00766-017-0280-z.
 
           The procedure actually in use here is still a homegrown one, a
           homebrewed model built up requirement by requirement rather
