@@ -149,70 +149,6 @@ iacs:
         improve_system_design_and_implementation:
             data:
                 - requirement
-            various_minor_features:
-                data:
-                    - description: >
-                          Many solutions are too complex for a simple view, but they still
-                          need to be assessed for completeness, accuracy, documentation, etc.
-                    - solution
-                provide_an_interface_for_interactive_development:
-                    - requirement
-                    - description: >
-                        The start of this may be the d3js tree viewer we created.
-                        But that feels like it's potentially starting from scratch.
-                        We need to be careful.
-                        If our focus is code
-                allow_solution_designs_to_be_tested:
-                    data:
-                        - description: >
-                              Requiring solutions to pass well-defined tests sets a
-                              baseline minimum quality.
-                        - requirement_priority
-                    provide_tools_to_build_tests_for_system_designs:
-                        - requirement_priority
-                    provide_default_tests_for_systems:
-                        data:
-                            - requirement_priority
-                        test_for_identifying_requirements_missing_solutions:
-                            - description: >
-                                  Tests for both requirements without solutions and
-                                  requirements without adequate/implemented solutions.
-                            - requirement_priority
-                        trace_every_component_to_a_requirement:
-                            - description: >
-                                  There should be a motivation for every piece of
-                                  infrastructure.
-                            - requirement_priority
-                        test_for_invalid_definitions:
-                            - requirement_priority
-                        test_for_siloed_infrastructure:
-                            - description: >
-                                  Everything should be part of one big solution.
-                            - requirement_priority
-                        test_for_completed_todos:
-                            - requirement_priority
-                convey_complex_architectures:
-                    - description: >
-                          Part of validation is also understanding how an architecture
-                          works, for which we need views into the architecture.
-                    - requirement_priority
-                compatible_with_jotting_down_ideas:
-                    data:
-                        - requirement
-                        - description: Each idea is a piece of a puzzle, which we need to then connect. So we need to capture the pieces when they show up.
-                    easily_navigate_the_written_format:
-                        data:
-                            - solution:
-                                selected: true
-                            - pro: Already nice to have this.
-                            - con: Non-negligible time to do this.
-                        fast_keybindings:
-                            - requirement
-                    drop_ideas_in_and_connect_later:
-                        - solution:
-                            selected: true
-                        - pro: Less interruption of flow.
-                        - con: The implementation is more complicated.
             procedure_for_designing_and_implementing_systems:
                 data:
                     - description: >
@@ -225,6 +161,10 @@ iacs:
                     - solution
                     - pro: Can offload a lot of the hard decisions.
                     - con: Has to be designed.
+                provide_reliable_basic_structure:
+                    - requirement
+                offload_mental_effort:
+                    - requirement
                 structure_requirements_and_solutions:
                     data:
                         - requirement
@@ -599,6 +539,70 @@ iacs:
                 deploy_relational_databases_from_ec_files:
                     - requirement_priority: {type: constraint}
                     - work_state: done
+            various_minor_features:
+                data:
+                    - description: >
+                          Many solutions are too complex for a simple view, but they still
+                          need to be assessed for completeness, accuracy, documentation, etc.
+                    - solution
+                provide_an_interface_for_interactive_development:
+                    - requirement
+                    - description: >
+                        The start of this may be the d3js tree viewer we created.
+                        But that feels like it's potentially starting from scratch.
+                        We need to be careful.
+                        If our focus is code
+                allow_solution_designs_to_be_tested:
+                    data:
+                        - description: >
+                              Requiring solutions to pass well-defined tests sets a
+                              baseline minimum quality.
+                        - requirement_priority
+                    provide_tools_to_build_tests_for_system_designs:
+                        - requirement_priority
+                    provide_default_tests_for_systems:
+                        data:
+                            - requirement_priority
+                        test_for_identifying_requirements_missing_solutions:
+                            - description: >
+                                  Tests for both requirements without solutions and
+                                  requirements without adequate/implemented solutions.
+                            - requirement_priority
+                        trace_every_component_to_a_requirement:
+                            - description: >
+                                  There should be a motivation for every piece of
+                                  infrastructure.
+                            - requirement_priority
+                        test_for_invalid_definitions:
+                            - requirement_priority
+                        test_for_siloed_infrastructure:
+                            - description: >
+                                  Everything should be part of one big solution.
+                            - requirement_priority
+                        test_for_completed_todos:
+                            - requirement_priority
+                convey_complex_architectures:
+                    - description: >
+                          Part of validation is also understanding how an architecture
+                          works, for which we need views into the architecture.
+                    - requirement_priority
+                compatible_with_jotting_down_ideas:
+                    data:
+                        - requirement
+                        - description: Each idea is a piece of a puzzle, which we need to then connect. So we need to capture the pieces when they show up.
+                    easily_navigate_the_written_format:
+                        data:
+                            - solution:
+                                selected: true
+                            - pro: Already nice to have this.
+                            - con: Non-negligible time to do this.
+                        fast_keybindings:
+                            - requirement
+                    drop_ideas_in_and_connect_later:
+                        - solution:
+                            selected: true
+                        - pro: Less interruption of flow.
+                        - con: The implementation is more complicated.
 iacs_solution:
     data:
         - description: >
@@ -2492,3 +2496,6 @@ visualization_of_requirement_solution_graph:
     - description: What does this look like?
     - solution
     - pro: Satisfies my curiousity.
+
+handle_benefits_for_solution:
+    - description: Consider app A. It was created to help improve people's lives by providing a compass to nearby cats, redirecting when doomscrolling is detected, and planning meals. Each of those are clearly features. Are they also requirements or also solutions or neither? Why does it matter?
