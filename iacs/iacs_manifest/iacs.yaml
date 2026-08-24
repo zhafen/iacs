@@ -2560,3 +2560,19 @@ prior_art_for_alternating_requirement_solution_trees:
           two distinct structures, rather than merging them into one
           tree -- closer to this file's own mirrored iacs:/iacs_solution:
           convention than to the alternating-tree experiments above.
+
+          Goal-Oriented Requirements Engineering (GORE -- KAOS, i*,
+          Tropos) is a third: goals refined via AND/OR decomposition into
+          sub-goals, eventually reaching tasks/operationalizations
+          (solutions) via means-ends and task-decomposition links. Same
+          shape as this file's own requirement/solution tree, "goal"/
+          "task" instead of "requirement"/"solution."
+          https://www.cs.utoronto.ca/~alexei/pub/Lapouchnian-Depth.pdf
+
+          The procedure actually in use here is still a homegrown one, a
+          homebrewed model built up requirement by requirement rather
+          than adopted wholesale from any of the three above -- these are
+          recorded as potential future alternatives (or sources to borrow
+          specific mechanisms from) if the homegrown approach runs into
+          a wall it doesn't have a good answer for, not as a decision to
+          switch to one of them now.
