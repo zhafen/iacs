@@ -161,6 +161,14 @@ iacs:
                     - solution
                     - pro: Can offload a lot of the hard decisions.
                     - con: Has to be designed.
+                goal_oriented_requirement_engineering_approach:
+                    - description: |
+                        Goal-Oriented requirement engineering (GORE) is a common framework to accomplish objectives.
+                        
+                        Note that we will be following Horkoff et al. 2019 (Requirements Eng) regarding the language.
+                    - solution
+
+
                 employs_model_for_solution_architecture:
                     - description: We need a language for designing and implementing systems, which is what the model is.
                     - requirement
