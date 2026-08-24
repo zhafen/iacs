@@ -234,14 +234,14 @@ iacs:
                                         c. Add a bare requirement component.
                                         d. For each requirement, follow the requirement_creation_and_population_process.
                                 - solution
-                                - solution of: procedure_for_designing_systems.identify_relationships
+                                - solution of: accomplishes_gore_objectives.identify_relationships
                                 - pro: Straightforward.
                                 - con: Goes deep quickly, which may put effort where it's not needed.
                             requirement_or_solution_creation_process:
                                 - description: Condensation of the logic from [requirement_creation_and_population_process] and [solution_creation_and_population_process].
                                 - solution
-                                - solution of: procedure_for_designing_systems.identify_solutions
-                                - solution of: procedure_for_designing_systems.identify_relationships
+                                - solution of: can_elicit_and_refine_solutions.propose_solutions
+                                - solution of: accomplishes_gore_objectives.identify_relationships
                                 - pro: Reduced code duplication.
                                 - con: The condensed logic obfuscates what's going on.
                                 - con: Goes deep quickly, which may put effort where it's not needed.
@@ -250,10 +250,10 @@ iacs:
                                 - solution:
                                     selected: True
                                 - solution of:
-                                    value: procedure_for_designing_systems.identify_solutions
+                                    value: can_elicit_and_refine_solutions.propose_solutions
                                     selected: True
                                 - solution of:
-                                    value: procedure_for_designing_systems.identify_relationships
+                                    value: accomplishes_gore_objectives.identify_relationships
                                     selected: True
                                 - pro: Reduced code duplication.
                                 - pro: Bounces back up to top level to refocus on the big picture.
@@ -277,7 +277,7 @@ iacs:
                                             c. Add a bare requirement component.
                                             d. For each requirement, follow the requirement_creation_and_population_process.
                                     - solution
-                                    - solution of: procedure_for_designing_systems.identify_relationships
+                                    - solution of: accomplishes_gore_objectives.identify_relationships
                                     - pro: Straightforward.
                                     - con: Goes deep quickly, which may put effort where it's not needed.
                         can_operationalize_goals_and_solutions:
@@ -361,7 +361,7 @@ iacs:
                                                     An axis's importance (weight) must
                                                     reflect human judgment intuitively.
                                             log_scale_weights:
-                                                - solution of: consideration_scoring_system.intuitive_weight_scale
+                                                - solution of: consideration_scoring_process.intuitive_weight_scale
                                                 - description: >
                                                     Discrete multiplicative grades --
                                                     baseline 8, 1 = low importance,
@@ -371,14 +371,14 @@ iacs:
                                                     once the axes for evaluating scale
                                                     formats themselves are decided.
                                             integer_scale_weights:
-                                                - solution of: consideration_scoring_system.intuitive_weight_scale
+                                                - solution of: consideration_scoring_process.intuitive_weight_scale
                                                 - description: Small signed integers.
                                                 - todo: >
                                                     Fill in consideration_rating pros/cons
                                                     once the axes for evaluating scale
                                                     formats themselves are decided.
                                             float_unbounded_weights:
-                                                - solution of: consideration_scoring_system.intuitive_weight_scale
+                                                - solution of: consideration_scoring_process.intuitive_weight_scale
                                                 - description: >
                                                     Continuous float, -inf to inf (the
                                                     current approach).
@@ -393,21 +393,21 @@ iacs:
                                                     Each solution's per-axis rating must
                                                     reflect human judgment intuitively.
                                             log_scale_ratings:
-                                                - solution of: consideration_scoring_system.intuitive_rating_scale
+                                                - solution of: consideration_scoring_process.intuitive_rating_scale
                                                 - description: Discrete multiplicative grades.
                                                 - todo: >
                                                     Fill in consideration_rating pros/cons
                                                     once the axes for evaluating scale
                                                     formats themselves are decided.
                                             integer_scale_ratings:
-                                                - solution of: consideration_scoring_system.intuitive_rating_scale
+                                                - solution of: consideration_scoring_process.intuitive_rating_scale
                                                 - description: Small signed integers.
                                                 - todo: >
                                                     Fill in consideration_rating pros/cons
                                                     once the axes for evaluating scale
                                                     formats themselves are decided.
                                             float_unbounded_ratings:
-                                                - solution of: consideration_scoring_system.intuitive_rating_scale
+                                                - solution of: consideration_scoring_process.intuitive_rating_scale
                                                 - description: >
                                                     Continuous float, -1 to 1 (the current
                                                     approach).
@@ -425,7 +425,7 @@ iacs:
                                                     bad rating = con -- all four must come
                                                     out intuitively.
                                             signed_weight_times_signed_rating:
-                                                - solution of: consideration_scoring_system.handle_all_sign_combinations
+                                                - solution of: consideration_scoring_process.handle_all_sign_combinations
                                                 - description: >
                                                     contribution = weight * rating; the
                                                     product's sign determines pro/con.
@@ -555,14 +555,20 @@ iacs:
                                             - solution
                                             - con: Too much time in design phase?
                                         two_features_complete:
-                                            - description
+                                            - description: As soon as two features are complete, return to the design phase.
                                             - solution
                                         all_features_complete:
                                             - solution
                                             - con: Not enough anchored to design?
+                        identify_relationships:
+                            - description: We need to understand how requirements and solutions relate to each other.
+                            - requirement
                     plan_quality_is_high:
                         plan_has_performance_metrics:
-                            - description:
+                            - description: >
+                                  The plan should surface measurable performance
+                                  metrics, not just completion state, so progress
+                                  and quality can both be tracked.
                             - requirement
             launching_pad_for_implementation:
                 data:

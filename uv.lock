@@ -1044,7 +1044,7 @@ wheels = [
 [[package]]
 name = "emc2p"
 version = "0.1.0"
-source = { git = "https://github.com/zhafen/emc2p?rev=a588ade083e766fa998636630b93e015f98285ce#a588ade083e766fa998636630b93e015f98285ce" }
+source = { git = "https://github.com/zhafen/emc2p?rev=7b6a987259ab0a6f269cf00d3aaa08b3a5198073#7b6a987259ab0a6f269cf00d3aaa08b3a5198073" }
 dependencies = [
     { name = "duckdb" },
     { name = "ibis-framework", extra = ["duckdb"] },
@@ -1654,7 +1654,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "duckdb", specifier = ">=1.3.2" },
-    { name = "emc2p", extras = ["testing"], git = "https://github.com/zhafen/emc2p?rev=a588ade083e766fa998636630b93e015f98285ce" },
+    { name = "emc2p", extras = ["testing"], git = "https://github.com/zhafen/emc2p?rev=7b6a987259ab0a6f269cf00d3aaa08b3a5198073" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.111.0" },
     { name = "graphviz", specifier = ">=0.21" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27.0" },
