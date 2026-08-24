@@ -161,396 +161,409 @@ iacs:
                     - solution
                     - pro: Can offload a lot of the hard decisions.
                     - con: Has to be designed.
-                goal_oriented_requirement_engineering_approach:
-                    - description: |
-                        Goal-Oriented requirement engineering (GORE) is a common framework to accomplish objectives.
-                        
-                        Note that we will be following Horkoff et al. 2019 (Requirements Eng) regarding the language.
-                    - solution
-
-
                 employs_model_for_solution_architecture:
-                    - description: We need a language for designing and implementing systems, which is what the model is.
-                    - requirement
-                includes_optimization_process_given_model:
-                    - description: Once we have a language, we need a process/algorithm to 
-                fulfill_the_key_responsibilities_of_solution_design:
                     data:
+                        - description: We need a language for designing and implementing systems, which is what the model is.
                         - requirement
-                    determines_objectives:
-                        - requirement
-                    determines_how_to_accomplish_objectives:
-                        - requirement
-                    balances_requirements:
-                        - requirement
-                    incorporates_new_ideas_and_information:
-                        - requirement
-                provide_reliable_basic_structure:
-                    - requirement
-                offload_mental_effort:
-                    - requirement
-                structure_requirements_and_solutions:
-                    data:
-                        - requirement
-                    requirement_solution_tree:
+                    goal_oriented_requirement_engineering_model:
                         data:
-                            - description: A nested tree of both requirements and solutions.
+                            - description: |
+                                Goal-Oriented requirement engineering (GORE) is a common framework to accomplish objectives.
                             - solution
-                        concise_and_intuitive_syntax:
+                        iacs_model:
                             data:
-                                - requirement of: requirement_solution_tree
-                            relationship_syntax_for_children:
-                                data:
-                                    - requirement of: concise_and_intuitive_syntax
-                                use_relative_path_in_relation:
-                                implied_relationship:
-                                    - description: Any parent-child relationship is
-                                        implicitly a requirement or solution relationship,
-                                        though which is not specified.
-                                    - pro: What if we need to use the implied relationship for other things? In fact, we already do that for component inheritance.
-                                implied_relationship_with_comp:
-                                    - description: If the entity owns a requirement or
-                                        solution with no target then it is the
-                                        requirement/solution to its parent.
-                identify_requirements:
-                    data:
-                        - requirement
-                    requirement_creation_and_population_process:
-                        - description: |
-                            1. Select an entity alias. It should be short and meaningful.
-                            2. Add a description component with a value if not yet present.
-                            3. Add a bare requirement component if not yet present.
-                            4. Attempt to assemble a dictionary of solutions. Each key is the entity alias, and each value is a description.
-                            5. For each solution create a new child entity.
-                                a. Use the key as the alias.
-                                b. Use the value as the value for a description component.
-                                c. Add a bare solution component.
-                                d. For each solution, follow the solution_creation_and_population_process.
-                            6. If no solutions were identified, attempt to break the problem down into smaller pieces by creating a dictionary of sub-requirements. Each key is the entity alias, and each value is a description.
-                            7. For each requirement create a new child entity.
-                                a. Use the key as the alias.
-                                b. Use the value as the value for a description component.
-                                c. Add a bare requirement component.
-                                d. For each requirement, follow the requirement_creation_and_population_process.
-                        - solution
-                        - solution of: procedure_for_designing_systems.identify_relationships
-                        - pro: Straightforward.
-                        - con: Goes deep quickly, which may put effort where it's not needed.
-                    requirement_or_solution_creation_process:
-                        - description: Condensation of the logic from [requirement_creation_and_population_process] and [solution_creation_and_population_process].
-                        - solution
-                        - solution of: procedure_for_designing_systems.identify_solutions
-                        - solution of: procedure_for_designing_systems.identify_relationships
-                        - pro: Reduced code duplication.
-                        - con: The condensed logic obfuscates what's going on.
-                        - con: Goes deep quickly, which may put effort where it's not needed.
-                    shallow_requirement_or_solution_creation_process:
-                        - description: Same as [requirement_or_solution_creation_process], but after the minimal child entities are created, go back up one level and proceed to the next minimal entity.
-                        - solution:
-                            selected: True
-                        - solution of:
-                            value: procedure_for_designing_systems.identify_solutions
-                            selected: True
-                        - solution of:
-                            value: procedure_for_designing_systems.identify_relationships
-                            selected: True
-                        - pro: Reduced code duplication.
-                        - pro: Bounces back up to top level to refocus on the big picture.
-                        - con: If the process isn't interrupted this isn't any better than [requirement_or_solution_creation_process].
-                propose_solutions:
-                    data:
-                        - requirement
-                    solution_creation_and_population_process:
-                        - description: |
-                            1. Select an entity alias. It should be short and meaningful.
-                            2. Add a description component with a value if not yet present.
-                            3. Add a bare solution component if not yet present.
-                            4. Is how to implement the solution self-evident? If so, return.
-                            5. Attempt to assemble a dictionary of requirements for the solution to function. Each key is the entity alias, and each value is a description.
-                            6. For each requirement create a new child entity.
-                                a. Use the key as the alias.
-                                b. Use the value as the value for a description component.
-                                c. Add a bare requirement component.
-                                d. For each requirement, follow the requirement_creation_and_population_process.
-                        - solution
-                        - solution of: procedure_for_designing_systems.identify_relationships
-                        - pro: Straightforward.
-                        - con: Goes deep quickly, which may put effort where it's not needed.
-                identify_relationships:
-                    - description: We need to understand how requirements and solutions relate to each other.
-                    - requirement
-                select_solutions:
-                    data:
-                        - description:
-                            Once multiple candidate solutions exist for a
-                            requirement, we need a way to choose among them --
-                            for example, a good scorint system.
-                        - requirement
-                    identify_valid_solutions:
-                        data:
-                            - requirement
-                        brute_force_combinations_evaluation:
-                            - description: Each solution is for one or more requirements. Try all combinations of solutions and include only those where all requirements are satisfied.
-                            - solution
-                    select_among_valid_solutions:
-                        data:
-                            - requirement
-                        choose_highest_impact_cost_ratio:
-                            data:
+                                - description: Our homebrewed model.
                                 - solution
-                            evaluate_impact:
+                            has_defined_terms:
                                 data:
                                     - requirement
-                                have_a_good_flow_for_choosing_categories:
+                                requirement:
+                                    - description: What we want to accomplish.
+                                    - duplicate of: <<the requirement component that's part of the builtins>>
+                                solution:
+                                    - description: How we want to accomplish it.
+                                    - duplicate of: <<the solutions component that's part of the builtins>>
+                            has_organizational_structure:
+                                data:
+                                    - requirement
+                                requirement_solution_tree:
                                     data:
-                                        - requirement
-                                    no_categories:
+                                        - description: A nested tree of both requirements and solutions.
                                         - solution
-                                    simple_categories:
-                                        - solution
-                            evaluate_cost:
+                                    concise_and_intuitive_syntax:
+                                        data:
+                                            - requirement of: requirement_solution_tree
+                                        relationship_syntax_for_children:
+                                            data:
+                                                - requirement of: concise_and_intuitive_syntax
+                                            use_relative_path_in_relation:
+                                            implied_relationship:
+                                                - description: Any parent-child relationship is
+                                                    implicitly a requirement or solution relationship,
+                                                    though which is not specified.
+                                                - pro: What if we need to use the implied relationship for other things? In fact, we already do that for component inheritance.
+                                            implied_relationship_with_comp:
+                                                - description: If the entity owns a requirement or
+                                                    solution with no target then it is the
+                                                    requirement/solution to its parent.
+                employs_a_plan:
+                    data:
+                        - description: Once we have a language, we need a process/algorithm/plan to accomplish our goals.
+                        - requirement
+                    accomplishes_gore_objectives:
+                        data:
+                            - requirement
+                        can_elicit_and_refine_goals:
+                            data:
                                 - requirement
-                        select_ideal_solution_for_each_requirement:
-                            data:
-                                - solution
-                                - con: How do we handle when the combination of ideal individual solutions isn't an overall solution?
-                            have_approach_for_evaluating_solutions_for_a_single_requirement:
-                                data:
-                                    - requirement
-                                qualitative_evaluation:
-                                    - description: Read the possible options and then make a choice.
-                                    - solution
-                        consideration_scoring_process:
-                            data:
-                                - solution
-                                - description: >
-                                    Score each candidate solution's pros and cons
-                                    using iacs's own consideration/
-                                    consideration_rating types: a named axis
-                                    (consideration) with a weight, and each
-                                    solution's rating against that axis.
-                                - work_state: in progress
-                            capture_pros_and_cons:
-                                data:
-                                    - requirement
-                                    - requirement_priority
-                                    - description: >
-                                        The scoring system must capture both pros
-                                        and cons. Already met directly by
-                                        consideration_rating's own note + signed
-                                        rating fields, so no separate nested
-                                        solution is needed here.
-                                consideration_and_consideration_rating_components:
-                                    - solution
-                                    - pro: Precise.
-                                pro_con_components:
-                                    data:
-                                        - solution
-                                        - pro: Very intuitive, very quick to write. Can come back and refine later.
-                                        - con: Multiple component types for one table.
-                                    handle_multiple_component_types_in_one_table:
-                                        - requirement
-                            intuitive_weight_scale:
-                                data:
-                                    - requirement_priority
-                                    - description: >
-                                        An axis's importance (weight) must
-                                        reflect human judgment intuitively.
-                                log_scale_weights:
-                                    - solution of: consideration_scoring_system.intuitive_weight_scale
-                                    - description: >
-                                        Discrete multiplicative grades --
-                                        baseline 8, 1 = low importance,
-                                        64 = high importance.
-                                    - todo: >
-                                        Fill in consideration_rating pros/cons
-                                        once the axes for evaluating scale
-                                        formats themselves are decided.
-                                integer_scale_weights:
-                                    - solution of: consideration_scoring_system.intuitive_weight_scale
-                                    - description: Small signed integers.
-                                    - todo: >
-                                        Fill in consideration_rating pros/cons
-                                        once the axes for evaluating scale
-                                        formats themselves are decided.
-                                float_unbounded_weights:
-                                    - solution of: consideration_scoring_system.intuitive_weight_scale
-                                    - description: >
-                                        Continuous float, -inf to inf (the
-                                        current approach).
-                                    - todo: >
-                                        Fill in consideration_rating pros/cons
-                                        once the axes for evaluating scale
-                                        formats themselves are decided.
-                            intuitive_rating_scale:
-                                data:
-                                    - requirement_priority
-                                    - description: >
-                                        Each solution's per-axis rating must
-                                        reflect human judgment intuitively.
-                                log_scale_ratings:
-                                    - solution of: consideration_scoring_system.intuitive_rating_scale
-                                    - description: Discrete multiplicative grades.
-                                    - todo: >
-                                        Fill in consideration_rating pros/cons
-                                        once the axes for evaluating scale
-                                        formats themselves are decided.
-                                integer_scale_ratings:
-                                    - solution of: consideration_scoring_system.intuitive_rating_scale
-                                    - description: Small signed integers.
-                                    - todo: >
-                                        Fill in consideration_rating pros/cons
-                                        once the axes for evaluating scale
-                                        formats themselves are decided.
-                                float_unbounded_ratings:
-                                    - solution of: consideration_scoring_system.intuitive_rating_scale
-                                    - description: >
-                                        Continuous float, -1 to 1 (the current
-                                        approach).
-                                    - todo: >
-                                        Fill in consideration_rating pros/cons
-                                        once the axes for evaluating scale
-                                        formats themselves are decided.
-                            handle_all_sign_combinations:
-                                data:
-                                    - requirement_priority
-                                    - description: >
-                                        good axis + good rating = pro, good axis
-                                        + bad rating = con, bad axis + good
-                                        rating = pro (two negatives), bad axis +
-                                        bad rating = con -- all four must come
-                                        out intuitively.
-                                signed_weight_times_signed_rating:
-                                    - solution of: consideration_scoring_system.handle_all_sign_combinations
-                                    - description: >
-                                        contribution = weight * rating; the
-                                        product's sign determines pro/con.
-                                        Already implemented (see story-
-                                        simulator's live_testing_framework and
-                                        its generate_live_testing_report.py).
-                                    - work_state: in progress
-                implement_solutions:
-                    data:
-                        - requirement
-                    design_architecture:
-                        data:
-                            - requirement
-                        derive_architecture_from_requirement_tree:
-                            - solution
-                            - pro: If this works, it would reduce effort required.
-                            - con: If this doesn't work, a lot of time might be required to fix it.
-                        lay_out_solutions_and_organize:
-                            - solution
-                            - pro: Failsafe. Likely to create sound infrastructure.
-                            - con: Time intensive.
-                        lay_out_solution_and_have_agent_organize:
-                            - solution
-                            - pro: Saves time.
-                            - con: Architecture has to be evaluated.
-                    code_up_solutions:
-                        data:
-                            - requirement
-                        agent_assisted_coding:
-                            data:
+                            requirement_creation_and_population_process:
                                 - description: |
-                                    Use one or more agents to code.
-
-                                    Avoiding the term "vibe coding" because that doesn't
-                                    imply validation.
+                                    1. Select an entity alias. It should be short and meaningful.
+                                    2. Add a description component with a value if not yet present.
+                                    3. Add a bare requirement component if not yet present.
+                                    4. Attempt to assemble a dictionary of solutions. Each key is the entity alias, and each value is a description.
+                                    5. For each solution create a new child entity.
+                                        a. Use the key as the alias.
+                                        b. Use the value as the value for a description component.
+                                        c. Add a bare solution component.
+                                        d. For each solution, follow the solution_creation_and_population_process.
+                                    6. If no solutions were identified, attempt to break the problem down into smaller pieces by creating a dictionary of sub-requirements. Each key is the entity alias, and each value is a description.
+                                    7. For each requirement create a new child entity.
+                                        a. Use the key as the alias.
+                                        b. Use the value as the value for a description component.
+                                        c. Add a bare requirement component.
+                                        d. For each requirement, follow the requirement_creation_and_population_process.
                                 - solution
-                            test_driven_development:
-                                data:
-                                    - description: Start with a test, ask the agent to pass it.
-                                    - solution
-                                natural_language_driven_tdd:
-                                    - description: Describe the conditions for passing, but the agent still creates the test.
-                                    - solution
-                                human_validated_tdd:
-                                    - description: Create a suite of well-understood gold standard tests the code must pass.
-                                    - solution
-                            batches_of_tasks:
-                                data:
-                                    - description: After an agent has implemented something record feedback and have the agent address as a batch.
-                                    - solution
-                                github_review_task_batches:
-                                    - description: Add comments as a review on github, then ask agent to address.
-                                    - solution
-                                narrated_task_batches:
-                                    - description: Review implementation and narrate thoughts as doing so. Then organize into tasks, and have the agent work on the tasks.
-                                    - solution
-                prioritize_solutions:
-                    data:
-                        - requirement
-                    impact_cost_weighted_features:
-                        - description: >
-                            Among the overall requirement-solution tree identify
-                            individual features that stand alone, then implement them.
-                        - solution
-                design_prioritize_implement_workflow:
-                    data:
-                        - description: We have a process for each individually, but we also need a workflow to connect them.
-                        - requirement
-                    design_prioritize_implement_loop:
-                        data:
-                            - description: Design -> prioritize -> implement, repeat.
-                            - solution
-                        condition_for_ending_design_phase:
-                            data:
-                                - requirement
-                            allow_each_design_to_complete_fully:
-                                - solution
+                                - solution of: procedure_for_designing_systems.identify_relationships
                                 - pro: Straightforward.
-                                - con: Not clear how long this will take.
-                                - con: Likely to learn things during implementation that change the approach.
-                            start_implementation_immediately_on_reaching_max_depth:
+                                - con: Goes deep quickly, which may put effort where it's not needed.
+                            requirement_or_solution_creation_process:
+                                - description: Condensation of the logic from [requirement_creation_and_population_process] and [solution_creation_and_population_process].
                                 - solution
-                                - pro: Start work getting done.
-                                - con: May not have sufficient context to implement.
-                                - con: Prioritization is auto-done to just be what you reach first.
-                            minimum_feature_count:
+                                - solution of: procedure_for_designing_systems.identify_solutions
+                                - solution of: procedure_for_designing_systems.identify_relationships
+                                - pro: Reduced code duplication.
+                                - con: The condensed logic obfuscates what's going on.
+                                - con: Goes deep quickly, which may put effort where it's not needed.
+                            shallow_requirement_or_solution_creation_process:
+                                - description: Same as [requirement_or_solution_creation_process], but after the minimal child entities are created, go back up one level and proceed to the next minimal entity.
+                                - solution:
+                                    selected: True
+                                - solution of:
+                                    value: procedure_for_designing_systems.identify_solutions
+                                    selected: True
+                                - solution of:
+                                    value: procedure_for_designing_systems.identify_relationships
+                                    selected: True
+                                - pro: Reduced code duplication.
+                                - pro: Bounces back up to top level to refocus on the big picture.
+                                - con: If the process isn't interrupted this isn't any better than [requirement_or_solution_creation_process].
+                        can_elicit_and_refine_solutions:
+                            data:
+                                - requirement
+                            propose_solutions:
                                 data:
-                                    - description: >
-                                        Identify features, stand-alone parts of the
-                                        solution, and when N features are defined move on to
-                                        the next stage.
-                                    - solution
-                                    - pro: Balance between getting everything done and jumping in blindly.
-                                identify_features:
-                                    data:
-                                        - requirement
-                                    top_down:
-                                        - description: >
-                                            Start at the top and for each child evaluate if it's a feature, aka standalone.
-                                determine_what_n_is:
-                                    data:
-                                        - requirement
-                                    arbitrary_choice_of_three:
-                                        - solution
-                                ensure_features_are_ready_for_implementation:
                                     - requirement
-                        condition_for_ending_prioritize_phase:
+                                solution_creation_and_population_process:
+                                    - description: |
+                                        1. Select an entity alias. It should be short and meaningful.
+                                        2. Add a description component with a value if not yet present.
+                                        3. Add a bare solution component if not yet present.
+                                        4. Is how to implement the solution self-evident? If so, return.
+                                        5. Attempt to assemble a dictionary of requirements for the solution to function. Each key is the entity alias, and each value is a description.
+                                        6. For each requirement create a new child entity.
+                                            a. Use the key as the alias.
+                                            b. Use the value as the value for a description component.
+                                            c. Add a bare requirement component.
+                                            d. For each requirement, follow the requirement_creation_and_population_process.
+                                    - solution
+                                    - solution of: procedure_for_designing_systems.identify_relationships
+                                    - pro: Straightforward.
+                                    - con: Goes deep quickly, which may put effort where it's not needed.
+                        can_operationalize_goals_and_solutions:
                             data:
                                 - requirement
-                            all_features_are_prioritized:
-                                - solution
-                        condition_for_ending_implement_phase:
+                            select_solutions:
+                                data:
+                                    - description:
+                                        Once multiple candidate solutions exist for a
+                                        requirement, we need a way to choose among them --
+                                        for example, a good scoring system.
+                                    - requirement
+                                identify_valid_solutions:
+                                    data:
+                                        - requirement
+                                    brute_force_combinations_evaluation:
+                                        - description: Each solution is for one or more requirements. Try all combinations of solutions and include only those where all requirements are satisfied.
+                                        - solution
+                                select_among_valid_solutions:
+                                    data:
+                                        - requirement
+                                    choose_highest_impact_cost_ratio:
+                                        data:
+                                            - solution
+                                        evaluate_impact:
+                                            data:
+                                                - requirement
+                                            have_a_good_flow_for_choosing_categories:
+                                                data:
+                                                    - requirement
+                                                no_categories:
+                                                    - solution
+                                                simple_categories:
+                                                    - solution
+                                        evaluate_cost:
+                                            - requirement
+                                    select_ideal_solution_for_each_requirement:
+                                        data:
+                                            - solution
+                                            - con: How do we handle when the combination of ideal individual solutions isn't an overall solution?
+                                        have_approach_for_evaluating_solutions_for_a_single_requirement:
+                                            data:
+                                                - requirement
+                                            qualitative_evaluation:
+                                                - description: Read the possible options and then make a choice.
+                                                - solution
+                                    consideration_scoring_process:
+                                        data:
+                                            - solution
+                                            - description: >
+                                                Score each candidate solution's pros and cons
+                                                using iacs's own consideration/
+                                                consideration_rating types: a named axis
+                                                (consideration) with a weight, and each
+                                                solution's rating against that axis.
+                                            - work_state: in progress
+                                        capture_pros_and_cons:
+                                            data:
+                                                - requirement
+                                                - requirement_priority
+                                                - description: >
+                                                    The scoring system must capture both pros
+                                                    and cons. Already met directly by
+                                                    consideration_rating's own note + signed
+                                                    rating fields, so no separate nested
+                                                    solution is needed here.
+                                            consideration_and_consideration_rating_components:
+                                                - solution
+                                                - pro: Precise.
+                                            pro_con_components:
+                                                data:
+                                                    - solution
+                                                    - pro: Very intuitive, very quick to write. Can come back and refine later.
+                                                    - con: Multiple component types for one table.
+                                                handle_multiple_component_types_in_one_table:
+                                                    - requirement
+                                        intuitive_weight_scale:
+                                            data:
+                                                - requirement_priority
+                                                - description: >
+                                                    An axis's importance (weight) must
+                                                    reflect human judgment intuitively.
+                                            log_scale_weights:
+                                                - solution of: consideration_scoring_system.intuitive_weight_scale
+                                                - description: >
+                                                    Discrete multiplicative grades --
+                                                    baseline 8, 1 = low importance,
+                                                    64 = high importance.
+                                                - todo: >
+                                                    Fill in consideration_rating pros/cons
+                                                    once the axes for evaluating scale
+                                                    formats themselves are decided.
+                                            integer_scale_weights:
+                                                - solution of: consideration_scoring_system.intuitive_weight_scale
+                                                - description: Small signed integers.
+                                                - todo: >
+                                                    Fill in consideration_rating pros/cons
+                                                    once the axes for evaluating scale
+                                                    formats themselves are decided.
+                                            float_unbounded_weights:
+                                                - solution of: consideration_scoring_system.intuitive_weight_scale
+                                                - description: >
+                                                    Continuous float, -inf to inf (the
+                                                    current approach).
+                                                - todo: >
+                                                    Fill in consideration_rating pros/cons
+                                                    once the axes for evaluating scale
+                                                    formats themselves are decided.
+                                        intuitive_rating_scale:
+                                            data:
+                                                - requirement_priority
+                                                - description: >
+                                                    Each solution's per-axis rating must
+                                                    reflect human judgment intuitively.
+                                            log_scale_ratings:
+                                                - solution of: consideration_scoring_system.intuitive_rating_scale
+                                                - description: Discrete multiplicative grades.
+                                                - todo: >
+                                                    Fill in consideration_rating pros/cons
+                                                    once the axes for evaluating scale
+                                                    formats themselves are decided.
+                                            integer_scale_ratings:
+                                                - solution of: consideration_scoring_system.intuitive_rating_scale
+                                                - description: Small signed integers.
+                                                - todo: >
+                                                    Fill in consideration_rating pros/cons
+                                                    once the axes for evaluating scale
+                                                    formats themselves are decided.
+                                            float_unbounded_ratings:
+                                                - solution of: consideration_scoring_system.intuitive_rating_scale
+                                                - description: >
+                                                    Continuous float, -1 to 1 (the current
+                                                    approach).
+                                                - todo: >
+                                                    Fill in consideration_rating pros/cons
+                                                    once the axes for evaluating scale
+                                                    formats themselves are decided.
+                                        handle_all_sign_combinations:
+                                            data:
+                                                - requirement_priority
+                                                - description: >
+                                                    good axis + good rating = pro, good axis
+                                                    + bad rating = con, bad axis + good
+                                                    rating = pro (two negatives), bad axis +
+                                                    bad rating = con -- all four must come
+                                                    out intuitively.
+                                            signed_weight_times_signed_rating:
+                                                - solution of: consideration_scoring_system.handle_all_sign_combinations
+                                                - description: >
+                                                    contribution = weight * rating; the
+                                                    product's sign determines pro/con.
+                                                    Already implemented (see story-
+                                                    simulator's live_testing_framework and
+                                                    its generate_live_testing_report.py).
+                                                - work_state: in progress
+                            implement_solutions:
+                                data:
+                                    - requirement
+                                design_architecture:
+                                    data:
+                                        - requirement
+                                    derive_architecture_from_requirement_tree:
+                                        - solution
+                                        - pro: If this works, it would reduce effort required.
+                                        - con: If this doesn't work, a lot of time might be required to fix it.
+                                    lay_out_solutions_and_organize:
+                                        - solution
+                                        - pro: Failsafe. Likely to create sound infrastructure.
+                                        - con: Time intensive.
+                                    lay_out_solution_and_have_agent_organize:
+                                        - solution
+                                        - pro: Saves time.
+                                        - con: Architecture has to be evaluated.
+                                code_up_solutions:
+                                    data:
+                                        - requirement
+                                    agent_assisted_coding:
+                                        data:
+                                            - description: |
+                                                Use one or more agents to code.
+
+                                                Avoiding the term "vibe coding" because that doesn't
+                                                imply validation.
+                                            - solution
+                                        test_driven_development:
+                                            data:
+                                                - description: Start with a test, ask the agent to pass it.
+                                                - solution
+                                            natural_language_driven_tdd:
+                                                - description: Describe the conditions for passing, but the agent still creates the test.
+                                                - solution
+                                            human_validated_tdd:
+                                                - description: Create a suite of well-understood gold standard tests the code must pass.
+                                                - solution
+                                        batches_of_tasks:
+                                            data:
+                                                - description: After an agent has implemented something record feedback and have the agent address as a batch.
+                                                - solution
+                                            github_review_task_batches:
+                                                - description: Add comments as a review on github, then ask agent to address.
+                                                - solution
+                                            narrated_task_batches:
+                                                - description: Review implementation and narrate thoughts as doing so. Then organize into tasks, and have the agent work on the tasks.
+                                                - solution
+                            prioritize_solutions:
+                                data:
+                                    - requirement
+                                impact_cost_weighted_features:
+                                    - description: >
+                                        Among the overall requirement-solution tree identify
+                                        individual features that stand alone, then implement them.
+                                    - solution
+                        can_include_new_information:
                             data:
                                 - requirement
-                            one_feature_complete:
-                                - description: As soon as a feature is complete, return to the design phase.
-                                - solution
-                                - con: Too much time in design phase?
-                            two_features_complete:
-                                - description
-                                - solution
-                            all_features_complete:
-                                - solution
-                                - con: Not enough anchored to design?
-                    select_highest_priority_leaf:
-                        - solution
-                        - con: How?
-                incorporate_new_ideas_and_information:
-                    - requirement
+                        can_determine_what_to_work_on_at_a_given_time:
+                            data:
+                                - requirement
+                            design_prioritize_implement_link_workflow:
+                                data:
+                                    - description: We have a process for each individually, but we also need a workflow to connect them.
+                                    - solution
+                                has_order_between_stages:
+                                    data:
+                                        - requirement
+                                    main_loop:
+                                        data:
+                                            - description: Design -> prioritize -> implement -> link, repeat.
+                                            - solution
+                                has_stop_conditions_for_each_stage:
+                                    condition_for_ending_design_phase:
+                                        data:
+                                            - requirement
+                                        allow_each_design_to_complete_fully:
+                                            - solution
+                                            - pro: Straightforward.
+                                            - con: Not clear how long this will take.
+                                            - con: Likely to learn things during implementation that change the approach.
+                                        start_implementation_immediately_on_reaching_max_depth:
+                                            - solution
+                                            - pro: Start work getting done.
+                                            - con: May not have sufficient context to implement.
+                                            - con: Prioritization is auto-done to just be what you reach first.
+                                        minimum_feature_count:
+                                            data:
+                                                - description: >
+                                                    Identify features, stand-alone parts of the
+                                                    solution, and when N features are defined move on to
+                                                    the next stage.
+                                                - solution
+                                                - pro: Balance between getting everything done and jumping in blindly.
+                                            identify_features:
+                                                data:
+                                                    - requirement
+                                                top_down:
+                                                    - description: >
+                                                        Start at the top and for each child evaluate if it's a feature, aka standalone.
+                                            determine_what_n_is:
+                                                data:
+                                                    - requirement
+                                                arbitrary_choice_of_three:
+                                                    - solution
+                                            ensure_features_are_ready_for_implementation:
+                                                - requirement
+                                    condition_for_ending_prioritize_phase:
+                                        data:
+                                            - requirement
+                                        all_features_are_prioritized:
+                                            - solution
+                                    condition_for_ending_implement_phase:
+                                        data:
+                                            - requirement
+                                        one_feature_complete:
+                                            - description: As soon as a feature is complete, return to the design phase.
+                                            - solution
+                                            - con: Too much time in design phase?
+                                        two_features_complete:
+                                            - description
+                                            - solution
+                                        all_features_complete:
+                                            - solution
+                                            - con: Not enough anchored to design?
+                    plan_quality_is_high:
+                        plan_has_performance_metrics:
+                            - description:
+                            - requirement
             launching_pad_for_implementation:
                 data:
                     - description: Allow the IaC created via iacs to be converted into deployments.
