@@ -2498,4 +2498,46 @@ visualization_of_requirement_solution_graph:
     - pro: Satisfies my curiousity.
 
 handle_benefits_for_solution:
-    - description: Consider app A. It was created to help improve people's lives by providing a compass to nearby cats, redirecting when doomscrolling is detected, and planning meals. Each of those are clearly features. Are they also requirements or also solutions or neither? Why does it matter?
+    - description: >
+          Consider app A. It was created to help improve people's lives by
+          providing a compass to nearby cats, redirecting when
+          doomscrolling is detected, and planning meals. Each of those are
+          clearly features. Are they also requirements or also solutions
+          or neither? Why does it matter?
+
+          It matters: requirements are concepts, solutions are concrete
+          objects (same distinction as handle_when_to_use_solutions_vs_
+          requirements.objective_vs_object), and that distinction matters
+          for implementation. So a feature is a solution, not a
+          requirement. A solution can solve one or more requirements, and
+          once it exists it stands somewhat independently of whatever
+          requirement motivated it -- fine, since tracing back to the
+          requirement is still useful later, just not load-bearing moment
+          to moment.
+
+          Practically: a solution (like app A) can bundle a whole set of
+          features. What matters is that each feature addresses one or
+          more requirements serving the overall objective, not that the
+          solution maps 1:1 to a requirement. Workflow for building that:
+          build solutions per requirement, connect/organize at the end.
+          Each solution, standing on its own, is a feature -- so the
+          overall tree still needs to be organized by requirements the
+          way it already is. Underneath that, while heads-down on one
+          requirement, don't over-think the organization -- just build a
+          solution that satisfies it and nest it underneath. (Easier said
+          than done.)
+
+          Harder question from there, applying this same requirement/
+          solution lens to the design/implement workflow itself
+          (design_implement_cycle_workflow): switching between a design
+          phase and an implement phase is itself a solution -- to what
+          requirement? Design is a solution to identifying what to
+          accomplish and how; implement is a solution to actually making
+          it real. But the requirement behind *switching* between them
+          (design_phase_must_have_stopping_points) -- rather than, say,
+          finishing all design before any implementation -- is to make
+          sure there's always something to implement, and that design
+          doesn't run forever. Stated more generally: this alternation
+          exists so we don't address one requirement to the detriment of
+          another -- it keeps different requirements playing nicely
+          together. Open question: is there already a name for that?
