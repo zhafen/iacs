@@ -178,11 +178,9 @@ iacs:
                                 data:
                                     - requirement
                                 requirement:
-                                    - description: What we want to accomplish.
-                                    - duplicate of: <<the requirement component that's part of the builtins>>
+                                    - same as: <<the requirement component that's part of the builtins>>
                                 solution:
-                                    - description: How we want to accomplish it.
-                                    - duplicate of: <<the solutions component that's part of the builtins>>
+                                    - same as: <<the solutions component that's part of the builtins>>
                             has_organizational_structure:
                                 data:
                                     - requirement
@@ -192,27 +190,32 @@ iacs:
                                         - solution
                                     concise_and_intuitive_syntax:
                                         data:
-                                            - requirement of: requirement_solution_tree
+                                            - requirement
                                         relationship_syntax_for_children:
                                             data:
-                                                - requirement of: concise_and_intuitive_syntax
+                                                - requirement
                                             use_relative_path_in_relation:
+                                                - solution
                                             implied_relationship:
                                                 - description: Any parent-child relationship is
                                                     implicitly a requirement or solution relationship,
                                                     though which is not specified.
+                                                - solution
                                                 - pro: What if we need to use the implied relationship for other things? In fact, we already do that for component inheritance.
                                             implied_relationship_with_comp:
                                                 - description: If the entity owns a requirement or
                                                     solution with no target then it is the
                                                     requirement/solution to its parent.
+                                                - solution:
+                                                    selected: true
                 employs_a_plan:
                     data:
                         - description: Once we have a language, we need a process/algorithm/plan to accomplish our goals.
                         - requirement
                     accomplishes_gore_objectives:
                         data:
-                            - requirement
+                            - description: One class of plans that accomplish goal-oriented requirement engineering objectives.
+                            - solution
                         can_elicit_and_refine_goals:
                             data:
                                 - requirement
@@ -234,14 +237,12 @@ iacs:
                                         c. Add a bare requirement component.
                                         d. For each requirement, follow the requirement_creation_and_population_process.
                                 - solution
-                                - solution of: accomplishes_gore_objectives.identify_relationships
                                 - pro: Straightforward.
                                 - con: Goes deep quickly, which may put effort where it's not needed.
                             requirement_or_solution_creation_process:
                                 - description: Condensation of the logic from [requirement_creation_and_population_process] and [solution_creation_and_population_process].
                                 - solution
                                 - solution of: can_elicit_and_refine_solutions.propose_solutions
-                                - solution of: accomplishes_gore_objectives.identify_relationships
                                 - pro: Reduced code duplication.
                                 - con: The condensed logic obfuscates what's going on.
                                 - con: Goes deep quickly, which may put effort where it's not needed.
@@ -251,9 +252,6 @@ iacs:
                                     selected: True
                                 - solution of:
                                     value: can_elicit_and_refine_solutions.propose_solutions
-                                    selected: True
-                                - solution of:
-                                    value: accomplishes_gore_objectives.identify_relationships
                                     selected: True
                                 - pro: Reduced code duplication.
                                 - pro: Bounces back up to top level to refocus on the big picture.
@@ -277,7 +275,6 @@ iacs:
                                             c. Add a bare requirement component.
                                             d. For each requirement, follow the requirement_creation_and_population_process.
                                     - solution
-                                    - solution of: accomplishes_gore_objectives.identify_relationships
                                     - pro: Straightforward.
                                     - con: Goes deep quickly, which may put effort where it's not needed.
                         can_operationalize_goals_and_solutions:
@@ -299,24 +296,10 @@ iacs:
                                 select_among_valid_solutions:
                                     data:
                                         - requirement
-                                    choose_highest_impact_cost_ratio:
-                                        data:
-                                            - solution
-                                        evaluate_impact:
-                                            data:
-                                                - requirement
-                                            have_a_good_flow_for_choosing_categories:
-                                                data:
-                                                    - requirement
-                                                no_categories:
-                                                    - solution
-                                                simple_categories:
-                                                    - solution
-                                        evaluate_cost:
-                                            - requirement
                                     select_ideal_solution_for_each_requirement:
                                         data:
-                                            - solution
+                                            - solution:
+                                                selected: True
                                             - con: How do we handle when the combination of ideal individual solutions isn't an overall solution?
                                         have_approach_for_evaluating_solutions_for_a_single_requirement:
                                             data:
@@ -324,6 +307,43 @@ iacs:
                                             qualitative_evaluation:
                                                 - description: Read the possible options and then make a choice.
                                                 - solution
+                                    choose_highest_impact_cost_ratio:
+                                        data:
+                                            - solution
+                                        evaluate_impact:
+                                            data:
+                                                - requirement
+                                            estimate_ratings_and_or_weights:
+                                                data:
+                                                    - description: We need to actually come up with the ratings and/or weights.
+                                                    - requirement
+                                                best_guess:
+                                                    - solution
+                                            have_a_good_flow_for_choosing_categories:
+                                                data:
+                                                    - description: Sometimes we've sorted impact according to categories with different weights. If we do this, we need for it to be easy for the user to do this.
+                                                    - requirement
+                                                no_categories:
+                                                    - solution
+                                                simple_categories:
+                                                    - solution
+                                        evaluate_cost:
+                                            data:
+                                                - requirement
+                                            estimate_ratings_and_or_weights:
+                                                data:
+                                                    - description: We need to actually come up with the ratings and/or weights.
+                                                    - requirement
+                                                best_guess:
+                                                    - solution
+                                            have_a_good_flow_for_choosing_categories:
+                                                data:
+                                                    - description: Sometimes we've sorted cost according to categories with different weights. If we do this, we need for it to be easy for the user to do this.
+                                                    - requirement
+                                                no_categories:
+                                                    - solution
+                                                simple_categories:
+                                                    - solution
                                     consideration_scoring_process:
                                         data:
                                             - solution
@@ -436,7 +456,7 @@ iacs:
                             implement_solutions:
                                 data:
                                     - requirement
-                                design_architecture:
+                                design_system_architecture:
                                     data:
                                         - requirement
                                     derive_architecture_from_requirement_tree:
@@ -490,9 +510,6 @@ iacs:
                                         Among the overall requirement-solution tree identify
                                         individual features that stand alone, then implement them.
                                     - solution
-                        can_include_new_information:
-                            data:
-                                - requirement
                         can_determine_what_to_work_on_at_a_given_time:
                             data:
                                 - requirement
@@ -560,9 +577,54 @@ iacs:
                                         all_features_complete:
                                             - solution
                                             - con: Not enough anchored to design?
-                        identify_relationships:
-                            - description: We need to understand how requirements and solutions relate to each other.
-                            - requirement
+                        can_include_new_information:
+                            data:
+                                - requirement
+                            linking_process:
+                                data:
+                                    - description: If we can just drop entities at the bottom of a file and then link them together later that would be convenient.
+                                    - solution of: <<Quickly dropping in ideas.>>
+                                address_no_links:
+                                    - requirement
+                                address_approximate_links:
+                                    data:
+                                        - requirement
+                                    relationship_resolution_dataflow:
+                                        data:
+                                            - solution
+                                            - con: How do we handle when the dataflow fails?
+                                        have_syntax_for_approximate_links:
+                                            data:
+                                                - requirement
+                                            use_carrots:
+                                                - solution
+                                            use_double_carrots:
+                                                - solution
+                                        way_to_resolve_the_syntax_for_approximate_links:
+                                            data:
+                                                - requirement
+                                            natural_language_linker:
+                                                - solution
+                                        handle_failure:
+                                            - description: What happens when the links don't resolve to a single neat entity?
+                                            - requirement
+                                address_duplicates:
+                                    - description: We'll inevitably have duplicated work.
+                                    - requirement
+                                validate_linking_process:
+                                    data:
+                                        - requirement
+                                    scrambled_tree_test:
+                                        - description: Start with a tree, then remove all linkings and test re-assembly.
+                                        - solution
+                                        - pro: Easy to create.
+                                        - con: Doesn't test incorrect data, just structure.
+                                    scored_against_human:
+                                        - description: Have a human go through the same process.
+                                        - solution
+                                        - pro: Can test data incorrectness.
+                                        - con: More open to interpretation.
+                                        - con: Creating the test is time intensive.
                     plan_quality_is_high:
                         plan_has_performance_metrics:
                             - description: >
@@ -2407,52 +2469,6 @@ way_to_indicate_which_solutions_we_will_use:
     selected_field:
         - description: A new field "selected" that's part of the requirement and solution components and is True when we're using the solution.
         - solution
-
-linking_process:
-    data:
-        - description: If we can just drop entities at the bottom of a file and then link them together later that would be convenient.
-        - solution of: <<Quickly dropping in ideas.>>
-    address_no_links:
-        - requirement
-    address_approximate_links:
-        data:
-            - requirement
-        relationship_resolution_dataflow:
-            data:
-                - solution
-                - con: How do we handle when the dataflow fails?
-            have_syntax_for_approximate_links:
-                data:
-                    - requirement
-                use_carrots:
-                    - solution
-                use_double_carrots:
-                    - solution
-            way_to_resolve_the_syntax_for_approximate_links:
-                data:
-                    - requirement
-                natural_language_linker:
-                    - solution
-            handle_failure:
-                - description: What happens when the links don't resolve to a single neat entity?
-                - requirement
-    address_duplicates:
-        - description: We'll inevitably have duplicated work.
-        - requirement
-    validate_linking_process:
-        data:
-            - requirement
-        scrambled_tree_test:
-            - description: Start with a tree, then remove all linkings and test re-assembly.
-            - solution
-            - pro: Easy to create.
-            - con: Doesn't test incorrect data, just structure.
-        scored_against_human:
-            - description: Have a human go through the same process.
-            - solution
-            - pro: Can test data incorrectness.
-            - con: More open to interpretation.
-            - con: Creating the test is time intensive.
 
 requirement_and_solution_constraints:
     data:
