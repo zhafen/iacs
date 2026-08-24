@@ -2541,3 +2541,22 @@ handle_benefits_for_solution:
           exists so we don't address one requirement to the detriment of
           another -- it keeps different requirements playing nicely
           together. Open question: is there already a name for that?
+
+prior_art_for_alternating_requirement_solution_trees:
+    - description: >
+          Not the first to land on an alternating requirement/solution
+          tree (design_implement_cycle_workflow, pure_connection_
+          architecture, handle_benefits_for_solution): engineering
+          design theory already has this under the name Function-Means
+          trees (Hubka & Andreasen) -- alternating Function (requirement)
+          and Means (solution) levels, each function attached to one or
+          more means, each means decomposable into its own sub-functions.
+          https://en.wikipedia.org/wiki/Function%E2%80%93means_tree
+
+          Also worth noting: Keeney's Value-Focused Thinking goes the
+          other way on purpose -- it keeps a pure Fundamental Objectives
+          Hierarchy (requirements only) and a separate Means-Objectives
+          Network (how candidate solutions affect those objectives) as
+          two distinct structures, rather than merging them into one
+          tree -- closer to this file's own mirrored iacs:/iacs_solution:
+          convention than to the alternating-tree experiments above.
