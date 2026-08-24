@@ -161,6 +161,22 @@ iacs:
                     - solution
                     - pro: Can offload a lot of the hard decisions.
                     - con: Has to be designed.
+                employs_model_for_solution_architecture:
+                    - description: We need a language for designing and implementing systems, which is what the model is.
+                    - requirement
+                includes_optimization_process_given_model:
+                    - description: Once we have a language, we need a process/algorithm to 
+                fulfill_the_key_responsibilities_of_solution_design:
+                    data:
+                        - requirement
+                    determines_objectives:
+                        - requirement
+                    determines_how_to_accomplish_objectives:
+                        - requirement
+                    balances_requirements:
+                        - requirement
+                    incorporates_new_ideas_and_information:
+                        - requirement
                 provide_reliable_basic_structure:
                     - requirement
                 offload_mental_effort:
