@@ -164,3 +164,44 @@ ai_quality_best_practices:
                   session, unlike this guide which currently has to be
                   pointed to explicitly.
             - solution
+
+    ai_assisted_coding_practices:
+        data:
+            - description: >
+                  Best practices specific to using AI for software
+                  development -- the area most familiar from direct
+                  experience, so the one that can be filled in with
+                  confidence right now. Other areas (non-coding AI use
+                  cases) still need separate evaluation before their own
+                  practices belong here. Notes below are recorded close to
+                  how they were first said, with minimal reorganization, to
+                  be cleaned up later.
+            - requirement
+        human_understood_test_checkpoints:
+            data:
+                - description: >
+                      Maintain a robust set of tests that are fully
+                      understood by the humans doing the development. AI
+                      changes can't always be tracked in full across every
+                      part of a codebase, but a human can set checkpoints
+                      they do understand themselves -- these tests are that
+                      checkpoint.
+                - requirement
+            mark_which_tests_are_checkpoints:
+                - description: >
+                      Indicate somehow which tests are the load-bearing,
+                      human-understood checkpoints, as distinct from the
+                      rest of the suite -- e.g. a separate directory, or a
+                      pytest marker/flag. (The `test_human_validated.py`
+                      naming already used across story-simulator, emc2p, and
+                      iacs is a partial existing instance of this -- naming,
+                      not yet a dedicated directory or marker.)
+                - solution
+            ai_reluctant_to_touch_without_human_understanding:
+                - description: >
+                      AI should be very reluctant to modify a checkpoint
+                      test without the human also understanding what
+                      changed and why -- the whole point is a checkpoint the
+                      human can trust independent of what the AI did
+                      elsewhere.
+                - requirement
