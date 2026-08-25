@@ -2646,3 +2646,25 @@ prior_art_for_alternating_requirement_solution_trees:
           specific mechanisms from) if the homegrown approach runs into
           a wall it doesn't have a good answer for, not as a decision to
           switch to one of them now.
+
+concise_inline_comments:
+    data:
+        - description: Inline comments and docstrings should be concise, not padded with retrospective narration.
+        - requirement
+    minimize_historical_information_in_comments:
+        data:
+            - description: Comments should describe the current state and its non-obvious rationale, not narrate what something used to be or how it changed to get here.
+            - solution
+        catch_existing_historical_comments_before_pr:
+            data:
+                - description: Some way to catch comments/docstrings that already contain historical narrative, before a PR is finalized, so they can be edited.
+                - requirement
+            automated_past_tense_density_hook:
+                - description: An automated hook that warns when past-tense/historical-narrative terms are detected above a given count.
+                - solution
+            pre_final_pr_sweep_check:
+                - description: A dedicated pre-final-PR sweep/check for the same kind of historical-narrative language, run as a distinct step rather than a live hook.
+                - solution
+            agent_guidance_and_self_correction:
+                - description: Written guidance (e.g. CLAUDE.md) plus an agent's own in-session awareness and correction -- the approach already in use.
+                - solution
