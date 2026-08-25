@@ -4,7 +4,9 @@
       "type": "stdio",
       "command": ".venv/bin/iacs-mcp",
       "args": [],
-      "env": {}
+      "env": {
+        "IACS_MANIFEST": "docs/manifest:iacs:../emc2p/docs/manifest:../emc2p/emc2p:../story-simulator/docs/manifest:../story-simulator/story_simulator"
+      }
     }
   }
 }
