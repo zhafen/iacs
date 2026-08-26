@@ -2,10 +2,8 @@
 """Generate an HTML report of the alternating requirement/solution tree
 rooted at a given entity in an iacs manifest.
 
-Two modes:
-
---mode full (the default) renders the same kind of document
-story-simulator's generate_live_testing_report.py produces for its
+Renders the same kind of document story-simulator's
+generate_live_testing_report.py produces for its
 human_validated_test_framework tree: a table of contents (section
 headers only, linking down the page), one full section per requirement
 (description + every candidate solution nested under it or cross-linked
@@ -16,17 +14,13 @@ Selected/Unselected. If the root has a direct child literally named
 story-simulator's own dependencies: subtree for the convention this
 follows); otherwise that section is simply omitted.
 
---mode leaves instead reports just the "leaf" requirements -- the ones
-with no further nested requirement anywhere beneath them, only candidate
-solutions -- along with their own full solution detail. Useful for a
-much larger tree where the full document would be too much to review at
-once and only the currently-undecided requirements matter.
-
 Generic over the root: pass any entity key (or unique path segment) via
 --root and this walks whatever alternating tree hangs off it, rather
-than assuming one fixed subtree.
+than assuming one fixed subtree. The root entity's own name is shown in
+both the page title and a masthead at the top of the document, so it's
+never ambiguous which tree a given report was generated from.
 
-Run: uv run python scripts/generate_requirement_tree_report.py --root <entity_key> [--mode full|leaves] [--manifest DIR ...] [--output PATH] [--fragment]
+Run: uv run python scripts/generate_requirement_tree_report.py --root <entity_key> [--manifest DIR ...] [--output PATH] [--fragment]
 """
 
 from __future__ import annotations
@@ -279,35 +273,6 @@ def load_dependencies_data(registrar, root_key: str) -> dict | None:
     return {"entities": entities, "dependency_to_solutions": dependency_to_solutions}
 
 
-def find_leaf_requirements(subtree: dict) -> list[dict]:
-    """Requirement-type nodes with no requirement anywhere in their own
-    descendant tree (walking through any nested solutions) -- the
-    deepest, currently-undecided requirements, as opposed to ones whose
-    resolution is deferred to a nested sub-requirement further down."""
-    nodes = subtree["nodes"]
-    by_id = {n["id"]: n for n in nodes}
-    children_of: dict[str, list[str]] = {}
-    for n in nodes:
-        if n["parent_id"]:
-            children_of.setdefault(n["parent_id"], []).append(n["id"])
-    for from_id, to_id in subtree["cross_edges"]:
-        if by_id[from_id]["type"] == "solution" and by_id[to_id]["type"] == "requirement":
-            children_of.setdefault(to_id, [])  # cross-links don't add descendants of a requirement
-
-    def has_requirement_descendant(node_id: str) -> bool:
-        for child_id in children_of.get(node_id, []):
-            if by_id[child_id]["type"] == "requirement":
-                return True
-            if has_requirement_descendant(child_id):
-                return True
-        return False
-
-    return [
-        n for n in nodes
-        if n["type"] == "requirement" and not has_requirement_descendant(n["id"])
-    ]
-
-
 def _solutions_of(requirement_id: str, subtree: dict) -> list[dict]:
     by_id = {n["id"]: n for n in subtree["nodes"]}
     solution_ids = [
@@ -407,20 +372,16 @@ def _render_requirement(node: dict, subtree: dict) -> str:
   </section>"""
 
 
-def _render_leaf_requirement(node: dict, subtree: dict) -> str:
-    description = html.escape(node["description"])
-    solutions = _solutions_of(node["id"], subtree)
-    solutions_html = (
-        "".join(_render_solution(s, subtree) for s in solutions)
-        or '<p class="no-solutions">No candidate solution currently recorded.</p>'
-    )
+def _render_masthead(root_label: str) -> str:
+    """The root entity's own name, prominent at the very top of the
+    document -- so which requirement/solution tree a given report was
+    generated from is never ambiguous, matching the page's own <title>
+    (see _report_title)."""
     return f"""
-  <section class="requirement">
-    <p class="eyebrow">Requirement (leaf)</p>
-    <h2>{html.escape(node['label'])}</h2>
-    <p class="requirement-description">{description}</p>
-    {solutions_html}
-  </section>"""
+  <div class="masthead">
+    <p class="kicker">requirement tree</p>
+    <h1>{html.escape(root_label)}</h1>
+  </div>"""
 
 
 def _render_toc_section(requirement_nodes: list[dict]) -> str:
@@ -429,10 +390,7 @@ def _render_toc_section(requirement_nodes: list[dict]) -> str:
         for n in requirement_nodes
     )
     return f"""
-  <div class="masthead">
-    <p class="kicker">table of contents</p>
-    <h1>Contents</h1>
-  </div>
+  <p class="toc-heading">Contents</p>
   <nav class="toc"><ul class="toc-root">{items_html}</ul></nav>"""
 
 
@@ -552,6 +510,11 @@ _STYLE = """
   }
   .subtitle { color: var(--muted); margin: 0; font-size: 0.95rem; max-width: 62ch; }
 
+  .toc-heading {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted-2); margin: 0 0 0.5rem;
+  }
   nav.toc { margin-bottom: 2.75rem; }
   ul.toc-root { list-style: none; margin: 0; padding: 0; }
   ul.toc-root li { border-top: 1px solid var(--border); }
@@ -652,51 +615,35 @@ _STYLE = """
   .section-divider { border: none; border-top: 1px solid var(--border); margin: 3rem 0 2.75rem; }
 """
 
-_TITLE = "Requirement Tree"
+def _root_label(subtree: dict) -> str:
+    root = next(n for n in subtree["nodes"] if n["parent_id"] is None)
+    return root["label"]
 
 
-def render_full_report(subtree: dict, dependencies_data: dict | None, fragment: bool) -> str:
+def render_report(subtree: dict, dependencies_data: dict | None, fragment: bool) -> str:
+    root_label = _root_label(subtree)
     requirement_nodes = sorted(
         (n for n in subtree["nodes"] if n["type"] == "requirement"),
         key=lambda n: n["key"],
     )
+    masthead_html = _render_masthead(root_label)
     toc_html = _render_toc_section(requirement_nodes)
     requirements_html = "".join(_render_requirement(n, subtree) for n in requirement_nodes)
     solutions_html = _render_solutions_section(subtree)
-    body_parts = [toc_html, requirements_html, '<hr class="section-divider">', solutions_html]
+    body_parts = [masthead_html, toc_html, requirements_html, '<hr class="section-divider">', solutions_html]
     if dependencies_data:
         body_parts.append('<hr class="section-divider">')
         body_parts.append(_render_dependencies_section(dependencies_data))
     body = "".join(body_parts)
-    return _wrap(body, fragment)
 
-
-def render_leaves_report(root_key: str, leaves: list[dict], subtree: dict, fragment: bool) -> str:
-    sections = "".join(_render_leaf_requirement(n, subtree) for n in leaves) or (
-        '<p class="no-solutions">No leaf requirements found under this root.</p>'
-    )
-    body = f"""
-  <div class="masthead">
-    <p class="kicker">{html.escape(root_key)} &middot; leaf requirements</p>
-    <h1>Leaf Requirements</h1>
-    <p class="subtitle">
-      The deepest requirements under {html.escape(root_key)} -- the ones
-      with no further nested requirement, only candidate solutions still
-      to choose between.
-    </p>
-  </div>
-  {sections}"""
-    return _wrap(body, fragment)
-
-
-def _wrap(body: str, fragment: bool) -> str:
+    title = f"{root_label} · Requirement Tree"
     if fragment:
-        return f'<title>{html.escape(_TITLE)}</title>\n<style>{_STYLE}</style>\n{body}\n'
+        return f'<title>{html.escape(title)}</title>\n<style>{_STYLE}</style>\n{body}\n'
     return f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>{html.escape(_TITLE)}</title>
+<title>{html.escape(title)}</title>
 <style>{_STYLE}</style>
 </head>
 <body>
@@ -709,13 +656,6 @@ def _wrap(body: str, fragment: bool) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", required=True, help="Entity key to root the report at.")
-    parser.add_argument(
-        "--mode", choices=["full", "leaves"], default="full",
-        help="'full': the same document shape as generate_live_testing_report.py "
-             "(ToC + every requirement's full detail + Solutions index + Dependencies "
-             "if present). 'leaves': just the leaf requirements (no further nested "
-             "requirement) and their solutions. Default: full.",
-    )
     parser.add_argument("--manifest", nargs="*", default=None, help="Manifest dirs; defaults to IACS_MANIFEST env / built-in default.")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument(
@@ -727,16 +667,8 @@ def main() -> None:
     manifest_paths = args.manifest if args.manifest else parse_manifest_env()
     registrar = make_registrar(manifest_paths)
     subtree = load_subtree(registrar, args.root)
-
-    if args.mode == "leaves":
-        leaves = find_leaf_requirements(subtree)
-        content = render_leaves_report(args.root, leaves, subtree, args.fragment)
-        args.output.write_text(content)
-        print(f"Wrote {args.output} ({len(leaves)} leaf requirement(s) found)")
-        return
-
     dependencies_data = load_dependencies_data(registrar, args.root)
-    content = render_full_report(subtree, dependencies_data, args.fragment)
+    content = render_report(subtree, dependencies_data, args.fragment)
     args.output.write_text(content)
     requirement_count = sum(1 for n in subtree["nodes"] if n["type"] == "requirement")
     solution_count = sum(1 for n in subtree["nodes"] if n["type"] == "solution")
