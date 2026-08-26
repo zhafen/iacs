@@ -434,8 +434,9 @@ def _render_dependency(key: str, dependencies_data: dict) -> str:
     chips = "".join(
         f'<span class="req-chip">{html.escape(s.replace("_", " "))}</span>' for s in solution_labels
     ) or '<span class="req-chip req-chip-none">none currently</span>'
+    done_class = " solution-selected" if work_state == "done" else ""
     return f"""
-      <details class="solution">
+      <details class="solution{done_class}">
         <summary>
           <span class="solution-name dependency-location">{html.escape(location)}</span>
           <span class="work-state work-state-{html.escape(work_state.replace(' ', '-'))}">{html.escape(work_state)}</span>
@@ -573,7 +574,7 @@ _STYLE = """
     padding: 0.2rem 0.55rem; border-radius: 999px;
     background: var(--chip-bg); color: var(--chip-fg); white-space: nowrap;
   }
-  .work-state-done { background: var(--pro-bg); color: var(--pro); }
+  .work-state-done { background: var(--pro); color: var(--accent-fg); }
   .cost {
     font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-variant-numeric: tabular-nums; font-size: 0.78rem; color: var(--muted);
