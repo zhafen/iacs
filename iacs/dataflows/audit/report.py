@@ -616,8 +616,8 @@ const requirementTreeData = @REQUIREMENT_TREE_JSON@;
   let maxW = 0;
   let rootLabelW = 0;
   root.each(d => {
-    // Priority is mostly the 0.5 default now (no longer meaningfully
-    // differentiated), so it's not displayed — see the tspan below.
+    // Priority is usually the 0.5 default and rarely differentiates
+    // entities, so it's not displayed — see the tspan below.
     const label = d.data.name; // + (d.data.priority != null ? ` (${d.data.priority.toFixed(2)})` : "");
     const w = textWidth(label);
     maxW = Math.max(maxW, w);
@@ -688,8 +688,8 @@ const requirementTreeData = @REQUIREMENT_TREE_JSON@;
       .attr("x", d => d.children || d._children ? -10 : 10)
       .attr("text-anchor", d => d.children || d._children ? "end" : "start");
     textEl.append("tspan").text(d => d.data.name);
-    // Priority is mostly the 0.5 default now (no longer meaningfully
-    // differentiated), so it's not displayed next to the node name.
+    // Priority is usually the 0.5 default and rarely differentiates
+    // entities, so it's not displayed next to the node name.
     // textEl.append("tspan")
     //   .attr("class", "priority")
     //   .text(d => d.data.priority != null ? ` (${d.data.priority.toFixed(2)})` : "");

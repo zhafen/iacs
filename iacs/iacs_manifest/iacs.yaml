@@ -2654,7 +2654,8 @@ concise_inline_comments:
     minimize_historical_information_in_comments:
         data:
             - description: Comments should describe the current state and its non-obvious rationale, not narrate what something used to be or how it changed to get here.
-            - solution
+            - solution:
+                selected: true
         catch_existing_historical_comments_before_pr:
             data:
                 - description: Some way to catch comments/docstrings that already contain historical narrative, before a PR is finalized, so they can be edited.
@@ -2668,3 +2669,8 @@ concise_inline_comments:
             agent_guidance_and_self_correction:
                 - description: Written guidance (e.g. CLAUDE.md) plus an agent's own in-session awareness and correction -- the approach already in use.
                 - solution
+    docstring_summary_sentence_first:
+        data:
+            - description: Every docstring opens with a concise one-sentence summary of what the code does, before any further elaboration, so the summary is legible without reading the whole block.
+            - solution:
+                selected: true

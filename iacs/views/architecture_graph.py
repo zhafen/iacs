@@ -315,8 +315,8 @@ def render_reachability_mermaid(graph: dict, direction: str = "TB") -> str:
     node.
 
     Missing ``call_sequences`` entirely (e.g. an older or hand-built graph
-    dict) falls back to one plain arrow per ``edges`` entry, same as
-    before this grouping existed, so this stays backward compatible.
+    dict) falls back to one plain arrow per ``edges`` entry, for backward
+    compatibility with that input shape.
 
     Args:
         graph: A graph dict as returned by ``build_call_reachability``.
@@ -403,10 +403,10 @@ def render_reachability_mermaid(graph: dict, direction: str = "TB") -> str:
 
     lines.extend(sequence_lines)
 
-    # Defensive rather than commonly triggered now that the source side is
-    # always a specific node (two different callers can no longer collapse
-    # into "the same" edge just by sharing a target's box) -- but a single
-    # caller calling the same target twice non-consecutively would still
+    # Defensive rather than commonly triggered: the source side is always
+    # a specific node, so two different callers sharing a target's box
+    # never collapse into "the same" edge -- but a single caller calling
+    # the same target twice non-consecutively would still
     # produce the identical pair twice, so dedupe (order-preserving)
     # rather than draw parallel copies of it. A same-box self-reference
     # (two members of one box calling each other) is dropped too -- it
