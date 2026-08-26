@@ -573,6 +573,7 @@ _STYLE = """
     padding: 0.2rem 0.55rem; border-radius: 999px;
     background: var(--chip-bg); color: var(--chip-fg); white-space: nowrap;
   }
+  .work-state-done { background: var(--pro-bg); color: var(--pro); }
   .cost {
     font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-variant-numeric: tabular-nums; font-size: 0.78rem; color: var(--muted);
