@@ -91,6 +91,21 @@ sufficient_architecture_information:
         - pro: Can focus narrowly on exactly the decision at hand -- the pros/cons/cost of one requirement's own actual candidate solutions, without the surrounding noise of the whole codebase's structure.
         - con: Only as complete as the one requirement/solution tree it's pointed at -- won't reveal an architectural redundancy or connection outside that tree's own scope, unlike a codebase-wide graph.
         - work_state: done
+    inspect_raw_code:
+        - description: >
+              Just read the actual source files directly -- grep, open
+              files, trace imports and calls by hand. No tooling, no
+              generated artifact, no extra abstraction between the
+              reader and the real code.
+        - solution
+        - cost:
+              type: engineering_hours
+              value: 0
+        - pro: Always available with zero setup, and never stale or wrong -- it's the actual code, not a model or summary of it that could drift out of sync.
+        - pro: No abstraction to learn or maintain -- doesn't require anyone to build or keep working a diagram/report generator at all.
+        - con: Doesn't scale -- reconstructing the whole picture (redundant solutions, unconnected pieces) from individual file reads means holding it all in working memory yourself, exactly the problem architecture_diagrams/requirement_tree_report exist to avoid.
+        - con: Purely manual and repeated from scratch every time -- no persistent artifact a second person (or a later session) can pick up without redoing the same reading.
+        - work_state: done
 
     architecture_diagrams:
         data:
