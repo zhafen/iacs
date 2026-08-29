@@ -29,6 +29,14 @@ architecture_diagrams:
               and one entity's own neighborhood without switching tools or
               regenerating a new file.
     requirements:
+        visualize_graph:
+            - description: >
+                  Show some rendering of the entity graph at all -- the
+                  most basic requirement everything else builds on. No
+                  particular relation type, layout, or interactivity
+                  implied yet, just "a graph can be drawn."
+            - requirement
+            - requirement_priority
         visualize_call_graph:
             - description: Show the `calls` relation between entities.
             - requirement
@@ -46,15 +54,17 @@ architecture_diagrams:
                   types specifically.
             - requirement
             - requirement_priority
-        zoom_to_specific_relationships:
+        focus_on_smaller_chunks_of_architecture:
             - description: >
-                  Narrow in on one entity, file, or relation type at a
-                  time, starting from the overall picture, without
-                  switching tools or regenerating a separate diagram.
-                  Today's --root reachability-trace mode
+                  Narrow the view down to one entity, file, or relation
+                  type at a time, starting from the overall picture,
+                  without switching tools or regenerating a separate
+                  diagram. Today's --root reachability-trace mode
                   (build_call_reachability) is a separate CLI invocation
                   producing a separate static diagram, not an in-place
-                  zoom on the same view.
+                  narrowing of the same view. How that narrowing is
+                  actually achieved (camera zoom, node collapse, ...) is
+                  a solution concern, not part of the requirement itself.
             - requirement
             - requirement_priority
         visualize_hamiltonian_dags:
@@ -122,8 +132,8 @@ architecture_diagrams:
                   edges live -- replacing the regenerate-a-static-Mermaid-
                   diagram-per-selection cycle build_architecture_graph/
                   render_mermaid currently requires.
-            - solution of: requirements.view_overall_picture
-            - solution of: requirements.zoom_to_specific_relationships
+            - solution of: requirements.visualize_graph
+            - solution of: requirements.focus_on_smaller_chunks_of_architecture
             - cost:
                   type: engineering_hours
                   value: 20
@@ -137,7 +147,7 @@ architecture_diagrams:
                   camera zoom and pan controls for the overall-picture-
                   vs-zoom-in tradeoff -- no custom collapsing logic, just
                   the library's native camera.
-            - solution of: requirements.zoom_to_specific_relationships
+            - solution of: requirements.focus_on_smaller_chunks_of_architecture
             - solution of: requirements.view_overall_picture
             - cost:
                   type: engineering_hours
@@ -152,26 +162,74 @@ architecture_diagrams:
                   node, expanding again on click) for the overview-vs-zoom
                   tradeoff, in addition to or instead of pan/zoom alone.
             - solution of: requirements.view_overall_picture
-            - solution of: requirements.zoom_to_specific_relationships
+            - solution of: requirements.focus_on_smaller_chunks_of_architecture
             - cost:
                   type: engineering_hours
                   value: 4
             - pro: Directly reduces on-screen node count at overview scale, unlike zoom/pan alone.
             - con: Needs an actual tree to collapse along -- most relations (calls, imports) aren't tree-shaped; only the implicit-parent ones (requirement/solution's own dotted-path chain) naturally are.
             - work_state: new
-        links_as_subsets_of_implicit_parent_relations:
+        links_as_subsets_of_a_directed_relation:
             - description: >
-                  Use component_type.implicit_parent (requirement/
-                  solution's own dotted-path parent chain, see
-                  emc2p.dataflows.derive.resolve_paths) as the graph's
-                  layout skeleton -- every other relation (calls, imports,
-                  "solution of") drawn as a plain link overlaid on nodes
-                  the parent-chain tree already placed, rather than a
-                  competing force-directed layout axis of its own.
+                  General principle underlying every relation-type view
+                  iacs already renders or could render: a relation type's
+                  own directed_relation rows *are* the graph's edge set,
+                  full stop -- "links" are never anything more than a
+                  filtered subset of one directed_relation component
+                  table (calls, imports, "solution of", or any future
+                  type). hardcoded_calls_and_imports_relation is this
+                  same principle applied to exactly two fixed types;
+                  generalized_relation_type_selection is this same
+                  principle applied to any caller-selected type.
+            - solution of: requirements.visualize_call_graph
+            - cost:
+                  type: engineering_hours
+                  value: 0
+            - pro: Names the actual mechanism already at work rather than proposing something new -- clarifies that hardcoded_calls_and_imports_relation and generalized_relation_type_selection are two instances of one idea, not competing designs.
+            - con: On its own it's just a framing, not a capability -- it doesn't provide a layout skeleton or a selection surface by itself.
+            - work_state: new
+        hardcoded_calls_and_imports_relation:
+            - description: >
+                  Today's actual implementation: build_architecture_graph
+                  iterates a fixed `for comp_type in ("calls", "imports")`,
+                  treating each type's own directed_relation rows as the
+                  edge set for that relation type.
+            - solution of: requirements.visualize_call_graph
+            - solution of: requirements.visualize_import_graph
+            - cost:
+                  type: engineering_hours
+                  value: 0
+            - pro: Already implemented and exercised by every current diagram.
+            - pro: Simple and direct -- nothing to configure or select.
+            - con: Not extensible -- a new relation type needs a code change here rather than a caller-side choice (see generalized_relation_type_selection).
+            - work_state: done
+        static_mermaid_diagram:
+            - description: >
+                  Render entities/relations as a static Mermaid flowchart
+                  -- exactly what render_mermaid already does for both
+                  build_architecture_graph's per-file overview and
+                  build_call_reachability's own reachability trace. No
+                  interactivity: change what's shown, and the diagram is
+                  regenerated and reopened, not updated in place.
+            - solution of: requirements.visualize_graph
+            - cost:
+                  type: engineering_hours
+                  value: 0
+            - pro: Already implemented and in production use today (this project's own architecture diagrams).
+            - pro: No new dependency -- Mermaid renders natively wherever the output is viewed (GitHub, mkdocs, a Claude Artifact).
+            - con: Static -- no pan/zoom/toggle without regenerating and reopening a new file (see interactive_threejs_viewer).
+            - work_state: done
+        static_mermaid_overview:
+            - description: >
+                  build_architecture_graph's own existing whole-project
+                  view: collapse every entity to its own file, drop
+                  self-edges, render the result as one static Mermaid
+                  flowchart via render_mermaid.
             - solution of: requirements.view_overall_picture
             - cost:
                   type: engineering_hours
-                  value: 6
-            - pro: Gives every relation type a stable, deterministic layout skeleton to hang off of, instead of a fresh force-directed layout per selection.
-            - con: Only entities that actually have an implicit-parent chain benefit -- most parsed Python code today (calls/imports-only, no requirement/solution component of its own) still needs a fallback layout.
-            - work_state: new
+                  value: 0
+            - pro: Already implemented and exercised today.
+            - pro: Collapsing to one node per file keeps even a several-hundred-file project legible in one static image.
+            - con: Fixed at generation time -- toggling a relation type or drilling into one file means regenerating a new diagram, not adjusting the same view (see interactive_threejs_viewer).
+            - work_state: done
