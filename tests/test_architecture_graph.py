@@ -47,7 +47,7 @@ class TestBuildArchitectureGraph:
             {"value": "e1", "entity_key": "foo", "filepath": "pkg/mod.py"},
         ])
         graph = build_architecture_graph(registry)
-        assert graph["nodes"] == [{"id": "pkg/mod.py", "label": "mod"}]
+        assert graph["nodes"] == [{"id": "pkg/mod.py", "label": "pkg/mod"}]
         assert graph["edges"] == []
 
     def test_resolved_call_across_files_becomes_an_edge(self):
@@ -61,8 +61,8 @@ class TestBuildArchitectureGraph:
             ],
         )
         graph = build_architecture_graph(registry)
-        assert {"id": "pkg/a.py", "label": "a"} in graph["nodes"]
-        assert {"id": "pkg/b.py", "label": "b"} in graph["nodes"]
+        assert {"id": "pkg/a.py", "label": "pkg/a"} in graph["nodes"]
+        assert {"id": "pkg/b.py", "label": "pkg/b"} in graph["nodes"]
         assert graph["edges"] == [
             {"source": "pkg/a.py", "target": "pkg/b.py", "kind": "calls"},
         ]
@@ -138,7 +138,7 @@ class TestBuildArchitectureGraph:
             {"value": "e2", "entity_key": "bar", "filepath": "manifest/builtins.yaml"},
         ])
         graph = build_architecture_graph(registry)
-        assert graph["nodes"] == [{"id": "pkg/mod.py", "label": "mod"}]
+        assert graph["nodes"] == [{"id": "pkg/mod.py", "label": "pkg/mod"}]
 
     def test_nodes_are_sorted_by_filepath(self):
         registry = _registry(entity_id_rows=[
@@ -147,6 +147,20 @@ class TestBuildArchitectureGraph:
         ])
         graph = build_architecture_graph(registry)
         assert [n["id"] for n in graph["nodes"]] == ["pkg/a.py", "pkg/z.py"]
+
+    def test_same_named_files_in_different_directories_get_distinct_labels(self):
+        """Two repos' own conftest.py (or any other same-named file in a
+        different directory) must render as distinguishable nodes -- a bare
+        module-stem label would collapse both to the identical "conftest",
+        indistinguishable in the rendered diagram even though their node
+        ids (full filepaths) were never actually the same."""
+        registry = _registry(entity_id_rows=[
+            {"value": "e1", "entity_key": "conftest", "filepath": "repo_a/tests/conftest.py"},
+            {"value": "e2", "entity_key": "conftest", "filepath": "repo_b/tests/conftest.py"},
+        ])
+        graph = build_architecture_graph(registry)
+        labels = {n["label"] for n in graph["nodes"]}
+        assert labels == {"repo_a/tests/conftest", "repo_b/tests/conftest"}
 
 
 # ---------------------------------------------------------------------------

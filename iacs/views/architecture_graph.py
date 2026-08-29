@@ -26,6 +26,17 @@ def _module_label(filepath: str) -> str:
     return stem[:-3] if stem.endswith(".py") else stem
 
 
+def _file_node_label(filepath: str) -> str:
+    """Full-path label for a per-file node, e.g. 'iacs/registrar.py' ->
+    'iacs/registrar' -- unlike ``_module_label``'s bare stem (used for a
+    reachability trace's own per-file *subgraph titles*, where the
+    grouping itself already disambiguates), a whole-project overview's
+    nodes carry no such grouping, so two same-named files from different
+    directories (or different ``--manifest`` roots entirely) would
+    otherwise render as identical, indistinguishable labels."""
+    return filepath[:-3] if filepath.endswith(".py") else filepath
+
+
 def build_architecture_graph(registrar: Registrar) -> dict:
     """Aggregate parsed-Python entities into a per-file call/import graph.
 
@@ -78,7 +89,7 @@ def build_architecture_graph(registrar: Registrar) -> dict:
                 edges.add((src_fp, dst_fp, comp_type))
 
     return {
-        "nodes": [{"id": fp, "label": _module_label(fp)} for fp in filepaths],
+        "nodes": [{"id": fp, "label": _file_node_label(fp)} for fp in filepaths],
         "edges": [
             {"source": s, "target": t, "kind": k} for s, t, k in sorted(edges)
         ],
