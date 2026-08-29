@@ -342,26 +342,26 @@ architecture_diagrams:
             - work_state: new
         zoom_pan_camera_config:
             - description: >
-                  A camera-control argument/snippet inside
-                  interactive_viewer_module (see that dependency; not
-                  yet built) -- e.g. enabling a force-graph library's own
-                  OrbitControls-based zoom and pan, which many Three.js
+                  _camera_controls_config: the small config function
+                  inside interactive_viewer_module (see that dependency;
+                  not yet built) that enables a force-graph library's own
+                  OrbitControls-based zoom and pan -- many Three.js
                   force-graph libraries (3d-force-graph among them)
-                  already provide by default just from instantiating the
-                  graph, needing at most one config flag rather than any
-                  custom camera code of its own.
-            - location: iacs/views/interactive_viewer.py
+                  already provide this by default just from
+                  instantiating the graph, needing at most one config
+                  flag rather than any custom camera code of its own.
+            - location: iacs/views/interactive_viewer.py::_camera_controls_config
             - work_state: new
         collapse_click_handler:
             - description: >
-                  A node click-handler snippet inside
-                  interactive_viewer_module (see that dependency; not
-                  yet built) that toggles a subtree's descendant
+                  _on_node_click_collapse: the click-handler function
+                  inside interactive_viewer_module (see that dependency;
+                  not yet built) that toggles a subtree's descendant
                   nodes/links hidden or shown -- the common "collapsible
                   force graph" UI pattern. Unlike zoom/pan this isn't a
                   built-in camera feature; it's a small handler the
                   module itself has to write.
-            - location: iacs/views/interactive_viewer.py
+            - location: iacs/views/interactive_viewer.py::_on_node_click_collapse
             - work_state: new
         mermaid_render_function:
             - description: >
