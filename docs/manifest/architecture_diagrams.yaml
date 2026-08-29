@@ -117,6 +117,7 @@ architecture_diagrams:
             - solution of: requirements.visualize_call_graph
             - solution of: requirements.visualize_import_graph
             - dependence of: dependencies.relation_type_argument
+            - dependence of: dependencies.relation_type_cli_flag
             - cost:
                   type: engineering_hours
                   value: 8
@@ -134,6 +135,7 @@ architecture_diagrams:
                   diagram-per-selection cycle build_architecture_graph/
                   render_mermaid currently requires.
             - solution of: requirements.visualize_entities
+            - dependence of: dependencies.interactive_viewer_module
             - cost:
                   type: engineering_hours
                   value: 20
@@ -149,6 +151,7 @@ architecture_diagrams:
                   the library's native camera.
             - solution of: requirements.focus_on_smaller_chunks_of_architecture
             - solution of: requirements.view_overall_picture
+            - dependence of: dependencies.zoom_pan_camera_config
             - cost:
                   type: engineering_hours
                   value: 2
@@ -163,30 +166,12 @@ architecture_diagrams:
                   tradeoff, in addition to or instead of pan/zoom alone.
             - solution of: requirements.view_overall_picture
             - solution of: requirements.focus_on_smaller_chunks_of_architecture
+            - dependence of: dependencies.collapse_click_handler
             - cost:
                   type: engineering_hours
                   value: 4
             - pro: Directly reduces on-screen node count at overview scale, unlike zoom/pan alone.
             - con: Needs an actual tree to collapse along -- most relations (calls, imports) aren't tree-shaped; only the implicit-parent ones (requirement/solution's own dotted-path chain) naturally are.
-            - work_state: new
-        links_as_subsets_of_a_directed_relation:
-            - description: >
-                  General principle underlying every relation-type view
-                  iacs already renders or could render: a relation type's
-                  own directed_relation rows *are* the graph's edge set,
-                  full stop -- "links" are never anything more than a
-                  filtered subset of one directed_relation component
-                  table (calls, imports, "solution of", or any future
-                  type). hardcoded_calls_and_imports_relation is this
-                  same principle applied to exactly two fixed types;
-                  generalized_relation_type_selection is this same
-                  principle applied to any caller-selected type.
-            - solution of: requirements.visualize_call_graph
-            - cost:
-                  type: engineering_hours
-                  value: 0
-            - pro: Names the actual mechanism already at work rather than proposing something new -- clarifies that hardcoded_calls_and_imports_relation and generalized_relation_type_selection are two instances of one idea, not competing designs.
-            - con: On its own it's just a framing, not a capability -- it doesn't provide a layout skeleton or a selection surface by itself.
             - work_state: new
         hardcoded_calls_and_imports_relation:
             - description: >
@@ -213,6 +198,7 @@ architecture_diagrams:
                   interactivity: change what's shown, and the diagram is
                   regenerated and reopened, not updated in place.
             - solution of: requirements.visualize_entities
+            - dependence of: dependencies.mermaid_render_function
             - cost:
                   type: engineering_hours
                   value: 0
@@ -227,6 +213,7 @@ architecture_diagrams:
                   self-edges, render the result as one static Mermaid
                   flowchart via render_mermaid.
             - solution of: requirements.view_overall_picture
+            - dependence of: dependencies.architecture_graph_builder
             - cost:
                   type: engineering_hours
                   value: 0
@@ -244,6 +231,8 @@ architecture_diagrams:
                   exactly "a smaller, focused snapshot of the
                   architecture" for one entry point.
             - solution of: requirements.focus_on_smaller_chunks_of_architecture
+            - dependence of: dependencies.call_reachability_builder
+            - dependence of: dependencies.reachability_mermaid_renderer
             - cost:
                   type: engineering_hours
                   value: 0
@@ -308,15 +297,25 @@ architecture_diagrams:
             - work_state: new
         relation_type_argument:
             - description: >
-                  A new argument (e.g. build_architecture_graph's own
-                  relation_types: set[str] parameter, surfaced as a new
-                  --relation-type CLI flag on generate-architecture-
-                  diagram) plus a function dedicated to interpreting it --
-                  resolving the raw argument value into the actual set of
-                  directed_relation component types to iterate, replacing
-                  today's hardcoded `for comp_type in ("calls",
-                  "imports")` loop.
-            - location: iacs/views/architecture_graph.py, iacs/cli.py
+                  A new relation_types: set[str] parameter on
+                  build_architecture_graph, plus a function dedicated to
+                  interpreting it -- resolving the raw argument value
+                  into the actual set of directed_relation component
+                  types to iterate, replacing today's hardcoded
+                  `for comp_type in ("calls", "imports")` loop.
+            - location: iacs/views/architecture_graph.py
+            - work_state: new
+        relation_type_cli_flag:
+            - description: >
+                  A new --relation-type CLI flag on
+                  generate-architecture-diagram (iacs/cli.py's own
+                  argparse wiring) that surfaces relation_type_argument's
+                  new parameter to a command-line caller -- separate from
+                  the parameter itself, since a viewer embedded some
+                  other way (the interactive_viewer_module, say) would
+                  need the argument without ever going through this CLI
+                  flag at all.
+            - location: iacs/cli.py
             - work_state: new
         calls_and_imports_constant:
             - description: >
@@ -326,6 +325,79 @@ architecture_diagrams:
                   build_architecture_graph's own current implementation,
                   nothing new to build.
             - location: iacs/views/architecture_graph.py::build_architecture_graph
+            - work_state: done
+        interactive_viewer_module:
+            - description: >
+                  A new module -- its own file, e.g.
+                  iacs/views/interactive_viewer.py (mirroring
+                  iacs/views/architecture_graph.py, which builds and
+                  renders the static Mermaid form) -- that builds the
+                  same {"nodes","edges"} graph data and renders it into
+                  a self-contained standalone HTML/JS page: Three.js
+                  inlined, a force-directed layout, and the checkbox UI
+                  for toggling relation types live. Everything genuinely
+                  new about interactive_threejs_viewer lives here, not
+                  scattered across the existing static-rendering module.
+            - location: iacs/views/interactive_viewer.py (new)
+            - work_state: new
+        zoom_pan_camera_config:
+            - description: >
+                  A camera-control argument/snippet inside
+                  interactive_viewer_module (see that dependency; not
+                  yet built) -- e.g. enabling a force-graph library's own
+                  OrbitControls-based zoom and pan, which many Three.js
+                  force-graph libraries (3d-force-graph among them)
+                  already provide by default just from instantiating the
+                  graph, needing at most one config flag rather than any
+                  custom camera code of its own.
+            - location: iacs/views/interactive_viewer.py (new, planned)
+            - work_state: new
+        collapse_click_handler:
+            - description: >
+                  A node click-handler snippet inside
+                  interactive_viewer_module (see that dependency; not
+                  yet built) that toggles a subtree's descendant
+                  nodes/links hidden or shown -- the common "collapsible
+                  force graph" UI pattern. Unlike zoom/pan this isn't a
+                  built-in camera feature; it's a small handler the
+                  module itself has to write.
+            - location: iacs/views/interactive_viewer.py (new, planned)
+            - work_state: new
+        mermaid_render_function:
+            - description: >
+                  render_mermaid: turns a {"nodes","edges"} graph dict
+                  into Mermaid flowchart text -- the one function both
+                  build_architecture_graph's overview and
+                  build_call_reachability's reachability trace already
+                  render through today.
+            - location: iacs/views/architecture_graph.py::render_mermaid
+            - work_state: done
+        architecture_graph_builder:
+            - description: >
+                  build_architecture_graph: collapses every parsed
+                  entity to its own file, drops self-edges, and returns
+                  the {"nodes","edges"} dict render_mermaid then turns
+                  into the whole-project overview diagram.
+            - location: iacs/views/architecture_graph.py::build_architecture_graph
+            - work_state: done
+        call_reachability_builder:
+            - description: >
+                  build_call_reachability: BFS the entity-level calls
+                  graph outward from one --root entity, uncollapsed
+                  (entity-by-entity, not file-by-file), returning the
+                  {"root","nodes","edges","call_sequences"} dict the
+                  reachability trace renders from.
+            - location: iacs/views/architecture_graph.py::build_call_reachability
+            - work_state: done
+        reachability_mermaid_renderer:
+            - description: >
+                  render_reachability_mermaid: turns
+                  build_call_reachability's own output into Mermaid,
+                  grouping nodes into one subgraph per source file and
+                  chaining multi-target call sequences into their own
+                  ordered box -- genuinely separate code from
+                  render_mermaid's own simpler flat rendering.
+            - location: iacs/views/architecture_graph.py::render_reachability_mermaid
             - work_state: done
 
 can_describe_code_objects:
