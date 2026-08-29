@@ -130,7 +130,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--output",
         metavar="PATH",
         default="iacs_architecture.md",
-        help="File path to write the diagram to (default: iacs_architecture.md).",
+        help=(
+            "File path to write the diagram to (default: iacs_architecture.md). "
+            "A .html extension renders a standalone page (mermaid.js from a CDN) "
+            "instead of the default Markdown/mermaid-fence form."
+        ),
     )
     p_ad.add_argument(
         "--root",

@@ -380,6 +380,23 @@ class TestGenerateArchitectureDiagramCommand:
         assert str(out_path) in out
         assert out_path.exists()
 
+    def test_writes_html_when_output_ends_in_html(self, monkeypatch, capsys, tmp_path):
+        (tmp_path / "src").mkdir()
+        (tmp_path / "src" / "a.py").write_text('"""Module A."""\n')
+        out_path = tmp_path / "architecture.html"
+        out, _ = run_cli(
+            "--manifest", str(tmp_path / "src"),
+            "generate-architecture-diagram", "--output", str(out_path),
+            monkeypatch=monkeypatch, capsys=capsys,
+        )
+        assert str(out_path) in out
+        content = out_path.read_text(encoding="utf-8")
+        assert content.startswith("<!doctype html>")
+        assert 'class="mermaid"' in content
+        assert "flowchart LR" in content
+        assert "mermaid.min.js" in content
+        assert "```mermaid" not in content
+
     def test_root_option_renders_reachability_trace(self, monkeypatch, capsys, tmp_path):
         (tmp_path / "src").mkdir()
         (tmp_path / "src" / "a.py").write_text(

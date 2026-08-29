@@ -148,10 +148,38 @@ def cmd_generate_report(reg: "Registrar", output_path: str = "iacs_report.html")
     return f"Report written to {path}"
 
 
+def _render_architecture_diagram_html(mermaid: str, intro: str) -> str:
+    """Standalone HTML page for a Mermaid diagram, openable directly (e.g.
+    via ``file://``) with no other tooling -- mermaid.js loads from a CDN,
+    same as the markdown renderer's own GitHub-hosted preview needs
+    nothing else installed either."""
+    return f"""<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Architecture diagram</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body {{ font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }}
+  .mermaid {{ overflow-x: auto; }}
+</style>
+</head>
+<body>
+<h1>Architecture diagram</h1>
+<p>{intro}</p>
+<pre class="mermaid">
+{mermaid}
+</pre>
+<script>mermaid.initialize({{ startOnLoad: true }});</script>
+</body>
+</html>
+"""
+
+
 def cmd_generate_architecture_diagram(
     reg: "Registrar", output_path: str = "iacs_architecture.md", root: str | None = None
 ) -> str:
-    """Render a Mermaid architecture diagram and save it as a Markdown file.
+    """Render a Mermaid architecture diagram and save it as Markdown or HTML.
 
     Built from whatever ``calls``/``imports``/entity data is already loaded
     in ``reg`` -- for application code this means loading the package's
@@ -163,6 +191,11 @@ def cmd_generate_architecture_diagram(
     alias, or path substring -- e.g. a function name), renders instead the
     entity-level reachability trace outward from that one entry point
     (``build_call_reachability``), grouped into one subgraph per file.
+
+    ``output_path``'s own extension picks the format: ``.html`` renders a
+    standalone page (mermaid.js from a CDN, no separate viewer needed);
+    anything else renders the Markdown/mermaid-fence form GitHub and
+    Claude Artifacts already know how to preview natively.
     """
     from iacs.views.architecture_graph import (
         build_architecture_graph,
@@ -191,8 +224,11 @@ def cmd_generate_architecture_diagram(
         mermaid = render_mermaid(graph)
         intro = "Solid arrows are calls, dashed arrows are imports."
 
-    content = f"# Architecture diagram\n\n{intro}\n\n```mermaid\n{mermaid}\n```\n"
     path = Path(output_path)
+    if path.suffix.lower() == ".html":
+        content = _render_architecture_diagram_html(mermaid, intro)
+    else:
+        content = f"# Architecture diagram\n\n{intro}\n\n```mermaid\n{mermaid}\n```\n"
     if path.parent != Path("."):
         path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
