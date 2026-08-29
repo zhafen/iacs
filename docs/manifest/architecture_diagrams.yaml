@@ -57,6 +57,30 @@ architecture_diagrams:
                   zoom on the same view.
             - requirement
             - requirement_priority
+        visualize_hamiltonian_dags:
+            - description: >
+                  Show a Hamilton dataflow's own function-level node/edge
+                  DAG structure (subdags collapsed to a single bold-bordered
+                  node, same convention docs/gen_dag_images.py already
+                  uses) inside the same general viewer, rather than a
+                  separate static-PNG-per-dataflow generation pipeline
+                  with its own subdag-collapsing logic to maintain.
+            - requirement
+            - requirement_priority
+        visualize_fixtures:
+            - description: >
+                  Show pytest fixture request/provide relationships
+                  between test functions and the fixtures they depend on.
+                  These never show up as a `calls` or `imports` edge --
+                  a test requesting a fixture by parameter name is
+                  resolved entirely through pytest's own dependency
+                  injection, invisible to a static call/import graph (see
+                  testing_infra_inventory.md's own "what this graph can't
+                  show" gap: story-simulator's test_conftest_fixtures
+                  exercises three real fixtures with zero edges in the
+                  current diagram).
+            - requirement
+            - requirement_priority
     candidate_solutions:
         data:
             - description: >
