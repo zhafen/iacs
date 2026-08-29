@@ -10,396 +10,6 @@ file_info:
           here rather than in iacs_manifest/.
     - file_info
 
-architecture_diagrams:
-    data:
-        - solution
-        - description: >
-              Interactive visualization of the entity graphs emc2p's own
-              parsed entities (and any other directed_relation-shaped
-              component -- calls, imports, "solution of", a requirement's
-              own component_type.implicit_parent chain) form once loaded
-              into a Registrar. Motivated by iacs/views/architecture_graph.py's
-              existing two CLI modes (build_architecture_graph's whole-project
-              file-collapsed overview, build_call_reachability's --root
-              zoomed-in trace) each being a separate, static, pre-rendered
-              Mermaid diagram hardcoded to the calls/imports relation types
-              specifically -- the goal here is one general, live viewer:
-              pick which relation types to show, see only the nodes those
-              relations touch, and move between the whole-project overview
-              and one entity's own neighborhood without switching tools or
-              regenerating a new file.
-    requirements:
-        visualize_entities:
-            - description: >
-                  Show some rendering of the entities themselves at all --
-                  the most basic requirement everything else builds on.
-                  No particular relation type, layout, or interactivity
-                  implied yet, just "the entities can be drawn."
-            - requirement
-            - requirement_priority
-        visualize_call_graph:
-            - description: Show the `calls` relation between entities.
-            - requirement
-            - requirement_priority
-        visualize_import_graph:
-            - description: Show the `imports` relation between entities.
-            - requirement
-            - requirement_priority
-        view_overall_picture:
-            - description: >
-                  See the whole graph at once, collapsed enough to stay
-                  legible at project scale. build_architecture_graph
-                  already does this today, but only by collapsing to one
-                  node per file, and only for the calls/imports relation
-                  types specifically.
-            - requirement
-            - requirement_priority
-        focus_on_smaller_chunks_of_architecture:
-            - description: >
-                  Narrow the view down to one entity, file, or relation
-                  type at a time, starting from the overall picture,
-                  without switching tools or regenerating a separate
-                  diagram. Today's --root reachability-trace mode
-                  (build_call_reachability) is a separate CLI invocation
-                  producing a separate static diagram, not an in-place
-                  narrowing of the same view. How that narrowing is
-                  actually achieved (camera zoom, node collapse, ...) is
-                  a solution concern, not part of the requirement itself.
-            - requirement
-            - requirement_priority
-        visualize_hamiltonian_dags:
-            - description: >
-                  Show a Hamilton dataflow's own function-level node/edge
-                  DAG structure (subdags collapsed to a single bold-bordered
-                  node, same convention docs/gen_dag_images.py already
-                  uses) inside the same general viewer, rather than a
-                  separate static-PNG-per-dataflow generation pipeline
-                  with its own subdag-collapsing logic to maintain.
-            - requirement
-            - requirement_priority
-        visualize_fixtures:
-            - description: >
-                  Show pytest fixture request/provide relationships
-                  between test functions and the fixtures they depend on.
-                  These never show up as a `calls` or `imports` edge --
-                  a test requesting a fixture by parameter name is
-                  resolved entirely through pytest's own dependency
-                  injection, invisible to a static call/import graph (see
-                  testing_infra_inventory.md's own "what this graph can't
-                  show" gap: story-simulator's test_conftest_fixtures
-                  exercises three real fixtures with zero edges in the
-                  current diagram).
-            - requirement
-            - requirement_priority
-    candidate_solutions:
-        data:
-            - description: >
-                  Scored with the same cost vocabulary as elsewhere in this
-                  manifest, plain pro/con bare tags (one per point) rather
-                  than weighted axes -- same reasoning as
-                  story-simulator.yaml's own candidate_solutions
-                  description: a weighted weight*rating formula can produce
-                  a sign that doesn't match a point's own actual meaning.
-                  Every entry stays work_state: new until one is actually
-                  selected.
-        generalized_relation_type_selection:
-            - description: >
-                  Replace build_architecture_graph's hardcoded
-                  `for comp_type in ("calls", "imports")` with a viewer
-                  that takes any set of directed_relation-shaped component
-                  types (calls, imports, "solution of", a requirement's
-                  own component_type.implicit_parent chain, ...) and shows
-                  only the nodes touched by relations of the selected
-                  types -- one general mechanism instead of two hardcoded
-                  special cases, so a future relation type (e.g.
-                  "depends_on") gets the viewer for free instead of
-                  needing its own bespoke code path.
-            - solution of: requirements.visualize_call_graph
-            - solution of: requirements.visualize_import_graph
-            - dependence of: dependencies.relation_type_argument
-            - dependence of: dependencies.relation_type_cli_flag
-            - cost:
-                  type: engineering_hours
-                  value: 8
-            - pro: One mechanism instead of two hardcoded special cases; every current and future directed_relation component type gets a filtered view for free.
-            - con: Needs a real selection surface (CLI flags, or the interactive viewer's own UI) to actually expose the choice, not just a Python function signature change.
-            - work_state: new
-        interactive_threejs_viewer:
-            - description: >
-                  A single self-contained page (library inlined, no CDN
-                  fetch at runtime -- the same way generate-architecture-
-                  diagram --output *.html already inlines mermaid.min.js)
-                  with a force-directed layout, native pan/zoom camera
-                  controls, and per-relation-type checkboxes toggling
-                  edges live -- replacing the regenerate-a-static-Mermaid-
-                  diagram-per-selection cycle build_architecture_graph/
-                  render_mermaid currently requires.
-            - solution of: requirements.visualize_entities
-            - dependence of: dependencies.interactive_viewer_module
-            - cost:
-                  type: engineering_hours
-                  value: 20
-            - pro: Genuinely interactive -- toggling a relation type or zooming in doesn't mean regenerating and reopening a new file.
-            - pro: Pan/zoom is native to the rendering engine; Mermaid has no real equivalent at this scale.
-            - con: A real new frontend dependency and a non-trivial chunk of new JS, versus Mermaid's already-working text-to-diagram pipeline.
-            - work_state: new
-        threejs_builtin_zoom_and_pan:
-            - description: >
-                  Rely on a force-graph/Three.js library's own built-in
-                  camera zoom and pan controls for the overall-picture-
-                  vs-zoom-in tradeoff -- no custom collapsing logic, just
-                  the library's native camera.
-            - solution of: requirements.focus_on_smaller_chunks_of_architecture
-            - solution of: requirements.view_overall_picture
-            - dependence of: dependencies.zoom_pan_camera_config
-            - cost:
-                  type: engineering_hours
-                  value: 2
-            - pro: Already built into any force-graph library; nothing custom to write or maintain.
-            - con: Doesn't reduce visual clutter at overview scale by itself -- a fully expanded graph is still fully expanded, just smaller on screen.
-            - work_state: new
-        threejs_builtin_collapse:
-            - description: >
-                  Rely on a force-graph library's built-in node
-                  collapse/expand (folding a subtree behind its parent
-                  node, expanding again on click) for the overview-vs-zoom
-                  tradeoff, in addition to or instead of pan/zoom alone.
-            - solution of: requirements.view_overall_picture
-            - solution of: requirements.focus_on_smaller_chunks_of_architecture
-            - dependence of: dependencies.collapse_click_handler
-            - cost:
-                  type: engineering_hours
-                  value: 4
-            - pro: Directly reduces on-screen node count at overview scale, unlike zoom/pan alone.
-            - con: Needs an actual tree to collapse along -- most relations (calls, imports) aren't tree-shaped; only the implicit-parent ones (requirement/solution's own dotted-path chain) naturally are.
-            - work_state: new
-        hardcoded_calls_and_imports_relation:
-            - description: >
-                  Today's actual implementation: build_architecture_graph
-                  iterates a fixed `for comp_type in ("calls", "imports")`,
-                  treating each type's own directed_relation rows as the
-                  edge set for that relation type.
-            - solution of: requirements.visualize_call_graph
-            - solution of: requirements.visualize_import_graph
-            - dependence of: dependencies.calls_and_imports_constant
-            - cost:
-                  type: engineering_hours
-                  value: 0
-            - pro: Already implemented and exercised by every current diagram.
-            - pro: Simple and direct -- nothing to configure or select.
-            - con: Not extensible -- a new relation type needs a code change here rather than a caller-side choice (see generalized_relation_type_selection).
-            - work_state: done
-        static_mermaid_diagram:
-            - description: >
-                  Render entities/relations as a static Mermaid flowchart
-                  -- exactly what render_mermaid already does for both
-                  build_architecture_graph's per-file overview and
-                  build_call_reachability's own reachability trace. No
-                  interactivity: change what's shown, and the diagram is
-                  regenerated and reopened, not updated in place.
-            - solution of: requirements.visualize_entities
-            - dependence of: dependencies.mermaid_render_function
-            - cost:
-                  type: engineering_hours
-                  value: 0
-            - pro: Already implemented and in production use today (this project's own architecture diagrams).
-            - pro: No new dependency -- Mermaid renders natively wherever the output is viewed (GitHub, mkdocs, a Claude Artifact).
-            - con: Static -- no pan/zoom/toggle without regenerating and reopening a new file (see interactive_threejs_viewer).
-            - work_state: done
-        static_mermaid_overview:
-            - description: >
-                  build_architecture_graph's own existing whole-project
-                  view: collapse every entity to its own file, drop
-                  self-edges, render the result as one static Mermaid
-                  flowchart via render_mermaid.
-            - solution of: requirements.view_overall_picture
-            - dependence of: dependencies.architecture_graph_builder
-            - cost:
-                  type: engineering_hours
-                  value: 0
-            - pro: Already implemented and exercised today.
-            - pro: Collapsing to one node per file keeps even a several-hundred-file project legible in one static image.
-            - con: Fixed at generation time -- toggling a relation type or drilling into one file means regenerating a new diagram, not adjusting the same view (see interactive_threejs_viewer).
-            - work_state: done
-        static_mermaid_snapshot:
-            - description: >
-                  build_call_reachability's own existing --root mode:
-                  trace everything reachable from one entity via calls
-                  edges, kept uncollapsed (entity-by-entity, not
-                  file-by-file), and render it as its own static Mermaid
-                  flowchart via render_reachability_mermaid -- already
-                  exactly "a smaller, focused snapshot of the
-                  architecture" for one entry point.
-            - solution of: requirements.focus_on_smaller_chunks_of_architecture
-            - dependence of: dependencies.call_reachability_builder
-            - dependence of: dependencies.reachability_mermaid_renderer
-            - cost:
-                  type: engineering_hours
-                  value: 0
-            - pro: Already implemented and exercised today (--root reachability-trace mode).
-            - pro: No new dependency -- same static Mermaid rendering pipeline as the whole-project overview.
-            - con: A separate CLI invocation producing a separate file, not an in-place narrowing of the same view a live viewer would give (see threejs_builtin_zoom_and_pan/threejs_builtin_collapse).
-            - work_state: done
-        decorator_entities_with_implicit_calls:
-            - description: >
-                  One parsing rule solves visualize_fixtures and
-                  visualize_hamiltonian_dags identically, because both are
-                  the same shape: a decorated function definition
-                  (pytest's `@pytest.fixture def responder(...): ...`;
-                  a Hamilton node function decorated with
-                  `@extract_columns`/`@parameterize`/etc.) becomes its own
-                  entity, keyed by that function's own name. Then, within
-                  the same file, any other function that shares a
-                  parameter (or, for Hamilton, an argument name matching
-                  another node function) with that entity's name is
-                  recorded as an *implicit* call to it -- not a literal
-                  AST Call node (nothing textually calls `responder(...)`
-                  or a Hamilton node function), but a same-name match
-                  inferred from the decorator having marked that name as
-                  injectable/resolvable, mirroring exactly how pytest and
-                  Hamilton actually resolve these at runtime.
-            - solution of: requirements.visualize_fixtures
-            - solution of: requirements.visualize_hamiltonian_dags
-            - dependence of: dependencies.derive_dag_decorator_node
-            - cost:
-                  type: engineering_hours
-                  value: 12
-            - pro: One parsing rule covers two currently-invisible-to-load_python relation shapes instead of two separate special-case parsers.
-            - pro: Directly mirrors real runtime resolution (parameter-name injection) rather than approximating it some other way.
-            - con: Same-name-in-same-file matching can false-positive if two unrelated functions in one file happen to share a parameter/argument name that isn't actually a fixture/node reference.
-            - con: Needs new decorator-recognition logic in load_python.py, which today only extracts docstring/__iacs__-tagged entities -- a genuinely new parsing capability, not glue on the existing calls/imports handling.
-            - work_state: new
-    dependencies:
-        data:
-            - description: >
-                  The concrete entities that need to be built to realize
-                  the solutions above -- referenced from those solutions
-                  via `dependence of:` relations. Gathered here as
-                  siblings, not nested under any one solution, matching
-                  story-simulator.yaml's own dependencies: convention.
-        derive_dag_decorator_node:
-            - description: >
-                  A new node (or small handful of nodes) in
-                  emc2p.dataflows.derive -- alongside resolve_paths.py's
-                  existing nodes, not a whole separate DAG -- that reads
-                  the decorator info load_python's own ETL step already
-                  captures on each function entity and derives an
-                  implicit_calls-shaped table: one row per (decorated
-                  entity, same-file function sharing a parameter/argument
-                  name with it). Its own inputs are whatever raw
-                  decorator-name field load_python populates plus the
-                  existing entity_id/field tables the derive DAG already
-                  has in scope; its own output is a new derived component
-                  table downstream steps (export_manifest, the
-                  architecture viewer) can consume the same way they
-                  already consume `calls`.
-            - location: emc2p.dataflows.derive
-            - work_state: new
-        relation_type_argument:
-            - description: >
-                  A new relation_types: set[str] parameter on
-                  build_architecture_graph, plus a function dedicated to
-                  interpreting it -- resolving the raw argument value
-                  into the actual set of directed_relation component
-                  types to iterate, replacing today's hardcoded
-                  `for comp_type in ("calls", "imports")` loop.
-            - location: iacs/views/architecture_graph.py
-            - work_state: new
-        relation_type_cli_flag:
-            - description: >
-                  A new --relation-type CLI flag on
-                  generate-architecture-diagram (iacs/cli.py's own
-                  argparse wiring) that surfaces relation_type_argument's
-                  new parameter to a command-line caller -- separate from
-                  the parameter itself, since a viewer embedded some
-                  other way (the interactive_viewer_module, say) would
-                  need the argument without ever going through this CLI
-                  flag at all.
-            - location: iacs/cli.py
-            - work_state: new
-        calls_and_imports_constant:
-            - description: >
-                  A module-level constant listing the two hardcoded
-                  relation types (`("calls", "imports")`) plus the
-                  existing code that iterates it -- already exactly
-                  build_architecture_graph's own current implementation,
-                  nothing new to build.
-            - location: iacs/views/architecture_graph.py::build_architecture_graph
-            - work_state: done
-        interactive_viewer_module:
-            - description: >
-                  A new module -- its own file, e.g.
-                  iacs/views/interactive_viewer.py (mirroring
-                  iacs/views/architecture_graph.py, which builds and
-                  renders the static Mermaid form) -- that builds the
-                  same {"nodes","edges"} graph data and renders it into
-                  a self-contained standalone HTML/JS page: Three.js
-                  inlined, a force-directed layout, and the checkbox UI
-                  for toggling relation types live. Everything genuinely
-                  new about interactive_threejs_viewer lives here, not
-                  scattered across the existing static-rendering module.
-            - location: iacs/views/interactive_viewer.py
-            - work_state: new
-        zoom_pan_camera_config:
-            - description: >
-                  _camera_controls_config: the small config function
-                  inside interactive_viewer_module (see that dependency;
-                  not yet built) that enables a force-graph library's own
-                  OrbitControls-based zoom and pan -- many Three.js
-                  force-graph libraries (3d-force-graph among them)
-                  already provide this by default just from
-                  instantiating the graph, needing at most one config
-                  flag rather than any custom camera code of its own.
-            - location: iacs/views/interactive_viewer.py::_camera_controls_config
-            - work_state: new
-        collapse_click_handler:
-            - description: >
-                  _on_node_click_collapse: the click-handler function
-                  inside interactive_viewer_module (see that dependency;
-                  not yet built) that toggles a subtree's descendant
-                  nodes/links hidden or shown -- the common "collapsible
-                  force graph" UI pattern. Unlike zoom/pan this isn't a
-                  built-in camera feature; it's a small handler the
-                  module itself has to write.
-            - location: iacs/views/interactive_viewer.py::_on_node_click_collapse
-            - work_state: new
-        mermaid_render_function:
-            - description: >
-                  render_mermaid: turns a {"nodes","edges"} graph dict
-                  into Mermaid flowchart text -- the one function both
-                  build_architecture_graph's overview and
-                  build_call_reachability's reachability trace already
-                  render through today.
-            - location: iacs/views/architecture_graph.py::render_mermaid
-            - work_state: done
-        architecture_graph_builder:
-            - description: >
-                  build_architecture_graph: collapses every parsed
-                  entity to its own file, drops self-edges, and returns
-                  the {"nodes","edges"} dict render_mermaid then turns
-                  into the whole-project overview diagram.
-            - location: iacs/views/architecture_graph.py::build_architecture_graph
-            - work_state: done
-        call_reachability_builder:
-            - description: >
-                  build_call_reachability: BFS the entity-level calls
-                  graph outward from one --root entity, uncollapsed
-                  (entity-by-entity, not file-by-file), returning the
-                  {"root","nodes","edges","call_sequences"} dict the
-                  reachability trace renders from.
-            - location: iacs/views/architecture_graph.py::build_call_reachability
-            - work_state: done
-        reachability_mermaid_renderer:
-            - description: >
-                  render_reachability_mermaid: turns
-                  build_call_reachability's own output into Mermaid,
-                  grouping nodes into one subgraph per source file and
-                  chaining multi-target call sequences into their own
-                  ordered box -- genuinely separate code from
-                  render_mermaid's own simpler flat rendering.
-            - location: iacs/views/architecture_graph.py::render_reachability_mermaid
-            - work_state: done
-
 can_describe_code_objects:
     data:
         - description: >
@@ -455,3 +65,423 @@ can_describe_code_objects:
         - pro: Common, self-explanatory vocabulary outside this project too (a build artifact, a deliverable) -- doesn't require reading this manifest to guess what it means.
         - con: Also used for a very different meaning elsewhere in these same conversations (a build/CI artifact, a published Claude Artifact) -- risks colliding with an unrelated sense of the same word.
         - work_state: new
+
+sufficient_architecture_information:
+    data:
+        - description: >
+              Need enough information about the codebase's actual
+              structure -- what already exists, how it's wired
+              together, where real redundancy or complexity actually
+              is -- to make good architecture decisions, rather than
+              deciding from memory or a stale mental model.
+        - requirement
+        - requirement_priority
+    requirement_tree_report:
+        - description: >
+              scripts/generate_requirement_tree_report.py: renders one
+              alternating requirement/solution tree (rooted at any
+              --root entity) as an HTML report -- description, pros,
+              cons, cost, and a Selected/Unselected solutions index --
+              exactly the tool this manifest's own architecture_diagrams
+              solution is itself being evaluated through.
+        - solution
+        - cost:
+              type: engineering_hours
+              value: 0
+        - pro: Can focus narrowly on exactly the decision at hand -- the pros/cons/cost of one requirement's own actual candidate solutions, without the surrounding noise of the whole codebase's structure.
+        - con: Only as complete as the one requirement/solution tree it's pointed at -- won't reveal an architectural redundancy or connection outside that tree's own scope, unlike a codebase-wide graph.
+        - work_state: done
+
+    architecture_diagrams:
+        data:
+            - solution
+            - description: >
+                  Interactive visualization of the entity graphs emc2p's own
+                  parsed entities (and any other directed_relation-shaped
+                  component -- calls, imports, "solution of", a requirement's
+                  own component_type.implicit_parent chain) form once loaded
+                  into a Registrar. Motivated by iacs/views/architecture_graph.py's
+                  existing two CLI modes (build_architecture_graph's whole-project
+                  file-collapsed overview, build_call_reachability's --root
+                  zoomed-in trace) each being a separate, static, pre-rendered
+                  Mermaid diagram hardcoded to the calls/imports relation types
+                  specifically -- the goal here is one general, live viewer:
+                  pick which relation types to show, see only the nodes those
+                  relations touch, and move between the whole-project overview
+                  and one entity's own neighborhood without switching tools or
+                  regenerating a new file.
+            - pro: Its primary goal is purely informational -- built specifically to show the whole codebase's actual structure, not filtered through any one decision's own narrow lens, so it's well-suited to understanding the big picture as a whole.
+            - pro: Can surface redundant or duplicate solutions a narrowly-scoped, decision-specific tool would never catch, since it shows the whole picture rather than only what one particular question needs.
+            - con: Being general-purpose, it doesn't by itself surface which specific decision needs making or what the actual candidate options are -- reading the whole picture still requires the reader to work out its relevance to one particular choice.
+            - work_state: in progress
+        requirements:
+            visualize_entities:
+                - description: >
+                      Show some rendering of the entities themselves at all --
+                      the most basic requirement everything else builds on.
+                      No particular relation type, layout, or interactivity
+                      implied yet, just "the entities can be drawn."
+                - requirement
+                - requirement_priority
+            visualize_call_graph:
+                - description: Show the `calls` relation between entities.
+                - requirement
+                - requirement_priority
+            visualize_import_graph:
+                - description: Show the `imports` relation between entities.
+                - requirement
+                - requirement_priority
+            view_overall_picture:
+                - description: >
+                      See the whole graph at once, collapsed enough to stay
+                      legible at project scale. build_architecture_graph
+                      already does this today, but only by collapsing to one
+                      node per file, and only for the calls/imports relation
+                      types specifically.
+                - requirement
+                - requirement_priority
+            focus_on_smaller_chunks_of_architecture:
+                - description: >
+                      Narrow the view down to one entity, file, or relation
+                      type at a time, starting from the overall picture,
+                      without switching tools or regenerating a separate
+                      diagram. Today's --root reachability-trace mode
+                      (build_call_reachability) is a separate CLI invocation
+                      producing a separate static diagram, not an in-place
+                      narrowing of the same view. How that narrowing is
+                      actually achieved (camera zoom, node collapse, ...) is
+                      a solution concern, not part of the requirement itself.
+                - requirement
+                - requirement_priority
+            visualize_hamiltonian_dags:
+                - description: >
+                      Show a Hamilton dataflow's own function-level node/edge
+                      DAG structure (subdags collapsed to a single bold-bordered
+                      node, same convention docs/gen_dag_images.py already
+                      uses) inside the same general viewer, rather than a
+                      separate static-PNG-per-dataflow generation pipeline
+                      with its own subdag-collapsing logic to maintain.
+                - requirement
+                - requirement_priority
+            visualize_fixtures:
+                - description: >
+                      Show pytest fixture request/provide relationships
+                      between test functions and the fixtures they depend on.
+                      These never show up as a `calls` or `imports` edge --
+                      a test requesting a fixture by parameter name is
+                      resolved entirely through pytest's own dependency
+                      injection, invisible to a static call/import graph (see
+                      testing_infra_inventory.md's own "what this graph can't
+                      show" gap: story-simulator's test_conftest_fixtures
+                      exercises three real fixtures with zero edges in the
+                      current diagram).
+                - requirement
+                - requirement_priority
+        candidate_solutions:
+            data:
+                - description: >
+                      Scored with the same cost vocabulary as elsewhere in this
+                      manifest, plain pro/con bare tags (one per point) rather
+                      than weighted axes -- same reasoning as
+                      story-simulator.yaml's own candidate_solutions
+                      description: a weighted weight*rating formula can produce
+                      a sign that doesn't match a point's own actual meaning.
+                      Every entry stays work_state: new until one is actually
+                      selected.
+            generalized_relation_type_selection:
+                - description: >
+                      Replace build_architecture_graph's hardcoded
+                      `for comp_type in ("calls", "imports")` with a viewer
+                      that takes any set of directed_relation-shaped component
+                      types (calls, imports, "solution of", a requirement's
+                      own component_type.implicit_parent chain, ...) and shows
+                      only the nodes touched by relations of the selected
+                      types -- one general mechanism instead of two hardcoded
+                      special cases, so a future relation type (e.g.
+                      "depends_on") gets the viewer for free instead of
+                      needing its own bespoke code path.
+                - solution of: requirements.visualize_call_graph
+                - solution of: requirements.visualize_import_graph
+                - dependence of: dependencies.relation_type_argument
+                - dependence of: dependencies.relation_type_cli_flag
+                - cost:
+                      type: engineering_hours
+                      value: 8
+                - pro: One mechanism instead of two hardcoded special cases; every current and future directed_relation component type gets a filtered view for free.
+                - con: Needs a real selection surface (CLI flags, or the interactive viewer's own UI) to actually expose the choice, not just a Python function signature change.
+                - work_state: new
+            interactive_threejs_viewer:
+                - description: >
+                      A single self-contained page (library inlined, no CDN
+                      fetch at runtime -- the same way generate-architecture-
+                      diagram --output *.html already inlines mermaid.min.js)
+                      with a force-directed layout, native pan/zoom camera
+                      controls, and per-relation-type checkboxes toggling
+                      edges live -- replacing the regenerate-a-static-Mermaid-
+                      diagram-per-selection cycle build_architecture_graph/
+                      render_mermaid currently requires.
+                - solution of: requirements.visualize_entities
+                - dependence of: dependencies.interactive_viewer_module
+                - cost:
+                      type: engineering_hours
+                      value: 20
+                - pro: Genuinely interactive -- toggling a relation type or zooming in doesn't mean regenerating and reopening a new file.
+                - pro: Pan/zoom is native to the rendering engine; Mermaid has no real equivalent at this scale.
+                - con: A real new frontend dependency and a non-trivial chunk of new JS, versus Mermaid's already-working text-to-diagram pipeline.
+                - work_state: new
+            threejs_builtin_zoom_and_pan:
+                - description: >
+                      Rely on a force-graph/Three.js library's own built-in
+                      camera zoom and pan controls for the overall-picture-
+                      vs-zoom-in tradeoff -- no custom collapsing logic, just
+                      the library's native camera.
+                - solution of: requirements.focus_on_smaller_chunks_of_architecture
+                - solution of: requirements.view_overall_picture
+                - dependence of: dependencies.zoom_pan_camera_config
+                - cost:
+                      type: engineering_hours
+                      value: 2
+                - pro: Already built into any force-graph library; nothing custom to write or maintain.
+                - con: Doesn't reduce visual clutter at overview scale by itself -- a fully expanded graph is still fully expanded, just smaller on screen.
+                - work_state: new
+            threejs_builtin_collapse:
+                - description: >
+                      Rely on a force-graph library's built-in node
+                      collapse/expand (folding a subtree behind its parent
+                      node, expanding again on click) for the overview-vs-zoom
+                      tradeoff, in addition to or instead of pan/zoom alone.
+                - solution of: requirements.view_overall_picture
+                - solution of: requirements.focus_on_smaller_chunks_of_architecture
+                - dependence of: dependencies.collapse_click_handler
+                - cost:
+                      type: engineering_hours
+                      value: 4
+                - pro: Directly reduces on-screen node count at overview scale, unlike zoom/pan alone.
+                - con: Needs an actual tree to collapse along -- most relations (calls, imports) aren't tree-shaped; only the implicit-parent ones (requirement/solution's own dotted-path chain) naturally are.
+                - work_state: new
+            hardcoded_calls_and_imports_relation:
+                - description: >
+                      Today's actual implementation: build_architecture_graph
+                      iterates a fixed `for comp_type in ("calls", "imports")`,
+                      treating each type's own directed_relation rows as the
+                      edge set for that relation type.
+                - solution of: requirements.visualize_call_graph
+                - solution of: requirements.visualize_import_graph
+                - dependence of: dependencies.calls_and_imports_constant
+                - cost:
+                      type: engineering_hours
+                      value: 0
+                - pro: Already implemented and exercised by every current diagram.
+                - pro: Simple and direct -- nothing to configure or select.
+                - con: Not extensible -- a new relation type needs a code change here rather than a caller-side choice (see generalized_relation_type_selection).
+                - work_state: done
+            static_mermaid_diagram:
+                - description: >
+                      Render entities/relations as a static Mermaid flowchart
+                      -- exactly what render_mermaid already does for both
+                      build_architecture_graph's per-file overview and
+                      build_call_reachability's own reachability trace. No
+                      interactivity: change what's shown, and the diagram is
+                      regenerated and reopened, not updated in place.
+                - solution of: requirements.visualize_entities
+                - dependence of: dependencies.mermaid_render_function
+                - cost:
+                      type: engineering_hours
+                      value: 0
+                - pro: Already implemented and in production use today (this project's own architecture diagrams).
+                - pro: No new dependency -- Mermaid renders natively wherever the output is viewed (GitHub, mkdocs, a Claude Artifact).
+                - con: Static -- no pan/zoom/toggle without regenerating and reopening a new file (see interactive_threejs_viewer).
+                - work_state: done
+            static_mermaid_overview:
+                - description: >
+                      build_architecture_graph's own existing whole-project
+                      view: collapse every entity to its own file, drop
+                      self-edges, render the result as one static Mermaid
+                      flowchart via render_mermaid.
+                - solution of: requirements.view_overall_picture
+                - dependence of: dependencies.architecture_graph_builder
+                - cost:
+                      type: engineering_hours
+                      value: 0
+                - pro: Already implemented and exercised today.
+                - pro: Collapsing to one node per file keeps even a several-hundred-file project legible in one static image.
+                - con: Fixed at generation time -- toggling a relation type or drilling into one file means regenerating a new diagram, not adjusting the same view (see interactive_threejs_viewer).
+                - work_state: done
+            static_mermaid_snapshot:
+                - description: >
+                      build_call_reachability's own existing --root mode:
+                      trace everything reachable from one entity via calls
+                      edges, kept uncollapsed (entity-by-entity, not
+                      file-by-file), and render it as its own static Mermaid
+                      flowchart via render_reachability_mermaid -- already
+                      exactly "a smaller, focused snapshot of the
+                      architecture" for one entry point.
+                - solution of: requirements.focus_on_smaller_chunks_of_architecture
+                - dependence of: dependencies.call_reachability_builder
+                - dependence of: dependencies.reachability_mermaid_renderer
+                - cost:
+                      type: engineering_hours
+                      value: 0
+                - pro: Already implemented and exercised today (--root reachability-trace mode).
+                - pro: No new dependency -- same static Mermaid rendering pipeline as the whole-project overview.
+                - con: A separate CLI invocation producing a separate file, not an in-place narrowing of the same view a live viewer would give (see threejs_builtin_zoom_and_pan/threejs_builtin_collapse).
+                - work_state: done
+            decorator_entities_with_implicit_calls:
+                - description: >
+                      One parsing rule solves visualize_fixtures and
+                      visualize_hamiltonian_dags identically, because both are
+                      the same shape: a decorated function definition
+                      (pytest's `@pytest.fixture def responder(...): ...`;
+                      a Hamilton node function decorated with
+                      `@extract_columns`/`@parameterize`/etc.) becomes its own
+                      entity, keyed by that function's own name. Then, within
+                      the same file, any other function that shares a
+                      parameter (or, for Hamilton, an argument name matching
+                      another node function) with that entity's name is
+                      recorded as an *implicit* call to it -- not a literal
+                      AST Call node (nothing textually calls `responder(...)`
+                      or a Hamilton node function), but a same-name match
+                      inferred from the decorator having marked that name as
+                      injectable/resolvable, mirroring exactly how pytest and
+                      Hamilton actually resolve these at runtime.
+                - solution of: requirements.visualize_fixtures
+                - solution of: requirements.visualize_hamiltonian_dags
+                - dependence of: dependencies.derive_dag_decorator_node
+                - cost:
+                      type: engineering_hours
+                      value: 12
+                - pro: One parsing rule covers two currently-invisible-to-load_python relation shapes instead of two separate special-case parsers.
+                - pro: Directly mirrors real runtime resolution (parameter-name injection) rather than approximating it some other way.
+                - con: Same-name-in-same-file matching can false-positive if two unrelated functions in one file happen to share a parameter/argument name that isn't actually a fixture/node reference.
+                - con: Needs new decorator-recognition logic in load_python.py, which today only extracts docstring/__iacs__-tagged entities -- a genuinely new parsing capability, not glue on the existing calls/imports handling.
+                - work_state: new
+        dependencies:
+            data:
+                - description: >
+                      The concrete entities that need to be built to realize
+                      the solutions above -- referenced from those solutions
+                      via `dependence of:` relations. Gathered here as
+                      siblings, not nested under any one solution, matching
+                      story-simulator.yaml's own dependencies: convention.
+            derive_dag_decorator_node:
+                - description: >
+                      A new node (or small handful of nodes) in
+                      emc2p.dataflows.derive -- alongside resolve_paths.py's
+                      existing nodes, not a whole separate DAG -- that reads
+                      the decorator info load_python's own ETL step already
+                      captures on each function entity and derives an
+                      implicit_calls-shaped table: one row per (decorated
+                      entity, same-file function sharing a parameter/argument
+                      name with it). Its own inputs are whatever raw
+                      decorator-name field load_python populates plus the
+                      existing entity_id/field tables the derive DAG already
+                      has in scope; its own output is a new derived component
+                      table downstream steps (export_manifest, the
+                      architecture viewer) can consume the same way they
+                      already consume `calls`.
+                - location: emc2p.dataflows.derive
+                - work_state: new
+            relation_type_argument:
+                - description: >
+                      A new relation_types: set[str] parameter on
+                      build_architecture_graph, plus a function dedicated to
+                      interpreting it -- resolving the raw argument value
+                      into the actual set of directed_relation component
+                      types to iterate, replacing today's hardcoded
+                      `for comp_type in ("calls", "imports")` loop.
+                - location: iacs/views/architecture_graph.py
+                - work_state: new
+            relation_type_cli_flag:
+                - description: >
+                      A new --relation-type CLI flag on
+                      generate-architecture-diagram (iacs/cli.py's own
+                      argparse wiring) that surfaces relation_type_argument's
+                      new parameter to a command-line caller -- separate from
+                      the parameter itself, since a viewer embedded some
+                      other way (the interactive_viewer_module, say) would
+                      need the argument without ever going through this CLI
+                      flag at all.
+                - location: iacs/cli.py
+                - work_state: new
+            calls_and_imports_constant:
+                - description: >
+                      A module-level constant listing the two hardcoded
+                      relation types (`("calls", "imports")`) plus the
+                      existing code that iterates it -- already exactly
+                      build_architecture_graph's own current implementation,
+                      nothing new to build.
+                - location: iacs/views/architecture_graph.py::build_architecture_graph
+                - work_state: done
+            interactive_viewer_module:
+                - description: >
+                      A new module -- its own file, e.g.
+                      iacs/views/interactive_viewer.py (mirroring
+                      iacs/views/architecture_graph.py, which builds and
+                      renders the static Mermaid form) -- that builds the
+                      same {"nodes","edges"} graph data and renders it into
+                      a self-contained standalone HTML/JS page: Three.js
+                      inlined, a force-directed layout, and the checkbox UI
+                      for toggling relation types live. Everything genuinely
+                      new about interactive_threejs_viewer lives here, not
+                      scattered across the existing static-rendering module.
+                - location: iacs/views/interactive_viewer.py
+                - work_state: new
+            zoom_pan_camera_config:
+                - description: >
+                      _camera_controls_config: the small config function
+                      inside interactive_viewer_module (see that dependency;
+                      not yet built) that enables a force-graph library's own
+                      OrbitControls-based zoom and pan -- many Three.js
+                      force-graph libraries (3d-force-graph among them)
+                      already provide this by default just from
+                      instantiating the graph, needing at most one config
+                      flag rather than any custom camera code of its own.
+                - location: iacs/views/interactive_viewer.py::_camera_controls_config
+                - work_state: new
+            collapse_click_handler:
+                - description: >
+                      _on_node_click_collapse: the click-handler function
+                      inside interactive_viewer_module (see that dependency;
+                      not yet built) that toggles a subtree's descendant
+                      nodes/links hidden or shown -- the common "collapsible
+                      force graph" UI pattern. Unlike zoom/pan this isn't a
+                      built-in camera feature; it's a small handler the
+                      module itself has to write.
+                - location: iacs/views/interactive_viewer.py::_on_node_click_collapse
+                - work_state: new
+            mermaid_render_function:
+                - description: >
+                      render_mermaid: turns a {"nodes","edges"} graph dict
+                      into Mermaid flowchart text -- the one function both
+                      build_architecture_graph's overview and
+                      build_call_reachability's reachability trace already
+                      render through today.
+                - location: iacs/views/architecture_graph.py::render_mermaid
+                - work_state: done
+            architecture_graph_builder:
+                - description: >
+                      build_architecture_graph: collapses every parsed
+                      entity to its own file, drops self-edges, and returns
+                      the {"nodes","edges"} dict render_mermaid then turns
+                      into the whole-project overview diagram.
+                - location: iacs/views/architecture_graph.py::build_architecture_graph
+                - work_state: done
+            call_reachability_builder:
+                - description: >
+                      build_call_reachability: BFS the entity-level calls
+                      graph outward from one --root entity, uncollapsed
+                      (entity-by-entity, not file-by-file), returning the
+                      {"root","nodes","edges","call_sequences"} dict the
+                      reachability trace renders from.
+                - location: iacs/views/architecture_graph.py::build_call_reachability
+                - work_state: done
+            reachability_mermaid_renderer:
+                - description: >
+                      render_reachability_mermaid: turns
+                      build_call_reachability's own output into Mermaid,
+                      grouping nodes into one subgraph per source file and
+                      chaining multi-target call sequences into their own
+                      ordered box -- genuinely separate code from
+                      render_mermaid's own simpler flat rendering.
+                - location: iacs/views/architecture_graph.py::render_reachability_mermaid
+                - work_state: done
