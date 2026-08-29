@@ -350,7 +350,7 @@ architecture_diagrams:
                   already provide by default just from instantiating the
                   graph, needing at most one config flag rather than any
                   custom camera code of its own.
-            - location: iacs/views/interactive_viewer.py (new, planned)
+            - location: iacs/views/interactive_viewer.py (new)
             - work_state: new
         collapse_click_handler:
             - description: >
@@ -361,7 +361,7 @@ architecture_diagrams:
                   force graph" UI pattern. Unlike zoom/pan this isn't a
                   built-in camera feature; it's a small handler the
                   module itself has to write.
-            - location: iacs/views/interactive_viewer.py (new, planned)
+            - location: iacs/views/interactive_viewer.py (new)
             - work_state: new
         mermaid_render_function:
             - description: >
