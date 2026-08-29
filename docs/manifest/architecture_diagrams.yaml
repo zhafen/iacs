@@ -1,0 +1,155 @@
+file_info:
+    - description: >
+          Project-level planning entities for iacs's own future work, same
+          convention as story-simulator's docs/manifest/story-simulator.yaml
+          and emc2p's docs/manifest/emc2p.yaml: a requirement/solution tree
+          scored with impact/cost, kept under docs/ (not iacs_manifest/) so
+          it isn't fed into the self-hosted dogfooding app (see app.py's own
+          BUILTINS_DIR) as live schema/example data, the same reason
+          history.yaml and prioritization_reflections.yaml already live
+          here rather than in iacs_manifest/.
+    - file_info
+
+architecture_diagrams:
+    data:
+        - solution
+        - description: >
+              Interactive visualization of the entity graphs emc2p's own
+              parsed entities (and any other directed_relation-shaped
+              component -- calls, imports, "solution of", a requirement's
+              own component_type.implicit_parent chain) form once loaded
+              into a Registrar. Motivated by iacs/views/architecture_graph.py's
+              existing two CLI modes (build_architecture_graph's whole-project
+              file-collapsed overview, build_call_reachability's --root
+              zoomed-in trace) each being a separate, static, pre-rendered
+              Mermaid diagram hardcoded to the calls/imports relation types
+              specifically -- the goal here is one general, live viewer:
+              pick which relation types to show, see only the nodes those
+              relations touch, and move between the whole-project overview
+              and one entity's own neighborhood without switching tools or
+              regenerating a new file.
+    requirements:
+        data:
+            - requirement
+        visualize_call_graph:
+            - description: Show the `calls` relation between entities.
+            - requirement
+            - requirement_priority
+        visualize_import_graph:
+            - description: Show the `imports` relation between entities.
+            - requirement
+            - requirement_priority
+        view_overall_picture:
+            - description: >
+                  See the whole graph at once, collapsed enough to stay
+                  legible at project scale. build_architecture_graph
+                  already does this today, but only by collapsing to one
+                  node per file, and only for the calls/imports relation
+                  types specifically.
+            - requirement
+            - requirement_priority
+        zoom_to_specific_relationships:
+            - description: >
+                  Narrow in on one entity, file, or relation type at a
+                  time, starting from the overall picture, without
+                  switching tools or regenerating a separate diagram.
+                  Today's --root reachability-trace mode
+                  (build_call_reachability) is a separate CLI invocation
+                  producing a separate static diagram, not an in-place
+                  zoom on the same view.
+            - requirement
+            - requirement_priority
+    candidate_solutions:
+        data:
+            - description: >
+                  Scored with the same cost vocabulary as elsewhere in this
+                  manifest, plain pro/con bare tags (one per point) rather
+                  than weighted axes -- same reasoning as
+                  story-simulator.yaml's own candidate_solutions
+                  description: a weighted weight*rating formula can produce
+                  a sign that doesn't match a point's own actual meaning.
+                  Every entry stays work_state: new until one is actually
+                  selected.
+        generalized_relation_type_selection:
+            - description: >
+                  Replace build_architecture_graph's hardcoded
+                  `for comp_type in ("calls", "imports")` with a viewer
+                  that takes any set of directed_relation-shaped component
+                  types (calls, imports, "solution of", a requirement's
+                  own component_type.implicit_parent chain, ...) and shows
+                  only the nodes touched by relations of the selected
+                  types -- one general mechanism instead of two hardcoded
+                  special cases, so a future relation type (e.g.
+                  "depends_on") gets the viewer for free instead of
+                  needing its own bespoke code path.
+            - solution of: requirements.visualize_call_graph
+            - solution of: requirements.visualize_import_graph
+            - cost:
+                  type: engineering_hours
+                  value: 8
+            - pro: One mechanism instead of two hardcoded special cases; every current and future directed_relation component type gets a filtered view for free.
+            - con: Needs a real selection surface (CLI flags, or the interactive viewer's own UI) to actually expose the choice, not just a Python function signature change.
+            - work_state: new
+        interactive_threejs_viewer:
+            - description: >
+                  A single self-contained page (library inlined, no CDN
+                  fetch at runtime -- the same way generate-architecture-
+                  diagram --output *.html already inlines mermaid.min.js)
+                  with a force-directed layout, native pan/zoom camera
+                  controls, and per-relation-type checkboxes toggling
+                  edges live -- replacing the regenerate-a-static-Mermaid-
+                  diagram-per-selection cycle build_architecture_graph/
+                  render_mermaid currently requires.
+            - solution of: requirements.view_overall_picture
+            - solution of: requirements.zoom_to_specific_relationships
+            - cost:
+                  type: engineering_hours
+                  value: 20
+            - pro: Genuinely interactive -- toggling a relation type or zooming in doesn't mean regenerating and reopening a new file.
+            - pro: Pan/zoom is native to the rendering engine; Mermaid has no real equivalent at this scale.
+            - con: A real new frontend dependency and a non-trivial chunk of new JS, versus Mermaid's already-working text-to-diagram pipeline.
+            - work_state: new
+        threejs_builtin_zoom_and_pan:
+            - description: >
+                  Rely on a force-graph/Three.js library's own built-in
+                  camera zoom and pan controls for the overall-picture-
+                  vs-zoom-in tradeoff -- no custom collapsing logic, just
+                  the library's native camera.
+            - solution of: requirements.zoom_to_specific_relationships
+            - solution of: requirements.view_overall_picture
+            - cost:
+                  type: engineering_hours
+                  value: 2
+            - pro: Already built into any force-graph library; nothing custom to write or maintain.
+            - con: Doesn't reduce visual clutter at overview scale by itself -- a fully expanded graph is still fully expanded, just smaller on screen.
+            - work_state: new
+        threejs_builtin_collapse:
+            - description: >
+                  Rely on a force-graph library's built-in node
+                  collapse/expand (folding a subtree behind its parent
+                  node, expanding again on click) for the overview-vs-zoom
+                  tradeoff, in addition to or instead of pan/zoom alone.
+            - solution of: requirements.view_overall_picture
+            - solution of: requirements.zoom_to_specific_relationships
+            - cost:
+                  type: engineering_hours
+                  value: 4
+            - pro: Directly reduces on-screen node count at overview scale, unlike zoom/pan alone.
+            - con: Needs an actual tree to collapse along -- most relations (calls, imports) aren't tree-shaped; only the implicit-parent ones (requirement/solution's own dotted-path chain) naturally are.
+            - work_state: new
+        links_as_subsets_of_implicit_parent_relations:
+            - description: >
+                  Use component_type.implicit_parent (requirement/
+                  solution's own dotted-path parent chain, see
+                  emc2p.dataflows.derive.resolve_paths) as the graph's
+                  layout skeleton -- every other relation (calls, imports,
+                  "solution of") drawn as a plain link overlaid on nodes
+                  the parent-chain tree already placed, rather than a
+                  competing force-directed layout axis of its own.
+            - solution of: requirements.view_overall_picture
+            - cost:
+                  type: engineering_hours
+                  value: 6
+            - pro: Gives every relation type a stable, deterministic layout skeleton to hang off of, instead of a fresh force-directed layout per selection.
+            - con: Only entities that actually have an implicit-parent chain benefit -- most parsed Python code today (calls/imports-only, no requirement/solution component of its own) still needs a fallback layout.
+            - work_state: new
