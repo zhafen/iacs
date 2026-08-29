@@ -338,7 +338,7 @@ architecture_diagrams:
                   for toggling relation types live. Everything genuinely
                   new about interactive_threejs_viewer lives here, not
                   scattered across the existing static-rendering module.
-            - location: iacs/views/interactive_viewer.py (new)
+            - location: iacs/views/interactive_viewer.py
             - work_state: new
         zoom_pan_camera_config:
             - description: >
@@ -350,7 +350,7 @@ architecture_diagrams:
                   already provide by default just from instantiating the
                   graph, needing at most one config flag rather than any
                   custom camera code of its own.
-            - location: iacs/views/interactive_viewer.py (new)
+            - location: iacs/views/interactive_viewer.py
             - work_state: new
         collapse_click_handler:
             - description: >
@@ -361,7 +361,7 @@ architecture_diagrams:
                   force graph" UI pattern. Unlike zoom/pan this isn't a
                   built-in camera feature; it's a small handler the
                   module itself has to write.
-            - location: iacs/views/interactive_viewer.py (new)
+            - location: iacs/views/interactive_viewer.py
             - work_state: new
         mermaid_render_function:
             - description: >
