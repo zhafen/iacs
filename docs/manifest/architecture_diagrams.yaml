@@ -29,8 +29,6 @@ architecture_diagrams:
               and one entity's own neighborhood without switching tools or
               regenerating a new file.
     requirements:
-        data:
-            - requirement
         visualize_call_graph:
             - description: Show the `calls` relation between entities.
             - requirement
