@@ -116,6 +116,7 @@ architecture_diagrams:
                   needing its own bespoke code path.
             - solution of: requirements.visualize_call_graph
             - solution of: requirements.visualize_import_graph
+            - dependence of: dependencies.relation_type_argument
             - cost:
                   type: engineering_hours
                   value: 8
@@ -195,6 +196,7 @@ architecture_diagrams:
                   edge set for that relation type.
             - solution of: requirements.visualize_call_graph
             - solution of: requirements.visualize_import_graph
+            - dependence of: dependencies.calls_and_imports_constant
             - cost:
                   type: engineering_hours
                   value: 0
@@ -269,6 +271,7 @@ architecture_diagrams:
                   Hamilton actually resolve these at runtime.
             - solution of: requirements.visualize_fixtures
             - solution of: requirements.visualize_hamiltonian_dags
+            - dependence of: dependencies.derive_dag_decorator_node
             - cost:
                   type: engineering_hours
                   value: 12
@@ -277,3 +280,106 @@ architecture_diagrams:
             - con: Same-name-in-same-file matching can false-positive if two unrelated functions in one file happen to share a parameter/argument name that isn't actually a fixture/node reference.
             - con: Needs new decorator-recognition logic in load_python.py, which today only extracts docstring/__iacs__-tagged entities -- a genuinely new parsing capability, not glue on the existing calls/imports handling.
             - work_state: new
+    dependencies:
+        data:
+            - description: >
+                  The concrete entities that need to be built to realize
+                  the solutions above -- referenced from those solutions
+                  via `dependence of:` relations. Gathered here as
+                  siblings, not nested under any one solution, matching
+                  story-simulator.yaml's own dependencies: convention.
+        derive_dag_decorator_node:
+            - description: >
+                  A new node (or small handful of nodes) in
+                  emc2p.dataflows.derive -- alongside resolve_paths.py's
+                  existing nodes, not a whole separate DAG -- that reads
+                  the decorator info load_python's own ETL step already
+                  captures on each function entity and derives an
+                  implicit_calls-shaped table: one row per (decorated
+                  entity, same-file function sharing a parameter/argument
+                  name with it). Its own inputs are whatever raw
+                  decorator-name field load_python populates plus the
+                  existing entity_id/field tables the derive DAG already
+                  has in scope; its own output is a new derived component
+                  table downstream steps (export_manifest, the
+                  architecture viewer) can consume the same way they
+                  already consume `calls`.
+            - location: emc2p.dataflows.derive
+            - work_state: new
+        relation_type_argument:
+            - description: >
+                  A new argument (e.g. build_architecture_graph's own
+                  relation_types: set[str] parameter, surfaced as a new
+                  --relation-type CLI flag on generate-architecture-
+                  diagram) plus a function dedicated to interpreting it --
+                  resolving the raw argument value into the actual set of
+                  directed_relation component types to iterate, replacing
+                  today's hardcoded `for comp_type in ("calls",
+                  "imports")` loop.
+            - location: iacs/views/architecture_graph.py, iacs/cli.py
+            - work_state: new
+        calls_and_imports_constant:
+            - description: >
+                  A module-level constant listing the two hardcoded
+                  relation types (`("calls", "imports")`) plus the
+                  existing code that iterates it -- already exactly
+                  build_architecture_graph's own current implementation,
+                  nothing new to build.
+            - location: iacs/views/architecture_graph.py::build_architecture_graph
+            - work_state: done
+
+can_describe_code_objects:
+    data:
+        - description: >
+              iacs's own ECS model needs a way to represent an actual code
+              object (a function, a Hamilton node, a decorator-defined
+              entity, ...) as a first-class entity a solution can point
+              at -- the same underlying need already named two different
+              ways in this file: "dependence" (the existing emc2p builtin
+              used throughout architecture_diagrams.dependencies above)
+              and "implementation" (the word actually reached for when
+              narrating this same idea out loud). Which name/component
+              type the schema should settle on is the open question these
+              candidate solutions weigh.
+        - requirement
+        - requirement_priority
+    dependency_component:
+        - description: >
+              Keep calling it "dependency" -- the existing built-in emc2p
+              `dependence`/`dependence of:` component, already used
+              throughout this manifest's own dependencies: subtrees.
+        - solution
+        - pro: Already exists (emc2p's own auditing.yaml builtin) -- no new component type, no migrating existing dependencies subtrees.
+        - pro: "Consistent vocabulary across every manifest in this ecosystem that already uses dependencies:/dependence of:."
+        - con: Dependency names the relationship (a solution needs this to exist), not the thing itself -- a function is a function regardless of whether anything currently depends on it, so the name conflates the entity with one particular way of referencing it.
+        - work_state: new
+    implementation_component:
+        - description: >
+              Introduce a component type specifically for "this entity is
+              (or represents) a piece of code" -- the word actually
+              reached for out loud, even though the manifest itself has
+              been using "dependency" throughout.
+        - solution
+        - pro: Names the entity for what it actually is (a real code artifact), independent of whether any solution currently depends on it -- matches how requirement/solution name what an entity *is*, not just a relation.
+        - con: A new component type to define, document, and migrate every existing dependencies subtree onto -- real one-time cost for a naming preference, not a new capability.
+        - con: Overlaps with "dependence" enough that having both invites confusion about which one to reach for on a new entity.
+        - work_state: new
+    reference_component:
+        - description: >
+              A neutral third name: this entity is a reference to
+              wherever the actual code lives (a location string, e.g.
+              "test_human_validated.conftest.responder"), not a claim
+              about relationship (dependency) or identity (implementation).
+        - solution
+        - pro: Doesn't presuppose a relationship (dependency) or an identity claim (implementation) -- just points at where the code is, which is genuinely all today's `location` field already does.
+        - con: Weakest of the three at conveying *why* the entity is in the manifest at all -- "a reference" undersells that a solution actually needs it built.
+        - work_state: new
+    artifact_component:
+        - description: >
+              Borrow "artifact" (a concrete thing produced by engineering
+              work -- a function, a file, a config) as the component name
+              instead of "dependency" or "implementation".
+        - solution
+        - pro: Common, self-explanatory vocabulary outside this project too (a build artifact, a deliverable) -- doesn't require reading this manifest to guess what it means.
+        - con: Also used for a very different meaning elsewhere in these same conversations (a build/CI artifact, a published Claude Artifact) -- risks colliding with an unrelated sense of the same word.
+        - work_state: new
