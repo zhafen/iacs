@@ -49,7 +49,7 @@ iacs = "iacs.cli:main"
 # directly. Pinned by commit (not branch) so this is a real, reproducible
 # version pin, bumped explicitly the same way the submodule pointer used
 # to be.
-emc2p = { git = "https://github.com/zhafen/emc2p", rev = "be69521051352b27e0fe14bceab846fca26f3ada" }
+emc2p = { git = "https://github.com/zhafen/emc2p", rev = "93dbf0108e9233c9be5f4b009eac4d5d699d739a" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
