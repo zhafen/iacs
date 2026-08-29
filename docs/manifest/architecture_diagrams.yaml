@@ -29,12 +29,12 @@ architecture_diagrams:
               and one entity's own neighborhood without switching tools or
               regenerating a new file.
     requirements:
-        visualize_graph:
+        visualize_entities:
             - description: >
-                  Show some rendering of the entity graph at all -- the
-                  most basic requirement everything else builds on. No
-                  particular relation type, layout, or interactivity
-                  implied yet, just "a graph can be drawn."
+                  Show some rendering of the entities themselves at all --
+                  the most basic requirement everything else builds on.
+                  No particular relation type, layout, or interactivity
+                  implied yet, just "the entities can be drawn."
             - requirement
             - requirement_priority
         visualize_call_graph:
@@ -132,8 +132,7 @@ architecture_diagrams:
                   edges live -- replacing the regenerate-a-static-Mermaid-
                   diagram-per-selection cycle build_architecture_graph/
                   render_mermaid currently requires.
-            - solution of: requirements.visualize_graph
-            - solution of: requirements.focus_on_smaller_chunks_of_architecture
+            - solution of: requirements.visualize_entities
             - cost:
                   type: engineering_hours
                   value: 20
@@ -211,7 +210,7 @@ architecture_diagrams:
                   build_call_reachability's own reachability trace. No
                   interactivity: change what's shown, and the diagram is
                   regenerated and reopened, not updated in place.
-            - solution of: requirements.visualize_graph
+            - solution of: requirements.visualize_entities
             - cost:
                   type: engineering_hours
                   value: 0
@@ -232,6 +231,23 @@ architecture_diagrams:
             - pro: Already implemented and exercised today.
             - pro: Collapsing to one node per file keeps even a several-hundred-file project legible in one static image.
             - con: Fixed at generation time -- toggling a relation type or drilling into one file means regenerating a new diagram, not adjusting the same view (see interactive_threejs_viewer).
+            - work_state: done
+        static_mermaid_snapshot:
+            - description: >
+                  build_call_reachability's own existing --root mode:
+                  trace everything reachable from one entity via calls
+                  edges, kept uncollapsed (entity-by-entity, not
+                  file-by-file), and render it as its own static Mermaid
+                  flowchart via render_reachability_mermaid -- already
+                  exactly "a smaller, focused snapshot of the
+                  architecture" for one entry point.
+            - solution of: requirements.focus_on_smaller_chunks_of_architecture
+            - cost:
+                  type: engineering_hours
+                  value: 0
+            - pro: Already implemented and exercised today (--root reachability-trace mode).
+            - pro: No new dependency -- same static Mermaid rendering pipeline as the whole-project overview.
+            - con: A separate CLI invocation producing a separate file, not an in-place narrowing of the same view a live viewer would give (see threejs_builtin_zoom_and_pan/threejs_builtin_collapse).
             - work_state: done
         decorator_entities_with_implicit_calls:
             - description: >
