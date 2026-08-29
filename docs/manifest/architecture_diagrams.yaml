@@ -233,3 +233,31 @@ architecture_diagrams:
             - pro: Collapsing to one node per file keeps even a several-hundred-file project legible in one static image.
             - con: Fixed at generation time -- toggling a relation type or drilling into one file means regenerating a new diagram, not adjusting the same view (see interactive_threejs_viewer).
             - work_state: done
+        decorator_entities_with_implicit_calls:
+            - description: >
+                  One parsing rule solves visualize_fixtures and
+                  visualize_hamiltonian_dags identically, because both are
+                  the same shape: a decorated function definition
+                  (pytest's `@pytest.fixture def responder(...): ...`;
+                  a Hamilton node function decorated with
+                  `@extract_columns`/`@parameterize`/etc.) becomes its own
+                  entity, keyed by that function's own name. Then, within
+                  the same file, any other function that shares a
+                  parameter (or, for Hamilton, an argument name matching
+                  another node function) with that entity's name is
+                  recorded as an *implicit* call to it -- not a literal
+                  AST Call node (nothing textually calls `responder(...)`
+                  or a Hamilton node function), but a same-name match
+                  inferred from the decorator having marked that name as
+                  injectable/resolvable, mirroring exactly how pytest and
+                  Hamilton actually resolve these at runtime.
+            - solution of: requirements.visualize_fixtures
+            - solution of: requirements.visualize_hamiltonian_dags
+            - cost:
+                  type: engineering_hours
+                  value: 12
+            - pro: One parsing rule covers two currently-invisible-to-load_python relation shapes instead of two separate special-case parsers.
+            - pro: Directly mirrors real runtime resolution (parameter-name injection) rather than approximating it some other way.
+            - con: Same-name-in-same-file matching can false-positive if two unrelated functions in one file happen to share a parameter/argument name that isn't actually a fixture/node reference.
+            - con: Needs new decorator-recognition logic in load_python.py, which today only extracts docstring/__iacs__-tagged entities -- a genuinely new parsing capability, not glue on the existing calls/imports handling.
+            - work_state: new
