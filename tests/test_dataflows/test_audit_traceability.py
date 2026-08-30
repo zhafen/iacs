@@ -2,8 +2,8 @@
 
 import pytest
 
+from emc2p.registry import Registry
 from iacs.registrar import Registrar
-from tests.conftest import make_registry
 
 
 def _registrar_with_orphans():
@@ -17,7 +17,7 @@ def _registrar_with_orphans():
     in iacs/dataflows/audit/traceability.py), so both currently land in
     the same orphan bucket.
     """
-    return make_registry({
+    return Registry.from_component_rows({
         "entity_id": [
             {"value": "req1"},
             {"value": "sol1"},

@@ -266,11 +266,11 @@ class TestGetRegistrarPrefersDatabaseUrl:
     Postgres schema) instead of each holding its own separate copy."""
 
     def test_uses_database_registry_when_env_set(self, monkeypatch, tmp_path):
-        from tests.conftest import make_registry
+        from emc2p.registry import Registry
         from iacs.registrar import Registrar
 
         db_path = tmp_path / "registry.duckdb"
-        Registrar(make_registry({"description": [{"entity_id": "e1", "value": "From the database."}]})).save(
+        Registrar(Registry.from_component_rows({"description": [{"entity_id": "e1", "value": "From the database."}]})).save(
             db_path
         )
         monkeypatch.setenv(_DATABASE_URL_ENV_VAR, str(db_path))
@@ -285,11 +285,11 @@ class TestGetRegistrarPrefersDatabaseUrl:
 
     def test_ignores_manifest_env_when_database_url_set(self, monkeypatch, tmp_path):
         """IACS_MANIFEST being set too shouldn't matter -- IACS_DATABASE_URL wins."""
-        from tests.conftest import make_registry
+        from emc2p.registry import Registry
         from iacs.registrar import Registrar
 
         db_path = tmp_path / "registry.duckdb"
-        Registrar(make_registry({"description": [{"entity_id": "e1", "value": "From the database."}]})).save(
+        Registrar(Registry.from_component_rows({"description": [{"entity_id": "e1", "value": "From the database."}]})).save(
             db_path
         )
         monkeypatch.setenv(_DATABASE_URL_ENV_VAR, str(db_path))
@@ -320,11 +320,11 @@ class TestLoadDatabase:
     connected host what URL to pass), not knowable at server startup."""
 
     def _save_sample_registry(self, tmp_path):
-        from tests.conftest import make_registry
+        from emc2p.registry import Registry
         from iacs.registrar import Registrar
 
         db_path = tmp_path / "registry.duckdb"
-        Registrar(make_registry({"description": [{"entity_id": "e1", "value": "From the database."}]})).save(
+        Registrar(Registry.from_component_rows({"description": [{"entity_id": "e1", "value": "From the database."}]})).save(
             db_path
         )
         return db_path

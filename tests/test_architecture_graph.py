@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.conftest import make_registry
+from emc2p.registry import Registry
 from iacs.views.architecture_graph import (
     build_architecture_graph,
     build_call_reachability,
@@ -17,14 +17,14 @@ def _registry(entity_id_rows, calls_rows=None, imports_rows=None):
         components["calls"] = calls_rows
     if imports_rows:
         components["imports"] = imports_rows
-    return make_registry(components)
+    return Registry.from_component_rows(components)
 
 
 def _reachability_registry(entity_id_rows, calls_rows=None):
     components = {"entity_id": entity_id_rows}
     if calls_rows:
         components["calls"] = calls_rows
-    return make_registry(components)
+    return Registry.from_component_rows(components)
 
 
 # ---------------------------------------------------------------------------

@@ -1,19 +1,19 @@
 """Tests for iacs.views.requirement_tree."""
 
-from tests.conftest import make_registry
+from emc2p.registry import Registry
 from iacs.views.requirement_tree import build_requirement_forest, build_requirement_tree
 
 
 def _registry(entity_id_rows, parent_rows, requirement_rows):
-    # make_registry/duckdb can't create a table from an empty row list (no
-    # columns to infer), so omitted component types fall back to Registry's
-    # generic empty entity_id/value schema instead.
+    # Registry.from_component_rows/duckdb can't create a table from an empty
+    # row list (no columns to infer), so omitted component types fall back
+    # to Registry's generic empty entity_id/value schema instead.
     components = {"entity_id": entity_id_rows}
     if parent_rows:
         components["parent"] = parent_rows
     if requirement_rows:
         components["requirement_priority"] = requirement_rows
-    return make_registry(components)
+    return Registry.from_component_rows(components)
 
 
 class TestBuildRequirementForest:
