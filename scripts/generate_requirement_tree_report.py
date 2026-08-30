@@ -29,7 +29,8 @@ import argparse
 import html
 from pathlib import Path
 
-from iacs.commands import make_registrar, parse_manifest_env
+from iacs.commands import parse_manifest_env
+from iacs.registrar import Registrar
 
 DEFAULT_OUTPUT = Path("/tmp/requirement_tree_report.html")
 
@@ -667,7 +668,7 @@ def main() -> None:
     args = parser.parse_args()
 
     manifest_paths = args.manifest if args.manifest else parse_manifest_env()
-    registrar = make_registrar(manifest_paths)
+    registrar = Registrar.from_manifest(manifest_paths)
     subtree = load_subtree(registrar, args.root)
     dependencies_data = load_dependencies_data(registrar, args.root)
     content = render_report(subtree, dependencies_data, args.fragment)

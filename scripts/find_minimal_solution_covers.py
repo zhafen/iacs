@@ -30,7 +30,8 @@ from __future__ import annotations
 import argparse
 from itertools import combinations
 
-from iacs.commands import make_registrar, parse_manifest_env
+from iacs.commands import parse_manifest_env
+from iacs.registrar import Registrar
 
 
 def _leaf(path: str, prefix: str) -> str | None:
@@ -164,7 +165,7 @@ def main() -> None:
     solutions_prefix = f"{args.root}.candidate_solutions."
 
     manifest_paths = args.manifest if args.manifest else parse_manifest_env()
-    registrar = make_registrar(manifest_paths)
+    registrar = Registrar.from_manifest(manifest_paths)
     requirements, solves = load_solution_map(registrar, requirements_prefix, solutions_prefix)
 
     print(f"{len(requirements)} requirements: {', '.join(sorted(requirements))}\n")

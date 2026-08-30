@@ -60,24 +60,6 @@ def get_manifest_path_str(manifest_paths: list[str] | None = None) -> str:
     return f"Manifest path(s): {paths_str} ({source})"
 
 
-def make_registrar(manifest_paths: list[str]) -> "Registrar":
-    """Create a Registrar loaded from the given manifest directory paths."""
-    from iacs.registrar import Registrar
-    return Registrar.from_manifest(manifest_paths)
-
-
-def make_registrar_from_database(url: str) -> "Registrar":
-    """Create a Registrar over an existing database-backed registry.
-
-    Unlike ``make_registrar``, this doesn't load or validate anything --
-    it's a straight connection to a registry someone else already
-    populated (see ``Registrar.load``), so multiple tools can share one
-    live registry instead of each holding their own separate copy.
-    """
-    from iacs.registrar import Registrar
-    return Registrar.load(url)
-
-
 def cmd_list_component_types(reg: "Registrar") -> str:
     """Return a summary of loaded and available-but-ungenerated component types."""
     loaded = reg.registry.component_types

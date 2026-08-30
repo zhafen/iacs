@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import weakref
-from typing import TYPE_CHECKING
 
 from mcp.server.fastmcp import Context, FastMCP
 
@@ -24,15 +23,11 @@ from iacs.commands import (
     cmd_view_component,
     cmd_view_entity,
     get_manifest_path_str,
-    make_registrar,
-    make_registrar_from_database,
     parse_database_url_env as _parse_database_url_env,
     parse_manifest_env as _parse_manifest_env,
     validate_yaml_string as _validate_yaml_string,
 )
-
-if TYPE_CHECKING:
-    from iacs.registrar import Registrar
+from iacs.registrar import Registrar
 
 _registrars: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 
@@ -51,9 +46,9 @@ def _get_registrar(ctx: Context) -> "Registrar":
     if session not in _registrars:
         database_url = _parse_database_url_env()
         if database_url:
-            _registrars[session] = make_registrar_from_database(database_url)
+            _registrars[session] = Registrar.load(database_url)
         else:
-            _registrars[session] = make_registrar(_parse_manifest_env())
+            _registrars[session] = Registrar.from_manifest(_parse_manifest_env())
     return _registrars[session]
 
 
@@ -97,7 +92,7 @@ def load_manifest(manifest_paths: list[str], ctx: Context) -> str:
     Args:
         manifest_paths: List of paths to manifest directories.
     """
-    reg = make_registrar(manifest_paths)
+    reg = Registrar.from_manifest(manifest_paths)
     _registrars[ctx.request_context.session] = reg
     paths_str = ", ".join(repr(p) for p in manifest_paths)
     return f"Loaded manifest from {paths_str}. Component types: {reg.registry.component_types}"
@@ -120,7 +115,7 @@ def load_database(database_url: str, ctx: Context) -> str:
         database_url: A URL or filesystem path resolvable by `ibis.connect`
             (the same kind of value IACS_DATABASE_URL accepts).
     """
-    reg = make_registrar_from_database(database_url)
+    reg = Registrar.load(database_url)
     _registrars[ctx.request_context.session] = reg
     return f"Connected to database registry at {database_url!r}. Component types: {reg.registry.component_types}"
 
