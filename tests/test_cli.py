@@ -11,6 +11,12 @@ from iacs.commands import (
 )
 from iacs.cli import _build_parser, main
 
+# Each test invokes the real CLI end-to-end (argument parsing through a
+# real manifest load) -- individually a couple seconds, but 38 of them
+# dominate the full suite's wall time the same way test_mcp_server.py's
+# own real-manifest-loading tests do.
+pytestmark = pytest.mark.slow
+
 
 # ---------------------------------------------------------------------------
 # Helpers

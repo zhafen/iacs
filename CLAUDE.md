@@ -20,21 +20,30 @@ iacs (Infrastructure-as-Code Sketch) is an ECS-based system for documenting and 
 
 ### Testing
 
-- Run tests with `uv run pytest`.
 - Follow TDD approach: write tests first, then implement.
-- **Scope test runs to what changed; don't run the full suite on every
-  edit.** The full suite takes several minutes -- running it after each
-  small change during iterative debugging repeatedly pays that cost for
-  no benefit, since most edits only affect one or two test files. While
-  iterating, run just the test file(s) that exercise the code you're
-  changing (e.g. `uv run pytest tests/test_dataflows/test_report.py -q`),
-  narrowing further with `-k` when chasing one failing test. When unsure
-  what a change affects, grep for the changed function/class name across
-  `tests/` to find the real blast radius rather than defaulting to the
-  full suite as a substitute for that. Reserve a full-suite run for right
-  before committing, right before pushing, or after touching something
-  with genuinely broad reach (a shared utility, `emc2p`'s own builtins
-  schema, a base class most tests construct through).
+- **Three test tiers, by cost:**
+  - `uv run pytest` (default, no flags) -- fast (~30s). Tests that reload
+    a full manifest/registrar, exercise end-to-end example manifests, run
+    the CLI end-to-end, or measure import/startup time are marked `slow`
+    and excluded by default (see the `slow` marker in pyproject.toml).
+    Use this while iterating before a commit.
+  - `uv run pytest -m ""` -- the full suite, `slow` tests included. This
+    is also what CI runs. Run this before merging a PR, or after
+    touching something with genuinely broad reach (a shared utility,
+    `emc2p`'s own builtins schema, a base class most tests construct
+    through). Passing `-m` on the command line fully replaces the
+    default marker filter from `addopts`, so this isn't additive with
+    "not slow" -- it disables the filter entirely.
+  - No live-model tests exist in this repo (unlike emc2p/story-simulator's
+    `live` marker) -- there is no third, costlier tier here.
+- **Scope test runs to what changed even within the fast tier; don't run
+  the full default suite on every edit either.** While iterating, run
+  just the test file(s) that exercise the code you're changing (e.g.
+  `uv run pytest tests/test_dataflows/test_report.py -q`), narrowing
+  further with `-k` when chasing one failing test. When unsure what a
+  change affects, grep for the changed function/class name across
+  `tests/` to find the real blast radius rather than defaulting to a
+  broader run as a substitute for that.
 
 ### Code Style
 

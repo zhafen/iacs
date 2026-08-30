@@ -54,8 +54,13 @@ emc2p = { git = "https://github.com/zhafen/emc2p", rev = "643749cf1bad53989cdfe6
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
-    "slow: tests that reload a full manifest/registrar, exercise end-to-end example manifests, or measure import/startup time -- individually fast but numerous enough to dominate the full suite's wall time. Skip with `-m \"not slow\"` for a quick check.",
+    "slow: tests that reload a full manifest/registrar, exercise end-to-end example manifests, run the CLI end-to-end, or measure import/startup time -- individually fast but numerous enough to dominate the full suite's wall time. Excluded by default (see addopts); run everything with `-m \"\"`.",
 ]
+# Default `uv run pytest` run: fast (~30s), for iterating before a commit.
+# Full run (slow tests included, still what CI runs): `uv run pytest -m ""`
+# -- an explicit -m on the command line fully replaces this addopts value,
+# so it isn't additive with "not slow" and doesn't need "or slow" spelled out.
+addopts = ["-m", "not slow"]
 
 [tool.setuptools]
 py-modules = ["app"]
