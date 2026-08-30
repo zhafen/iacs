@@ -2301,12 +2301,28 @@ deduplication_system:
             data:
                 - description: >
                       Identify pairs of entities within a component table that are
-                      likely duplicates. Two complementary strategies are used.
+                      likely duplicates. Three complementary strategies are used.
             key_match:
                 - description: >
                       Entities with the same entity_key but different entity_ids
                       are strong candidates. This is the common case when the same
                       concept is defined independently in multiple EC files.
+            similarity_narrowing:
+                - description: >
+                      Compute a cosine-similarity matrix over all entities'
+                      description.value fields (emc2p.similarity's
+                      find_duplicate_entities/pairwise_similarities) to narrow the
+                      full entity set down to a shortlist of likely-duplicate
+                      pairs, ranked by similarity, for side_by_side_view to then
+                      judge holistically. A narrowing pre-filter, not a
+                      determination on its own: an algorithmic similarity score
+                      between two fields in isolation is no substitute for the
+                      holistic judgement side_by_side_view makes, but checking
+                      every possible pair by hand doesn't scale, so this is what
+                      makes side_by_side_view's own workload tractable on a large
+                      registry. Complementary to key_match -- catches duplicates
+                      that describe the same concept differently enough that
+                      their entity_keys don't match either.
             side_by_side_view:
                 - description: >
                       The most reliable identification method is to display all
@@ -2314,11 +2330,13 @@ deduplication_system:
                       human judgement call. This is qualitatively different from
                       algorithmic similarity metrics such as the dot product between
                       two records or the cosine similarity between two
-                      description.value fields: those metrics operate on individual
-                      fields in isolation and miss the holistic picture of what an
-                      entity is. A component-by-component side-by-side view of two
-                      candidate entities surfaces differences and similarities
-                      across all component types simultaneously.
+                      description.value fields (similarity_narrowing's own
+                      approach): those metrics operate on individual fields in
+                      isolation and miss the holistic picture of what an entity
+                      is, so they narrow the field of candidates but never stand
+                      in for this step. A component-by-component side-by-side
+                      view of two candidate entities surfaces differences and
+                      similarities across all component types simultaneously.
         merge_map_construction:
             - description: >
                   Given candidate pairs, select a canonical entity for each group
