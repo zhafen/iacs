@@ -50,9 +50,33 @@ iacs (Infrastructure-as-Code Sketch) is an ECS-based system for documenting and 
 - Keep solutions simple and focused.
 - Avoid over-engineering - only make changes that are directly requested.
 
+### Reviewing Agent Work
+
+- **A PR diff only shows what changed — not what should have changed but
+  didn't.** A very common failure mode is an incomplete refactor: a
+  rename, a wrapper removal, a pattern migration that gets applied at
+  most call sites but silently misses one (a script, a different
+  branch's copy, a file that didn't come up in the search that found the
+  others). The diff looks clean and reviews clean, because the missed
+  spot never shows up in it at all — it only surfaces much later, as a
+  confusing failure far from the original change. Don't treat "the diff
+  looks complete" as evidence it is; when reviewing a refactor-shaped PR,
+  separately grep the whole repo for the old name/pattern to confirm
+  nothing was left behind, rather than trusting the diff's own account
+  of its own completeness.
+
 ## Key Concepts
 
 - **Entity-Centered Format**: Human-friendly EC file format for defining entities and their components.
 - **Component-Centered Format (Registry)**: Internal format with one table per component type.
 - **Audits**: Checks that evaluate solution quality (RequirementCoverageAudit, TraceabilityAudit, TodoAudit).
 - **"solution of" component**: A directed_relation component indicating that an entity solves/fulfills a requirement.
+
+## TODO
+
+- Address the incomplete-refactor blind spot described under "Reviewing
+  Agent Work" above with something more durable than a reminder to
+  grep manually — e.g. a CI check or review-checklist step that
+  greps for stale references to a removed/renamed symbol across the
+  whole repo, not just the changed files, before a refactor-shaped PR
+  is treated as complete.
