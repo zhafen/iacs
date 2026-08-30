@@ -2692,3 +2692,21 @@ concise_inline_comments:
             - description: Every docstring opens with a concise one-sentence summary of what the code does, before any further elaboration, so the summary is legible without reading the whole block.
             - solution:
                 selected: true
+
+catch_incomplete_refactors_before_pr:
+    - description: >
+          A PR diff only shows what changed -- not what should have
+          changed but didn't. An incomplete refactor (a rename, a
+          wrapper removal, a pattern migration applied at most call
+          sites but silently missing one -- a script, a different
+          branch's copy, a file that didn't come up in the search that
+          found the others) reviews clean precisely because the gap
+          never shows up in the diff at all, surfacing later as a
+          confusing failure far from the original change.
+    - todo: >
+          Something more durable than a reminder to grep manually for a
+          reviewer to catch an incomplete refactor -- e.g. a CI check or
+          review-checklist step that greps for stale references to a
+          removed/renamed symbol across the whole repo, not just the
+          changed files, before a refactor-shaped PR is treated as
+          complete.

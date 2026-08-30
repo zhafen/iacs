@@ -63,7 +63,12 @@ iacs (Infrastructure-as-Code Sketch) is an ECS-based system for documenting and 
   looks complete" as evidence it is; when reviewing a refactor-shaped PR,
   separately grep the whole repo for the old name/pattern to confirm
   nothing was left behind, rather than trusting the diff's own account
-  of its own completeness.
+  of its own completeness. The pending follow-up (something more durable
+  than a reminder to grep manually) is tracked as a `todo` component on
+  `catch_incomplete_refactors_before_pr` in
+  `iacs/iacs_manifest/iacs.yaml`, not restated here as prose — run
+  `run_dataflow('audit.todo')` to see it alongside every other
+  outstanding todo in this project's own self-described architecture.
 
 ## Key Concepts
 
@@ -71,12 +76,3 @@ iacs (Infrastructure-as-Code Sketch) is an ECS-based system for documenting and 
 - **Component-Centered Format (Registry)**: Internal format with one table per component type.
 - **Audits**: Checks that evaluate solution quality (RequirementCoverageAudit, TraceabilityAudit, TodoAudit).
 - **"solution of" component**: A directed_relation component indicating that an entity solves/fulfills a requirement.
-
-## TODO
-
-- Address the incomplete-refactor blind spot described under "Reviewing
-  Agent Work" above with something more durable than a reminder to
-  grep manually — e.g. a CI check or review-checklist step that
-  greps for stale references to a removed/renamed symbol across the
-  whole repo, not just the changed files, before a refactor-shaped PR
-  is treated as complete.
