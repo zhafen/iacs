@@ -482,6 +482,13 @@ iacs:
                                                 Avoiding the term "vibe coding" because that doesn't
                                                 imply validation.
                                             - solution
+                                            - con: >
+                                                Agents tend to be weak at designing dataflows, at
+                                                least ones defined as a series of functions the way
+                                                Hamilton does -- see dataflow-designer's own
+                                                subagent definition (.claude/agents/
+                                                dataflow-designer.md), a heavily-scaffolded agent
+                                                built specifically to compensate for this.
                                         test_driven_development:
                                             data:
                                                 - description: Start with a test, ask the agent to pass it.
