@@ -58,6 +58,7 @@ def load_subtree(registrar, root_key: str) -> dict:
     from emc2p.dataflows.derive.resolve_paths import (
         components_with_resolved_paths,
         fields_of_type_entity_ref,
+        implicit_parent_target_types,
         parent_from_hierarchy,
     )
 
@@ -70,6 +71,7 @@ def load_subtree(registrar, root_key: str) -> dict:
         components=components,
         fields_of_type_entity_ref=fields_of_type_entity_ref(entity_id, field),
         parent_from_hierarchy=hierarchy,
+        implicit_parent_target_types=implicit_parent_target_types(components),
     )
 
     eids = entity_id.execute()
@@ -105,11 +107,14 @@ def load_subtree(registrar, root_key: str) -> dict:
         if eid in subtree_path_of:
             work_states[eid] = str(row["value"])
 
+    # solution.selected is a field on the solution component itself (see
+    # auditing.yaml), not a standalone "selected" component type -- no
+    # entity in this codebase ever uses a bare `- selected` tag.
     selected: dict[str, bool] = {}
-    for _, row in registrar.get("selected").execute().iterrows():
+    for _, row in registrar.get("solution").execute().iterrows():
         eid = str(row["entity_id"])
-        if eid in subtree_path_of:
-            selected[eid] = bool(row["value"])
+        if eid in subtree_path_of and row.get("selected") == True:  # noqa: E712 -- NaN/None-safe, see above
+            selected[eid] = True
 
     types: dict[str, str] = {}
     for ctype in ("requirement", "solution"):
@@ -191,6 +196,7 @@ def load_dependencies_data(registrar, root_key: str) -> dict | None:
     from emc2p.dataflows.derive.resolve_paths import (
         components_with_resolved_paths,
         fields_of_type_entity_ref,
+        implicit_parent_target_types,
         parent_from_hierarchy,
     )
 
@@ -203,6 +209,7 @@ def load_dependencies_data(registrar, root_key: str) -> dict | None:
         components=components,
         fields_of_type_entity_ref=fields_of_type_entity_ref(entity_id, field),
         parent_from_hierarchy=hierarchy,
+        implicit_parent_target_types=implicit_parent_target_types(components),
     )
     eids = entity_id.execute()
     path_of = dict(zip(eids["value"].astype(str), eids["path"].astype(str)))
