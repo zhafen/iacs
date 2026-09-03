@@ -1,0 +1,207 @@
+ai_quality_best_practices:
+    data:
+        - description: >
+              A living guide of best practices -- and, where possible, automated
+              or semi-automated checks -- for ensuring the quality of work done
+              with Claude Code and other AI assistants across story-simulator,
+              emc2p, and iacs. Seeded from Anthropic's own Claude Academy
+              training material; grows from there as concrete lessons
+              accumulate across the three repos. Currently recorded here as
+              plain manifest data, not as part of iacs the tool -- may
+              eventually become a first-class iacs feature (e.g. a builtin
+              audit checking for these practices), may not.
+        - requirement
+        - todo: >
+              Early draft. Mine docs/manifest/history.yaml-style entries and
+              past PR review threads across all three repos for recurring
+              AI-quality failure modes, and encode each as its own
+              requirement/solution pair here.
+
+    claude_academy_ai_fluency_framework:
+        data:
+            - description: >
+                  Base framework, from Anthropic Academy's free "AI Fluency:
+                  Framework & Foundations" course
+                  (academy.claude.com/courses/ai-fluency-framework-foundations),
+                  part of Claude Academy's AI Fluency track alongside its
+                  product-training and developer/Claude Code tracks. Defines
+                  AI fluency as collaborating with AI systems effectively,
+                  efficiently, ethically, and safely, via four interconnected
+                  competencies -- Delegation, Description, Discernment, and
+                  Diligence (the "4Ds") -- rather than one-off prompting
+                  tricks.
+            - requirement
+
+    delegate_deliberately:
+        data:
+            - description: >
+                  Thoughtfully decide what work to hand to AI versus do
+                  yourself, and how much autonomy to grant -- not "can AI
+                  do this" but "should AI do this here, given the stakes
+                  and how cheaply I can check the result."
+            - requirement
+        match_delegation_to_verification_cost:
+            - description: >
+                  Delegate more freely when the result is cheap to verify
+                  (formatting, boilerplate, a well-specified test) and
+                  less freely when verification is as expensive as doing
+                  the work yourself (a subtle algorithm, a
+                  security-sensitive change).
+            - solution
+        require_explicit_authorization_for_irreversible_actions:
+            - description: >
+                  Hard-to-reverse or externally-visible actions (merging
+                  a PR, a force-push, a destructive git operation) need a
+                  separate, explicit go-ahead rather than standing
+                  delegation -- already codified per-repo, e.g.
+                  story-simulator's, emc2p's, and iacs's own CLAUDE.md
+                  "never merge a pull request without explicit user
+                  permission" rules.
+            - solution
+
+    describe_with_grounding:
+        data:
+            - description: >
+                  Communicate goals, constraints, and context clearly enough
+                  that AI output is actually useful on the first pass -- not
+                  a one-shot prompting trick but an ongoing collaborative
+                  skill.
+            - requirement
+        point_at_existing_conventions_instead_of_describing_from_scratch:
+            - description: >
+                  Ground new requests in existing prior art -- a repo's own
+                  CLAUDE.md, an existing manifest entity, a comparable past
+                  PR -- so new output matches house style without having to
+                  spell it out from scratch.
+            - solution
+        state_the_goal_not_just_the_instruction:
+            - description: >
+                  Explaining the underlying objective, not just the literal
+                  ask, lets the assistant catch cases the literal instruction
+                  didn't anticipate.
+            - solution
+
+    discern_dont_defer:
+        data:
+            - description: >
+                  Evaluate AI outputs and behavior critically instead of
+                  accepting them at face value -- check claims, re-derive
+                  conclusions, notice when an explanation is
+                  plausible-sounding rather than actually verified.
+            - requirement
+        verify_the_diff_not_the_summary:
+            - description: >
+                  Treat an AI's prose report of what it did as a claim to
+                  check, not a fact -- re-read the actual diff, re-run the
+                  actual test or audit, rather than trusting the summary.
+            - solution
+        use_review_that_didnt_share_context_with_the_author:
+            - description: >
+                  Prefer a review pass that did not see the original
+                  reasoning (a fresh model call, a second reviewer, a
+                  dedicated review skill/agent) over having the same context
+                  that produced the work also grade it -- shared context
+                  makes shared blind spots likely.
+            - solution
+        automated_review_skills:
+            - description: >
+                  Claude Code's own code-review, pr-review, and
+                  security-review skills already provide a repeatable,
+                  single-invocation discernment check (correctness,
+                  reuse/simplification/efficiency, and security findings
+                  respectively) usable on any diff or PR before merge.
+            - solution
+
+    act_with_diligence:
+        data:
+            - description: >
+                  Take responsibility for AI-assisted work: follow through on
+                  its consequences, and use AI in a way that doesn't offload
+                  accountability onto the tool.
+            - requirement
+        owner_of_the_request_owns_the_output:
+            - description: >
+                  The human who requested or merged AI-generated work is
+                  accountable for it exactly as they would be for
+                  hand-written work -- "the AI wrote it" doesn't excuse a bug
+                  or a bad design call.
+            - solution
+
+    existing_project_checks:
+        data:
+            - description: >
+                  Automated or semi-automated checks already in place across
+                  the three repos that already function as AI-quality gates,
+                  catalogued here so this guide doesn't reinvent what exists
+                  and future entries can point at gaps instead.
+            - requirement
+        iacs_builtin_audits:
+            - description: >
+                  requirement_coverage_audit, traceability_audit,
+                  definition_audit, connectivity_audit, and todo_audit (see
+                  iacs.yaml's audit_system) check structural quality of iacs
+                  manifests -- a natural home for a future audit flagging
+                  AI-authored entities missing a description, or a todo left
+                  unresolved past some threshold.
+            - solution
+        per_repo_ci_and_test_suites:
+            - description: >
+                  Each repo's own test suite and CI gate merges already;
+                  story-simulator and emc2p also mark slow live-session tests
+                  with a `live` pytest marker excluded from the fast/default
+                  run, so a full live pass is a distinct, heavier check to
+                  run before trusting end-to-end behavior, not just
+                  unit-level correctness.
+            - solution
+        checked_in_claude_md_conventions:
+            - description: >
+                  Each repo's own checked-in CLAUDE.md already encodes
+                  project-specific Delegation/Diligence boundaries (e.g.
+                  story-simulator's MCP-reload-after-editing-code gotcha, the
+                  "never merge without permission" rule shared by
+                  story-simulator and iacs) -- durable, repo-local
+                  instructions an assistant reads automatically every
+                  session, unlike this guide which currently has to be
+                  pointed to explicitly.
+            - solution
+
+    ai_assisted_coding_practices:
+        data:
+            - description: >
+                  Best practices specific to using AI for software
+                  development -- the area most familiar from direct
+                  experience, so the one that can be filled in with
+                  confidence right now. Other areas (non-coding AI use
+                  cases) still need separate evaluation before their own
+                  practices belong here. Notes below are recorded close to
+                  how they were first said, with minimal reorganization, to
+                  be cleaned up later.
+            - requirement
+        human_understood_test_checkpoints:
+            data:
+                - description: >
+                      Maintain a robust set of tests that are fully
+                      understood by the humans doing the development. AI
+                      changes can't always be tracked in full across every
+                      part of a codebase, but a human can set checkpoints
+                      they do understand themselves -- these tests are that
+                      checkpoint.
+                - requirement
+            mark_which_tests_are_checkpoints:
+                - description: >
+                      Indicate somehow which tests are the load-bearing,
+                      human-understood checkpoints, as distinct from the
+                      rest of the suite -- e.g. a separate directory, or a
+                      pytest marker/flag. (The `test_human_validated.py`
+                      naming already used across story-simulator, emc2p, and
+                      iacs is a partial existing instance of this -- naming,
+                      not yet a dedicated directory or marker.)
+                - solution
+            ai_reluctant_to_touch_without_human_understanding:
+                - description: >
+                      AI should be very reluctant to modify a checkpoint
+                      test without the human also understanding what
+                      changed and why -- the whole point is a checkpoint the
+                      human can trust independent of what the AI did
+                      elsewhere.
+                - requirement
