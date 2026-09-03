@@ -2,28 +2,29 @@
 
 import pytest
 
+from emc2p.registry import Registry
 from iacs.registrar import Registrar
-from tests.conftest import make_registry
 
 
 def _registrar_with_orphans():
     """A registry with one genuine untraced entity and one todo-only entity.
 
-    `real_orphan` has no `requirement`, no `solution of`, and no `todo` --
-    a real gap in traceability. `todo_only` has no `requirement`/`solution
-    of` either, but does carry a `todo` -- a tracked, intentional pending
-    item, not an unvalidated solution. `traceability` doesn't read `todo`
-    at all (see INPUT_COMPONENT_TYPES in iacs/dataflows/audit/
-    traceability.py), so both currently land in the same orphan bucket.
+    `real_orphan` has no `requirement_priority`, no `solution of`, and no
+    `todo` -- a real gap in traceability. `todo_only` has no
+    `requirement_priority`/`solution of` either, but does carry a `todo`
+    -- a tracked, intentional pending item, not an unvalidated solution.
+    `traceability` doesn't read `todo` at all (see INPUT_COMPONENT_TYPES
+    in iacs/dataflows/audit/traceability.py), so both currently land in
+    the same orphan bucket.
     """
-    return make_registry({
+    return Registry.from_component_rows({
         "entity_id": [
             {"value": "req1"},
             {"value": "sol1"},
             {"value": "todo_only"},
             {"value": "real_orphan"},
         ],
-        "requirement": [
+        "requirement_priority": [
             {"entity_id": "req1", "value": "Something the system must do."},
         ],
         "solution of": [
@@ -39,7 +40,7 @@ def _registrar_with_orphans():
     reason=(
         "Documents a known gap (PR#96 review comment 3 / task #26), not yet fixed: "
         "the traceability audit doesn't have its own concept of 'unvalidated solution' "
-        "-- it flags anything lacking both `requirement` and `solution of` as a generic "
+        "-- it flags anything lacking both `requirement_priority` and `solution of` as a generic "
         "orphan, so a todo-only entity (tracked, intentional pending work) gets the same "
         "'does not trace to any requirement' message as a genuinely untraced entity. "
         "Un-skip this once the audit is reworked to tell those apart."

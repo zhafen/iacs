@@ -10,16 +10,13 @@ same visual symptom by some other means -- only actually rendering the
 diagram and inspecting where Mermaid/dagre put the edge can do that. This
 module does the actual rendering.
 
-Bug background: rendering a ``build_call_reachability`` graph where a
-sequence-box member has an outgoing edge to a node outside the box used
-to mis-anchor that edge -- it would visually appear to originate from an
-arbitrary other node in the box rather than the true source. Confirmed
-via a minimal repro shape (a caller with two call targets, one of which
-itself calls something else) and root-caused to Mermaid/dagre's compound
-layout: any explicit inner ``direction`` statement on the subgraph, not
-just a mismatched one, triggers it. The fix (see
-``render_reachability_mermaid``) is to never emit an inner ``direction``
-line at all.
+An outgoing edge from a sequence-box member to a node outside the box
+mis-anchors under Mermaid/dagre's compound layout whenever the subgraph
+declares any explicit inner ``direction`` line, even one that matches
+the outer direction -- the edge appears to originate from an arbitrary
+other node in the box instead of its true source.
+``render_reachability_mermaid`` avoids this by never emitting an inner
+``direction`` line at all.
 """
 
 import re

@@ -15,10 +15,10 @@ from iacs.commands import (
     cmd_view_component,
     cmd_view_entity,
     get_manifest_path_str,
-    make_registrar,
     parse_manifest_env,
     validate_yaml_string,
 )
+from iacs.registrar import Registrar
 
 
 def _resolve_manifest_paths(args: argparse.Namespace) -> list[str]:
@@ -130,7 +130,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--output",
         metavar="PATH",
         default="iacs_architecture.md",
-        help="File path to write the diagram to (default: iacs_architecture.md).",
+        help=(
+            "File path to write the diagram to (default: iacs_architecture.md). "
+            "A .html extension renders a standalone page (mermaid.js from a CDN) "
+            "instead of the default Markdown/mermaid-fence form."
+        ),
     )
     p_ad.add_argument(
         "--root",
@@ -186,7 +190,7 @@ def main() -> None:
         return
 
     manifest_paths = _resolve_manifest_paths(args)
-    reg = make_registrar(manifest_paths)
+    reg = Registrar.from_manifest(manifest_paths)
 
     if args.command == "refresh":
         print(cmd_refresh(reg))

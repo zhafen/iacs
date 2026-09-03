@@ -26,6 +26,61 @@ def _module_label(filepath: str) -> str:
     return stem[:-3] if stem.endswith(".py") else stem
 
 
+def _module_entities(entity_id_df, filepaths: set[str]) -> dict[str, dict[str, str]]:
+    """{filepath: {"id": that file's own module-level entity's full entity
+    id, "alias": that entity's own alias}}, for every file that minted one.
+
+    ``load_python._extract_entities`` records the module itself as an
+    entity (keyed by the file's own dotted module name, with no further
+    suffix) whenever the file has a top-level docstring or ``__iacs__``
+    marker -- exactly the entity whose ``path`` (after the ``{filepath}:``
+    prefix) equals that dotted module name. Its own entity id is unique
+    (an emc2p entity hash), so using *that* as the overview node's id --
+    rather than the alias, or the filepath -- means two files can never
+    collide on id even when they collide on displayed label. Its
+    ``alias`` (see emc2p's ``entity_id_table``: the last two dot-segments
+    of the entity's own path) is what a per-file overview node should
+    *show* -- shorter and more readable than the full path, though not
+    always unique across directories: two files both directly under a
+    same-named parent directory (e.g. two projects' own top-level
+    ``tests/conftest.py``) still alias to the identical ``tests.conftest``,
+    since aliasing is computed from the entity's own dotted path, not the
+    filesystem one. That's a real, expected label collision -- the node
+    *ids* stay distinct regardless, so it never merges two files into one
+    node, just two visibly identical labels.
+    """
+    if not {"path", "alias", "filepath", "value"} <= set(entity_id_df.columns):
+        return {}
+    result: dict[str, dict[str, str]] = {}
+    for fp in filepaths:
+        module_name = ".".join(Path(fp).with_suffix("").parts)
+        rows = entity_id_df[entity_id_df["filepath"] == fp]
+        matches = rows[rows["path"].astype(str).str.split(":", n=1).str[-1] == module_name]
+        if not matches.empty:
+            row = matches.iloc[0]
+            result[fp] = {"id": row["value"], "alias": row["alias"]}
+    return result
+
+
+def _file_node_id(filepath: str, module_entity_by_filepath: dict[str, dict[str, str]]) -> str:
+    """A per-file overview node's id: that file's own module-entity's full
+    entity id when it minted one, falling back to the filepath itself
+    (already unique per node) for a file with no top-level docstring/
+    ``__iacs__`` marker of its own."""
+    entity = module_entity_by_filepath.get(filepath)
+    return entity["id"] if entity else filepath
+
+
+def _file_node_label(filepath: str, module_entity_by_filepath: dict[str, dict[str, str]]) -> str:
+    """A per-file overview node's label: that file's own module-entity
+    alias when it minted one, falling back to ``_module_label``'s bare
+    stem for a file with no top-level docstring/``__iacs__`` marker of its
+    own (only documented functions/classes inside it, so no module-level
+    entity -- and therefore no alias -- was ever extracted)."""
+    entity = module_entity_by_filepath.get(filepath)
+    return entity["alias"] if entity else _module_label(filepath)
+
+
 def build_architecture_graph(registrar: Registrar) -> dict:
     """Aggregate parsed-Python entities into a per-file call/import graph.
 
@@ -46,9 +101,16 @@ def build_architecture_graph(registrar: Registrar) -> dict:
             ``load_manifest``.
 
     Returns:
-        ``{"nodes": [{"id": filepath, "label": str}, ...], "edges":
-        [{"source": filepath, "target": filepath, "kind": "calls" |
-        "imports"}, ...]}``, both lists sorted for stable output.
+        ``{"nodes": [{"id": str, "label": str}, ...], "edges":
+        [{"source": str, "target": str, "kind": "calls" | "imports"},
+        ...]}``, both lists sorted for stable output. A node's ``id`` is
+        its file's own module-level entity id when that file minted one
+        (see ``_module_entities``), falling back to the filepath itself
+        otherwise -- either way guaranteed unique per file, unlike
+        ``label`` (the entity's own ``alias``, or a bare module stem
+        fallback), which can collide across files (e.g. two projects'
+        own top-level ``tests/conftest.py`` both alias to
+        ``tests.conftest``) without that ever merging their nodes.
     """
     entity_id_df = registrar.get("entity_id").to_pandas()
     if "filepath" in entity_id_df.columns:
@@ -62,6 +124,8 @@ def build_architecture_graph(registrar: Registrar) -> dict:
     # rather than cluttering what's meant to be a call/import graph.
     py_filepaths = {fp for fp in id_to_filepath.values() if fp and fp.endswith(".py")}
     filepaths = sorted(py_filepaths)
+    module_entity_by_filepath = _module_entities(entity_id_df, py_filepaths)
+    node_id_by_filepath = {fp: _file_node_id(fp, module_entity_by_filepath) for fp in filepaths}
 
     edges: set[tuple[str, str, str]] = set()
     for comp_type in ("calls", "imports"):
@@ -78,9 +142,13 @@ def build_architecture_graph(registrar: Registrar) -> dict:
                 edges.add((src_fp, dst_fp, comp_type))
 
     return {
-        "nodes": [{"id": fp, "label": _module_label(fp)} for fp in filepaths],
+        "nodes": [
+            {"id": node_id_by_filepath[fp], "label": _file_node_label(fp, module_entity_by_filepath)}
+            for fp in filepaths
+        ],
         "edges": [
-            {"source": s, "target": t, "kind": k} for s, t, k in sorted(edges)
+            {"source": node_id_by_filepath[s], "target": node_id_by_filepath[t], "kind": k}
+            for s, t, k in sorted(edges)
         ],
     }
 
@@ -315,8 +383,8 @@ def render_reachability_mermaid(graph: dict, direction: str = "TB") -> str:
     node.
 
     Missing ``call_sequences`` entirely (e.g. an older or hand-built graph
-    dict) falls back to one plain arrow per ``edges`` entry, same as
-    before this grouping existed, so this stays backward compatible.
+    dict) falls back to one plain arrow per ``edges`` entry, for backward
+    compatibility with that input shape.
 
     Args:
         graph: A graph dict as returned by ``build_call_reachability``.
@@ -403,10 +471,10 @@ def render_reachability_mermaid(graph: dict, direction: str = "TB") -> str:
 
     lines.extend(sequence_lines)
 
-    # Defensive rather than commonly triggered now that the source side is
-    # always a specific node (two different callers can no longer collapse
-    # into "the same" edge just by sharing a target's box) -- but a single
-    # caller calling the same target twice non-consecutively would still
+    # Defensive rather than commonly triggered: the source side is always
+    # a specific node, so two different callers sharing a target's box
+    # never collapse into "the same" edge -- but a single caller calling
+    # the same target twice non-consecutively would still
     # produce the identical pair twice, so dedupe (order-preserving)
     # rather than draw parallel copies of it. A same-box self-reference
     # (two members of one box calling each other) is dropped too -- it

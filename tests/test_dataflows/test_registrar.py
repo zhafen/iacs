@@ -10,13 +10,13 @@ from pathlib import Path
 
 import ibis
 
-from tests.conftest import make_registry
+from emc2p.registry import Registry
 from tests.test_dataflows.dags import dataflow
 from iacs.registrar import Registrar
 
 
 def _sample_registry():
-    return make_registry(
+    return Registry.from_component_rows(
         {
             "description": [
                 {"entity_id": "e1", "value": "First entity"},
@@ -77,7 +77,7 @@ class TestExtendedDerivePipeline:
             "batch": (
                 "req_a:\n"
                 "    - description: Requirement A\n"
-                "    - requirement: 0.5\n"
+                "    - requirement_priority: 0.5\n"
             )
         })
         # resolved_impact_cost/priority_product only exist if impact_cost's

@@ -2,8 +2,17 @@ file_info:
     - description: >
           This file contains the additional component types iacs defines on
           top of emc2p's generic ones, for architecting solutions:
-          requirements, cost/impact scoring, tasks, audits, and code-
-          architecture relations.
+          cost/impact scoring, tasks, audits, and code-architecture
+          relations. ``requirement``, ``solution``, ``consideration``, and
+          ``consideration_rating`` used to live here too, but are generic
+          enough to be useful to any project doing requirement/solution
+          architecture, not just iacs -- they now live in emc2p itself
+          (``emc2p/builtins/iacs.yaml``) so a project depending only on
+          emc2p (not iacs), e.g. story-simulator, can still get a real
+          schema for them instead of relying on emc2p's schema-optional
+          duck-typing. ``requirement``'s ``parent: impact`` still points
+          here, so a project using ``requirement`` without also depending
+          on iacs won't have that parent resolve.
     - file_info
 
 iacs_component:
@@ -35,32 +44,6 @@ iacs_component:
                       description: Count of units of subtype impact per normalized impact.
                       type: float
                       default: 1
-        requirement:
-            - description: >
-                  Indicates that an entity represents a requirement that must be satisfied
-                  by the system design. Requirements should be traced to implementations.
-            - parent: impact
-            - field:
-                  type:
-                      description: The type of requirement.
-                      type: str
-                      range:
-                          - functional
-                          - quality
-                          - constraint
-                      default: functional
-                  value:
-                      description: >
-                          The priority/impact score for the requirement, with higher
-                          values corresponding to higher priority.
-                      type: rating
-                      default: 0.5
-                  schedule:
-                      description: >
-                          How often the requirement needs to be satisfied. If null, the
-                          requirement needs to be satisfied on demand.
-                      type: timedelta
-                      default: null
 
     mission:
         - description: >
@@ -97,16 +80,6 @@ iacs_component:
                       Information about the impact type and the corresponding
                       budget.
                   type: str
-
-    solution:
-        - description: >
-              A solution relation is used to show a requirement is fulfilled.
-              The ((solution.source)) solves the ((solution)).requirement.
-        - parent: directed_relation
-        - field:
-              value:
-                  description: The entity that this solution targets (what is being solved).
-                  type: entity_ref
 
     calls:
         - description: >
@@ -198,33 +171,6 @@ iacs_component:
                       budget.
                   type: str
 
-    consideration:
-        - description: A pro or con used to make a decision.
-        - field:
-              value:
-                  description: >
-                      Key for the consideration, which should be a short
-                      summary.
-                  type: str
-              description:
-                  description: Elaborating on the key when necessary.
-                  type: str
-              weight:
-                  description: How important this consideration is.
-                  type: float
-    consideration_rating:
-        - field:
-              value:
-                  description: Key for the consideration.
-                  type: str
-              note:
-                  description: Notes on the rating.
-                  type: str
-              rating:
-                  description: >
-                      Positive ratings are pros, negative ratings are cons.
-                  type: float
-                  range: [-1, 1]
     task:
         - description: >
               Indicates that an entity represents a task that needs to be completed,

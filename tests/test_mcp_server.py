@@ -3,12 +3,15 @@
 import yaml
 import pytest
 
+pytestmark = pytest.mark.slow
+
 from unittest.mock import MagicMock
 
 from iacs.mcp_server import (
     _DATABASE_URL_ENV_VAR,
     _EXAMPLE_MANIFEST,
     _BUILTINS_DIR,
+    _EMC2P_BUILTINS_DIR,
     _IACS_MANIFEST_DIR,
     _MANIFEST_ENV_VAR,
     _registrars,
@@ -80,14 +83,31 @@ class TestDescribeFormat:
         )
         result = _build_format_description()
         # Check that descriptions from components.yaml appear in the output
-        req_entity = comp_data["iacs_component"]["impact"]["requirement"]
+        impact_entity = comp_data["iacs_component"]["impact"]["data"]
+        impact_desc = next(
+            (item["description"] for item in impact_entity
+             if isinstance(item, dict) and "description" in item),
+            None,
+        )
+        assert impact_desc is not None
+        # First sentence of the description should appear in the output
+        first_sentence = impact_desc.strip().split(".")[0]
+        assert first_sentence in result
+
+    def test_component_specs_sourced_from_emc2p_auditing_yaml(self):
+        """requirement/solution/consideration/consideration_rating moved to
+        emc2p (see emc2p/builtins/auditing.yaml) -- their descriptions
+        should still come through into the format description."""
+        emc2p_data = yaml.safe_load(
+            (_EMC2P_BUILTINS_DIR / "auditing.yaml").read_text(encoding="utf-8")
+        )
+        result = _build_format_description()
         req_desc = next(
-            (item["description"] for item in req_entity
+            (item["description"] for item in emc2p_data["requirement"]
              if isinstance(item, dict) and "description" in item),
             None,
         )
         assert req_desc is not None
-        # First sentence of the description should appear in the output
         first_sentence = req_desc.strip().split(".")[0]
         assert first_sentence in result
 
@@ -99,7 +119,7 @@ class TestDescribeFormat:
 VALID_YAML = """\
 my_requirement:
     - description: Something that must be done.
-    - requirement:
+    - requirement_priority:
           value: 0.8
 
 my_solution:
@@ -139,11 +159,11 @@ class TestValidateYamlString:
 parent_req:
     data:
         - description: A parent requirement.
-        - requirement:
+        - requirement_priority:
               value: 1
     child_req:
         - description: A child requirement.
-        - requirement:
+        - requirement_priority:
               value: 0.5
 """
         result = _validate_yaml_string(nested)
@@ -152,7 +172,7 @@ parent_req:
     def test_solution_of_is_valid(self):
         yaml_str = """\
 req:
-    - requirement:
+    - requirement_priority:
           value: 1
 
 sol:
@@ -246,11 +266,11 @@ class TestGetRegistrarPrefersDatabaseUrl:
     Postgres schema) instead of each holding its own separate copy."""
 
     def test_uses_database_registry_when_env_set(self, monkeypatch, tmp_path):
-        from tests.conftest import make_registry
+        from emc2p.registry import Registry
         from iacs.registrar import Registrar
 
         db_path = tmp_path / "registry.duckdb"
-        Registrar(make_registry({"description": [{"entity_id": "e1", "value": "From the database."}]})).save(
+        Registrar(Registry.from_component_rows({"description": [{"entity_id": "e1", "value": "From the database."}]})).save(
             db_path
         )
         monkeypatch.setenv(_DATABASE_URL_ENV_VAR, str(db_path))
@@ -265,11 +285,11 @@ class TestGetRegistrarPrefersDatabaseUrl:
 
     def test_ignores_manifest_env_when_database_url_set(self, monkeypatch, tmp_path):
         """IACS_MANIFEST being set too shouldn't matter -- IACS_DATABASE_URL wins."""
-        from tests.conftest import make_registry
+        from emc2p.registry import Registry
         from iacs.registrar import Registrar
 
         db_path = tmp_path / "registry.duckdb"
-        Registrar(make_registry({"description": [{"entity_id": "e1", "value": "From the database."}]})).save(
+        Registrar(Registry.from_component_rows({"description": [{"entity_id": "e1", "value": "From the database."}]})).save(
             db_path
         )
         monkeypatch.setenv(_DATABASE_URL_ENV_VAR, str(db_path))
@@ -300,11 +320,11 @@ class TestLoadDatabase:
     connected host what URL to pass), not knowable at server startup."""
 
     def _save_sample_registry(self, tmp_path):
-        from tests.conftest import make_registry
+        from emc2p.registry import Registry
         from iacs.registrar import Registrar
 
         db_path = tmp_path / "registry.duckdb"
-        Registrar(make_registry({"description": [{"entity_id": "e1", "value": "From the database."}]})).save(
+        Registrar(Registry.from_component_rows({"description": [{"entity_id": "e1", "value": "From the database."}]})).save(
             db_path
         )
         return db_path

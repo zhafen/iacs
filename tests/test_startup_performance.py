@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.slow
+
 REPO_ROOT = Path(__file__).parent.parent
 EXAMPLE_MANIFEST = REPO_ROOT / "examples" / "example"
 

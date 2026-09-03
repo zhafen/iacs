@@ -20,13 +20,55 @@ iacs (Infrastructure-as-Code Sketch) is an ECS-based system for documenting and 
 
 ### Testing
 
-- Run tests with `uv run pytest`.
 - Follow TDD approach: write tests first, then implement.
+- **Three test tiers, by cost:**
+  - `uv run pytest` (default, no flags) -- fast (~30s). Tests that reload
+    a full manifest/registrar, exercise end-to-end example manifests, run
+    the CLI end-to-end, or measure import/startup time are marked `slow`
+    and excluded by default (see the `slow` marker in pyproject.toml).
+    Use this while iterating before a commit.
+  - `uv run pytest -m ""` -- the full suite, `slow` tests included. This
+    is also what CI runs. Run this before merging a PR, or after
+    touching something with genuinely broad reach (a shared utility,
+    `emc2p`'s own builtins schema, a base class most tests construct
+    through). Passing `-m` on the command line fully replaces the
+    default marker filter from `addopts`, so this isn't additive with
+    "not slow" -- it disables the filter entirely.
+  - No live-model tests exist in this repo (unlike emc2p/story-simulator's
+    `live` marker) -- there is no third, costlier tier here.
+- **Scope test runs to what changed even within the fast tier; don't run
+  the full default suite on every edit either.** While iterating, run
+  just the test file(s) that exercise the code you're changing (e.g.
+  `uv run pytest tests/test_dataflows/test_report.py -q`), narrowing
+  further with `-k` when chasing one failing test. When unsure what a
+  change affects, grep for the changed function/class name across
+  `tests/` to find the real blast radius rather than defaulting to a
+  broader run as a substitute for that.
 
 ### Code Style
 
 - Keep solutions simple and focused.
 - Avoid over-engineering - only make changes that are directly requested.
+
+### Reviewing Agent Work
+
+- **A PR diff only shows what changed — not what should have changed but
+  didn't.** A very common failure mode is an incomplete refactor: a
+  rename, a wrapper removal, a pattern migration that gets applied at
+  most call sites but silently misses one (a script, a different
+  branch's copy, a file that didn't come up in the search that found the
+  others). The diff looks clean and reviews clean, because the missed
+  spot never shows up in it at all — it only surfaces much later, as a
+  confusing failure far from the original change. Don't treat "the diff
+  looks complete" as evidence it is; when reviewing a refactor-shaped PR,
+  separately grep the whole repo for the old name/pattern to confirm
+  nothing was left behind, rather than trusting the diff's own account
+  of its own completeness. The pending follow-up (something more durable
+  than a reminder to grep manually) is tracked as a `todo` component on
+  `catch_incomplete_refactors_before_pr` in
+  `iacs/iacs_manifest/iacs.yaml`, not restated here as prose — run
+  `run_dataflow('audit.todo')` to see it alongside every other
+  outstanding todo in this project's own self-described architecture.
 
 ## Key Concepts
 

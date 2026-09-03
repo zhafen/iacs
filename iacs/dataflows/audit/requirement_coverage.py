@@ -7,7 +7,7 @@ import ibis.expr.types as ir
 from emc2p.registry import Registry
 
 
-INPUT_COMPONENT_TYPES = ["requirement", "solution", "status"]
+INPUT_COMPONENT_TYPES = ["requirement_priority", "solution", "status"]
 
 
 @extract_fields({ct: ir.Table for ct in INPUT_COMPONENT_TYPES})
@@ -39,9 +39,9 @@ def solution_with_state(solution: ir.Table, status: ir.Table) -> ir.Table:
     )
 
 
-def requirement_coverage(requirement: ir.Table, solution_with_state: ir.Table) -> ir.Table:
+def requirement_coverage(requirement_priority: ir.Table, solution_with_state: ir.Table) -> ir.Table:
     """For each requirement, show which solution covers it and its status."""
-    req = requirement.select("entity_id").distinct()
+    req = requirement_priority.select("entity_id").distinct()
     return req.left_join(solution_with_state, "entity_id").select(
         ibis._.entity_id,
         ibis._.solution_eid,

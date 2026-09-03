@@ -11,13 +11,13 @@ def client():
         yield c
 
 
-def test_view_requirement(client):
+def test_view_requirement_priority(client):
     """Test that we can call the API to view the requirements
     component for the active registry.
     """
 
     # Make the call to the API
-    resp = client.get("/api/view/requirement")
+    resp = client.get("/api/view/requirement_priority")
     assert resp.status_code == 200
     data = resp.json()
 
@@ -30,25 +30,25 @@ def test_view_requirement(client):
         if record["entity_id"] != test_entity_id:
             continue
 
-        assert record["requirement.type"] == "functional"
-        assert record["requirement.value"] == 0.5
+        assert record["requirement_priority.type"] == "functional"
+        assert record["requirement_priority.value"] == 0.5
 
 
 def test_view_multiple_component_types(client):
     """Test that slash-separated component types are inner-joined by entity_id."""
-    resp = client.get("/api/view/description/requirement")
+    resp = client.get("/api/view/description/requirement_priority")
     assert resp.status_code == 200
     data = resp.json()
 
     assert len(data) > 0
     record = data[0]
     assert "description.value" in record
-    assert "requirement.value" in record
+    assert "requirement_priority.value" in record
 
 
 def test_view_specific_field(client):
     """Test that individual dotted fields can be requested via the API."""
-    resp = client.get("/api/view/requirement.value")
+    resp = client.get("/api/view/requirement_priority.value")
     assert resp.status_code == 200
     data = resp.json()
 
@@ -60,5 +60,5 @@ def test_view_specific_field(client):
         if record["entity_id"] != test_entity_id:
             continue
 
-        assert record["requirement.value"] == 0.5
-        assert "requirement.type" not in record
+        assert record["requirement_priority.value"] == 0.5
+        assert "requirement_priority.type" not in record

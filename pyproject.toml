@@ -8,7 +8,7 @@ version = "0.1.5"
 description = "Infrastructure as Code Sketch"
 requires-python = ">=3.10"
 dependencies = [
-    "emc2p",
+    "emc2p[testing]",
     "duckdb>=1.3.2",
     "fastapi[standard]>=0.111.0",
     "uvicorn[standard]>=0.29.0",
@@ -43,10 +43,24 @@ iacs-mcp = "iacs.mcp_server:main"
 iacs = "iacs.cli:main"
 
 [tool.uv.sources]
-emc2p = { path = "emc2p", editable = true }
+# emc2p used to be vendored as a git submodule at ./emc2p purely so a
+# single-repo-attached session could reach its source for editable local
+# dev -- no longer needed now that multiple repos can be attached
+# directly. Pinned by commit (not branch) so this is a real, reproducible
+# version pin, bumped explicitly the same way the submodule pointer used
+# to be.
+emc2p = { git = "https://github.com/zhafen/emc2p", rev = "643749cf1bad53989cdfe6187d213d204c5873db" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "slow: tests that reload a full manifest/registrar, exercise end-to-end example manifests, run the CLI end-to-end, or measure import/startup time -- individually fast but numerous enough to dominate the full suite's wall time. Excluded by default (see addopts); run everything with `-m \"\"`.",
+]
+# Default `uv run pytest` run: fast (~30s), for iterating before a commit.
+# Full run (slow tests included, still what CI runs): `uv run pytest -m ""`
+# -- an explicit -m on the command line fully replaces this addopts value,
+# so it isn't additive with "not slow" and doesn't need "or slow" spelled out.
+addopts = ["-m", "not slow"]
 
 [tool.setuptools]
 py-modules = ["app"]

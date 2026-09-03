@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.conftest import make_registry
+from emc2p.registry import Registry
 from iacs.views.architecture_graph import (
     build_architecture_graph,
     build_call_reachability,
@@ -17,14 +17,14 @@ def _registry(entity_id_rows, calls_rows=None, imports_rows=None):
         components["calls"] = calls_rows
     if imports_rows:
         components["imports"] = imports_rows
-    return make_registry(components)
+    return Registry.from_component_rows(components)
 
 
 def _reachability_registry(entity_id_rows, calls_rows=None):
     components = {"entity_id": entity_id_rows}
     if calls_rows:
         components["calls"] = calls_rows
-    return make_registry(components)
+    return Registry.from_component_rows(components)
 
 
 # ---------------------------------------------------------------------------
@@ -147,6 +147,77 @@ class TestBuildArchitectureGraph:
         ])
         graph = build_architecture_graph(registry)
         assert [n["id"] for n in graph["nodes"]] == ["pkg/a.py", "pkg/z.py"]
+
+    def test_labels_use_the_entity_alias_when_the_file_minted_a_module_entity(self):
+        """A file with a top-level docstring/``__iacs__`` marker mints a
+        module-level entity of its own (see ``_module_entities``) -- its
+        ``alias`` is what the node should display, and its own entity id
+        (not the filepath) is what the node's id becomes."""
+        registry = _registry(entity_id_rows=[
+            {"value": "mod_e", "entity_key": "mod", "filepath": "pkg/mod.py",
+             "path": "pkg/mod.py:pkg.mod", "alias": "pkg.mod"},
+        ])
+        graph = build_architecture_graph(registry)
+        assert graph["nodes"] == [{"id": "mod_e", "label": "pkg.mod"}]
+
+    def test_distinct_parent_directories_get_distinct_aliases(self):
+        registry = _registry(entity_id_rows=[
+            {"value": "e1", "entity_key": "test_scenario", "filepath": "parking/test_scenario.py",
+             "path": "parking/test_scenario.py:parking.test_scenario", "alias": "parking.test_scenario"},
+            {"value": "e2", "entity_key": "test_scenario", "filepath": "parking_split/test_scenario.py",
+             "path": "parking_split/test_scenario.py:parking_split.test_scenario",
+             "alias": "parking_split.test_scenario"},
+        ])
+        graph = build_architecture_graph(registry)
+        labels = {n["label"] for n in graph["nodes"]}
+        assert labels == {"parking.test_scenario", "parking_split.test_scenario"}
+
+    def test_distinct_files_keep_distinct_node_ids_even_when_their_aliases_collide(self):
+        """Two repos' own top-level conftest.py (or any other same-named
+        file directly under a same-named parent directory) alias to the
+        identical "tests.conftest" -- the last two dot-segments of the
+        module's own dotted path, computed with no awareness of which
+        repo or filesystem location it actually came from. Using the
+        module entity's own full entity id (rather than the alias, or a
+        bare module stem) as the node's id is what keeps these two
+        distinct nodes regardless -- the label collision is real and
+        expected (flagged to the user rather than silently "fixed"), but
+        it must never merge the two files into one node."""
+        registry = _registry(entity_id_rows=[
+            # "path"'s dotted half is the *real* module name (dot-join of
+            # the whole relative filepath, see load_python.module_names) --
+            # "repo_a.tests.conftest", not the alias -- while "alias" is
+            # separately just its own last two dot-segments, which is
+            # where the collision actually comes from.
+            {"value": "e1", "entity_key": "conftest", "filepath": "repo_a/tests/conftest.py",
+             "path": "repo_a/tests/conftest.py:repo_a.tests.conftest", "alias": "tests.conftest"},
+            {"value": "e2", "entity_key": "conftest", "filepath": "repo_b/tests/conftest.py",
+             "path": "repo_b/tests/conftest.py:repo_b.tests.conftest", "alias": "tests.conftest"},
+        ])
+        graph = build_architecture_graph(registry)
+        ids = {n["id"] for n in graph["nodes"]}
+        labels = {n["label"] for n in graph["nodes"]}
+        assert ids == {"e1", "e2"}
+        assert labels == {"tests.conftest"}
+
+    def test_edges_use_module_entity_ids_when_present(self):
+        registry = _registry(
+            entity_id_rows=[
+                {"value": "caller_mod", "entity_key": "a", "filepath": "pkg/a.py",
+                 "path": "pkg/a.py:pkg.a", "alias": "pkg.a"},
+                {"value": "caller_e", "entity_key": "main", "filepath": "pkg/a.py"},
+                {"value": "callee_mod", "entity_key": "b", "filepath": "pkg/b.py",
+                 "path": "pkg/b.py:pkg.b", "alias": "pkg.b"},
+                {"value": "callee_e", "entity_key": "helper", "filepath": "pkg/b.py"},
+            ],
+            calls_rows=[
+                {"entity_id": "caller_e", "value": "helper", "value_eid": "callee_e"},
+            ],
+        )
+        graph = build_architecture_graph(registry)
+        assert graph["edges"] == [
+            {"source": "caller_mod", "target": "callee_mod", "kind": "calls"},
+        ]
 
 
 # ---------------------------------------------------------------------------

@@ -72,6 +72,15 @@ Run the tests:
 uv run pytest
 ```
 
+For a quick check while iterating, skip the slower tests (repeated full
+manifest/registrar reloads, end-to-end example manifests, import/startup
+timing -- individually fast but numerous enough to dominate the full
+suite's wall time):
+
+```bash
+uv run pytest -m "not slow"
+```
+
 ### Docs
 
 Generate and serve the docs locally:

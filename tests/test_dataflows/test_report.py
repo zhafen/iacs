@@ -9,12 +9,12 @@ from iacs.dataflows.audit.report import (
     report_html,
     report_path,
 )
+from emc2p.registry import Registry
 from iacs.registrar import Registrar
-from tests.conftest import make_registry
 
 
 def _impact_cost_registry():
-    return make_registry({
+    return Registry.from_component_rows({
         "entity_id": [
             {"value": "e1", "entity_key": "high_impact_activity"},
             {"value": "e2", "entity_key": "high_cost_activity"},
@@ -42,7 +42,7 @@ class TestCostImpactData:
     def test_empty_table_returns_empty_list(self):
         # No resolved_impact_cost table at all -> Registry's generic empty
         # entity_id/value fallback schema, which cost_impact_data must handle.
-        registry = make_registry({
+        registry = Registry.from_component_rows({
             "entity_id": [{"value": "e1", "entity_key": "e1"}],
         })
         rows = cost_impact_data(
