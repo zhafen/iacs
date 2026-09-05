@@ -509,6 +509,22 @@ iacs:
                                             narrated_task_batches:
                                                 - description: Review implementation and narrate thoughts as doing so. Then organize into tasks, and have the agent work on the tasks.
                                                 - solution
+                                        stop_hooks_as_periodic_checks:
+                                            - description: >
+                                                Claude Code Stop hooks (return {"decision":
+                                                "block", "reason": ...} to force one more
+                                                turn) are a reliable way to get periodic,
+                                                unprompted self-checks into a session -- e.g.
+                                                a check-in every N turns, or a nudge when
+                                                work is about to be lost uncommitted --
+                                                without depending on the agent remembering to
+                                                do it on its own. Verified working end-to-end
+                                                (forced continuation really happens;
+                                                stop_hook_active guards against re-firing on
+                                                the turn it itself causes) before relying on
+                                                it -- see iacs's own
+                                                .claude/hooks/session-checkin.sh.
+                                            - solution
                             prioritize_solutions:
                                 data:
                                     - requirement
