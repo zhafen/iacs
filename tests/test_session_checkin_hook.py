@@ -1,3 +1,4 @@
+import base64
 import os
 import json
 import shutil
@@ -132,7 +133,7 @@ def test_missing_lock_dir_in_cleanup_does_not_fail(tmp_path):
 def test_sanitizes_session_id_for_tmp_fallback():
     marker = f"session-checkin-{uuid4().hex}"
     session_id = f"../../{marker}"
-    safe_dir = Path("/tmp/claude-session-checkin") / marker
+    safe_dir = Path("/tmp/claude-session-checkin") / base64.urlsafe_b64encode(session_id.encode()).decode().rstrip("=")
     escaped_dir = Path("/tmp") / marker
 
     shutil.rmtree(safe_dir, ignore_errors=True)
@@ -147,3 +148,24 @@ def test_sanitizes_session_id_for_tmp_fallback():
     finally:
         shutil.rmtree(safe_dir, ignore_errors=True)
         shutil.rmtree(escaped_dir, ignore_errors=True)
+
+
+def test_distinct_session_ids_keep_distinct_tmp_counters():
+    session_ids = [f"a/b-{uuid4().hex}", f"a?b-{uuid4().hex}", f"a-b-{uuid4().hex}"]
+    counter_dirs = [
+        Path("/tmp/claude-session-checkin") / base64.urlsafe_b64encode(session_id.encode()).decode().rstrip("=")
+        for session_id in session_ids
+    ]
+
+    for counter_dir in counter_dirs:
+        shutil.rmtree(counter_dir, ignore_errors=True)
+
+    try:
+        for session_id, counter_dir in zip(session_ids, counter_dirs):
+            result = _run_hook({"session_id": session_id})
+
+            assert result.returncode == 0, result.stderr
+            assert (counter_dir / "turn-count").read_text() == "1\n"
+    finally:
+        for counter_dir in counter_dirs:
+            shutil.rmtree(counter_dir, ignore_errors=True)

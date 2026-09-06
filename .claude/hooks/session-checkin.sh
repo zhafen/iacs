@@ -31,7 +31,7 @@ session_id=$(echo "$payload" | jq -r '.session_id // "unknown"')
 if [[ -n "$scratchpad_dir" ]]; then
   counter_dir="$scratchpad_dir/session-checkin"
 else
-  safe_session_id=$(printf '%s' "$session_id" | tr -cs '[:alnum:]' '-' | sed 's/^-*//; s/-*$//')
+  safe_session_id=$(printf '%s' "$session_id" | base64 | tr -d '\n' | tr '/+' '_-' | tr -d '=')
   safe_session_id="${safe_session_id:-unknown}"
   counter_dir="/tmp/claude-session-checkin/$safe_session_id"
 fi
