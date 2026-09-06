@@ -29,7 +29,7 @@ session_id=$(echo "$payload" | jq -r '.session_id // "unknown"')
 if [[ -n "$scratchpad_dir" ]]; then
   counter_dir="$scratchpad_dir/session-checkin"
 else
-  safe_session_id=$(printf '%s' "$session_id" | sha256sum | cut -d' ' -f1)
+  safe_session_id=$(python3 -c 'import hashlib, sys; print(hashlib.sha256(sys.argv[1].encode()).hexdigest())' "$session_id")
   counter_dir="/tmp/claude-session-checkin/$safe_session_id"
 fi
 mkdir -p "$counter_dir"
