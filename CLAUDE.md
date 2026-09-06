@@ -9,6 +9,14 @@ iacs (Infrastructure-as-Code Sketch) is an ECS-based system for documenting and 
 ### Git Workflow
 
 - Use `uv` for Python package management.
+- **Commit and push each meaningful change immediately** — don't batch
+  multiple turns' edits together or wait for an explicit go-ahead first.
+  Work here now happens primarily in ephemeral cloud/remote sessions, not
+  long-running local ones, so uncommitted work risks being lost outright
+  when a container is reclaimed; diff-based tooling (e.g. the
+  `PreToolUse`/`Stop` hooks in `.claude/hooks/`) is also keyed off git's
+  own state, so batching can cause such a check to silently miss what
+  changed turn-by-turn.
 - **Never merge a pull request in this repo without explicit user
   permission** — not even to fix a failing CI run elsewhere (e.g.
   story-simulator's own CI, which depends on this repo as a submodule),
