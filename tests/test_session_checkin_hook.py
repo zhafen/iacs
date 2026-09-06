@@ -1,4 +1,3 @@
-import hashlib
 import json
 import shutil
 import subprocess
@@ -59,7 +58,7 @@ def test_stop_hook_active_exits_without_reblocking_or_counting(tmp_path):
 def test_sanitizes_session_id_for_tmp_fallback():
     marker = f"session-checkin-{uuid4().hex}"
     session_id = f"../../{marker}"
-    safe_dir = Path("/tmp/claude-session-checkin") / hashlib.sha256(session_id.encode()).hexdigest()
+    safe_dir = Path("/tmp/claude-session-checkin") / marker
     escaped_dir = Path("/tmp") / marker
 
     shutil.rmtree(safe_dir, ignore_errors=True)
