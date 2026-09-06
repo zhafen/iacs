@@ -179,6 +179,18 @@ def load_subtree(registrar, root_key: str) -> dict:
         if eid in subtree_path_of:
             code_examples[eid] = {"language": str(row["language"]), "code": str(row["value"])}
 
+    # Every real (or, for a not-yet-built solution, planned) file/line a
+    # solution touches, plus what changes there -- repeatable per solution,
+    # same shape as pro/con, so "no changes needed" is just zero rows
+    # rather than a special case.
+    change_locations: dict[str, list[dict]] = {}
+    for _, row in registrar.get("change_location").execute().iterrows():
+        eid = str(row["entity_id"])
+        if eid in subtree_path_of:
+            change_locations.setdefault(eid, []).append(
+                {"file": str(row["file"]), "change": str(row["change"])}
+            )
+
     # A mermaid diagram on the root entity itself, rendered once near the
     # top of the report (see _render_diagram_section) -- optional, not
     # every requirement tree needs one.
@@ -205,6 +217,7 @@ def load_subtree(registrar, root_key: str) -> dict:
         "code_examples": code_examples,
         "diagrams": diagrams,
         "worked_examples": worked_examples,
+        "change_locations": change_locations,
     }
 
 
@@ -372,6 +385,17 @@ def _render_solution(node: dict, subtree: dict, show_requirements: bool = False)
               <div class="blob-content"><p>{html.escape(worked_example['answer'])}</p></div>
             </details>
           </div>"""
+    change_locations_html = ""
+    locations = subtree["change_locations"].get(node["id"], [])
+    if locations:
+        rows = "".join(
+            f'<li class="change-location"><code>{html.escape(loc["file"])}</code>'
+            f'<p>{html.escape(loc["change"])}</p></li>'
+            for loc in locations
+        )
+        change_locations_html = f"""
+          <p class="section-label">Where to change it</p>
+          <ul class="change-locations">{rows}</ul>"""
     selected_class = " solution-selected" if node["selected"] else ""
     selected_badge = '<span class="selected-badge">Selected</span>' if node["selected"] else ""
     return f"""
@@ -386,6 +410,7 @@ def _render_solution(node: dict, subtree: dict, show_requirements: bool = False)
           <p class="solution-description">{description}</p>
           {requirements_html}
           {worked_example_html}
+          {change_locations_html}
           {code_example_html}
           <ul class="ratings">{ratings_html}</ul>
         </div>
@@ -678,6 +703,15 @@ _STYLE = """
     padding: 0.75rem 1rem; margin: 0 0 0.5rem; font-style: italic; color: var(--fg);
   }
   pre.mermaid { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin: 0 0 2.75rem; }
+  ul.change-locations { list-style: none; margin: 0.4rem 0 0; padding: 0; }
+  li.change-location { padding: 0.5rem 0; border-top: 1px solid var(--border); }
+  li.change-location:first-child { border-top: none; }
+  li.change-location code {
+    display: inline-block; font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.78rem; color: var(--accent); background: var(--chip-bg);
+    padding: 0.1rem 0.45rem; border-radius: 5px; margin-bottom: 0.3rem;
+  }
+  li.change-location p { margin: 0; color: var(--fg); font-size: 0.92rem; }
   .code-example code {
     font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-size: 0.8rem; line-height: 1.5; color: var(--fg); white-space: pre;
