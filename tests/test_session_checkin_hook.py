@@ -104,6 +104,31 @@ def test_stale_lock_exits_without_hanging(tmp_path):
     assert (counter_dir / "turn-count").read_text() == "1\n"
 
 
+def test_missing_lock_dir_in_cleanup_does_not_fail(tmp_path):
+    counter_dir = tmp_path / "session-checkin"
+    counter_dir.mkdir()
+    (counter_dir / "turn-count").write_text("1\n")
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    cat_wrapper = bin_dir / "cat"
+    cat_wrapper.write_text(
+        "#!/bin/sh\n"
+        'if [ "$#" -eq 1 ] && [ "${1##*/}" = "turn-count" ]; then\n'
+        f"  rmdir {counter_dir / '.lock'}\n"
+        "fi\n"
+        'exec /bin/cat "$@"\n'
+    )
+    cat_wrapper.chmod(0o755)
+
+    env = os.environ.copy()
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+    result = _run_hook({"scratchpad_dir": str(tmp_path), "session_id": "session-1"}, env=env)
+
+    assert result.returncode == 0, result.stderr
+    assert (counter_dir / "turn-count").read_text() == "2\n"
+
+
 def test_sanitizes_session_id_for_tmp_fallback():
     marker = f"session-checkin-{uuid4().hex}"
     session_id = f"../../{marker}"

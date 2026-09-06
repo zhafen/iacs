@@ -50,7 +50,7 @@ done
 if [[ "$lock_acquired" != "true" ]]; then
   exit 0
 fi
-trap 'rmdir "$lock_dir"' EXIT
+trap 'rmdir "$lock_dir" 2>/dev/null || true' EXIT
 
 count=0
 [[ -f "$counter_file" ]] && count=$(cat "$counter_file")
