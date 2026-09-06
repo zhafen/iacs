@@ -179,12 +179,32 @@ def load_subtree(registrar, root_key: str) -> dict:
         if eid in subtree_path_of:
             code_examples[eid] = {"language": str(row["language"]), "code": str(row["value"])}
 
+    # A mermaid diagram on the root entity itself, rendered once near the
+    # top of the report (see _render_diagram_section) -- optional, not
+    # every requirement tree needs one.
+    diagrams: dict[str, str] = {}
+    for _, row in registrar.get("diagram").execute().iterrows():
+        eid = str(row["entity_id"])
+        if eid in subtree_path_of:
+            diagrams[eid] = str(row["value"])
+
+    # A worked example on a solution -- a small scenario the reader can
+    # try to solve themselves before revealing how this solution's own
+    # approach would handle it (see _render_solution's "Try it yourself").
+    worked_examples: dict[str, dict] = {}
+    for _, row in registrar.get("worked_example").execute().iterrows():
+        eid = str(row["entity_id"])
+        if eid in subtree_path_of:
+            worked_examples[eid] = {"scenario": str(row["scenario"]), "answer": str(row["answer"])}
+
     return {
         "nodes": nodes,
         "cross_edges": cross_edges,
         "costs": costs,
         "pros_cons": pros_cons,
         "code_examples": code_examples,
+        "diagrams": diagrams,
+        "worked_examples": worked_examples,
     }
 
 
@@ -341,6 +361,17 @@ def _render_solution(node: dict, subtree: dict, show_requirements: bool = False)
         code_example_html = f"""
           <p class="section-label">Example</p>
           <pre class="code-example"><code class="language-{html.escape(example['language'])}">{html.escape(example['code'])}</code></pre>"""
+    worked_example_html = ""
+    worked_example = subtree["worked_examples"].get(node["id"])
+    if worked_example:
+        worked_example_html = f"""
+          <p class="section-label">Try it yourself</p>
+          <div class="worked-example">
+            <p class="worked-example-scenario">{html.escape(worked_example['scenario'])}</p>
+            <details class="blob"><summary>Reveal how this solution handles it</summary>
+              <div class="blob-content"><p>{html.escape(worked_example['answer'])}</p></div>
+            </details>
+          </div>"""
     selected_class = " solution-selected" if node["selected"] else ""
     selected_badge = '<span class="selected-badge">Selected</span>' if node["selected"] else ""
     return f"""
@@ -354,6 +385,7 @@ def _render_solution(node: dict, subtree: dict, show_requirements: bool = False)
         <div class="solution-body">
           <p class="solution-description">{description}</p>
           {requirements_html}
+          {worked_example_html}
           {code_example_html}
           <ul class="ratings">{ratings_html}</ul>
         </div>
@@ -390,6 +422,26 @@ def _render_masthead(root_label: str) -> str:
     <p class="kicker">requirement tree</p>
     <h1>{html.escape(root_label)}</h1>
   </div>"""
+
+
+def _render_diagram_section(diagram_text: str) -> str:
+    """A mermaid diagram attached to the root entity's own `diagram`
+    component, rendered once near the top of the report, before the
+    requirement-by-requirement detail -- an at-a-glance map of how the
+    pieces below actually relate, for a reader who hasn't lived with the
+    codebase this tree describes.
+
+    Emits a bare `<pre class="mermaid">` block, not a mermaid.js
+    `<script>` load: a report published as a Claude Artifact already
+    renders that natively, and a reader opening the raw HTML file
+    elsewhere still gets the diagram's own source as readable text.
+    """
+    return f"""
+  <div class="masthead">
+    <p class="kicker">data flow</p>
+    <h1>Architecture</h1>
+  </div>
+  <pre class="mermaid">{html.escape(diagram_text)}</pre>"""
 
 
 def _render_toc_section(requirement_nodes: list[dict]) -> str:
@@ -620,6 +672,12 @@ _STYLE = """
     background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
     padding: 0.85rem 1rem; overflow-x: auto; margin: 0;
   }
+  .worked-example { margin-top: 0.9rem; }
+  .worked-example-scenario {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.75rem 1rem; margin: 0 0 0.5rem; font-style: italic; color: var(--fg);
+  }
+  pre.mermaid { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin: 0 0 2.75rem; }
   .code-example code {
     font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-size: 0.8rem; line-height: 1.5; color: var(--fg); white-space: pre;
@@ -648,22 +706,20 @@ _HIGHLIGHT_JS = (
     "<script>hljs.highlightAll();</script>\n"
 )
 
-def _root_label(subtree: dict) -> str:
-    root = next(n for n in subtree["nodes"] if n["parent_id"] is None)
-    return root["label"]
-
-
 def render_report(subtree: dict, dependencies_data: dict | None, fragment: bool) -> str:
-    root_label = _root_label(subtree)
+    root_node = next(n for n in subtree["nodes"] if n["parent_id"] is None)
+    root_label = root_node["label"]
     requirement_nodes = sorted(
         (n for n in subtree["nodes"] if n["type"] == "requirement"),
         key=lambda n: n["key"],
     )
     masthead_html = _render_masthead(root_label)
+    diagram_text = subtree["diagrams"].get(root_node["id"])
+    diagram_html = _render_diagram_section(diagram_text) if diagram_text else ""
     toc_html = _render_toc_section(requirement_nodes)
     requirements_html = "".join(_render_requirement(n, subtree) for n in requirement_nodes)
     solutions_html = _render_solutions_section(subtree)
-    body_parts = [masthead_html, toc_html, requirements_html, '<hr class="section-divider">', solutions_html]
+    body_parts = [masthead_html, diagram_html, toc_html, requirements_html, '<hr class="section-divider">', solutions_html]
     if dependencies_data:
         body_parts.append('<hr class="section-divider">')
         body_parts.append(_render_dependencies_section(dependencies_data))
