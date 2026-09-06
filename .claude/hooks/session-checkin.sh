@@ -13,6 +13,8 @@ set -euo pipefail
 
 FIRST_CHECKIN=2
 CHECKIN_EVERY=8
+LOCK_MAX_ATTEMPTS=100
+LOCK_SLEEP_SECONDS=0.01
 
 payload=$(cat)
 
@@ -22,13 +24,33 @@ if [[ "$stop_hook_active" == "true" ]]; then
 fi
 
 # scratchpad_dir is session-scoped and already provided by the hook
-# payload in a cloud session; falls back to a session_id-keyed /tmp dir
-# for local CLI sessions where it may be absent.
+# payload in a cloud session; falls back to an encoded session_id-keyed
+# /tmp dir for local CLI sessions where it may be absent.
 scratchpad_dir=$(echo "$payload" | jq -r '.scratchpad_dir // empty')
 session_id=$(echo "$payload" | jq -r '.session_id // "unknown"')
-counter_dir="${scratchpad_dir:-/tmp/claude-session-checkin-$session_id}"
+if [[ -n "$scratchpad_dir" ]]; then
+  counter_dir="$scratchpad_dir/session-checkin"
+else
+  safe_session_id=$(printf '%s' "$session_id" | base64 | tr -d '\n' | tr '/+' '_-' | tr -d '=')
+  safe_session_id="${safe_session_id:-unknown}"
+  counter_dir="/tmp/claude-session-checkin/$safe_session_id"
+fi
 mkdir -p "$counter_dir"
 counter_file="$counter_dir/turn-count"
+lock_dir="$counter_dir/.lock"
+
+lock_acquired=false
+for ((i = 0; i < LOCK_MAX_ATTEMPTS; i++)); do
+  if mkdir "$lock_dir" 2>/dev/null; then
+    lock_acquired=true
+    break
+  fi
+  sleep "$LOCK_SLEEP_SECONDS"
+done
+if [[ "$lock_acquired" != "true" ]]; then
+  exit 0
+fi
+trap 'rmdir "$lock_dir" 2>/dev/null || true' EXIT
 
 count=0
 [[ -f "$counter_file" ]] && count=$(cat "$counter_file")
