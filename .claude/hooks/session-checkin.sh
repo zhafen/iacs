@@ -22,11 +22,16 @@ if [[ "$stop_hook_active" == "true" ]]; then
 fi
 
 # scratchpad_dir is session-scoped and already provided by the hook
-# payload in a cloud session; falls back to a session_id-keyed /tmp dir
-# for local CLI sessions where it may be absent.
+# payload in a cloud session; falls back to a sanitized session_id-keyed
+# /tmp dir for local CLI sessions where it may be absent.
 scratchpad_dir=$(echo "$payload" | jq -r '.scratchpad_dir // empty')
 session_id=$(echo "$payload" | jq -r '.session_id // "unknown"')
-counter_dir="${scratchpad_dir:-/tmp/claude-session-checkin-$session_id}"
+if [[ -n "$scratchpad_dir" ]]; then
+  counter_dir="$scratchpad_dir/session-checkin"
+else
+  safe_session_id=$(printf '%s' "$session_id" | sha256sum | cut -d' ' -f1)
+  counter_dir="/tmp/claude-session-checkin/$safe_session_id"
+fi
 mkdir -p "$counter_dir"
 counter_file="$counter_dir/turn-count"
 
