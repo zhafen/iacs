@@ -10,7 +10,7 @@ from uuid import uuid4
 HOOK = Path(__file__).resolve().parents[1] / ".claude" / "hooks" / "session-checkin.sh"
 
 
-def _run_hook(payload, *, env=None):
+def _run_hook(payload, *, env=None, timeout=None):
     return subprocess.run(
         ["bash", str(HOOK)],
         input=json.dumps(payload),
@@ -18,6 +18,7 @@ def _run_hook(payload, *, env=None):
         env=env,
         text=True,
         check=False,
+        timeout=timeout,
     )
 
 
@@ -85,6 +86,22 @@ def test_counter_updates_are_serialized(tmp_path):
     assert all(result.returncode == 0 for result in results)
     assert (counter_dir / "turn-count").read_text() == "3\n"
     assert sum(bool(result.stdout.strip()) for result in results) == 1
+
+
+def test_stale_lock_exits_without_hanging(tmp_path):
+    counter_dir = tmp_path / "session-checkin"
+    counter_dir.mkdir()
+    (counter_dir / "turn-count").write_text("1\n")
+    (counter_dir / ".lock").mkdir()
+
+    result = _run_hook(
+        {"scratchpad_dir": str(tmp_path), "session_id": "session-1"},
+        timeout=2,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == ""
+    assert (counter_dir / "turn-count").read_text() == "1\n"
 
 
 def test_sanitizes_session_id_for_tmp_fallback():

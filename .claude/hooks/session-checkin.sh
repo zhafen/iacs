@@ -13,6 +13,8 @@ set -euo pipefail
 
 FIRST_CHECKIN=2
 CHECKIN_EVERY=8
+LOCK_MAX_ATTEMPTS=100
+LOCK_SLEEP_SECONDS=0.01
 
 payload=$(cat)
 
@@ -37,9 +39,17 @@ mkdir -p "$counter_dir"
 counter_file="$counter_dir/turn-count"
 lock_dir="$counter_dir/.lock"
 
-while ! mkdir "$lock_dir" 2>/dev/null; do
-  sleep 0.01
+lock_acquired=false
+for ((i = 0; i < LOCK_MAX_ATTEMPTS; i++)); do
+  if mkdir "$lock_dir" 2>/dev/null; then
+    lock_acquired=true
+    break
+  fi
+  sleep "$LOCK_SLEEP_SECONDS"
 done
+if [[ "$lock_acquired" != "true" ]]; then
+  exit 0
+fi
 trap 'rmdir "$lock_dir"' EXIT
 
 count=0
