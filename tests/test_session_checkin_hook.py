@@ -27,6 +27,35 @@ def test_uses_dedicated_subdirectory_within_scratchpad_dir(tmp_path):
     assert not (tmp_path / "turn-count").exists()
 
 
+def test_blocks_on_turn_2_then_every_8_turns(tmp_path):
+    payload = {"scratchpad_dir": str(tmp_path), "session_id": "session-1"}
+    outputs = []
+
+    for _ in range(10):
+        result = _run_hook(payload)
+        assert result.returncode == 0, result.stderr
+        outputs.append(result.stdout.strip())
+
+    assert outputs[0] == ""
+    assert json.loads(outputs[1])["decision"] == "block"
+    assert outputs[2] == ""
+    assert outputs[9] and json.loads(outputs[9])["decision"] == "block"
+
+
+def test_stop_hook_active_exits_without_reblocking_or_counting(tmp_path):
+    result = _run_hook(
+        {
+            "scratchpad_dir": str(tmp_path),
+            "session_id": "session-1",
+            "stop_hook_active": True,
+        }
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == ""
+    assert not (tmp_path / "session-checkin").exists()
+
+
 def test_sanitizes_session_id_for_tmp_fallback():
     marker = f"session-checkin-{uuid4().hex}"
     session_id = f"../../{marker}"
