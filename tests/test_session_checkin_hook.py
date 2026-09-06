@@ -1,6 +1,8 @@
+import os
 import json
 import shutil
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from uuid import uuid4
 
@@ -8,11 +10,12 @@ from uuid import uuid4
 HOOK = Path(__file__).resolve().parents[1] / ".claude" / "hooks" / "session-checkin.sh"
 
 
-def _run_hook(payload):
+def _run_hook(payload, *, env=None):
     return subprocess.run(
         ["bash", str(HOOK)],
         input=json.dumps(payload),
         capture_output=True,
+        env=env,
         text=True,
         check=False,
     )
@@ -53,6 +56,35 @@ def test_stop_hook_active_exits_without_reblocking_or_counting(tmp_path):
     assert result.returncode == 0, result.stderr
     assert result.stdout == ""
     assert not (tmp_path / "session-checkin").exists()
+
+
+def test_counter_updates_are_serialized(tmp_path):
+    counter_dir = tmp_path / "session-checkin"
+    counter_dir.mkdir()
+    (counter_dir / "turn-count").write_text("1\n")
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    cat_wrapper = bin_dir / "cat"
+    cat_wrapper.write_text(
+        "#!/bin/sh\n"
+        'if [ "$#" -eq 1 ] && [ "${1##*/}" = "turn-count" ]; then\n'
+        "  sleep 0.1\n"
+        "fi\n"
+        'exec /bin/cat "$@"\n'
+    )
+    cat_wrapper.chmod(0o755)
+
+    env = os.environ.copy()
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+    payload = {"scratchpad_dir": str(tmp_path), "session_id": "session-1"}
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(lambda _: _run_hook(payload, env=env), range(2)))
+
+    assert all(result.returncode == 0 for result in results)
+    assert (counter_dir / "turn-count").read_text() == "3\n"
+    assert sum(bool(result.stdout.strip()) for result in results) == 1
 
 
 def test_sanitizes_session_id_for_tmp_fallback():

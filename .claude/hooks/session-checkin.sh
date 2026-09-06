@@ -35,6 +35,12 @@ else
 fi
 mkdir -p "$counter_dir"
 counter_file="$counter_dir/turn-count"
+lock_dir="$counter_dir/.lock"
+
+while ! mkdir "$lock_dir" 2>/dev/null; do
+  sleep 0.01
+done
+trap 'rmdir "$lock_dir"' EXIT
 
 count=0
 [[ -f "$counter_file" ]] && count=$(cat "$counter_file")
