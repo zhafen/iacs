@@ -171,24 +171,28 @@ def load_subtree(registrar, root_key: str) -> dict:
         for _, row in registrar.get(sign).execute().iterrows():
             eid = str(row["entity_id"])
             if eid in subtree_path_of:
-                pros_cons.setdefault(eid, []).append({"sign": sign, "note": str(row["value"])})
-
-    code_examples: dict[str, dict] = {}
-    for _, row in registrar.get("code_example").execute().iterrows():
-        eid = str(row["entity_id"])
-        if eid in subtree_path_of:
-            code_examples[eid] = {"language": str(row["language"]), "code": str(row["value"])}
+                pros_cons.setdefault(eid, []).append(
+                    {"sign": sign, "label": str(row["label"]), "note": str(row["value"])}
+                )
 
     # Every real (or, for a not-yet-built solution, planned) file/line a
-    # solution touches, plus what changes there -- repeatable per solution,
-    # same shape as pro/con, so "no changes needed" is just zero rows
-    # rather than a special case.
-    change_locations: dict[str, list[dict]] = {}
-    for _, row in registrar.get("change_location").execute().iterrows():
+    # solution touches, each paired with an inline preview of the change
+    # itself -- repeatable per solution, same shape as pro/con, so "no
+    # changes needed" is just zero rows rather than a special case.
+    # Combines what used to be two separate things (a "where" list and one
+    # solution-wide code blob) into one: each location carries its own
+    # small, focused snippet right next to the file/line it belongs to.
+    changes: dict[str, list[dict]] = {}
+    for _, row in registrar.get("change").execute().iterrows():
         eid = str(row["entity_id"])
         if eid in subtree_path_of:
-            change_locations.setdefault(eid, []).append(
-                {"file": str(row["file"]), "change": str(row["change"])}
+            changes.setdefault(eid, []).append(
+                {
+                    "file": str(row["file"]),
+                    "change": str(row["change"]),
+                    "language": str(row["language"]),
+                    "preview": str(row["preview"]),
+                }
             )
 
     # A mermaid diagram on the root entity itself, rendered once near the
@@ -214,10 +218,9 @@ def load_subtree(registrar, root_key: str) -> dict:
         "cross_edges": cross_edges,
         "costs": costs,
         "pros_cons": pros_cons,
-        "code_examples": code_examples,
         "diagrams": diagrams,
         "worked_examples": worked_examples,
-        "change_locations": change_locations,
+        "changes": changes,
     }
 
 
@@ -345,7 +348,10 @@ def _render_pro_con(item: dict) -> str:
     return f"""
         <li class="rating rating-{sign_label.lower()}">
           <span class="sign-badge sign-{sign_label.lower()}">{sign_label}</span>
-          <p class="rating-note">{html.escape(item['note'])}</p>
+          <div class="rating-body">
+            <p class="rating-label">{html.escape(item['label'])}</p>
+            <p class="rating-note">{html.escape(item['note'])}</p>
+          </div>
         </li>"""
 
 
@@ -368,12 +374,6 @@ def _render_solution(node: dict, subtree: dict, show_requirements: bool = False)
         requirements_html = f"""
           <p class="section-label">Solves</p>
           <div class="req-chips">{chips}</div>"""
-    code_example_html = ""
-    example = subtree["code_examples"].get(node["id"])
-    if example:
-        code_example_html = f"""
-          <p class="section-label">Example</p>
-          <pre class="code-example"><code class="language-{html.escape(example['language'])}">{html.escape(example['code'])}</code></pre>"""
     worked_example_html = ""
     worked_example = subtree["worked_examples"].get(node["id"])
     if worked_example:
@@ -385,15 +385,19 @@ def _render_solution(node: dict, subtree: dict, show_requirements: bool = False)
               <div class="blob-content"><p>{html.escape(worked_example['answer'])}</p></div>
             </details>
           </div>"""
-    change_locations_html = ""
-    locations = subtree["change_locations"].get(node["id"], [])
-    if locations:
+    changes_html = ""
+    changes = subtree["changes"].get(node["id"], [])
+    if changes:
         rows = "".join(
-            f'<li class="change-location"><code>{html.escape(loc["file"])}</code>'
-            f'<p>{html.escape(loc["change"])}</p></li>'
-            for loc in locations
+            f'<li class="change-location">'
+            f'<code>{html.escape(c["file"])}</code>'
+            f'<p>{html.escape(c["change"])}</p>'
+            f'<pre class="code-example"><code class="language-{html.escape(c["language"])}">'
+            f'{html.escape(c["preview"])}</code></pre>'
+            f'</li>'
+            for c in changes
         )
-        change_locations_html = f"""
+        changes_html = f"""
           <p class="section-label">Where to change it</p>
           <ul class="change-locations">{rows}</ul>"""
     selected_class = " solution-selected" if node["selected"] else ""
@@ -410,8 +414,7 @@ def _render_solution(node: dict, subtree: dict, show_requirements: bool = False)
           <p class="solution-description">{description}</p>
           {requirements_html}
           {worked_example_html}
-          {change_locations_html}
-          {code_example_html}
+          {changes_html}
           <ul class="ratings">{ratings_html}</ul>
         </div>
       </details>"""
@@ -670,15 +673,22 @@ _STYLE = """
   .solution-body { padding: 0 0 1.1rem 1.5rem; }
   .solution-description { color: var(--fg); margin-top: 0; }
   ul.ratings { list-style: none; margin: 0.6rem 0 0; padding: 0; }
-  li.rating { padding: 0.6rem 0; border-top: 1px solid var(--border); display: flex; gap: 0.55rem; align-items: baseline; }
+  li.rating { padding: 0.6rem 0; border-top: 1px solid var(--border); display: flex; gap: 0.55rem; align-items: flex-start; }
   li.rating:first-child { border-top: none; }
   .sign-badge {
     font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-size: 0.66rem; font-weight: 600; letter-spacing: 0.04em;
-    padding: 0.12rem 0.5rem; border-radius: 5px; flex-shrink: 0;
+    padding: 0.12rem 0.5rem; border-radius: 5px; flex-shrink: 0; margin-top: 0.15rem;
   }
   .sign-pro { background: var(--pro-bg); color: var(--pro); }
   .sign-con { background: var(--con-bg); color: var(--con); }
+  .rating-body { min-width: 0; }
+  .rating-label {
+    margin: 0 0 0.15rem; font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-weight: 600; font-size: 0.85rem;
+  }
+  li.rating.rating-pro .rating-label { color: var(--pro); }
+  li.rating.rating-con .rating-label { color: var(--con); }
   .rating-note { margin: 0; color: var(--muted); font-size: 0.92rem; max-width: 62ch; }
 
   .section-label {
@@ -711,7 +721,10 @@ _STYLE = """
     font-size: 0.78rem; color: var(--accent); background: var(--chip-bg);
     padding: 0.1rem 0.45rem; border-radius: 5px; margin-bottom: 0.3rem;
   }
-  li.change-location p { margin: 0; color: var(--fg); font-size: 0.92rem; }
+  li.change-location p { margin: 0 0 0.6rem; color: var(--fg); font-size: 0.92rem; }
+  li.change-location .code-example { margin: 0; }
+  .hljs-addition { background: var(--pro-bg); color: var(--pro); display: inline-block; width: 100%; }
+  .hljs-deletion { background: var(--con-bg); color: var(--con); display: inline-block; width: 100%; }
   .code-example code {
     font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-size: 0.8rem; line-height: 1.5; color: var(--fg); white-space: pre;
