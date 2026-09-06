@@ -481,6 +481,7 @@ _STYLE = """
     --pro: #2e6b45; --pro-bg: #e4f1e7;
     --con: #a3392c; --con-bg: #f8e9e5;
     --chip-bg: #ece9dd; --chip-fg: #55584c;
+    --syn-keyword: #6d4aa0;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -490,6 +491,7 @@ _STYLE = """
       --pro: #7bc794; --pro-bg: #1c2e21;
       --con: #e08b7c; --con-bg: #34211d;
       --chip-bg: #2a2d26; --chip-fg: #b9bcae;
+      --syn-keyword: #b79bdb;
     }
   }
   :root[data-theme="dark"] {
@@ -499,6 +501,7 @@ _STYLE = """
     --pro: #7bc794; --pro-bg: #1c2e21;
     --con: #e08b7c; --con-bg: #34211d;
     --chip-bg: #2a2d26; --chip-fg: #b9bcae;
+    --syn-keyword: #b79bdb;
   }
   * { box-sizing: border-box; }
   body {
@@ -621,9 +624,29 @@ _STYLE = """
     font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-size: 0.8rem; line-height: 1.5; color: var(--fg); white-space: pre;
   }
+  .hljs-keyword, .hljs-selector-tag { color: var(--syn-keyword); font-weight: 600; }
+  .hljs-string, .hljs-doctag { color: var(--pro); }
+  .hljs-comment, .hljs-quote { color: var(--muted-2); font-style: italic; }
+  .hljs-number, .hljs-literal { color: var(--con); }
+  .hljs-title, .hljs-title.function_, .hljs-built_in, .hljs-name { color: var(--accent); }
+  .hljs-attr, .hljs-params, .hljs-variable { color: var(--fg); }
+  .hljs-meta, .hljs-tag, .hljs-punctuation { color: var(--muted); }
 
   .section-divider { border: none; border-top: 1px solid var(--border); margin: 3rem 0 2.75rem; }
 """
+
+# Pinned exact version, per the loading convention every downstream
+# Claude Artifact this report gets published as must already follow --
+# see that skill's CDN allowlist. `highlightAll()` runs once at the end
+# of body content; it walks the DOM for every <pre><code class="language-...">
+# regardless of whether it's currently visible inside a collapsed
+# <details>, so a solution's code example still highlights correctly the
+# first time its <details> is expanded.
+_HIGHLIGHT_JS = (
+    '<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js">'
+    "</script>\n"
+    "<script>hljs.highlightAll();</script>\n"
+)
 
 def _root_label(subtree: dict) -> str:
     root = next(n for n in subtree["nodes"] if n["parent_id"] is None)
@@ -648,7 +671,7 @@ def render_report(subtree: dict, dependencies_data: dict | None, fragment: bool)
 
     title = f"{root_label} · Requirement Tree"
     if fragment:
-        return f'<title>{html.escape(title)}</title>\n<style>{_STYLE}</style>\n{body}\n'
+        return f'<title>{html.escape(title)}</title>\n<style>{_STYLE}</style>\n{body}\n{_HIGHLIGHT_JS}'
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -658,7 +681,7 @@ def render_report(subtree: dict, dependencies_data: dict | None, fragment: bool)
 </head>
 <body>
 {body}
-</body>
+{_HIGHLIGHT_JS}</body>
 </html>
 """
 
