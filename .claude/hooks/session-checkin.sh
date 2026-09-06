@@ -4,12 +4,9 @@
 # design-discussion churn specifically), force one extra turn asking
 # whether the current approach/scope is still the right one.
 #
-# Mechanism verified end-to-end in a throwaway test before wiring this
-# in for real: {"decision":"block","reason":...} on a Stop hook really
-# does force continuation (the reason text arrives as a new turn, with
-# no user message), and stop_hook_active is true on the resulting
-# follow-up Stop event -- checked here so the hook doesn't re-block on
-# the very turn it just caused.
+# {"decision":"block","reason":...} forces that continuation, which
+# itself ends in another Stop event -- stop_hook_active is checked below
+# so this hook doesn't re-block on the very turn it just caused.
 set -euo pipefail
 
 CHECKIN_EVERY=8
