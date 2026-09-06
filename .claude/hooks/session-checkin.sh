@@ -1,14 +1,17 @@
 #!/bin/bash
-# Stop hook: every CHECKIN_EVERY turns, unconditionally (no reset on
-# edits/commits -- this tracks overall session time investment, not
-# design-discussion churn specifically), force one extra turn asking
-# whether the current approach/scope is still the right one.
+# Stop hook: fires at turn FIRST_CHECKIN, then every CHECKIN_EVERY turns
+# after that (2, 10, 18, ... by default) -- an early first check-in
+# catches a bad direction before much time is sunk, then the wider
+# spacing avoids interrupting a productive stretch. Unconditional, no
+# reset on edits/commits: this tracks overall session time investment,
+# not design-discussion churn specifically.
 #
 # {"decision":"block","reason":...} forces that continuation, which
 # itself ends in another Stop event -- stop_hook_active is checked below
 # so this hook doesn't re-block on the very turn it just caused.
 set -euo pipefail
 
+FIRST_CHECKIN=2
 CHECKIN_EVERY=8
 
 payload=$(cat)
@@ -32,9 +35,9 @@ count=0
 count=$((count + 1))
 echo "$count" > "$counter_file"
 
-if (( count % CHECKIN_EVERY == 0 )); then
-  jq -n --arg n "$count" --arg every "$CHECKIN_EVERY" \
-    '{decision:"block", reason: ("Session check-in: " + $n + " turns in this session (every " + $every + "). Pause and tell the user directly: is the current approach/scope still the right one, or is it time to simplify, park, or wrap up? Then stop normally -- this is a prompt to check in, not an instruction to act on unprompted.")}'
+if (( count == FIRST_CHECKIN || (count > FIRST_CHECKIN && (count - FIRST_CHECKIN) % CHECKIN_EVERY == 0) )); then
+  jq -n --arg n "$count" --arg first "$FIRST_CHECKIN" --arg every "$CHECKIN_EVERY" \
+    '{decision:"block", reason: ("Session check-in: " + $n + " turns in this session (first at turn " + $first + ", then every " + $every + " after that). Pause and tell the user directly: is the current approach/scope still the right one, or is it time to simplify, park, or wrap up? Then stop normally -- this is a prompt to check in, not an instruction to act on unprompted.")}'
 fi
 
 exit 0
