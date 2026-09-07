@@ -525,14 +525,13 @@ iacs:
                                                 it -- see iacs's own
                                                 .claude/hooks/session-checkin.sh.
                                             - solution
-                                    develop_code_with_agents:
+                                    agent_assisted_software_development:
                                         data:
                                             - description: >
                                                   Develop code with the help of one or more agents -- covering not
                                                   just getting the right functionality built, but also style and
                                                   best practices, long-term maintainability, room for future
                                                   development, and ease of onboarding new contributors.
-                                            - requirement
                                         build_code_to_meet_functionality:
                                             data:
                                                 - description: >
@@ -653,7 +652,7 @@ iacs:
                                                   Keep the codebase positioned to support new features and
                                                   requirements that haven't been anticipated yet.
                                             - requirement
-                                        enable_contribution_from_new_developers:
+                                        lower_the_barrier_to_contribution:
                                             - description: >
                                                   Make it easy for a developer -- human or agent -- new to
                                                   the codebase to onboard and start contributing.
