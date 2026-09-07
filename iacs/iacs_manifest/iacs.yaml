@@ -720,7 +720,7 @@ iacs:
                                                   Make it easy for a developer -- human or agent -- new to
                                                   the codebase to onboard and start contributing.
                                             - requirement
-                                        minimize_security_vulnerabilities:
+                                        reduce_security_risk:
                                             - description: >
                                                   Keep agent-written code from introducing security
                                                   vulnerabilities -- empirically one of the biggest risks of
