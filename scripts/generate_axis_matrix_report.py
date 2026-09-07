@@ -157,12 +157,23 @@ def _render_level(level: dict, matrix: dict) -> str:
 
 
 def _render_axis(axis: dict, matrix: dict) -> str:
+    # Ratings on the axis entity itself are cross-cutting: they apply to the
+    # axis as a whole rather than to any one level, e.g. a finding about
+    # self-assessment bias that holds regardless of which level is chosen.
+    cross_cutting = matrix["ratings"].get(axis["eid"], [])
+    cross_cutting_html = ""
+    if cross_cutting:
+        items = "".join(_render_rating(r, matrix["measures"]) for r in cross_cutting)
+        cross_cutting_html = f"""
+    <p class="section-label">Cross-cutting, any level</p>
+    <ul class="ratings ratings-cross-cutting">{items}</ul>"""
     levels_html = "".join(_render_level(lvl, matrix) for lvl in axis["levels"])
     return f"""
   <section class="axis">
     <p class="eyebrow">Axis</p>
     <h2>{html.escape(axis['key'].replace('_', ' '))}</h2>
     <p class="axis-description">{html.escape(axis['description'])}</p>
+    {cross_cutting_html}
     {levels_html}
   </section>"""
 
@@ -254,6 +265,15 @@ _STYLE = """
     font-size: 1.25rem; font-weight: 600; margin: 0 0 0.5rem;
   }
   .axis-description { color: var(--muted); margin: 0 0 0.9rem; max-width: 62ch; }
+  .section-label {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted-2); margin: 0 0 0.4rem;
+  }
+  ul.ratings-cross-cutting {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 0.2rem 1.1rem; margin: 0 0 1rem;
+  }
 
   details.level {
     background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
