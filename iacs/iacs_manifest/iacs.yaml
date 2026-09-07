@@ -528,53 +528,34 @@ iacs:
                                     agentic_coding:
                                         data:
                                             - description: >
-                                                  Develop code with the help of one or more agents -- covering not
-                                                  just getting the right functionality built, but also style and
-                                                  best practices, long-term maintainability, room for future
-                                                  development, and ease of onboarding new contributors.
-                                        build_code_to_meet_functionality:
+                                                  Develop code with the help of one or more agents. Modeled as two
+                                                  independent axes you choose a point on simultaneously --
+                                                  level_of_human_involvement and level_of_guidance below -- each
+                                                  evaluated against a shared set of measures_of_success, rather than
+                                                  as a tree of requirements each solved by one competing solution.
+                                        level_of_human_involvement:
                                             data:
                                                 - description: >
                                                       How much of the coding work -- from full authorship down to
-                                                      none -- should be left to the agent versus done by hand. A
-                                                      gradient from no agent use at one end to nothing but agent use
-                                                      at the other. Solution keys below are tier-prefixed so they
-                                                      list in gradient order (the report renderer sorts a
-                                                      requirement's solutions alphabetically by key).
-                                                      
-                                                      Cross-cutting empirical caveats, from a literature review on
-                                                      agent effectiveness by level of human involvement (see each
-                                                      tier below for evidence specific to it):
-                                                      - Self-assessment of how well a tier is working is unreliable:
-                                                        a METR RCT of 16 experienced open-source developers found AI
-                                                        tool use made them 19% slower on real tasks, even though they
-                                                        had predicted a 24% speedup beforehand
-                                                        (https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/,
-                                                        https://arxiv.org/abs/2507.09089).
-                                                      - Code review is a weaker backstop than intuition suggests at
-                                                        any tier that still relies on it: reviewers exchange 11.8%
-                                                        more rounds on AI-generated code, 38% report real added
-                                                        cognitive load, and AI-suggested fixes are adopted at 16.6%
-                                                        vs. 56.5% for human-suggested ones
-                                                        (https://arxiv.org/pdf/2603.15911).
-                                                - requirement
+                                                      none -- is left to the agent versus done by hand. An axis, not
+                                                      a requirement: pick one level per task, rated against
+                                                      measures_of_success below via consideration_rating. Keys are
+                                                      tier-prefixed to keep gradient order under alphabetic sort.
                                             tier_1_fully_manual_coding:
                                                 - description: >
                                                       Write all the code by hand from the start, with no
-                                                      agent involvement.
-                                                      
-                                                      This is the implicit baseline/counterfactual in every
-                                                      empirical study cited on the other three tiers below, rather
-                                                      than something studied on its own.
-                                                - solution
-                                                - pro:
-                                                      label: Guaranteed quality floor
-                                                      value: >
-                                                          Every line is understood and reviewed as it's
-                                                          written by a human.
-                                                - con:
-                                                      label: Time investment
-                                                      value: Far greater than any agent-assisted approach.
+                                                      agent involvement. The implicit baseline/counterfactual in
+                                                      every empirical study cited on the other three tiers below,
+                                                      rather than something studied on its own.
+                                                - consideration_rating:
+                                                      value: promote_maintenance
+                                                      rating: 0.6
+                                                      note: >
+                                                          Guaranteed quality floor -- every line is understood and
+                                                          reviewed as it's written by a human.
+                                                - consideration_rating:
+                                                      rating: -0.6
+                                                      note: Time investment is far greater than any agent-assisted approach.
                                             tier_2_signature_first_agent_implemented:
                                                 - description: >
                                                       Human designs all interfaces -- classes, function/method
@@ -588,23 +569,21 @@ iacs:
                                                       field trials of ~2000 developers found 8-22% more pull requests
                                                       per week
                                                       (https://github.blog/news-insights/research/research-quantifying-github-copilots-impact-on-developer-productivity-and-happiness/).
-                                                - solution
-                                                - pro:
-                                                      label: Human owns the hard-to-change parts
-                                                      value: >
-                                                          Human controls the architecture and interface
-                                                          contracts, the parts hardest to change later,
-                                                          while the agent absorbs the tedious
-                                                          implementation labor.
-                                                - pro:
-                                                      label: Objective pass/fail bar
-                                                      value: Pre-written tests give the agent a hard, objective pass/fail bar.
-                                                - con:
-                                                      label: Design cost stays high
-                                                      value: >
-                                                          Upfront design effort approaches what full
-                                                          manual work requires; whatever the tests don't
-                                                          cover is unverified.
+                                                - consideration_rating:
+                                                      value: promote_maintenance
+                                                      rating: 0.6
+                                                      note: >
+                                                          Human controls the architecture and interface contracts,
+                                                          the parts hardest to change later, while the agent absorbs
+                                                          the tedious implementation labor.
+                                                - consideration_rating:
+                                                      rating: 0.4
+                                                      note: Pre-written tests give the agent a hard, objective pass/fail bar.
+                                                - consideration_rating:
+                                                      rating: -0.4
+                                                      note: >
+                                                          Upfront design effort approaches what full manual work
+                                                          requires; whatever the tests don't cover is unverified.
                                             tier_3_anchor_test_driven:
                                                 - description: >
                                                       Human writes only a small set of anchor tests that must
@@ -619,114 +598,141 @@ iacs:
                                                       right moment -- pushed agent success above 95% across
                                                       scenarios (https://arxiv.org/pdf/2512.04367): small, well-placed
                                                       checks matter more than constant oversight.
-                                                - solution
-                                                - pro:
-                                                      label: Low upfront design cost
-                                                      value: >
-                                                          Much less design cost than signature-first --
-                                                          only a few key behaviors need to be pinned down.
-                                                - pro:
-                                                      label: Agent owns the architecture
-                                                      value: >
-                                                          Leaves the architecture entirely to the agent,
-                                                          free to structure the solution however works best.
-                                                - con:
-                                                      label: Unconstrained outside the anchors
-                                                      value: >
-                                                          Whatever isn't covered by an anchor test is
-                                                          unconstrained -- architecture and edge-case
-                                                          correctness are entirely trust-based.
+                                                - consideration_rating:
+                                                      rating: 0.5
+                                                      note: >
+                                                          Much less design cost than signature-first -- only a few
+                                                          key behaviors need to be pinned down.
+                                                - consideration_rating:
+                                                      rating: 0.3
+                                                      note: >
+                                                          Leaves the architecture entirely to the agent, free to
+                                                          structure the solution however works best.
+                                                - consideration_rating:
+                                                      value: reduce_security_risk
+                                                      rating: -0.5
+                                                      note: >
+                                                          Whatever isn't covered by an anchor test is unconstrained --
+                                                          architecture and edge-case correctness (including security-
+                                                          relevant edge cases) are entirely trust-based.
                                             tier_4_goal_only_agent_built:
                                                 - description: >
                                                       Human states only the goal; the agent designs,
                                                       implements, and tests everything end-to-end with no
                                                       human-authored tests at all. Closest to "vibe coding."
                                                       
-                                                      This is where the worst empirical numbers cluster. Veracode
-                                                      found 45% of AI code samples introduce OWASP Top 10
-                                                      vulnerabilities across 100+ models tested
-                                                      (https://www.infoworld.com/article/4116937/output-from-vibe-coding-tools-prone-to-critical-security-flaws-study-finds-2.html);
-                                                      a study of deployed vibe-coded apps found 90% had at least one
-                                                      vulnerability, 76.7% critical/high severity
-                                                      (https://arxiv.org/html/2606.23130). Fortune-50 data: AI-assisted
-                                                      developers commit 3-4x faster but introduce security findings
-                                                      at 10x the rate. Code duplication is up 81% vs. pre-AI
-                                                      baselines, and technical debt accumulates across
-                                                      maintainability metrics
-                                                      (https://leaddev.com/ai/code-maintainability-plummets-in-the-ai-coding-era,
-                                                      https://arxiv.org/pdf/2510.10165). On harder, longer-horizon
-                                                      tasks (SWE-Bench Pro), even frontier models drop to ~23%
-                                                      success vs. >70% on the easier SWE-Bench Verified -- and
+                                                      This is where the worst empirical numbers cluster. On harder,
+                                                      longer-horizon tasks (SWE-Bench Pro), even frontier models drop
+                                                      to ~23% success vs. >70% on the easier SWE-Bench Verified -- and
                                                       agents are overconfident about their own success (predicting
                                                       73% success against a true rate of 35%)
                                                       (https://arxiv.org/html/2509.16941v1,
                                                       https://arxiv.org/pdf/2602.06948): nothing structural catches
                                                       that overconfidence at this tier.
-                                                - solution
-                                                - pro:
-                                                      label: Minimum human time
-                                                      value: Minimum human time investment of all four approaches.
-                                                - con:
-                                                      label: No correctness guarantee
-                                                      value: >
-                                                          Quality depends entirely on the agent and is
-                                                          unverified -- nothing structurally checks it.
-                                                - con:
-                                                      label: Expensive to catch
-                                                      value: >
-                                                          Failures can be architectural rather than local,
-                                                          and are far more expensive to catch after the fact.
-                                        uphold_coding_standards:
+                                                - consideration_rating:
+                                                      rating: 0.7
+                                                      note: Minimum human time investment of all four tiers.
+                                                - consideration_rating:
+                                                      rating: -0.7
+                                                      note: >
+                                                          No correctness guarantee -- quality depends entirely on the
+                                                          agent and is unverified; nothing structurally checks it.
+                                                - consideration_rating:
+                                                      value: promote_maintenance
+                                                      rating: -0.7
+                                                      note: >
+                                                          Failures can be architectural rather than local, and are far
+                                                          more expensive to catch after the fact. Code duplication is up
+                                                          81% vs. pre-AI baselines, and technical debt accumulates across
+                                                          maintainability metrics
+                                                          (https://leaddev.com/ai/code-maintainability-plummets-in-the-ai-coding-era,
+                                                          https://arxiv.org/pdf/2510.10165).
+                                                - consideration_rating:
+                                                      value: reduce_security_risk
+                                                      rating: -0.8
+                                                      note: >
+                                                          Veracode found 45% of AI code samples introduce OWASP Top 10
+                                                          vulnerabilities across 100+ models tested
+                                                          (https://www.infoworld.com/article/4116937/output-from-vibe-coding-tools-prone-to-critical-security-flaws-study-finds-2.html);
+                                                          a study of deployed vibe-coded apps found 90% had at least one
+                                                          vulnerability, 76.7% critical/high severity
+                                                          (https://arxiv.org/html/2606.23130). Fortune-50 data: AI-assisted
+                                                          developers commit 3-4x faster but introduce security findings
+                                                          at 10x the rate.
+                                                - consideration_rating:
+                                                      value: enable_future_development
+                                                      rating: -0.5
+                                                      note: >
+                                                          Agentic overconfidence (73% predicted vs. 35% true success on
+                                                          SWE-Bench Pro) means unanticipated rework surfaces later,
+                                                          exactly when it's most expensive to absorb
+                                                          (https://arxiv.org/pdf/2602.06948).
+                                        level_of_guidance:
                                             data:
                                                 - description: >
-                                                      Ensure code the agent writes follows the project's
-                                                      style conventions and best practices, not just its
-                                                      functional requirements. Solution keys below are
-                                                      tier-prefixed, ordered from least structured/most manual
-                                                      (a plain instruction) to most automated/enforced (tool-level
-                                                      guardrails).
-                                                - requirement
+                                                      How the agent is told to follow the project's style conventions
+                                                      and best practices, not just its functional requirements. An
+                                                      axis, not a requirement -- pick one level, rated against
+                                                      measures_of_success below via consideration_rating. Keys are
+                                                      tier-prefixed, ordered from least structured/most manual (a
+                                                      plain instruction) to most automated/enforced (tool-level
+                                                      guardrails). No direct empirical evidence located yet for
+                                                      this axis specifically (the literature review under
+                                                      level_of_human_involvement above didn't cover it) -- ratings
+                                                      below are absent rather than guessed at.
                                             tier_1_ask_agent_to_follow_process:
                                                 - description: >
                                                       Simply instruct the agent -- in the prompt, or in
                                                       persistent instructions such as CLAUDE.md -- to
                                                       follow a described process or style guide.
-                                                - solution
                                             tier_2_guide_agent_through_skills:
                                                 - description: >
                                                       Package the style/best-practices guidance as a skill
                                                       (e.g. a Claude Code skill) the agent loads when it's
                                                       relevant to the task at hand.
-                                                - solution
                                             tier_3_guide_agent_through_process_using_mcp:
                                                 - description: >
                                                       Expose the style/best-practices process to the agent
                                                       as MCP tools or resources it calls into directly,
                                                       rather than relying on it recalling written
                                                       instructions.
-                                                - solution
-                                        promote_maintenance:
-                                            - description: >
-                                                  Keep the codebase easy to understand, debug, and change
-                                                  safely over time.
-                                            - requirement
-                                        enable_future_development:
-                                            - description: >
-                                                  Keep the codebase positioned to support new features and
-                                                  requirements that haven't been anticipated yet.
-                                            - requirement
-                                        lower_the_barrier_to_contribution:
-                                            - description: >
-                                                  Make it easy for a developer -- human or agent -- new to
-                                                  the codebase to onboard and start contributing.
-                                            - requirement
-                                        reduce_security_risk:
-                                            - description: >
-                                                  Keep agent-written code from introducing security
-                                                  vulnerabilities -- empirically one of the biggest risks of
-                                                  agent-assisted coding (see the security findings under
-                                                  tier_4_goal_only_agent_built above).
-                                            - requirement
+                                        measures_of_success:
+                                            data:
+                                                - description: >
+                                                      Outcomes any point on the two axes above gets evaluated
+                                                      against, rather than requirements a particular axis level
+                                                      solves. Each child is a consideration (a named, weighted
+                                                      axis for scoring); axis levels above carry consideration_rating
+                                                      components keyed to these.
+                                            promote_maintenance:
+                                                - description: >
+                                                      Keep the codebase easy to understand, debug, and change
+                                                      safely over time.
+                                                - consideration:
+                                                      value: promote_maintenance
+                                                      weight: 1.0
+                                            enable_future_development:
+                                                - description: >
+                                                      Keep the codebase positioned to support new features and
+                                                      requirements that haven't been anticipated yet.
+                                                - consideration:
+                                                      value: enable_future_development
+                                                      weight: 1.0
+                                            lower_the_barrier_to_contribution:
+                                                - description: >
+                                                      Make it easy for a developer -- human or agent -- new to
+                                                      the codebase to onboard and start contributing.
+                                                - consideration:
+                                                      value: lower_the_barrier_to_contribution
+                                                      weight: 1.0
+                                            reduce_security_risk:
+                                                - description: >
+                                                      Keep agent-written code from introducing security
+                                                      vulnerabilities -- empirically one of the biggest risks of
+                                                      agent-assisted coding (see tier_4_goal_only_agent_built above).
+                                                - consideration:
+                                                      value: reduce_security_risk
+                                                      weight: 1.0
                             prioritize_solutions:
                                 data:
                                     - requirement
