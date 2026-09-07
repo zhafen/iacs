@@ -525,90 +525,139 @@ iacs:
                                                 it -- see iacs's own
                                                 .claude/hooks/session-checkin.sh.
                                             - solution
-                                    choose_level_of_agent_involvement:
+                                    develop_code_with_agents:
                                         data:
                                             - description: >
-                                                  How much of the coding work -- from full authorship
-                                                  down to none -- should be left to the agent versus
-                                                  done by hand. A gradient from no agent use at one
-                                                  end to nothing but agent use at the other.
+                                                  Develop code with the help of one or more agents -- covering not
+                                                  just getting the right functionality built, but also style and
+                                                  best practices, long-term maintainability, room for future
+                                                  development, and ease of onboarding new contributors.
                                             - requirement
-                                        fully_manual_coding:
+                                        build_code_to_meet_functionality:
+                                            data:
+                                                - description: >
+                                                      How much of the coding work -- from full authorship down to
+                                                      none -- should be left to the agent versus done by hand. A
+                                                      gradient from no agent use at one end to nothing but agent use
+                                                      at the other.
+                                                - requirement
+                                            fully_manual_coding:
+                                                - description: >
+                                                      Write all the code by hand from the start, with no
+                                                      agent involvement.
+                                                - solution
+                                                - pro:
+                                                      label: Guaranteed quality floor
+                                                      value: >
+                                                          Every line is understood and reviewed as it's
+                                                          written by a human.
+                                                - con:
+                                                      label: Time investment
+                                                      value: Far greater than any agent-assisted approach.
+                                            signature_first_agent_implemented:
+                                                - description: >
+                                                      Human designs all interfaces -- classes, function/method
+                                                      signatures, and arguments -- and writes the tests; the
+                                                      agent only fills in the implementation bodies.
+                                                - solution
+                                                - pro:
+                                                      label: Human owns the hard-to-change parts
+                                                      value: >
+                                                          Human controls the architecture and interface
+                                                          contracts, the parts hardest to change later,
+                                                          while the agent absorbs the tedious
+                                                          implementation labor.
+                                                - pro:
+                                                      label: Objective pass/fail bar
+                                                      value: Pre-written tests give the agent a hard, objective pass/fail bar.
+                                                - con:
+                                                      label: Design cost stays high
+                                                      value: >
+                                                          Upfront design effort approaches what full
+                                                          manual work requires; whatever the tests don't
+                                                          cover is unverified.
+                                            anchor_test_driven:
+                                                - description: >
+                                                      Human writes only a small set of anchor tests that must
+                                                      pass; the agent is free to design and implement however
+                                                      it wants as long as those tests pass.
+                                                - solution
+                                                - pro:
+                                                      label: Low upfront design cost
+                                                      value: >
+                                                          Much less design cost than signature-first --
+                                                          only a few key behaviors need to be pinned down.
+                                                - pro:
+                                                      label: Agent owns the architecture
+                                                      value: >
+                                                          Leaves the architecture entirely to the agent,
+                                                          free to structure the solution however works best.
+                                                - con:
+                                                      label: Unconstrained outside the anchors
+                                                      value: >
+                                                          Whatever isn't covered by an anchor test is
+                                                          unconstrained -- architecture and edge-case
+                                                          correctness are entirely trust-based.
+                                            goal_only_agent_built:
+                                                - description: >
+                                                      Human states only the goal; the agent designs,
+                                                      implements, and tests everything end-to-end with no
+                                                      human-authored tests at all.
+                                                - solution
+                                                - pro:
+                                                      label: Minimum human time
+                                                      value: Minimum human time investment of all four approaches.
+                                                - con:
+                                                      label: No correctness guarantee
+                                                      value: >
+                                                          Quality depends entirely on the agent and is
+                                                          unverified -- nothing structurally checks it.
+                                                - con:
+                                                      label: Expensive to catch
+                                                      value: >
+                                                          Failures can be architectural rather than local,
+                                                          and are far more expensive to catch after the fact.
+                                        promote_following_style_and_best_practices:
+                                            data:
+                                                - description: >
+                                                      Ensure code the agent writes follows the project's
+                                                      style conventions and best practices, not just its
+                                                      functional requirements.
+                                                - requirement
+                                            guide_agent_through_skills:
+                                                - description: >
+                                                      Package the style/best-practices guidance as a skill
+                                                      (e.g. a Claude Code skill) the agent loads when it's
+                                                      relevant to the task at hand.
+                                                - solution
+                                            ask_agent_to_follow_process:
+                                                - description: >
+                                                      Simply instruct the agent -- in the prompt, or in
+                                                      persistent instructions such as CLAUDE.md -- to
+                                                      follow a described process or style guide.
+                                                - solution
+                                            guide_agent_through_process_using_mcp:
+                                                - description: >
+                                                      Expose the style/best-practices process to the agent
+                                                      as MCP tools or resources it calls into directly,
+                                                      rather than relying on it recalling written
+                                                      instructions.
+                                                - solution
+                                        promote_maintenance:
                                             - description: >
-                                                  Write all the code by hand from the start, with no
-                                                  agent involvement.
-                                            - solution
-                                            - pro:
-                                                  label: Guaranteed quality floor
-                                                  value: >
-                                                      Every line is understood and reviewed as it's
-                                                      written by a human.
-                                            - con:
-                                                  label: Time investment
-                                                  value: Far greater than any agent-assisted approach.
-                                        signature_first_agent_implemented:
+                                                  Keep the codebase easy to understand, debug, and change
+                                                  safely over time.
+                                            - requirement
+                                        enable_future_development:
                                             - description: >
-                                                  Human designs all interfaces -- classes, function/method
-                                                  signatures, and arguments -- and writes the tests; the
-                                                  agent only fills in the implementation bodies.
-                                            - solution
-                                            - pro:
-                                                  label: Human owns the hard-to-change parts
-                                                  value: >
-                                                      Human controls the architecture and interface
-                                                      contracts, the parts hardest to change later,
-                                                      while the agent absorbs the tedious
-                                                      implementation labor.
-                                            - pro:
-                                                  label: Objective pass/fail bar
-                                                  value: Pre-written tests give the agent a hard, objective pass/fail bar.
-                                            - con:
-                                                  label: Design cost stays high
-                                                  value: >
-                                                      Upfront design effort approaches what full
-                                                      manual work requires; whatever the tests don't
-                                                      cover is unverified.
-                                        anchor_test_driven:
+                                                  Keep the codebase positioned to support new features and
+                                                  requirements that haven't been anticipated yet.
+                                            - requirement
+                                        enable_contribution_from_new_developers:
                                             - description: >
-                                                  Human writes only a small set of anchor tests that must
-                                                  pass; the agent is free to design and implement however
-                                                  it wants as long as those tests pass.
-                                            - solution
-                                            - pro:
-                                                  label: Low upfront design cost
-                                                  value: >
-                                                      Much less design cost than signature-first --
-                                                      only a few key behaviors need to be pinned down.
-                                            - pro:
-                                                  label: Agent owns the architecture
-                                                  value: >
-                                                      Leaves the architecture entirely to the agent,
-                                                      free to structure the solution however works best.
-                                            - con:
-                                                  label: Unconstrained outside the anchors
-                                                  value: >
-                                                      Whatever isn't covered by an anchor test is
-                                                      unconstrained -- architecture and edge-case
-                                                      correctness are entirely trust-based.
-                                        goal_only_agent_built:
-                                            - description: >
-                                                  Human states only the goal; the agent designs,
-                                                  implements, and tests everything end-to-end with no
-                                                  human-authored tests at all.
-                                            - solution
-                                            - pro:
-                                                  label: Minimum human time
-                                                  value: Minimum human time investment of all four approaches.
-                                            - con:
-                                                  label: No correctness guarantee
-                                                  value: >
-                                                      Quality depends entirely on the agent and is
-                                                      unverified -- nothing structurally checks it.
-                                            - con:
-                                                  label: Expensive to catch
-                                                  value: >
-                                                      Failures can be architectural rather than local,
-                                                      and are far more expensive to catch after the fact.
+                                                  Make it easy for a developer -- human or agent -- new to
+                                                  the codebase to onboard and start contributing.
+                                            - requirement
                             prioritize_solutions:
                                 data:
                                     - requirement
