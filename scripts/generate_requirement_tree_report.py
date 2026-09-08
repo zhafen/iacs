@@ -687,6 +687,7 @@ _STYLE = """
     margin: 0 0 0.15rem; font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-weight: 600; font-size: 0.85rem;
   }
+  .rating-label:empty { display: none; }
   li.rating.rating-pro .rating-label { color: var(--pro); }
   li.rating.rating-con .rating-label { color: var(--con); }
   .rating-note { margin: 0; color: var(--muted); font-size: 0.92rem; max-width: 62ch; }
