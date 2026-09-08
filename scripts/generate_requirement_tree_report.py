@@ -171,8 +171,10 @@ def load_subtree(registrar, root_key: str) -> dict:
         for _, row in registrar.get(sign).execute().iterrows():
             eid = str(row["entity_id"])
             if eid in subtree_path_of:
+                label = row.get("label")
+                label = "" if label is None or label != label else str(label)
                 pros_cons.setdefault(eid, []).append(
-                    {"sign": sign, "label": str(row["label"]), "note": str(row["value"])}
+                    {"sign": sign, "label": label, "note": str(row["value"])}
                 )
 
     # Every real (or, for a not-yet-built solution, planned) file/line a
