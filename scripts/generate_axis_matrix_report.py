@@ -91,11 +91,12 @@ def load_matrix(registrar, root_key: str) -> dict:
         eid = str(row["entity_id"])
         if eid in subtree_path_of:
             key = str(row["value"])
+            w = row.get("weight")
             measures[key] = {
                 "eid": eid,
                 "key": subtree_path_of[eid].rsplit(".", 1)[-1],
                 "description": descriptions.get(eid, ""),
-                "weight": float(row["weight"]) if row.get("weight") == row.get("weight") else 1.0,
+                "weight": float(w) if w is not None and w == w else 1.0,
             }
 
     measures_container_eid = None
