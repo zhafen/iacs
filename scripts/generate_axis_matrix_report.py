@@ -24,12 +24,38 @@ from __future__ import annotations
 
 import argparse
 import html
+import re
 from pathlib import Path
 
 from iacs.commands import parse_manifest_env
 from iacs.registrar import Registrar
 
 DEFAULT_OUTPUT = Path("/tmp/axis_matrix_report.html")
+
+# Citations are written inline as bare URLs, often immediately followed by
+# sentence punctuation they don't belong to -- "(https://.../foo)." should
+# link only "https://.../foo", not swallow the trailing ")." into the href.
+_URL_RE = re.compile(r'https?://[^\s<>")]+')
+_TRAILING_PUNCTUATION = ".,;:"
+
+
+def _linkify(text: str) -> str:
+    """HTML-escape text and turn any bare URLs within it into clickable
+    links, stripping trailing sentence punctuation off the link itself."""
+    pieces = []
+    last_end = 0
+    for match in _URL_RE.finditer(text):
+        url = match.group(0)
+        end = match.end()
+        while url and url[-1] in _TRAILING_PUNCTUATION:
+            url = url[:-1]
+            end -= 1
+        pieces.append(html.escape(text[last_end:match.start()]))
+        escaped_url = html.escape(url)
+        pieces.append(f'<a href="{escaped_url}" target="_blank" rel="noopener noreferrer">{escaped_url}</a>')
+        last_end = end
+    pieces.append(html.escape(text[last_end:]))
+    return "".join(pieces)
 
 
 def _clean(path: str) -> str:
@@ -137,7 +163,7 @@ def _render_rating(item: dict, measures: dict) -> str:
         <li class="rating {_rating_class(item['rating'])}">
           <span class="rating-tag">{html.escape(measure_label)}</span>
           <span class="rating-score">{sign}{item['rating']:.1f}</span>
-          <p class="rating-note">{html.escape(item['note'])}</p>
+          <p class="rating-note">{_linkify(item['note'])}</p>
         </li>"""
 
 
@@ -150,7 +176,7 @@ def _render_level(level: dict, matrix: dict) -> str:
       <details class="level">
         <summary><span class="level-name">{html.escape(level['key'].replace('_', ' '))}</span></summary>
         <div class="level-body">
-          <p class="level-description">{html.escape(level['description'])}</p>
+          <p class="level-description">{_linkify(level['description'])}</p>
           <ul class="ratings">{ratings_html}</ul>
         </div>
       </details>"""
@@ -172,7 +198,7 @@ def _render_axis(axis: dict, matrix: dict) -> str:
   <section class="axis">
     <p class="eyebrow">Axis</p>
     <h2>{html.escape(axis['key'].replace('_', ' '))}</h2>
-    <p class="axis-description">{html.escape(axis['description'])}</p>
+    <p class="axis-description">{_linkify(axis['description'])}</p>
     {cross_cutting_html}
     {levels_html}
   </section>"""
@@ -182,7 +208,7 @@ def _render_measures_section(measures: dict) -> str:
     chips = "".join(
         f'<li class="measure-chip"><span class="measure-name">{html.escape(m["key"].replace("_", " "))}</span>'
         f'<span class="measure-weight">weight {m["weight"]:g}</span>'
-        f'<p class="measure-description">{html.escape(m["description"])}</p></li>'
+        f'<p class="measure-description">{_linkify(m["description"])}</p></li>'
         for m in sorted(measures.values(), key=lambda m: m["key"])
     )
     return f"""
@@ -310,6 +336,13 @@ _STYLE = """
   li.rating.rating-pro .rating-score { color: var(--pro); }
   li.rating.rating-con .rating-score { color: var(--con); }
   .rating-note { grid-column: 1 / -1; margin: 0.2rem 0 0; color: var(--muted); font-size: 0.9rem; max-width: 62ch; }
+  .rating-note a, .level-description a, .axis-description a, .measure-description a {
+    color: var(--accent); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    text-underline-offset: 0.15em; word-break: break-all;
+  }
+  .rating-note a:hover, .level-description a:hover, .axis-description a:hover, .measure-description a:hover {
+    text-decoration-color: var(--accent);
+  }
   li.rating-none { color: var(--muted-2); font-style: italic; grid-template-columns: 1fr; }
 """
 
