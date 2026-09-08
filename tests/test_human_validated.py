@@ -111,6 +111,6 @@ def test_scd_support():
     )
 
     # Check the current position of the player and the dimensions of the position table
-    positions = registrar.view_current("position")
+    positions = registrar.view_current("position").to_table()
     assert positions.count().execute() == 1
     assert list(positions.execute().iloc[0][["position.x", "position.y", "position.z"]]) == [5, 5, 5]

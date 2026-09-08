@@ -27,5 +27,5 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/api/view/{component_types:path}")
 def view_component(component_types: str):
     types = component_types.split("/")
-    df = app.state.registrar.view(types).execute()
+    df = app.state.registrar.view(types).to_pandas()
     return json.loads(df.to_json(orient="records"))
