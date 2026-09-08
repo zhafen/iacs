@@ -586,6 +586,7 @@ iacs:
                                                           the parts hardest to change later, while the agent absorbs
                                                           the tedious implementation labor.
                                                 - consideration_rating:
+                                                      value: achieve_functionality
                                                       rating: 0.4
                                                       note: Pre-written tests give the agent a hard, objective pass/fail bar.
                                                 - consideration_rating:
@@ -626,6 +627,7 @@ iacs:
                                                           architecture and edge-case correctness (including security-
                                                           relevant edge cases) are entirely trust-based.
                                                 - consideration_rating:
+                                                      value: achieve_functionality
                                                       rating: 0.6
                                                       note: >
                                                           Best direct evidence that guidance pays off: TiCoder's user
@@ -645,11 +647,13 @@ iacs:
                                                       rating: 0.7
                                                       note: Minimum human time investment of all four tiers.
                                                 - consideration_rating:
+                                                      value: achieve_functionality
                                                       rating: -0.7
                                                       note: >
                                                           No correctness guarantee -- quality depends entirely on the
                                                           agent and is unverified; nothing structurally checks it.
                                                 - consideration_rating:
+                                                      value: achieve_functionality
                                                       rating: -0.6
                                                       note: >
                                                           This is where the worst empirical numbers cluster. On harder,
@@ -765,6 +769,14 @@ iacs:
                                                       solves. Each child is a consideration (a named, weighted
                                                       axis for scoring); axis levels above carry consideration_rating
                                                       components keyed to these.
+                                            achieve_functionality:
+                                                - description: >
+                                                      Basic ability to produce code that actually functions --
+                                                      correctly implements the intended behavior, not just
+                                                      code that looks plausible or passes a superficial glance.
+                                                - consideration:
+                                                      value: achieve_functionality
+                                                      weight: 1.0
                                             promote_maintenance:
                                                 - description: >
                                                       Keep the codebase easy to understand, debug, and change
