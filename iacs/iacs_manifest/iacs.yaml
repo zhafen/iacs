@@ -541,23 +541,6 @@ iacs:
                                                       a requirement: pick one level per task, rated against
                                                       measures_of_success below via consideration_rating. Keys are
                                                       tier-prefixed to keep gradient order under alphabetic sort.
-                                                - consideration_rating:
-                                                      rating: -0.5
-                                                      note: >
-                                                          Self-assessment of how well a tier is working is unreliable:
-                                                          a METR RCT of 16 experienced open-source developers found AI
-                                                          tool use made them 19% slower on real tasks, even though they
-                                                          had predicted a 24% speedup beforehand
-                                                          (https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/,
-                                                          https://arxiv.org/abs/2507.09089).
-                                                - consideration_rating:
-                                                      rating: -0.4
-                                                      note: >
-                                                          Code review is a weaker backstop than intuition suggests at
-                                                          any tier that still relies on it: reviewers exchange 11.8%
-                                                          more rounds on AI-generated code, 38% report real added
-                                                          cognitive load, and AI-suggested fixes are adopted at 16.6%
-                                                          vs. 56.5% for human-suggested ones (https://arxiv.org/pdf/2603.15911).
                                             tier_1_fully_manual_coding:
                                                 - description: >
                                                       Write all the code by hand from the start, with no
@@ -604,6 +587,24 @@ iacs:
                                                           trials of ~2000 developers found 8-22% more pull requests per
                                                           week
                                                           (https://github.blog/news-insights/research/research-quantifying-github-copilots-impact-on-developer-productivity-and-happiness/).
+                                                - consideration_rating:
+                                                      rating: -0.5
+                                                      note: >
+                                                          Self-assessment of how well this is working is unreliable:
+                                                          a METR RCT of 16 experienced open-source developers found AI
+                                                          tool use made them 19% slower on real tasks, even though they
+                                                          had predicted a 24% speedup beforehand
+                                                          (https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/,
+                                                          https://arxiv.org/abs/2507.09089).
+                                                - consideration_rating:
+                                                      rating: -0.4
+                                                      note: >
+                                                          Code review is a weaker backstop than intuition suggests,
+                                                          and this tier still leans on it for whatever the tests
+                                                          don't cover: reviewers exchange 11.8% more rounds on
+                                                          AI-generated code, 38% report real added cognitive load,
+                                                          and AI-suggested fixes are adopted at 16.6% vs. 56.5% for
+                                                          human-suggested ones (https://arxiv.org/pdf/2603.15911).
                                             tier_3_anchor_test_driven:
                                                 - description: >
                                                       Human writes only a small set of anchor tests that must
@@ -638,6 +639,15 @@ iacs:
                                                           right moment -- pushed agent success above 95% across scenarios
                                                           (https://arxiv.org/pdf/2512.04367): small, well-placed checks
                                                           matter more than constant oversight.
+                                                - consideration_rating:
+                                                      rating: -0.5
+                                                      note: >
+                                                          Self-assessment of how well this is working is unreliable:
+                                                          a METR RCT of 16 experienced open-source developers found AI
+                                                          tool use made them 19% slower on real tasks, even though they
+                                                          had predicted a 24% speedup beforehand
+                                                          (https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/,
+                                                          https://arxiv.org/abs/2507.09089).
                                             tier_4_goal_only_agent_built:
                                                 - description: >
                                                       Human states only the goal; the agent designs,
@@ -691,6 +701,15 @@ iacs:
                                                           SWE-Bench Pro) means unanticipated rework surfaces later,
                                                           exactly when it's most expensive to absorb
                                                           (https://arxiv.org/pdf/2602.06948).
+                                                - consideration_rating:
+                                                      rating: -0.5
+                                                      note: >
+                                                          Self-assessment of how well this is working is unreliable:
+                                                          a METR RCT of 16 experienced open-source developers found AI
+                                                          tool use made them 19% slower on real tasks, even though they
+                                                          had predicted a 24% speedup beforehand
+                                                          (https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/,
+                                                          https://arxiv.org/abs/2507.09089).
                                         level_of_guidance:
                                             data:
                                                 - description: >
