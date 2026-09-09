@@ -171,20 +171,58 @@ def load_subtree(registrar, root_key: str) -> dict:
         for _, row in registrar.get(sign).execute().iterrows():
             eid = str(row["entity_id"])
             if eid in subtree_path_of:
-                pros_cons.setdefault(eid, []).append({"sign": sign, "note": str(row["value"])})
+                label = row.get("label")
+                label = "" if label is None or label != label else str(label)
+                pros_cons.setdefault(eid, []).append(
+                    {"sign": sign, "label": label, "note": str(row["value"])}
+                )
 
-    code_examples: dict[str, dict] = {}
-    for _, row in registrar.get("code_example").execute().iterrows():
+    # Every real (or, for a not-yet-built solution, planned) file/line a
+    # solution touches, each paired with an inline preview of the change
+    # itself -- repeatable per solution, same shape as pro/con, so "no
+    # changes needed" is just zero rows rather than a special case.
+    # Combines what used to be two separate things (a "where" list and one
+    # solution-wide code blob) into one: each location carries its own
+    # small, focused snippet right next to the file/line it belongs to.
+    changes: dict[str, list[dict]] = {}
+    for _, row in registrar.get("change").execute().iterrows():
         eid = str(row["entity_id"])
         if eid in subtree_path_of:
-            code_examples[eid] = {"language": str(row["language"]), "code": str(row["value"])}
+            changes.setdefault(eid, []).append(
+                {
+                    "file": str(row["file"]),
+                    "change": str(row["change"]),
+                    "language": str(row["language"]),
+                    "preview": str(row["preview"]),
+                }
+            )
+
+    # A mermaid diagram on the root entity itself, rendered once near the
+    # top of the report (see _render_diagram_section) -- optional, not
+    # every requirement tree needs one.
+    diagrams: dict[str, str] = {}
+    for _, row in registrar.get("diagram").execute().iterrows():
+        eid = str(row["entity_id"])
+        if eid in subtree_path_of:
+            diagrams[eid] = str(row["value"])
+
+    # A worked example on a solution -- a small scenario the reader can
+    # try to solve themselves before revealing how this solution's own
+    # approach would handle it (see _render_solution's "Try it yourself").
+    worked_examples: dict[str, dict] = {}
+    for _, row in registrar.get("worked_example").execute().iterrows():
+        eid = str(row["entity_id"])
+        if eid in subtree_path_of:
+            worked_examples[eid] = {"scenario": str(row["scenario"]), "answer": str(row["answer"])}
 
     return {
         "nodes": nodes,
         "cross_edges": cross_edges,
         "costs": costs,
         "pros_cons": pros_cons,
-        "code_examples": code_examples,
+        "diagrams": diagrams,
+        "worked_examples": worked_examples,
+        "changes": changes,
     }
 
 
@@ -312,7 +350,10 @@ def _render_pro_con(item: dict) -> str:
     return f"""
         <li class="rating rating-{sign_label.lower()}">
           <span class="sign-badge sign-{sign_label.lower()}">{sign_label}</span>
-          <p class="rating-note">{html.escape(item['note'])}</p>
+          <div class="rating-body">
+            <p class="rating-label">{html.escape(item['label'])}</p>
+            <p class="rating-note">{html.escape(item['note'])}</p>
+          </div>
         </li>"""
 
 
@@ -335,12 +376,32 @@ def _render_solution(node: dict, subtree: dict, show_requirements: bool = False)
         requirements_html = f"""
           <p class="section-label">Solves</p>
           <div class="req-chips">{chips}</div>"""
-    code_example_html = ""
-    example = subtree["code_examples"].get(node["id"])
-    if example:
-        code_example_html = f"""
-          <p class="section-label">Example</p>
-          <pre class="code-example"><code class="language-{html.escape(example['language'])}">{html.escape(example['code'])}</code></pre>"""
+    worked_example_html = ""
+    worked_example = subtree["worked_examples"].get(node["id"])
+    if worked_example:
+        worked_example_html = f"""
+          <p class="section-label">Try it yourself</p>
+          <div class="worked-example">
+            <p class="worked-example-scenario">{html.escape(worked_example['scenario'])}</p>
+            <details class="blob"><summary>Reveal how this solution handles it</summary>
+              <div class="blob-content"><p>{html.escape(worked_example['answer'])}</p></div>
+            </details>
+          </div>"""
+    changes_html = ""
+    changes = subtree["changes"].get(node["id"], [])
+    if changes:
+        rows = "".join(
+            f'<li class="change-location">'
+            f'<code>{html.escape(c["file"])}</code>'
+            f'<p>{html.escape(c["change"])}</p>'
+            f'<pre class="code-example"><code class="language-{html.escape(c["language"])}">'
+            f'{html.escape(c["preview"])}</code></pre>'
+            f'</li>'
+            for c in changes
+        )
+        changes_html = f"""
+          <p class="section-label">Where to change it</p>
+          <ul class="change-locations">{rows}</ul>"""
     selected_class = " solution-selected" if node["selected"] else ""
     selected_badge = '<span class="selected-badge">Selected</span>' if node["selected"] else ""
     return f"""
@@ -354,7 +415,8 @@ def _render_solution(node: dict, subtree: dict, show_requirements: bool = False)
         <div class="solution-body">
           <p class="solution-description">{description}</p>
           {requirements_html}
-          {code_example_html}
+          {worked_example_html}
+          {changes_html}
           <ul class="ratings">{ratings_html}</ul>
         </div>
       </details>"""
@@ -390,6 +452,26 @@ def _render_masthead(root_label: str) -> str:
     <p class="kicker">requirement tree</p>
     <h1>{html.escape(root_label)}</h1>
   </div>"""
+
+
+def _render_diagram_section(diagram_text: str) -> str:
+    """A mermaid diagram attached to the root entity's own `diagram`
+    component, rendered once near the top of the report, before the
+    requirement-by-requirement detail -- an at-a-glance map of how the
+    pieces below actually relate, for a reader who hasn't lived with the
+    codebase this tree describes.
+
+    Emits a bare `<pre class="mermaid">` block, not a mermaid.js
+    `<script>` load: a report published as a Claude Artifact already
+    renders that natively, and a reader opening the raw HTML file
+    elsewhere still gets the diagram's own source as readable text.
+    """
+    return f"""
+  <div class="masthead">
+    <p class="kicker">data flow</p>
+    <h1>Architecture</h1>
+  </div>
+  <pre class="mermaid">{html.escape(diagram_text)}</pre>"""
 
 
 def _render_toc_section(requirement_nodes: list[dict]) -> str:
@@ -481,6 +563,7 @@ _STYLE = """
     --pro: #2e6b45; --pro-bg: #e4f1e7;
     --con: #a3392c; --con-bg: #f8e9e5;
     --chip-bg: #ece9dd; --chip-fg: #55584c;
+    --syn-keyword: #6d4aa0; --syn-number: #a3690f;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -490,6 +573,7 @@ _STYLE = """
       --pro: #7bc794; --pro-bg: #1c2e21;
       --con: #e08b7c; --con-bg: #34211d;
       --chip-bg: #2a2d26; --chip-fg: #b9bcae;
+      --syn-keyword: #b79bdb; --syn-number: #e0a458;
     }
   }
   :root[data-theme="dark"] {
@@ -499,6 +583,7 @@ _STYLE = """
     --pro: #7bc794; --pro-bg: #1c2e21;
     --con: #e08b7c; --con-bg: #34211d;
     --chip-bg: #2a2d26; --chip-fg: #b9bcae;
+    --syn-keyword: #b79bdb; --syn-number: #e0a458;
   }
   * { box-sizing: border-box; }
   body {
@@ -590,15 +675,23 @@ _STYLE = """
   .solution-body { padding: 0 0 1.1rem 1.5rem; }
   .solution-description { color: var(--fg); margin-top: 0; }
   ul.ratings { list-style: none; margin: 0.6rem 0 0; padding: 0; }
-  li.rating { padding: 0.6rem 0; border-top: 1px solid var(--border); display: flex; gap: 0.55rem; align-items: baseline; }
+  li.rating { padding: 0.6rem 0; border-top: 1px solid var(--border); display: flex; gap: 0.55rem; align-items: flex-start; }
   li.rating:first-child { border-top: none; }
   .sign-badge {
     font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-size: 0.66rem; font-weight: 600; letter-spacing: 0.04em;
-    padding: 0.12rem 0.5rem; border-radius: 5px; flex-shrink: 0;
+    padding: 0.12rem 0.5rem; border-radius: 5px; flex-shrink: 0; margin-top: 0.15rem;
   }
   .sign-pro { background: var(--pro-bg); color: var(--pro); }
   .sign-con { background: var(--con-bg); color: var(--con); }
+  .rating-body { min-width: 0; }
+  .rating-label {
+    margin: 0 0 0.15rem; font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-weight: 600; font-size: 0.85rem;
+  }
+  .rating-label:empty { display: none; }
+  li.rating.rating-pro .rating-label { color: var(--pro); }
+  li.rating.rating-con .rating-label { color: var(--con); }
   .rating-note { margin: 0; color: var(--muted); font-size: 0.92rem; max-width: 62ch; }
 
   .section-label {
@@ -617,30 +710,66 @@ _STYLE = """
     background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
     padding: 0.85rem 1rem; overflow-x: auto; margin: 0;
   }
+  .worked-example { margin-top: 0.9rem; }
+  .worked-example-scenario {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.75rem 1rem; margin: 0 0 0.5rem; font-style: italic; color: var(--fg);
+  }
+  pre.mermaid { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin: 0 0 2.75rem; }
+  ul.change-locations { list-style: none; margin: 0.4rem 0 0; padding: 0; }
+  li.change-location { padding: 0.5rem 0; border-top: 1px solid var(--border); }
+  li.change-location:first-child { border-top: none; }
+  li.change-location code {
+    display: inline-block; font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.78rem; color: var(--accent); background: var(--chip-bg);
+    padding: 0.1rem 0.45rem; border-radius: 5px; margin-bottom: 0.3rem;
+  }
+  li.change-location p { margin: 0 0 0.6rem; color: var(--fg); font-size: 0.92rem; }
+  li.change-location .code-example { margin: 0; }
+  .hljs-addition { background: var(--pro-bg); color: var(--pro); display: inline-block; width: 100%; }
+  .hljs-deletion { background: var(--con-bg); color: var(--con); display: inline-block; width: 100%; }
   .code-example code {
     font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-size: 0.8rem; line-height: 1.5; color: var(--fg); white-space: pre;
   }
+  .hljs-keyword, .hljs-selector-tag { color: var(--syn-keyword); font-weight: 600; }
+  .hljs-string, .hljs-doctag { color: var(--pro); }
+  .hljs-comment, .hljs-quote { color: var(--muted-2); font-style: italic; }
+  .hljs-number, .hljs-literal { color: var(--syn-number); }
+  .hljs-title, .hljs-title.function_, .hljs-built_in, .hljs-name { color: var(--accent); }
+  .hljs-attr, .hljs-params, .hljs-variable { color: var(--fg); }
+  .hljs-meta, .hljs-tag, .hljs-punctuation { color: var(--muted); }
 
   .section-divider { border: none; border-top: 1px solid var(--border); margin: 3rem 0 2.75rem; }
 """
 
-def _root_label(subtree: dict) -> str:
-    root = next(n for n in subtree["nodes"] if n["parent_id"] is None)
-    return root["label"]
-
+# Pinned exact version, per the loading convention every downstream
+# Claude Artifact this report gets published as must already follow --
+# see that skill's CDN allowlist. `highlightAll()` runs once at the end
+# of body content; it walks the DOM for every <pre><code class="language-...">
+# regardless of whether it's currently visible inside a collapsed
+# <details>, so a solution's code example still highlights correctly the
+# first time its <details> is expanded.
+_HIGHLIGHT_JS = (
+    '<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js">'
+    "</script>\n"
+    "<script>hljs.highlightAll();</script>\n"
+)
 
 def render_report(subtree: dict, dependencies_data: dict | None, fragment: bool) -> str:
-    root_label = _root_label(subtree)
+    root_node = next(n for n in subtree["nodes"] if n["parent_id"] is None)
+    root_label = root_node["label"]
     requirement_nodes = sorted(
         (n for n in subtree["nodes"] if n["type"] == "requirement"),
         key=lambda n: n["key"],
     )
     masthead_html = _render_masthead(root_label)
+    diagram_text = subtree["diagrams"].get(root_node["id"])
+    diagram_html = _render_diagram_section(diagram_text) if diagram_text else ""
     toc_html = _render_toc_section(requirement_nodes)
     requirements_html = "".join(_render_requirement(n, subtree) for n in requirement_nodes)
     solutions_html = _render_solutions_section(subtree)
-    body_parts = [masthead_html, toc_html, requirements_html, '<hr class="section-divider">', solutions_html]
+    body_parts = [masthead_html, diagram_html, toc_html, requirements_html, '<hr class="section-divider">', solutions_html]
     if dependencies_data:
         body_parts.append('<hr class="section-divider">')
         body_parts.append(_render_dependencies_section(dependencies_data))
@@ -648,7 +777,7 @@ def render_report(subtree: dict, dependencies_data: dict | None, fragment: bool)
 
     title = f"{root_label} · Requirement Tree"
     if fragment:
-        return f'<title>{html.escape(title)}</title>\n<style>{_STYLE}</style>\n{body}\n'
+        return f'<title>{html.escape(title)}</title>\n<style>{_STYLE}</style>\n{body}\n{_HIGHLIGHT_JS}'
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -658,7 +787,7 @@ def render_report(subtree: dict, dependencies_data: dict | None, fragment: bool)
 </head>
 <body>
 {body}
-</body>
+{_HIGHLIGHT_JS}</body>
 </html>
 """
 
