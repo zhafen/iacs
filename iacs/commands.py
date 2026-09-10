@@ -75,7 +75,7 @@ def cmd_list_component_types(reg: "Registrar") -> str:
 
 def cmd_view_component(reg: "Registrar", component_type: str, format: str = "csv") -> str:
     """Return all data for a component type as CSV or markdown."""
-    df = reg.view_df(component_type).reset_index()
+    df = reg.view(component_type).to_pandas()
     if format == "markdown":
         return df.to_markdown(index=False)
     return df.to_csv(index=False)
