@@ -130,3 +130,28 @@ project_history:
               to ~90s with the full suite still passing unchanged --
               documented in README.md, mirroring emc2p's own `live` marker
               convention.
+    why_chain_poc_moved_from_emc2p:
+        - description: >
+              examples/why_chain/ (a "why chain" experiment -- entity-first
+              manifests recording open-ended design rationale, converging
+              on one shared goal rather than pairing requirements with
+              solutions) started as a series of iterations directly in the
+              emc2p repo. Moved here once it became clear the experiment
+              itself is an iacs use case (documenting/designing something)
+              rather than emc2p's own concern (the generic ECS engine);
+              emc2p's own PR for it was closed unmerged. Brought its own
+              vendored, frozen copy of mcp_client_session.py rather than
+              depending on emc2p picking up the closed PR's changes --
+              iacs's own emc2p pin predates the docstrings that experiment
+              added to 11 of that file's 19 objects, without which those
+              objects wouldn't be loadable entities at all. Also hit the
+              same kind of entity_ref ambiguity noted in
+              pure_connection_architecture_added_as_a_third_modeling_style
+              above: one Python-object reference used a bare two-segment
+              alias
+              (module leaf name + parent directory name) that changed when
+              the file moved directories; fixed by updating it to the new
+              alias rather than by making the reference itself more
+              precise, since a module-level entity's alias is inherently
+              tied to its parent directory's name (unlike a
+              class.method-shaped alias, which isn't).
