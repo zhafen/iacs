@@ -132,7 +132,7 @@ project_history:
               convention.
     why_chain_poc_moved_from_emc2p:
         - description: >
-              examples/why_chain/ (a "why chain" experiment -- entity-first
+              poc/why_chain/ (a "why chain" experiment -- entity-first
               manifests recording open-ended design rationale, converging
               on one shared goal rather than pairing requirements with
               solutions) started as a series of iterations directly in the
@@ -155,3 +155,28 @@ project_history:
               precise, since a module-level entity's alias is inherently
               tied to its parent directory's name (unlike a
               class.method-shaped alias, which isn't).
+    why_chain_poc_placed_outside_examples_dir:
+        - description: >
+              Landed first at examples/why_chain/, which broke CI:
+              tests/test_human_validated.py::test_end_to_end parametrizes
+              over every subdirectory of examples/ unconditionally (see
+              example_dirs in emc2p.testing.expected_fixtures -- no opt-out
+              mechanism) and asserts a full load/export/reload round trip
+              produces identical components. mcp_client_session.py's
+              load_python-derived `calls` components (call-graph metadata
+              emc2p's load_python attaches to every function/method
+              automatically) don't survive that round trip --
+              export_manifest doesn't re-serialize them, so the reloaded
+              registry has zero where the original had 80, and the
+              comparison fails. Every prior examples/ entry is plain
+              hand-authored YAML with no embedded Python source, so nothing
+              had hit this before. Moved the whole thing to poc/why_chain/
+              instead of trying to make it satisfy a round-trip contract
+              it was never meant to: examples/ is for hand-authored
+              fixtures this repo's own ETL pipeline is tested against, not
+              a Python-source-linked demo of load_python. poc/ isn't swept
+              by example_dirs(), so this needed no change to shared test
+              code or to emc2p's own export/comparison logic (the real
+              root cause -- component_type flagged skip_on_export isn't
+              also excluded from assert_registries_equal's round-trip
+              comparison -- is an emc2p-level gap, out of scope here).

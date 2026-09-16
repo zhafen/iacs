@@ -55,12 +55,12 @@ anything else in the repo.
 from emc2p.registrar import Registrar
 
 # why.yaml is fully self-contained
-r1 = Registrar.from_manifest("examples/why_chain/why.yaml")
+r1 = Registrar.from_manifest("poc/why_chain/why.yaml")
 
 # why_v2.yaml needs the vendored Python file loaded alongside it
 r2 = Registrar.from_manifest([
-    "examples/why_chain/why_v2.yaml",
-    "examples/why_chain/mcp_client_session.py",
+    "poc/why_chain/why_v2.yaml",
+    "poc/why_chain/mcp_client_session.py",
 ])
 ```
 
