@@ -213,6 +213,8 @@
   .node.child circle { stroke: var(--code); stroke-width: 2px; }
   .node.match circle { stroke: var(--focus); stroke-width: 2.5px; }
   .node:hover circle { stroke-width: 2.5px; }
+  .node:focus { outline: none; }
+  .node:focus-visible circle { stroke: var(--focus); stroke-width: 3px; }
   .node.mission-node circle { filter: drop-shadow(0 0 7px var(--mission-glow)); }
 
   /* ---------- side panel ---------- */
@@ -535,7 +537,19 @@
     .attr("class", d => "node" + (d.id === MISSION_ID ? " mission-node" : ""))
     .attr("transform", d => `translate(${d.x},${d.y})`)
     .style("cursor", "pointer")
+    .attr("tabindex", 0)
+    .attr("role", "button")
+    .attr("aria-label", d => `${d.id === MISSION_ID ? "emc2p_mission" : d.id}, ${d.id === MISSION_ID ? "the mission" : d.is_code ? "real code object" : "concept"}`)
     .on("click", (event, d) => { event.stopPropagation(); selectNode(d.id); })
+    .on("keydown", (event, d) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        event.stopPropagation();
+        selectNode(d.id);
+      }
+    })
+    .on("focus", (event, d) => showTip(event, d))
+    .on("blur", hideTip)
     .on("mouseenter", (event, d) => showTip(event, d))
     .on("mouseleave", hideTip);
 
