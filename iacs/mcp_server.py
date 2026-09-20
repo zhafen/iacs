@@ -148,7 +148,7 @@ def view_entity(entity_id: str, ctx: Context, format: str = "markdown") -> str:
     """Return all component data for a specific entity across every component type.
 
     Args:
-        entity_id: Entity hash or human-readable alias (e.g. "feed_cats" or
+        entity_id: Entity hash or human-readable display_alias (e.g. "feed_cats" or
             "feeding_system.feed_cats").
         format: Output format — "markdown" (default) or "csv".
     """

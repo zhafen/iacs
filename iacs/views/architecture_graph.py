@@ -28,7 +28,7 @@ def _module_label(filepath: str) -> str:
 
 def _module_entities(entity_id_df, filepaths: set[str]) -> dict[str, dict[str, str]]:
     """{filepath: {"id": that file's own module-level entity's full entity
-    id, "alias": that entity's own alias}}, for every file that minted one.
+    id, "display_alias": that entity's own display_alias}}, for every file that minted one.
 
     ``load_python._extract_entities`` records the module itself as an
     entity (keyed by the file's own dotted module name, with no further
@@ -36,9 +36,9 @@ def _module_entities(entity_id_df, filepaths: set[str]) -> dict[str, dict[str, s
     marker -- exactly the entity whose ``path`` (after the ``{filepath}:``
     prefix) equals that dotted module name. Its own entity id is unique
     (an emc2p entity hash), so using *that* as the overview node's id --
-    rather than the alias, or the filepath -- means two files can never
+    rather than the display_alias, or the filepath -- means two files can never
     collide on id even when they collide on displayed label. Its
-    ``alias`` (see emc2p's ``entity_id_table``: the last two dot-segments
+    ``display_alias`` (see emc2p's ``entity_id_table``: the last two dot-segments
     of the entity's own path) is what a per-file overview node should
     *show* -- shorter and more readable than the full path, though not
     always unique across directories: two files both directly under a
@@ -49,7 +49,7 @@ def _module_entities(entity_id_df, filepaths: set[str]) -> dict[str, dict[str, s
     *ids* stay distinct regardless, so it never merges two files into one
     node, just two visibly identical labels.
     """
-    if not {"path", "alias", "filepath", "value"} <= set(entity_id_df.columns):
+    if not {"path", "display_alias", "filepath", "value"} <= set(entity_id_df.columns):
         return {}
     result: dict[str, dict[str, str]] = {}
     for fp in filepaths:
@@ -58,7 +58,7 @@ def _module_entities(entity_id_df, filepaths: set[str]) -> dict[str, dict[str, s
         matches = rows[rows["path"].astype(str).str.split(":", n=1).str[-1] == module_name]
         if not matches.empty:
             row = matches.iloc[0]
-            result[fp] = {"id": row["value"], "alias": row["alias"]}
+            result[fp] = {"id": row["value"], "display_alias": row["display_alias"]}
     return result
 
 
@@ -73,12 +73,12 @@ def _file_node_id(filepath: str, module_entity_by_filepath: dict[str, dict[str, 
 
 def _file_node_label(filepath: str, module_entity_by_filepath: dict[str, dict[str, str]]) -> str:
     """A per-file overview node's label: that file's own module-entity
-    alias when it minted one, falling back to ``_module_label``'s bare
+    display_alias when it minted one, falling back to ``_module_label``'s bare
     stem for a file with no top-level docstring/``__iacs__`` marker of its
     own (only documented functions/classes inside it, so no module-level
-    entity -- and therefore no alias -- was ever extracted)."""
+    entity -- and therefore no display_alias -- was ever extracted)."""
     entity = module_entity_by_filepath.get(filepath)
-    return entity["alias"] if entity else _module_label(filepath)
+    return entity["display_alias"] if entity else _module_label(filepath)
 
 
 def build_architecture_graph(registrar: Registrar) -> dict:
@@ -107,7 +107,7 @@ def build_architecture_graph(registrar: Registrar) -> dict:
         its file's own module-level entity id when that file minted one
         (see ``_module_entities``), falling back to the filepath itself
         otherwise -- either way guaranteed unique per file, unlike
-        ``label`` (the entity's own ``alias``, or a bare module stem
+        ``label`` (the entity's own ``display_alias``, or a bare module stem
         fallback), which can collide across files (e.g. two projects'
         own top-level ``tests/conftest.py`` both alias to
         ``tests.conftest``) without that ever merging their nodes.

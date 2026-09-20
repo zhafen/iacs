@@ -91,7 +91,7 @@ def test_scd_support():
     # Get the entity_id for the player
     eids = registrar.get("entity_id")
     player_eid = (
-        eids.filter(eids["alias"].contains("player")).execute().iloc[0]["value"]
+        eids.filter(eids["display_alias"].contains("player")).execute().iloc[0]["value"]
     )
 
     # Add new player position

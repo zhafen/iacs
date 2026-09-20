@@ -20,7 +20,7 @@ class TestBuildRequirementForest:
 
     def test_no_requirements_returns_empty_root(self):
         registry = _registry(
-            entity_id_rows=[{"value": "e1", "entity_key": "e1"}],
+            entity_id_rows=[{"value": "e1", "display_key": "e1"}],
             parent_rows=[],
             requirement_rows=[],
         )
@@ -30,8 +30,8 @@ class TestBuildRequirementForest:
     def test_single_root_returned_directly(self):
         registry = _registry(
             entity_id_rows=[
-                {"value": "root", "entity_key": "root_req"},
-                {"value": "child", "entity_key": "child_req"},
+                {"value": "root", "display_key": "root_req"},
+                {"value": "child", "display_key": "child_req"},
             ],
             parent_rows=[{"entity_id": "child", "parent_eid": "root"}],
             requirement_rows=[
@@ -48,8 +48,8 @@ class TestBuildRequirementForest:
     def test_multiple_roots_wrapped_and_sorted_by_priority(self):
         registry = _registry(
             entity_id_rows=[
-                {"value": "low", "entity_key": "low_priority_req"},
-                {"value": "high", "entity_key": "high_priority_req"},
+                {"value": "low", "display_key": "low_priority_req"},
+                {"value": "high", "display_key": "high_priority_req"},
             ],
             parent_rows=[],
             requirement_rows=[
@@ -72,9 +72,9 @@ class TestBuildRequirementForest:
         either."""
         registry = _registry(
             entity_id_rows=[
-                {"value": "root", "entity_key": "root_req"},
-                {"value": "mid", "entity_key": "non_requirement_entity"},
-                {"value": "leaf", "entity_key": "leaf_req"},
+                {"value": "root", "display_key": "root_req"},
+                {"value": "mid", "display_key": "non_requirement_entity"},
+                {"value": "leaf", "display_key": "leaf_req"},
             ],
             parent_rows=[
                 {"entity_id": "mid", "parent_eid": "root"},
@@ -96,8 +96,8 @@ class TestBuildRequirementTreeUnchanged:
     def test_builds_tree_from_ancestor_key(self):
         registry = _registry(
             entity_id_rows=[
-                {"value": "root", "entity_key": "root_req"},
-                {"value": "child", "entity_key": "child_req"},
+                {"value": "root", "display_key": "root_req"},
+                {"value": "child", "display_key": "child_req"},
             ],
             parent_rows=[{"entity_id": "child", "parent_eid": "root"}],
             requirement_rows=[
@@ -114,7 +114,7 @@ class TestBuildRequirementTreeUnchanged:
 
     def test_raises_for_unknown_ancestor_key(self):
         registry = _registry(
-            entity_id_rows=[{"value": "e1", "entity_key": "e1"}],
+            entity_id_rows=[{"value": "e1", "display_key": "e1"}],
             parent_rows=[],
             requirement_rows=[],
         )

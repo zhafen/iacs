@@ -31,7 +31,7 @@ def build_requirement_tree(registrar: Registrar, ancestor_key: str) -> dict:
 
     Args:
         registrar: A Registrar instance with loaded registry data.
-        ancestor_key: The entity_key of the root entity for the tree.
+        ancestor_key: The display_key of the root entity for the tree.
 
     Returns:
         A nested dict with keys 'name', 'priority', and optionally 'children'.
@@ -43,15 +43,15 @@ def build_requirement_tree(registrar: Registrar, ancestor_key: str) -> dict:
     parents_pd = registrar.get("parent").to_pandas()
     reqs_pd = registrar.get("requirement_priority").to_pandas()
 
-    id_to_key = entity_ids_pd.set_index("value")["entity_key"].to_dict()
+    id_to_key = entity_ids_pd.set_index("value")["display_key"].to_dict()
     req_ids = non_format_guide_ids(entity_ids_pd, set(reqs_pd["entity_id"].unique()))
 
     # Use max priority per entity (an entity may have multiple requirement rows)
     id_to_priority = reqs_pd.groupby("entity_id")["value"].max().to_dict()
 
-    ancestor_rows = entity_ids_pd[entity_ids_pd["entity_key"] == ancestor_key]
+    ancestor_rows = entity_ids_pd[entity_ids_pd["display_key"] == ancestor_key]
     if ancestor_rows.empty:
-        raise ValueError(f"No entity found with entity_key '{ancestor_key}'")
+        raise ValueError(f"No entity found with display_key '{ancestor_key}'")
     ancestor_id = ancestor_rows.iloc[0]["value"]
 
     # Build full graph and find req descendants
@@ -103,7 +103,7 @@ def build_requirement_forest(registrar: Registrar) -> dict:
     if not req_ids:
         return {"name": "Requirements", "priority": None}
 
-    id_to_key = entity_ids_pd.set_index("value")["entity_key"].to_dict()
+    id_to_key = entity_ids_pd.set_index("value")["display_key"].to_dict()
     id_to_priority = reqs_pd.groupby("entity_id")["value"].max().to_dict()
 
     graph = nx.DiGraph()
