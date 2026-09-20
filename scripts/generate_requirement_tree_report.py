@@ -253,7 +253,7 @@ def load_dependencies_data(registrar, root_key: str) -> dict | None:
     path_of = dict(zip(eids["value"].astype(str), eids["path"].astype(str)))
 
     container_prefix = f"{root_key}.{DEPENDENCIES_KEY}."
-    entity_keys: dict[str, str] = {}
+    display_keys: dict[str, str] = {}
     for eid, p in path_of.items():
         cp = _clean(p)
         idx = cp.find(container_prefix)
@@ -262,28 +262,28 @@ def load_dependencies_data(registrar, root_key: str) -> dict | None:
         rest = cp[idx + len(container_prefix):]
         if "." in rest:
             continue  # only direct children of dependencies:, not further-nested entities
-        entity_keys[eid] = rest
+        display_keys[eid] = rest
 
-    if not entity_keys:
+    if not display_keys:
         return None
 
     descriptions: dict[str, str] = {}
     for _, row in registrar.get("description").execute().iterrows():
         eid = str(row["entity_id"])
-        if eid in entity_keys:
-            descriptions[entity_keys[eid]] = str(row["value"])
+        if eid in display_keys:
+            descriptions[display_keys[eid]] = str(row["value"])
 
     work_states: dict[str, str] = {}
     for _, row in registrar.get("work_state").execute().iterrows():
         eid = str(row["entity_id"])
-        if eid in entity_keys:
-            work_states[entity_keys[eid]] = str(row["value"])
+        if eid in display_keys:
+            work_states[display_keys[eid]] = str(row["value"])
 
     locations: dict[str, str] = {}
     for _, row in registrar.get("location").execute().iterrows():
         eid = str(row["entity_id"])
-        if eid in entity_keys:
-            locations[entity_keys[eid]] = str(row["value"])
+        if eid in display_keys:
+            locations[display_keys[eid]] = str(row["value"])
 
     entities = {
         key: {
@@ -291,7 +291,7 @@ def load_dependencies_data(registrar, root_key: str) -> dict | None:
             "work_state": work_states.get(key, "unknown"),
             "location": locations.get(key, key),
         }
-        for key in entity_keys.values()
+        for key in display_keys.values()
     }
 
     def short_key(eid: str) -> str:
@@ -306,9 +306,9 @@ def load_dependencies_data(registrar, root_key: str) -> dict | None:
             if tgt_eid is None or (isinstance(tgt_eid, float) and tgt_eid != tgt_eid):
                 continue
             tgt_eid = str(tgt_eid)
-            if tgt_eid not in entity_keys or src_eid not in path_of:
+            if tgt_eid not in display_keys or src_eid not in path_of:
                 continue
-            dep_key = entity_keys[tgt_eid]
+            dep_key = display_keys[tgt_eid]
             sol_key = short_key(src_eid)
             dependency_to_solutions.setdefault(dep_key, [])
             if sol_key not in dependency_to_solutions[dep_key]:

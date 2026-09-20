@@ -121,15 +121,15 @@ entity_id_table = pd.DataFrame(
         {
             "value": main_req_id,
             "path": f"{filepath}:make_cats_happy",
-            "alias": "make_cats_happy",
-            "entity_key": "make_cats_happy",
+            "display_alias": "make_cats_happy",
+            "display_key": "make_cats_happy",
             "filepath": filepath,
         },
         {
             "value": feed_cats_req_id,
             "path": f"{filepath}:make_cats_happy.feed_and_water_cats.feed_cats",
-            "alias": "feed_and_water_cats.feed_cats",
-            "entity_key": "feed_cats",
+            "display_alias": "feed_and_water_cats.feed_cats",
+            "display_key": "feed_cats",
             "filepath": filepath,
         },
     ]

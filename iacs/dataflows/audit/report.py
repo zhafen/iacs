@@ -57,7 +57,7 @@ def cost_impact_data(resolved_impact_cost: ir.Table, entity_id: ir.Table) -> lis
     df = resolved_impact_cost.to_pandas()
     if df.empty:
         return []
-    id_to_key = entity_id.to_pandas().set_index("value")["entity_key"].to_dict()
+    id_to_key = entity_id.to_pandas().set_index("value")["display_key"].to_dict()
     df = df.copy()
     df["label"] = df["entity_id"].map(id_to_key).fillna(df["entity_id"].str.slice(0, 8))
     df = df.sort_values("label")

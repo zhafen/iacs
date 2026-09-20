@@ -170,7 +170,7 @@ def cmd_generate_architecture_diagram(
 
     With no ``root``, renders the whole-project overview: one node per
     file (``build_architecture_graph``). With ``root`` (an entity hash,
-    alias, or path substring -- e.g. a function name), renders instead the
+    display_alias, or path substring -- e.g. a function name), renders instead the
     entity-level reachability trace outward from that one entry point
     (``build_call_reachability``), grouped into one subgraph per file.
 

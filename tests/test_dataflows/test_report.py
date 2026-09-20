@@ -16,8 +16,8 @@ from iacs.registrar import Registrar
 def _impact_cost_registry():
     return Registry.from_component_rows({
         "entity_id": [
-            {"value": "e1", "entity_key": "high_impact_activity"},
-            {"value": "e2", "entity_key": "high_cost_activity"},
+            {"value": "e1", "display_key": "high_impact_activity"},
+            {"value": "e2", "display_key": "high_cost_activity"},
         ],
         "resolved_impact_cost": [
             {"entity_id": "e1", "impact": 4.0, "cost": 1.0, "diff": 3.0, "ratio": 4.0},
@@ -43,7 +43,7 @@ class TestCostImpactData:
         # No resolved_impact_cost table at all -> Registry's generic empty
         # entity_id/value fallback schema, which cost_impact_data must handle.
         registry = Registry.from_component_rows({
-            "entity_id": [{"value": "e1", "entity_key": "e1"}],
+            "entity_id": [{"value": "e1", "display_key": "e1"}],
         })
         rows = cost_impact_data(
             registry.get("resolved_impact_cost"), registry.get("entity_id")

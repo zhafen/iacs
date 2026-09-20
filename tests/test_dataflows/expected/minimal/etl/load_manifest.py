@@ -41,15 +41,15 @@ entity_id_table = pd.DataFrame(
         {
             "value": dhash("examples/minimal/minimal.yaml:my_requirement"),
             "path": "examples/minimal/minimal.yaml:my_requirement",
-            "alias": "my_requirement",
-            "entity_key": "my_requirement",
+            "display_alias": "my_requirement",
+            "display_key": "my_requirement",
             "filepath": "examples/minimal/minimal.yaml",
         },
         {
             "value": dhash("examples/minimal/minimal.yaml:my_infrastructure"),
             "path": "examples/minimal/minimal.yaml:my_infrastructure",
-            "alias": "my_infrastructure",
-            "entity_key": "my_infrastructure",
+            "display_alias": "my_infrastructure",
+            "display_key": "my_infrastructure",
             "filepath": "examples/minimal/minimal.yaml",
         },
     ]

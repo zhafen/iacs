@@ -71,7 +71,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_ve.add_argument(
         "entity_id",
-        help="Entity hash or alias (e.g. 'feed_cats' or 'system.feed_cats').",
+        help="Entity hash or display_alias (e.g. 'feed_cats' or 'system.feed_cats').",
     )
     p_ve.add_argument(
         "--format",
@@ -141,7 +141,7 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="ENTITY",
         default=None,
         help=(
-            "Entity hash, alias, or path substring to use as an entry point "
+            "Entity hash, display_alias, or path substring to use as an entry point "
             "(e.g. a function name). Renders the entity-level call trace "
             "reachable from it instead of the whole-project file overview."
         ),

@@ -38,13 +38,13 @@ class TestBuildArchitectureGraph:
         # columns to infer), so this uses a row that simply lacks the
         # `filepath` key -- the resulting table has no `filepath` column at
         # all, the same "nothing to group by" case in practice.
-        registry = _registry(entity_id_rows=[{"value": "e1", "entity_key": "e1"}])
+        registry = _registry(entity_id_rows=[{"value": "e1", "display_key": "e1"}])
         graph = build_architecture_graph(registry)
         assert graph == {"nodes": [], "edges": []}
 
     def test_entities_with_no_calls_or_imports_produce_nodes_but_no_edges(self):
         registry = _registry(entity_id_rows=[
-            {"value": "e1", "entity_key": "foo", "filepath": "pkg/mod.py"},
+            {"value": "e1", "display_key": "foo", "filepath": "pkg/mod.py"},
         ])
         graph = build_architecture_graph(registry)
         assert graph["nodes"] == [{"id": "pkg/mod.py", "label": "mod"}]
@@ -53,8 +53,8 @@ class TestBuildArchitectureGraph:
     def test_resolved_call_across_files_becomes_an_edge(self):
         registry = _registry(
             entity_id_rows=[
-                {"value": "caller_e", "entity_key": "main", "filepath": "pkg/a.py"},
-                {"value": "callee_e", "entity_key": "helper", "filepath": "pkg/b.py"},
+                {"value": "caller_e", "display_key": "main", "filepath": "pkg/a.py"},
+                {"value": "callee_e", "display_key": "helper", "filepath": "pkg/b.py"},
             ],
             calls_rows=[
                 {"entity_id": "caller_e", "value": "helper", "value_eid": "callee_e"},
@@ -70,7 +70,7 @@ class TestBuildArchitectureGraph:
     def test_unresolved_call_produces_no_edge(self):
         registry = _registry(
             entity_id_rows=[
-                {"value": "caller_e", "entity_key": "main", "filepath": "pkg/a.py"},
+                {"value": "caller_e", "display_key": "main", "filepath": "pkg/a.py"},
             ],
             calls_rows=[
                 # A None value_eid (no unique entity_ref match) and a
@@ -86,8 +86,8 @@ class TestBuildArchitectureGraph:
     def test_call_within_same_file_is_dropped_as_a_self_edge(self):
         registry = _registry(
             entity_id_rows=[
-                {"value": "caller_e", "entity_key": "main", "filepath": "pkg/a.py"},
-                {"value": "callee_e", "entity_key": "helper", "filepath": "pkg/a.py"},
+                {"value": "caller_e", "display_key": "main", "filepath": "pkg/a.py"},
+                {"value": "callee_e", "display_key": "helper", "filepath": "pkg/a.py"},
             ],
             calls_rows=[
                 {"entity_id": "caller_e", "value": "helper", "value_eid": "callee_e"},
@@ -99,9 +99,9 @@ class TestBuildArchitectureGraph:
     def test_duplicate_calls_between_same_files_collapse_to_one_edge(self):
         registry = _registry(
             entity_id_rows=[
-                {"value": "caller1", "entity_key": "main", "filepath": "pkg/a.py"},
-                {"value": "caller2", "entity_key": "other", "filepath": "pkg/a.py"},
-                {"value": "callee_e", "entity_key": "helper", "filepath": "pkg/b.py"},
+                {"value": "caller1", "display_key": "main", "filepath": "pkg/a.py"},
+                {"value": "caller2", "display_key": "other", "filepath": "pkg/a.py"},
+                {"value": "callee_e", "display_key": "helper", "filepath": "pkg/b.py"},
             ],
             calls_rows=[
                 {"entity_id": "caller1", "value": "helper", "value_eid": "callee_e"},
@@ -116,8 +116,8 @@ class TestBuildArchitectureGraph:
     def test_resolved_import_becomes_an_imports_edge(self):
         registry = _registry(
             entity_id_rows=[
-                {"value": "mod_e", "entity_key": "a", "filepath": "pkg/a.py"},
-                {"value": "dep_e", "entity_key": "b", "filepath": "pkg/b.py"},
+                {"value": "mod_e", "display_key": "a", "filepath": "pkg/a.py"},
+                {"value": "dep_e", "display_key": "b", "filepath": "pkg/b.py"},
             ],
             imports_rows=[
                 {"entity_id": "mod_e", "value": "pkg.b", "value_eid": "dep_e"},
@@ -134,16 +134,16 @@ class TestBuildArchitectureGraph:
         in a call/import graph and would only ever show up as edgeless
         clutter, so it's filtered out rather than surfaced as a node."""
         registry = _registry(entity_id_rows=[
-            {"value": "e1", "entity_key": "foo", "filepath": "pkg/mod.py"},
-            {"value": "e2", "entity_key": "bar", "filepath": "manifest/builtins.yaml"},
+            {"value": "e1", "display_key": "foo", "filepath": "pkg/mod.py"},
+            {"value": "e2", "display_key": "bar", "filepath": "manifest/builtins.yaml"},
         ])
         graph = build_architecture_graph(registry)
         assert graph["nodes"] == [{"id": "pkg/mod.py", "label": "mod"}]
 
     def test_nodes_are_sorted_by_filepath(self):
         registry = _registry(entity_id_rows=[
-            {"value": "e1", "entity_key": "z", "filepath": "pkg/z.py"},
-            {"value": "e2", "entity_key": "a", "filepath": "pkg/a.py"},
+            {"value": "e1", "display_key": "z", "filepath": "pkg/z.py"},
+            {"value": "e2", "display_key": "a", "filepath": "pkg/a.py"},
         ])
         graph = build_architecture_graph(registry)
         assert [n["id"] for n in graph["nodes"]] == ["pkg/a.py", "pkg/z.py"]
@@ -154,19 +154,19 @@ class TestBuildArchitectureGraph:
         ``alias`` is what the node should display, and its own entity id
         (not the filepath) is what the node's id becomes."""
         registry = _registry(entity_id_rows=[
-            {"value": "mod_e", "entity_key": "mod", "filepath": "pkg/mod.py",
-             "path": "pkg/mod.py:pkg.mod", "alias": "pkg.mod"},
+            {"value": "mod_e", "display_key": "mod", "filepath": "pkg/mod.py",
+             "path": "pkg/mod.py:pkg.mod", "display_alias": "pkg.mod"},
         ])
         graph = build_architecture_graph(registry)
         assert graph["nodes"] == [{"id": "mod_e", "label": "pkg.mod"}]
 
     def test_distinct_parent_directories_get_distinct_aliases(self):
         registry = _registry(entity_id_rows=[
-            {"value": "e1", "entity_key": "test_scenario", "filepath": "parking/test_scenario.py",
-             "path": "parking/test_scenario.py:parking.test_scenario", "alias": "parking.test_scenario"},
-            {"value": "e2", "entity_key": "test_scenario", "filepath": "parking_split/test_scenario.py",
+            {"value": "e1", "display_key": "test_scenario", "filepath": "parking/test_scenario.py",
+             "path": "parking/test_scenario.py:parking.test_scenario", "display_alias": "parking.test_scenario"},
+            {"value": "e2", "display_key": "test_scenario", "filepath": "parking_split/test_scenario.py",
              "path": "parking_split/test_scenario.py:parking_split.test_scenario",
-             "alias": "parking_split.test_scenario"},
+             "display_alias": "parking_split.test_scenario"},
         ])
         graph = build_architecture_graph(registry)
         labels = {n["label"] for n in graph["nodes"]}
@@ -189,10 +189,10 @@ class TestBuildArchitectureGraph:
             # "repo_a.tests.conftest", not the alias -- while "alias" is
             # separately just its own last two dot-segments, which is
             # where the collision actually comes from.
-            {"value": "e1", "entity_key": "conftest", "filepath": "repo_a/tests/conftest.py",
-             "path": "repo_a/tests/conftest.py:repo_a.tests.conftest", "alias": "tests.conftest"},
-            {"value": "e2", "entity_key": "conftest", "filepath": "repo_b/tests/conftest.py",
-             "path": "repo_b/tests/conftest.py:repo_b.tests.conftest", "alias": "tests.conftest"},
+            {"value": "e1", "display_key": "conftest", "filepath": "repo_a/tests/conftest.py",
+             "path": "repo_a/tests/conftest.py:repo_a.tests.conftest", "display_alias": "tests.conftest"},
+            {"value": "e2", "display_key": "conftest", "filepath": "repo_b/tests/conftest.py",
+             "path": "repo_b/tests/conftest.py:repo_b.tests.conftest", "display_alias": "tests.conftest"},
         ])
         graph = build_architecture_graph(registry)
         ids = {n["id"] for n in graph["nodes"]}
@@ -203,12 +203,12 @@ class TestBuildArchitectureGraph:
     def test_edges_use_module_entity_ids_when_present(self):
         registry = _registry(
             entity_id_rows=[
-                {"value": "caller_mod", "entity_key": "a", "filepath": "pkg/a.py",
-                 "path": "pkg/a.py:pkg.a", "alias": "pkg.a"},
-                {"value": "caller_e", "entity_key": "main", "filepath": "pkg/a.py"},
-                {"value": "callee_mod", "entity_key": "b", "filepath": "pkg/b.py",
-                 "path": "pkg/b.py:pkg.b", "alias": "pkg.b"},
-                {"value": "callee_e", "entity_key": "helper", "filepath": "pkg/b.py"},
+                {"value": "caller_mod", "display_key": "a", "filepath": "pkg/a.py",
+                 "path": "pkg/a.py:pkg.a", "display_alias": "pkg.a"},
+                {"value": "caller_e", "display_key": "main", "filepath": "pkg/a.py"},
+                {"value": "callee_mod", "display_key": "b", "filepath": "pkg/b.py",
+                 "path": "pkg/b.py:pkg.b", "display_alias": "pkg.b"},
+                {"value": "callee_e", "display_key": "helper", "filepath": "pkg/b.py"},
             ],
             calls_rows=[
                 {"entity_id": "caller_e", "value": "helper", "value_eid": "callee_e"},
@@ -271,7 +271,7 @@ class TestBuildCallReachability:
 
     def test_root_alone_when_no_calls(self):
         registry = _reachability_registry(entity_id_rows=[
-            {"value": "root_e", "entity_key": "main", "alias": "main",
+            {"value": "root_e", "display_key": "main", "display_alias": "main",
              "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
         ])
         graph = build_call_reachability(registry, "main")
@@ -284,9 +284,9 @@ class TestBuildCallReachability:
     def test_direct_call_is_included(self):
         registry = _reachability_registry(
             entity_id_rows=[
-                {"value": "root_e", "entity_key": "main", "alias": "main",
+                {"value": "root_e", "display_key": "main", "display_alias": "main",
                  "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
-                {"value": "helper_e", "entity_key": "helper", "alias": "helper",
+                {"value": "helper_e", "display_key": "helper", "display_alias": "helper",
                  "path": "mod_a.py:mod_a.helper", "filepath": "mod_a.py"},
             ],
             calls_rows=[
@@ -301,11 +301,11 @@ class TestBuildCallReachability:
     def test_transitive_call_two_hops_is_included(self):
         registry = _reachability_registry(
             entity_id_rows=[
-                {"value": "root_e", "entity_key": "main", "alias": "main",
+                {"value": "root_e", "display_key": "main", "display_alias": "main",
                  "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
-                {"value": "mid_e", "entity_key": "helper", "alias": "helper",
+                {"value": "mid_e", "display_key": "helper", "display_alias": "helper",
                  "path": "mod_a.py:mod_a.helper", "filepath": "mod_a.py"},
-                {"value": "leaf_e", "entity_key": "util", "alias": "util",
+                {"value": "leaf_e", "display_key": "util", "display_alias": "util",
                  "path": "mod_b.py:mod_b.util", "filepath": "mod_b.py"},
             ],
             calls_rows=[
@@ -321,11 +321,11 @@ class TestBuildCallReachability:
     def test_max_depth_limits_traversal(self):
         registry = _reachability_registry(
             entity_id_rows=[
-                {"value": "root_e", "entity_key": "main", "alias": "main",
+                {"value": "root_e", "display_key": "main", "display_alias": "main",
                  "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
-                {"value": "mid_e", "entity_key": "helper", "alias": "helper",
+                {"value": "mid_e", "display_key": "helper", "display_alias": "helper",
                  "path": "mod_a.py:mod_a.helper", "filepath": "mod_a.py"},
-                {"value": "leaf_e", "entity_key": "util", "alias": "util",
+                {"value": "leaf_e", "display_key": "util", "display_alias": "util",
                  "path": "mod_b.py:mod_b.util", "filepath": "mod_b.py"},
             ],
             calls_rows=[
@@ -340,9 +340,9 @@ class TestBuildCallReachability:
     def test_cycle_does_not_infinite_loop(self):
         registry = _reachability_registry(
             entity_id_rows=[
-                {"value": "a_e", "entity_key": "a", "alias": "a",
+                {"value": "a_e", "display_key": "a", "display_alias": "a",
                  "path": "mod_x.py:mod_x.a", "filepath": "mod_x.py"},
-                {"value": "b_e", "entity_key": "b", "alias": "b",
+                {"value": "b_e", "display_key": "b", "display_alias": "b",
                  "path": "mod_x.py:mod_x.b", "filepath": "mod_x.py"},
             ],
             calls_rows=[
@@ -359,9 +359,9 @@ class TestBuildCallReachability:
     def test_unresolved_call_is_not_followed(self):
         registry = _reachability_registry(
             entity_id_rows=[
-                {"value": "root_e", "entity_key": "main", "alias": "main",
+                {"value": "root_e", "display_key": "main", "display_alias": "main",
                  "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
-                {"value": "helper_e", "entity_key": "helper", "alias": "helper",
+                {"value": "helper_e", "display_key": "helper", "display_alias": "helper",
                  "path": "mod_a.py:mod_a.helper", "filepath": "mod_a.py"},
             ],
             calls_rows=[
@@ -381,9 +381,9 @@ class TestBuildCallReachability:
     def test_same_file_calls_are_kept_unlike_the_collapsed_graph(self):
         registry = _reachability_registry(
             entity_id_rows=[
-                {"value": "root_e", "entity_key": "main", "alias": "main",
+                {"value": "root_e", "display_key": "main", "display_alias": "main",
                  "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
-                {"value": "helper_e", "entity_key": "helper", "alias": "helper",
+                {"value": "helper_e", "display_key": "helper", "display_alias": "helper",
                  "path": "mod_a.py:mod_a.helper", "filepath": "mod_a.py"},
             ],
             calls_rows=[
@@ -396,11 +396,11 @@ class TestBuildCallReachability:
     def test_call_sequence_targets_follow_seq_not_calls_row_order(self):
         registry = _reachability_registry(
             entity_id_rows=[
-                {"value": "root_e", "entity_key": "main", "alias": "main",
+                {"value": "root_e", "display_key": "main", "display_alias": "main",
                  "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
-                {"value": "a_e", "entity_key": "call_a", "alias": "call_a",
+                {"value": "a_e", "display_key": "call_a", "display_alias": "call_a",
                  "path": "mod_a.py:mod_a.call_a", "filepath": "mod_a.py"},
-                {"value": "b_e", "entity_key": "call_b", "alias": "call_b",
+                {"value": "b_e", "display_key": "call_b", "display_alias": "call_b",
                  "path": "mod_a.py:mod_a.call_b", "filepath": "mod_a.py"},
             ],
             calls_rows=[
@@ -417,11 +417,11 @@ class TestBuildCallReachability:
     def test_call_sequence_skips_over_an_unresolved_call_in_the_middle(self):
         registry = _reachability_registry(
             entity_id_rows=[
-                {"value": "root_e", "entity_key": "main", "alias": "main",
+                {"value": "root_e", "display_key": "main", "display_alias": "main",
                  "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
-                {"value": "a_e", "entity_key": "call_a", "alias": "call_a",
+                {"value": "a_e", "display_key": "call_a", "display_alias": "call_a",
                  "path": "mod_a.py:mod_a.call_a", "filepath": "mod_a.py"},
-                {"value": "b_e", "entity_key": "call_b", "alias": "call_b",
+                {"value": "b_e", "display_key": "call_b", "display_alias": "call_b",
                  "path": "mod_a.py:mod_a.call_b", "filepath": "mod_a.py"},
             ],
             calls_rows=[
@@ -436,9 +436,9 @@ class TestBuildCallReachability:
     def test_call_sequence_has_a_single_target_for_a_single_call(self):
         registry = _reachability_registry(
             entity_id_rows=[
-                {"value": "root_e", "entity_key": "main", "alias": "main",
+                {"value": "root_e", "display_key": "main", "display_alias": "main",
                  "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
-                {"value": "a_e", "entity_key": "call_a", "alias": "call_a",
+                {"value": "a_e", "display_key": "call_a", "display_alias": "call_a",
                  "path": "mod_a.py:mod_a.call_a", "filepath": "mod_a.py"},
             ],
             calls_rows=[
@@ -451,11 +451,11 @@ class TestBuildCallReachability:
     def test_call_sequences_are_kept_separate_per_caller(self):
         registry = _reachability_registry(
             entity_id_rows=[
-                {"value": "root_e", "entity_key": "main", "alias": "main",
+                {"value": "root_e", "display_key": "main", "display_alias": "main",
                  "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
-                {"value": "a_e", "entity_key": "call_a", "alias": "call_a",
+                {"value": "a_e", "display_key": "call_a", "display_alias": "call_a",
                  "path": "mod_a.py:mod_a.call_a", "filepath": "mod_a.py"},
-                {"value": "b_e", "entity_key": "call_b", "alias": "call_b",
+                {"value": "b_e", "display_key": "call_b", "display_alias": "call_b",
                  "path": "mod_a.py:mod_a.call_b", "filepath": "mod_a.py"},
             ],
             calls_rows=[
@@ -480,11 +480,11 @@ class TestBuildCallReachability:
         limits_traversal's existing "no edge for it either" behavior."""
         registry = _reachability_registry(
             entity_id_rows=[
-                {"value": "root_e", "entity_key": "main", "alias": "main",
+                {"value": "root_e", "display_key": "main", "display_alias": "main",
                  "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
-                {"value": "mid_e", "entity_key": "helper", "alias": "helper",
+                {"value": "mid_e", "display_key": "helper", "display_alias": "helper",
                  "path": "mod_a.py:mod_a.helper", "filepath": "mod_a.py"},
-                {"value": "leaf_e", "entity_key": "util", "alias": "util",
+                {"value": "leaf_e", "display_key": "util", "display_alias": "util",
                  "path": "mod_b.py:mod_b.util", "filepath": "mod_b.py"},
             ],
             calls_rows=[
@@ -497,19 +497,19 @@ class TestBuildCallReachability:
 
     def test_root_not_found_raises(self):
         registry = _reachability_registry(entity_id_rows=[
-            {"value": "root_e", "entity_key": "main", "alias": "main",
+            {"value": "root_e", "display_key": "main", "display_alias": "main",
              "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
         ])
         with pytest.raises(ValueError, match="does_not_exist"):
             build_call_reachability(registry, "does_not_exist")
 
     def test_ambiguous_root_raises(self):
-        # No `alias` column -- candidate_entity_ids falls straight through
+        # No `display_alias` column -- candidate_entity_ids falls straight through
         # to substring-of-path matching, where "foo" matches both rows.
         registry = _reachability_registry(entity_id_rows=[
-            {"value": "a_e", "entity_key": "helper_foo",
+            {"value": "a_e", "display_key": "helper_foo",
              "path": "mod_a.py:mod_a.helper_foo", "filepath": "mod_a.py"},
-            {"value": "b_e", "entity_key": "other_foo",
+            {"value": "b_e", "display_key": "other_foo",
              "path": "mod_b.py:mod_b.other_foo", "filepath": "mod_b.py"},
         ])
         with pytest.raises(ValueError, match="foo"):
@@ -523,9 +523,9 @@ class TestBuildCallReachability:
         shown as a false-positive node/edge."""
         registry = _reachability_registry(
             entity_id_rows=[
-                {"value": "root_e", "entity_key": "main", "alias": "main",
+                {"value": "root_e", "display_key": "main", "display_alias": "main",
                  "path": "mod_a.py:mod_a.main", "filepath": "mod_a.py"},
-                {"value": "yaml_e", "entity_key": "float", "alias": "float",
+                {"value": "yaml_e", "display_key": "float", "display_alias": "float",
                  "path": "builtins/components.yaml:base_data_type.float",
                  "filepath": "builtins/components.yaml"},
             ],
@@ -539,7 +539,7 @@ class TestBuildCallReachability:
 
     def test_class_method_label_keeps_class_prefix(self):
         registry = _reachability_registry(entity_id_rows=[
-            {"value": "root_e", "entity_key": "resolve", "alias": "resolve",
+            {"value": "root_e", "display_key": "resolve", "display_alias": "resolve",
              "path": "story_simulator/resolve.py:story_simulator.resolve.TurnReplay.resolve",
              "filepath": "story_simulator/resolve.py"},
         ])
@@ -548,7 +548,7 @@ class TestBuildCallReachability:
 
     def test_module_entity_label_is_just_the_module_name(self):
         registry = _reachability_registry(entity_id_rows=[
-            {"value": "root_e", "entity_key": "core", "alias": "core",
+            {"value": "root_e", "display_key": "core", "display_alias": "core",
              "path": "story_simulator/core.py:story_simulator.core",
              "filepath": "story_simulator/core.py"},
         ])
