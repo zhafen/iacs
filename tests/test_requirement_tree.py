@@ -4,7 +4,7 @@ from emc2p.registry import Registry
 from iacs.views.requirement_tree import build_requirement_forest, build_requirement_tree
 
 
-def _registry(entity_id_rows, parent_rows, requirement_rows, solution_rows=None):
+def _registry(entity_id_rows, parent_rows, requirement_rows, solution_rows=None, requirement_relation_rows=None):
     # Registry.from_component_rows/duckdb can't create a table from an empty
     # row list (no columns to infer), so omitted component types fall back
     # to Registry's generic empty entity_id/value schema instead.
@@ -19,6 +19,11 @@ def _registry(entity_id_rows, parent_rows, requirement_rows, solution_rows=None)
         # since this helper builds the registry from component rows rather
         # than running the full load pipeline.
         components["solution"] = solution_rows
+    if requirement_relation_rows:
+        # The directed_relation "requirement" type (inverse of "solution"),
+        # not the scored "requirement_priority" tag -- same value_eid caveat
+        # as solution_rows above.
+        components["requirement"] = requirement_relation_rows
     return Registry.from_component_rows(components)
 
 
@@ -134,6 +139,60 @@ class TestBuildRequirementForest:
         forest = build_requirement_forest(registry)
         names = {c["name"]: c["priority"] for c in forest["children"]}
         assert names == {"scored_req": 0.5, "unscored_req": None}
+
+    def test_requirement_relation_target_is_a_requirement(self):
+        """The other half of the relation-only convention: an entity needs
+        no tag or solution of its own to count as a requirement -- being
+        the target (``value_eid``) of a ``requirement`` relation (i.e.
+        something else is required by it) is enough on its own. This is
+        what lets a pure grouping entity (one with sub-requirements but no
+        solution directly of its own) still appear in the tree instead of
+        vanishing, per pure_connection_architecture in
+        iacs_meta_discussion.requirement_solution_modeling_discussion."""
+        registry = _registry(
+            entity_id_rows=[
+                {"value": "needer", "display_key": "needer"},
+                {"value": "needed", "display_key": "needed"},
+            ],
+            parent_rows=[],
+            requirement_rows=[],
+            requirement_relation_rows=[
+                {"entity_id": "needed", "value": "needer", "value_eid": "needer"},
+            ],
+        )
+        forest = build_requirement_forest(registry)
+        names = {c["name"]: c["priority"] for c in forest["children"]}
+        assert names == {"needer": None, "needed": None}
+
+    def test_nested_grouping_entity_survives_via_requirement_relation(self):
+        """A grouping entity (``parent``) with no solution and no
+        requirement_priority of its own, but required-by a child that is
+        itself solved, must still appear as a tree node connecting that
+        child to the root -- otherwise the child would be wrongly promoted
+        to its own disconnected root, losing the hierarchy."""
+        registry = _registry(
+            entity_id_rows=[
+                {"value": "root", "display_key": "root"},
+                {"value": "grouping", "display_key": "grouping"},
+                {"value": "leaf", "display_key": "leaf"},
+                {"value": "sol", "display_key": "sol"},
+            ],
+            parent_rows=[
+                {"entity_id": "grouping", "parent_eid": "root"},
+                {"entity_id": "leaf", "parent_eid": "grouping"},
+            ],
+            requirement_rows=[{"entity_id": "root", "value": 1.0}],
+            solution_rows=[
+                {"entity_id": "sol", "value": "leaf", "value_eid": "leaf"},
+            ],
+            requirement_relation_rows=[
+                {"entity_id": "grouping", "value": "root", "value_eid": "root"},
+            ],
+        )
+        tree = build_requirement_tree(registry, "root")
+        assert tree["name"] == "root"
+        assert [c["name"] for c in tree["children"]] == ["grouping"]
+        assert [c["name"] for c in tree["children"][0]["children"]] == ["leaf"]
 
 
 class TestBuildRequirementTreeUnchanged:

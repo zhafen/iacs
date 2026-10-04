@@ -36,25 +36,36 @@ def _requirement_node(node_id, children_map: dict, id_to_key: dict, id_to_priori
 def _requirement_entity_ids(registrar: "Registrar", entity_ids_pd, reqs_pd) -> set:
     """IDs of entities that count as a requirement.
 
-    Union of two independent ways an entity earns that status, matching
-    the two conventions documented on the ``requirement``/``solution``
-    component types in emc2p's builtins/auditing.yaml:
+    Union of several independent ways an entity earns that status, matching
+    the conventions documented on the ``requirement``/``solution`` component
+    types in emc2p's builtins/auditing.yaml (pure_connection_architecture in
+    iacs_meta_discussion.requirement_solution_modeling_discussion):
 
     - Tagged: it carries a ``requirement_priority`` component (a scored,
-      standalone requirement).
-    - Relation-only: it's the target (``value_eid``) of a ``solution``
-      component -- some other entity solves it -- with no tag of its own.
-      This is the convention iacs's own manifest favors for a plain
-      requirement/candidate-solutions pairing that doesn't need a score.
+      standalone requirement; the older, now-deprecated convention).
+    - Solved: it's the target (``value_eid``) of a ``solution`` component --
+      some other entity solves it -- with no tag of its own.
+    - Related: it's either side of a ``requirement`` component (the
+      directed_relation inverse of ``solution``) -- the thing required
+      (``entity_id``) or the thing requiring it (``value_eid``). Including
+      both sides matters for a grouping entity with no solution or score of
+      its own: it's required by its parent and requires its children, and
+      needs to stay a tree node on both counts so its sub-requirements
+      don't get wrongly promoted into disconnected roots.
     """
     tagged_ids = non_format_guide_ids(entity_ids_pd, set(reqs_pd["entity_id"].unique()))
+
+    raw_relation_ids = set()
     solution_pd = registrar.get("solution").to_pandas()
-    if "value_eid" not in solution_pd.columns:
-        return tagged_ids
-    solved_ids = non_format_guide_ids(
-        entity_ids_pd, set(solution_pd["value_eid"].dropna().unique())
-    )
-    return tagged_ids | solved_ids
+    if "value_eid" in solution_pd.columns:
+        raw_relation_ids |= set(solution_pd["value_eid"].dropna().unique())
+    requirement_pd = registrar.get("requirement").to_pandas()
+    if "value_eid" in requirement_pd.columns:
+        raw_relation_ids |= set(requirement_pd["entity_id"].dropna().unique())
+        raw_relation_ids |= set(requirement_pd["value_eid"].dropna().unique())
+
+    relation_ids = non_format_guide_ids(entity_ids_pd, raw_relation_ids) if raw_relation_ids else set()
+    return tagged_ids | relation_ids
 
 
 def build_requirement_tree(registrar: Registrar, ancestor_key: str) -> dict:
