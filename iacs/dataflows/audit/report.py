@@ -1,9 +1,12 @@
 """Hamilton DAG that renders a polished, self-contained HTML audit report.
 
-Combines an aggregated cost-impact scatter plot (see
+DEPRECATED: combines an aggregated cost-impact scatter plot (see
 ``iacs.dataflows.derive.impact_cost``) with a navigable requirements tree
 (see ``iacs.views.requirement_tree``) into a single HTML file that can be
-opened directly in a browser.
+opened directly in a browser -- but the tree shows requirement names only,
+with no candidate solutions at all. For an actual requirement/solution
+report, use ``scripts/generate_requirement_tree_report.py`` instead; this
+dataflow is kept only for callers that still depend on it.
 """
 
 import html

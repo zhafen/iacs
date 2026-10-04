@@ -108,7 +108,12 @@ def _build_parser() -> argparse.ArgumentParser:
 
     p_gr = sub.add_parser(
         "generate-report",
-        help="Render a self-contained HTML audit report (cost-impact plot + requirement tree).",
+        help=(
+            "DEPRECATED: a self-contained HTML audit report (cost-impact plot + a bare "
+            "requirement-name tree, no solutions shown). Use "
+            "scripts/generate_requirement_tree_report.py instead for an actual "
+            "requirement/solution report."
+        ),
     )
     p_gr.add_argument(
         "--output",

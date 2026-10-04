@@ -39,9 +39,31 @@ def solution_with_state(solution: ir.Table, status: ir.Table) -> ir.Table:
     )
 
 
-def requirement_coverage(requirement_priority: ir.Table, solution_with_state: ir.Table) -> ir.Table:
+def requirement_entities(requirement_priority: ir.Table, solution: ir.Table) -> ir.Table:
+    """Entities that count as a requirement.
+
+    Union of two independent ways an entity earns that status, matching
+    the two conventions documented on the ``requirement``/``solution``
+    component types in emc2p's builtins/auditing.yaml: carrying a
+    ``requirement_priority`` tag (scored), or simply being the target
+    (``value_eid``) of a ``solution`` relation (relation-only, no tag or
+    score needed).
+    """
+    tagged = requirement_priority.select("entity_id").distinct()
+    if "value_eid" not in solution.columns:
+        return tagged
+    solved = (
+        solution
+        .filter(ibis._.value_eid.notnull())
+        .select(ibis._.value_eid.name("entity_id"))
+        .distinct()
+    )
+    return tagged.union(solved).distinct()
+
+
+def requirement_coverage(requirement_entities: ir.Table, solution_with_state: ir.Table) -> ir.Table:
     """For each requirement, show which solution covers it and its status."""
-    req = requirement_priority.select("entity_id").distinct()
+    req = requirement_entities
     return req.left_join(solution_with_state, "entity_id").select(
         ibis._.entity_id,
         ibis._.solution_eid,

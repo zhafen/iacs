@@ -7,19 +7,13 @@ import ibis.expr.types as ir
 from emc2p.registry import Registry
 
 
-INPUT_COMPONENT_TYPES = ["requirement_priority", "solution_of", "entity_id"]
+INPUT_COMPONENT_TYPES = ["requirement_priority", "solution", "entity_id"]
 
 
 @extract_fields({ct: ir.Table for ct in INPUT_COMPONENT_TYPES})
 def components(registry: Registry) -> dict:
-    """Give access to the components needed by this dataflow.
-
-    ``solution_of`` is fetched as ``"solution of"`` from the registry because
-    Hamilton node names cannot contain spaces.
-    """
-    result = {ct: registry.get(ct) for ct in INPUT_COMPONENT_TYPES if ct != "solution_of"}
-    result["solution_of"] = registry.get("solution of")
-    return result
+    """Give access to the components needed by this dataflow."""
+    return {ct: registry.get(ct) for ct in INPUT_COMPONENT_TYPES}
 
 
 def all_entities(entity_id: ir.Table) -> ibis.expr.types.Table:
@@ -27,14 +21,31 @@ def all_entities(entity_id: ir.Table) -> ibis.expr.types.Table:
     return entity_id.select(entity_id["value"].name("entity_id")).distinct()
 
 
-def req_entities(requirement_priority: ir.Table) -> ibis.expr.types.Table:
-    """Get entities with requirement_priority components."""
-    return requirement_priority.select("entity_id").distinct()
+def req_entities(requirement_priority: ir.Table, solution: ir.Table) -> ibis.expr.types.Table:
+    """Entities that count as a requirement.
+
+    Union of two independent ways an entity earns that status, matching
+    the two conventions documented on the ``requirement``/``solution``
+    component types in emc2p's builtins/auditing.yaml: carrying a
+    ``requirement_priority`` tag (scored), or simply being the target
+    (``value_eid``) of a ``solution`` relation (relation-only, no tag or
+    score needed).
+    """
+    tagged = requirement_priority.select("entity_id").distinct()
+    if "value_eid" not in solution.columns:
+        return tagged
+    solved = (
+        solution
+        .filter(ibis._.value_eid.notnull())
+        .select(ibis._.value_eid.name("entity_id"))
+        .distinct()
+    )
+    return tagged.union(solved).distinct()
 
 
-def solution_entities(solution_of: ir.Table) -> ibis.expr.types.Table:
-    """Get entities with solution of components."""
-    return solution_of.select("entity_id").distinct()
+def solution_entities(solution: ir.Table) -> ibis.expr.types.Table:
+    """Get entities with solution components."""
+    return solution.select("entity_id").distinct()
 
 
 def orphan_entities(
