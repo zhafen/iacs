@@ -4,7 +4,7 @@ from emc2p.registry import Registry
 from iacs.views.requirement_tree import build_requirement_forest, build_requirement_tree
 
 
-def _registry(entity_id_rows, parent_rows, requirement_rows):
+def _registry(entity_id_rows, parent_rows, requirement_rows, solution_rows=None):
     # Registry.from_component_rows/duckdb can't create a table from an empty
     # row list (no columns to infer), so omitted component types fall back
     # to Registry's generic empty entity_id/value schema instead.
@@ -13,6 +13,12 @@ def _registry(entity_id_rows, parent_rows, requirement_rows):
         components["parent"] = parent_rows
     if requirement_rows:
         components["requirement_priority"] = requirement_rows
+    if solution_rows:
+        # value_eid is normally populated by derive_components from the
+        # entity_ref-typed "value" field; these raw rows set it directly
+        # since this helper builds the registry from component rows rather
+        # than running the full load pipeline.
+        components["solution"] = solution_rows
     return Registry.from_component_rows(components)
 
 
@@ -88,6 +94,46 @@ class TestBuildRequirementForest:
         forest = build_requirement_forest(registry)
         assert forest["name"] == "root_req"
         assert "children" not in forest
+
+    def test_solution_target_without_requirement_priority_is_a_requirement(self):
+        """An entity needs no `requirement_priority` tag to be treated as a
+        requirement -- being solved by a `solution` relation is enough, per
+        the relation-only requirement/solution convention documented on
+        those component types in emc2p's builtins/auditing.yaml. Its
+        priority is reported as None (never defaulted to 0.5) so a view
+        can distinguish it from a `requirement_priority`-scored node."""
+        registry = _registry(
+            entity_id_rows=[
+                {"value": "untagged_req", "display_key": "untagged_req"},
+                {"value": "candidate_solution", "display_key": "candidate_solution"},
+            ],
+            parent_rows=[],
+            requirement_rows=[],
+            solution_rows=[
+                {"entity_id": "candidate_solution", "value": "untagged_req", "value_eid": "untagged_req"},
+            ],
+        )
+        forest = build_requirement_forest(registry)
+        assert forest["name"] == "untagged_req"
+        assert forest["priority"] is None
+        assert "children" not in forest
+
+    def test_tagged_and_relation_only_requirements_both_appear_as_roots(self):
+        registry = _registry(
+            entity_id_rows=[
+                {"value": "scored", "display_key": "scored_req"},
+                {"value": "unscored", "display_key": "unscored_req"},
+                {"value": "sol", "display_key": "sol"},
+            ],
+            parent_rows=[],
+            requirement_rows=[{"entity_id": "scored", "value": 0.5}],
+            solution_rows=[
+                {"entity_id": "sol", "value": "unscored", "value_eid": "unscored"},
+            ],
+        )
+        forest = build_requirement_forest(registry)
+        names = {c["name"]: c["priority"] for c in forest["children"]}
+        assert names == {"scored_req": 0.5, "unscored_req": None}
 
 
 class TestBuildRequirementTreeUnchanged:
