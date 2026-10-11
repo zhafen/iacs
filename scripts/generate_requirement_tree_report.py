@@ -756,11 +756,28 @@ _HIGHLIGHT_JS = (
     "<script>hljs.highlightAll();</script>\n"
 )
 
+def _is_leaf_requirement(node: dict, subtree: dict) -> bool:
+    """True if no other requirement node is nested directly under `node`.
+
+    A requirement with child requirements is an aggregating/organizing
+    node (its own "solution" is really the sum of its children) rather
+    than something a candidate solution attaches to directly -- it gets
+    a chip in whichever child sections cover it, not its own redundant
+    top-level section.
+    """
+    return not any(
+        n["type"] == "requirement" and n["parent_id"] == node["id"] for n in subtree["nodes"]
+    )
+
+
 def render_report(subtree: dict, dependencies_data: dict | None, fragment: bool) -> str:
     root_node = next(n for n in subtree["nodes"] if n["parent_id"] is None)
     root_label = root_node["label"]
     requirement_nodes = sorted(
-        (n for n in subtree["nodes"] if n["type"] == "requirement"),
+        (
+            n for n in subtree["nodes"]
+            if n["type"] == "requirement" and _is_leaf_requirement(n, subtree)
+        ),
         key=lambda n: n["key"],
     )
     masthead_html = _render_masthead(root_label)
