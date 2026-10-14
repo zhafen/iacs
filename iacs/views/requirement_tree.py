@@ -9,14 +9,21 @@ from emc2p.utils import non_format_guide_ids
 
 
 def _requirement_node(node_id, children_map: dict, id_to_key: dict, id_to_priority: dict) -> dict:
-    """Recursively build a {name, priority, children} dict for one subtree."""
+    """Recursively build a {name, priority, children} dict for one subtree.
+
+    ``priority`` is None for a requirement that has no ``requirement_priority``
+    score -- i.e. one recognized purely via the relation-only
+    requirement/solution convention (see ``_requirement_entity_ids``) -- so a
+    view can tell the two apart instead of a scored and an unscored
+    requirement both silently reading as priority 0.5.
+    """
     node = {
         "name": id_to_key.get(node_id, node_id[:8]),
-        "priority": id_to_priority.get(node_id, 0.5),
+        "priority": id_to_priority.get(node_id),
     }
     children = sorted(
         children_map.get(node_id, []),
-        key=lambda c: id_to_priority.get(c, 0.5),
+        key=lambda c: id_to_priority.get(c, 0.5) if id_to_priority.get(c) is not None else 0.5,
         reverse=True,
     )
     if children:
@@ -24,6 +31,41 @@ def _requirement_node(node_id, children_map: dict, id_to_key: dict, id_to_priori
             _requirement_node(c, children_map, id_to_key, id_to_priority) for c in children
         ]
     return node
+
+
+def _requirement_entity_ids(registrar: "Registrar", entity_ids_pd, reqs_pd) -> set:
+    """IDs of entities that count as a requirement.
+
+    Union of several independent ways an entity earns that status, matching
+    the conventions documented on the ``requirement``/``solution`` component
+    types in emc2p's builtins/auditing.yaml (pure_connection_architecture in
+    iacs_meta_discussion.requirement_solution_modeling_discussion):
+
+    - Tagged: it carries a ``requirement_priority`` component (a scored,
+      standalone requirement; the older, now-deprecated convention).
+    - Solved: it's the target (``value_eid``) of a ``solution`` component --
+      some other entity solves it -- with no tag of its own.
+    - Related: it's either side of a ``requirement`` component (the
+      directed_relation inverse of ``solution``) -- the thing required
+      (``entity_id``) or the thing requiring it (``value_eid``). Including
+      both sides matters for a grouping entity with no solution or score of
+      its own: it's required by its parent and requires its children, and
+      needs to stay a tree node on both counts so its sub-requirements
+      don't get wrongly promoted into disconnected roots.
+    """
+    tagged_ids = non_format_guide_ids(entity_ids_pd, set(reqs_pd["entity_id"].unique()))
+
+    raw_relation_ids = set()
+    solution_pd = registrar.get("solution").to_pandas()
+    if "value_eid" in solution_pd.columns:
+        raw_relation_ids |= set(solution_pd["value_eid"].dropna().unique())
+    requirement_pd = registrar.get("requirement").to_pandas()
+    if "value_eid" in requirement_pd.columns:
+        raw_relation_ids |= set(requirement_pd["entity_id"].dropna().unique())
+        raw_relation_ids |= set(requirement_pd["value_eid"].dropna().unique())
+
+    relation_ids = non_format_guide_ids(entity_ids_pd, raw_relation_ids) if raw_relation_ids else set()
+    return tagged_ids | relation_ids
 
 
 def build_requirement_tree(registrar: Registrar, ancestor_key: str) -> dict:
@@ -44,7 +86,7 @@ def build_requirement_tree(registrar: Registrar, ancestor_key: str) -> dict:
     reqs_pd = registrar.get("requirement_priority").to_pandas()
 
     id_to_key = entity_ids_pd.set_index("value")["display_key"].to_dict()
-    req_ids = non_format_guide_ids(entity_ids_pd, set(reqs_pd["entity_id"].unique()))
+    req_ids = _requirement_entity_ids(registrar, entity_ids_pd, reqs_pd)
 
     # Use max priority per entity (an entity may have multiple requirement rows)
     id_to_priority = reqs_pd.groupby("entity_id")["value"].max().to_dict()
@@ -99,7 +141,7 @@ def build_requirement_forest(registrar: Registrar) -> dict:
     reqs_pd = registrar.get("requirement_priority").to_pandas()
     mission_pd = registrar.get("mission").to_pandas()
 
-    req_ids = non_format_guide_ids(entity_ids_pd, set(reqs_pd["entity_id"].unique()))
+    req_ids = _requirement_entity_ids(registrar, entity_ids_pd, reqs_pd)
     if not req_ids:
         return {"name": "Requirements", "priority": None}
 

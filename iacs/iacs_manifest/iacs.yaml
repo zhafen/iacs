@@ -1469,7 +1469,32 @@ iacs_meta_discussion:
                         relations point at it, not by a label. This
                         entry (and its children below) is itself
                         written this way, as the trial.
-                - solution of: iacs_meta_discussion.requirement_solution_modeling_discussion
+                - solution of:
+                    value: iacs_meta_discussion.requirement_solution_modeling_discussion
+                    selected: true
+                - todo: >
+                        requirement_tree's forest/tree builders and the
+                        requirement_coverage/traceability audits now
+                        recognize an entity as a requirement purely by
+                        being a ((solution))'s target, with no
+                        ((requirement_priority)) tag needed -- so this
+                        architecture and the two tag-based ones above can
+                        coexist in the same manifest while migrating.
+                        Remaining: (1) this file's own ~90 remaining
+                        ``- requirement_priority`` tags haven't been
+                        migrated to this style; (2)
+                        dataflows/derive/impact_cost.py's priority-
+                        weighted impact scoring still reads
+                        ((requirement_priority))'s numeric value directly,
+                        so an entity modeled this way gets no priority
+                        weighting until that derive dataflow gets its own
+                        source for a priority score (or is reworked to
+                        not need one); (3) format_guide.yaml's
+                        ``requirement_priority: {type: constraint}``
+                        usage tags a format-spec statement as a constraint
+                        with no candidate solution to relate it to, so it
+                        may need a decision of its own rather than a
+                        straight migration to this architecture.
             optional_consideration_linkage:
                 data:
                     - description: >

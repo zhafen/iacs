@@ -225,6 +225,31 @@ iacs_component:
                       - removed
                   nullable: false
 
+    acceptance_criteria:
+        - description: >
+              A specific, checkable condition that must hold for the owning
+              entity to be considered done. Modeled as its own child entity
+              (so each criterion gets its own identity), typically paired
+              with a ((work_state)) component tracking whether that
+              criterion is met, and optionally a ((long_description)) for
+              detail beyond this component's own short value.
+        - parent: value
+        - field:
+              value:
+                  description: Short description of the acceptance criterion.
+                  type: str
+
+    long_description:
+        - description: >
+              Extended detail for an entity whose primary ((description))
+              is kept short -- e.g. an ((acceptance_criteria)) entity that
+              needs more than a one-line summary.
+        - parent: value
+        - field:
+              value:
+                  description: The extended description text.
+                  type: str
+
     todo:
         - description: >
               Indicates something about the entity that needs to be addressed or completed.

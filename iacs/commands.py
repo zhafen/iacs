@@ -125,7 +125,11 @@ def cmd_run_dataflow(reg: "Registrar", name: str) -> str:
 
 
 def cmd_generate_report(reg: "Registrar", output_path: str = "iacs_report.html") -> str:
-    """Render the HTML audit report (cost-impact plot + requirement tree) and save it."""
+    """DEPRECATED: render the HTML audit report (cost-impact plot + a bare
+    requirement-name tree, no solutions shown) and save it. Use
+    scripts/generate_requirement_tree_report.py for an actual
+    requirement/solution report instead; this is kept only for callers that
+    still depend on it."""
     path = reg.generate_report(output_path)
     return f"Report written to {path}"
 

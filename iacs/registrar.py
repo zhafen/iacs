@@ -18,11 +18,14 @@ class Registrar(_BaseRegistrar):
         return base_etl
 
     def generate_report(self, output_path: str | Path = "iacs_report.html") -> str:
-        """Render a self-contained HTML audit report and save it.
+        """DEPRECATED: render a self-contained HTML audit report and save it.
 
         Runs the ``audit.report`` dataflow against the current registry,
         producing a report with an aggregated cost-impact plot and a
-        navigable requirements tree.
+        navigable requirements tree -- names only, no candidate solutions
+        shown at all. For an actual requirement/solution report, use
+        ``scripts/generate_requirement_tree_report.py`` instead; this
+        method is kept only for callers that still depend on it.
 
         Args:
             output_path: File path to write the report to. Defaults to
