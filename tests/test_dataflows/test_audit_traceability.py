@@ -62,6 +62,34 @@ def test_solution_entities_and_their_relation_only_requirements_are_not_orphans(
     assert orphan_ids.isdisjoint({"req1", "sol1", "req2", "sol2"})
 
 
+def test_requirement_relation_entities_are_not_orphans():
+    """Mirrors the `solution` relation-only case above for the `requirement`
+    relation itself: an entity identified only by being either side of a
+    `requirement` relation -- e.g. null_value_representation in iacs.yaml,
+    identified only by `requirement of` -- must not be flagged as an
+    untraced orphan just because it has no `requirement_priority` tag and
+    nothing `solution`s it directly."""
+    registry = Registry.from_component_rows({
+        "entity_id": [
+            {"value": "needed_thing"},
+            {"value": "needer_thing"},
+            {"value": "real_orphan"},
+        ],
+        # value_eid is normally populated by derive_components from the
+        # entity_ref-typed "value" field; set it directly here since
+        # Registry.from_component_rows bypasses that resolution step.
+        "requirement": [
+            {"entity_id": "needed_thing", "value": "needer_thing", "value_eid": "needer_thing"},
+        ],
+    })
+    a = Registrar(registry)
+    result = a.execute("audit.traceability")
+    orphan_ids = set(result["traceability"].execute()["entity_id"])
+
+    assert "real_orphan" in orphan_ids
+    assert orphan_ids.isdisjoint({"needed_thing", "needer_thing"})
+
+
 @pytest.mark.skip(
     reason=(
         "Documents a known gap (PR#96 review comment 3 / task #26), not yet fixed: "
