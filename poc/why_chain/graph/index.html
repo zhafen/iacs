@@ -1,0 +1,833 @@
+<title>Why Chain Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f8f4ec;
+    --bg-wash: #f1ecdf;
+    --surface: #fffdf9;
+    --surface-2: #eee7d7;
+    --ink: #241f14;
+    --ink-2: #5b5344;
+    --ink-3: #8a8172;
+    --border: rgba(36,31,20,0.13);
+    --border-strong: rgba(36,31,20,0.24);
+    --mission: #a3701e;
+    --mission-glow: rgba(163,112,30,0.35);
+    --concept: #4a3fa3;
+    --code: #0f8a5f;
+    --edge: #cdc3ae;
+    --edge-dim: #e3ddcc;
+    --focus: #a3701e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0b0d11;
+      --bg-wash: #0e1015;
+      --surface: #14171d;
+      --surface-2: #1b1f27;
+      --ink: #f2eee3;
+      --ink-2: #b7b2a4;
+      --ink-3: #7c7869;
+      --border: rgba(255,255,255,0.10);
+      --border-strong: rgba(255,255,255,0.18);
+      --mission: #d99a35;
+      --mission-glow: rgba(217,154,53,0.35);
+      --concept: #7f74d9;
+      --code: #22ad82;
+      --edge: #313640;
+      --edge-dim: #22262e;
+      --focus: #d99a35;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0b0d11;
+    --bg-wash: #0e1015;
+    --surface: #14171d;
+    --surface-2: #1b1f27;
+    --ink: #f2eee3;
+    --ink-2: #b7b2a4;
+    --ink-3: #7c7869;
+    --border: rgba(255,255,255,0.10);
+    --border-strong: rgba(255,255,255,0.18);
+    --mission: #d99a35;
+    --mission-glow: rgba(217,154,53,0.35);
+    --concept: #7f74d9;
+    --code: #22ad82;
+    --edge: #313640;
+    --edge-dim: #22262e;
+    --focus: #d99a35;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    overflow: hidden;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 14px 20px;
+    padding-inline: max(20px, env(safe-area-inset-left)) max(20px, env(safe-area-inset-right));
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-wash);
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  .brand { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .brand h1 {
+    font-family: "Fraunces", serif;
+    font-weight: 600;
+    font-size: 21px;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+    white-space: nowrap;
+  }
+  .brand p {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+  .stats {
+    display: flex;
+    gap: 14px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    color: var(--ink-3);
+    white-space: nowrap;
+  }
+  .stats b { color: var(--ink-2); font-weight: 500; }
+
+  .search-wrap {
+    position: relative;
+    margin-left: auto;
+    flex: 0 1 240px;
+    min-width: 140px;
+  }
+  #search {
+    width: 100%;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+    padding: 7px 10px 7px 30px;
+    border-radius: 7px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--ink);
+    outline: none;
+  }
+  #search:focus { border-color: var(--focus); box-shadow: 0 0 0 3px var(--mission-glow); }
+  .search-wrap svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); pointer-events: none; opacity: .5; }
+
+  .legend {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 11.5px;
+    color: var(--ink-2);
+    flex-wrap: wrap;
+  }
+  .legend .item { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+  button.reset {
+    font-family: "IBM Plex Sans", sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-2);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 7px;
+    padding: 7px 11px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  button.reset:hover { color: var(--ink); border-color: var(--ink-3); }
+  button.reset:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  /* ---------- main area ---------- */
+  .main {
+    position: relative;
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+  .stage {
+    flex: 1;
+    position: relative;
+    min-width: 0;
+    background:
+      radial-gradient(ellipse 900px 500px at 50% 8%, var(--mission-glow), transparent 60%),
+      var(--bg);
+  }
+  svg#graph { width: 100%; height: 100%; display: block; cursor: grab; }
+  svg#graph.grabbing { cursor: grabbing; }
+
+  .hint {
+    position: absolute;
+    left: 20px;
+    bottom: 16px;
+    font-size: 11.5px;
+    color: var(--ink-3);
+    max-width: 320px;
+    line-height: 1.5;
+    pointer-events: none;
+  }
+
+  /* node/edge svg styling */
+  .edge { fill: none; stroke: var(--edge); stroke-width: 1.1; transition: stroke .25s, opacity .25s; }
+  .edge.dim { opacity: .12; }
+  .edge.lit { stroke: var(--focus); stroke-width: 1.6; opacity: .95; }
+  .edge.child-lit { stroke: var(--code); stroke-width: 1.6; opacity: .95; }
+  .node circle { stroke: var(--bg); stroke-width: 1.5; transition: opacity .25s, stroke-width .15s; cursor: pointer; }
+  .node.dim circle { opacity: .18; }
+  .node.dim text { opacity: .12; }
+  .node text {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 9.5px;
+    fill: var(--ink-2);
+    pointer-events: none;
+    transition: opacity .25s, fill .2s;
+  }
+  .node.selected circle { stroke: var(--focus); stroke-width: 3px; }
+  .node.selected text { fill: var(--ink); font-weight: 500; }
+  .node.ancestor circle { stroke: var(--focus); stroke-width: 2px; }
+  .node.child circle { stroke: var(--code); stroke-width: 2px; }
+  .node.match circle { stroke: var(--focus); stroke-width: 2.5px; }
+  .node:hover circle { stroke-width: 2.5px; }
+  .node:focus { outline: none; }
+  .node:focus-visible circle { stroke: var(--focus); stroke-width: 3px; }
+  .node.mission-node circle { filter: drop-shadow(0 0 7px var(--mission-glow)); }
+
+  /* ---------- side panel ---------- */
+  .panel {
+    width: 340px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    overflow-y: auto;
+    padding: 20px;
+    padding-block: 20px max(20px, env(safe-area-inset-bottom));
+  }
+  .panel h2 {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0 0 4px;
+    word-break: break-word;
+    line-height: 1.4;
+  }
+  .kind-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10.5px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 14px;
+  }
+  .panel .desc {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--ink-2);
+    margin-bottom: 18px;
+  }
+  .panel .desc code, .desc-mono { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--ink); }
+  .panel section { margin-bottom: 20px; }
+  .panel section h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--ink-3);
+    margin: 0 0 8px;
+    font-weight: 600;
+  }
+  .qa {
+    border-left: 2px solid var(--border-strong);
+    padding-left: 10px;
+    margin-bottom: 12px;
+  }
+  .qa .q { font-size: 12.5px; font-style: italic; color: var(--ink); line-height: 1.5; }
+  .qa .a-target {
+    font-size: 11px;
+    color: var(--ink-3);
+    margin-top: 4px;
+    font-family: "IBM Plex Mono", monospace;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+  }
+  .qa .a-target:hover { color: var(--focus); }
+  .qa .note { font-size: 11.5px; color: var(--ink-3); margin-top: 4px; line-height: 1.5; }
+
+  .breadcrumb { display: flex; flex-direction: column; gap: 2px; }
+  .crumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11.5px;
+    padding: 5px 7px;
+    border-radius: 5px;
+    cursor: pointer;
+    color: var(--ink-2);
+  }
+  .crumb:hover { background: var(--surface-2); color: var(--ink); }
+  .crumb .arrow { color: var(--ink-3); flex-shrink: 0; }
+  .crumb .dot { flex-shrink: 0; }
+
+  .empty-state h3 {
+    font-family: "Fraunces", serif;
+    font-weight: 500;
+    font-size: 17px;
+    margin: 0 0 8px;
+    text-wrap: balance;
+  }
+  .empty-state p { font-size: 13px; line-height: 1.65; color: var(--ink-2); margin: 0 0 14px; }
+  .empty-state .mini-legend { display: flex; flex-direction: column; gap: 9px; margin-top: 4px; }
+  .empty-state .mini-legend .item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); }
+
+  .close-panel-btn { display: none; }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 760px) {
+    .stats { display: none; }
+    .legend { display: none; }
+    .brand p { display: none; }
+    .search-wrap { flex: 1 1 auto; margin-left: 0; }
+    .topbar { gap: 10px; }
+    .panel {
+      position: absolute;
+      inset: auto 0 0 0;
+      width: auto;
+      max-height: 62%;
+      border-left: none;
+      border-top: 1px solid var(--border);
+      border-radius: 14px 14px 0 0;
+      box-shadow: 0 -8px 24px rgba(0,0,0,0.18);
+      transform: translateY(100%);
+      transition: transform .25s ease;
+      z-index: 5;
+    }
+    .panel.open { transform: translateY(0); }
+    .close-panel-btn {
+      display: block;
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      background: none;
+      border: none;
+      color: var(--ink-3);
+      font-size: 20px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+    }
+    .hint { display: none; }
+  }
+</style>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <h1>Why Chain Explorer</h1>
+      <p>iacs / poc/why_chain/why_v2.yaml</p>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="legend">
+      <span class="item"><span class="dot" style="background:var(--mission)"></span>mission</span>
+      <span class="item"><span class="dot" style="background:var(--concept)"></span>concept</span>
+      <span class="item"><span class="dot" style="background:var(--code)"></span>code object</span>
+    </div>
+    <div class="search-wrap">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.6" y2="16.6"/></svg>
+      <input id="search" type="text" placeholder="find a node…" autocomplete="off" />
+    </div>
+    <button class="reset" id="resetBtn">Reset view</button>
+  </div>
+
+  <div class="main">
+    <div class="stage">
+      <svg id="graph"></svg>
+      <div class="hint">Drag to pan, scroll/pinch to zoom. Arrows point from what needs explaining to what explains it. Click a node to trace its chain up to the mission; click empty space to clear.</div>
+    </div>
+    <div class="panel" id="panel">
+      <button class="close-panel-btn" id="closePanel" aria-label="Close">&times;</button>
+      <div id="panelBody"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+(async function () {
+  "use strict";
+
+  const raw = await fetch("data.json").then(r => r.json());
+
+  // ---------- build graph model ----------
+  // raw.nodes: [{id, description, is_code}]
+  // raw.edges: [{source, target, question, note}]  (source explains target)
+
+  const nodeById = new Map(raw.nodes.map(n => [n.id, { ...n, outEdges: [], inEdges: [] }]));
+  raw.edges.forEach(e => {
+    nodeById.get(e.source).outEdges.push(e);
+    nodeById.get(e.target).inEdges.push(e);
+  });
+
+  const MISSION_ID = "emc2p_mission";
+  const nodes = Array.from(nodeById.values());
+  const edges = raw.edges;
+
+  // depth = shortest number of hops from the mission, following "explains" edges forward
+  const depth = new Map();
+  depth.set(MISSION_ID, 0);
+  {
+    let frontier = [MISSION_ID];
+    while (frontier.length) {
+      const next = [];
+      for (const id of frontier) {
+        const d = depth.get(id);
+        for (const e of nodeById.get(id).outEdges) {
+          if (!depth.has(e.target)) {
+            depth.set(e.target, d + 1);
+            next.push(e.target);
+          }
+        }
+      }
+      frontier = next;
+    }
+  }
+  nodes.forEach(n => { n.depth = depth.get(n.id) ?? 0; });
+  const maxDepth = Math.max(...nodes.map(n => n.depth));
+
+  nodes.forEach(n => {
+    n.outDeg = n.outEdges.length;
+    n.inDeg = n.inEdges.length;
+    n.r = n.id === MISSION_ID ? 13 : n.is_code ? 5.5 : Math.min(11, 5 + Math.sqrt(n.outDeg) * 2.6);
+  });
+
+  function cleanText(t) {
+    if (!t) return "";
+    return t.split(/\n\s*\n/).map(p => p.replace(/\s*\n\s*/g, " ").trim()).join("\n\n");
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function mdCodeToHtml(s) {
+    return escapeHtml(s).replace(/`([^`]+)`/g, "<code>$1</code>");
+  }
+
+  function renderParas(text) {
+    return cleanText(text).split(/\n\n/).map(p => `<p>${mdCodeToHtml(p)}</p>`).join("");
+  }
+
+  // ---------- layout: fixed row by depth, barycenter ordering + force for x ----------
+  const rowH = 132;
+  const colW = 148;
+  const svg = d3.select("#graph");
+  const stage = document.querySelector(".stage");
+
+  function currentSize() {
+    return { w: stage.clientWidth, h: stage.clientHeight };
+  }
+
+  // Row-by-row ordering: each row's nodes are ordered by the x of their
+  // "primary" parent (the already-positioned in-edge source with the
+  // smallest depth) so a chain stays visually near its siblings instead of
+  // scattering across the row -- a cheap Sugiyama-style barycenter pass.
+  const rows = [];
+  for (let d = 0; d <= maxDepth; d++) rows.push(nodes.filter(n => n.depth === d));
+
+  nodes.forEach(n => { n.y = n.depth * rowH + 70; n.fy = n.y; });
+
+  rows.forEach((row, d) => {
+    if (d === 0) {
+      row.forEach(n => { n.x0 = 0; });
+      return;
+    }
+    row.forEach(n => {
+      let primary = null;
+      for (const e of n.inEdges) {
+        const src = nodeById.get(e.source);
+        if (src.depth < n.depth && (!primary || src.depth < primary.depth)) primary = src;
+      }
+      n.x0 = primary ? primary.x0 : 0;
+    });
+    // stable sort by primary-parent position, tie-break alphabetically
+    row.sort((a, b) => a.x0 - b.x0 || a.id.localeCompare(b.id));
+    row.forEach((n, i) => { n.x0 = (i - (row.length - 1) / 2) * colW; });
+  });
+
+  nodes.forEach(n => { n.x = n.x0 + (Math.random() - 0.5) * 8; });
+
+  const sim = d3.forceSimulation(nodes)
+    .force("charge", d3.forceManyBody().strength(-70))
+    .force("collide", d3.forceCollide(d => d.r + 20).strength(0.9))
+    .force("x", d3.forceX(d => d.x0).strength(0.25))
+    .force("link", d3.forceLink(edges.map(e => ({ source: e.source, target: e.target })))
+      .id(d => d.id).strength(0.05).distance(colW))
+    .force("y", null)
+    .stop();
+
+  for (let i = 0; i < 200; i++) sim.tick();
+
+  // normalize x extent
+  const xExtent = d3.extent(nodes, d => d.x);
+  const layoutWidth = (xExtent[1] - xExtent[0]) + 220;
+  const layoutHeight = maxDepth * rowH + 160;
+
+  const g = svg.append("g").attr("class", "viewport");
+  const edgeLayer = g.append("g").attr("class", "edges");
+  const nodeLayer = g.append("g").attr("class", "nodes-layer");
+
+  const linkPath = d3.linkVertical().x(d => d.x).y(d => d.y);
+
+  // Each `why` component lives on the entity that explains (the registry
+  // owner, e.data model's e.source) and names, as its value, the entity
+  // that needed explaining (e.target). Drawn on screen, though, the arrow
+  // should read the way a viewer actually asks the question: it starts at
+  // the thing needing explaining and points at whatever explains it --
+  // so the draw direction is the *reverse* of the data's own source/target.
+  const edgeSel = edgeLayer.selectAll("path.edge")
+    .data(edges)
+    .join("path")
+    .attr("class", "edge")
+    .attr("d", e => linkPath({
+      source: nodeById.get(e.target),
+      target: nodeById.get(e.source),
+    }))
+    .attr("marker-end", "url(#arrow)");
+
+  svg.append("defs").append("marker")
+    .attr("id", "arrow")
+    .attr("viewBox", "0 0 10 10")
+    .attr("refX", 8).attr("refY", 5)
+    .attr("markerWidth", 6).attr("markerHeight", 6)
+    .attr("orient", "auto-start-reverse")
+    .append("path")
+    .attr("d", "M0,0 L10,5 L0,10 z")
+    .attr("fill", "var(--edge)");
+
+  const nodeSel = nodeLayer.selectAll("g.node")
+    .data(nodes)
+    .join("g")
+    .attr("class", d => "node" + (d.id === MISSION_ID ? " mission-node" : ""))
+    .attr("transform", d => `translate(${d.x},${d.y})`)
+    .style("cursor", "pointer")
+    .attr("tabindex", 0)
+    .attr("role", "button")
+    .attr("aria-label", d => `${d.id === MISSION_ID ? "emc2p_mission" : d.id}, ${d.id === MISSION_ID ? "the mission" : d.is_code ? "real code object" : "concept"}`)
+    .on("click", (event, d) => { event.stopPropagation(); selectNode(d.id); })
+    .on("keydown", (event, d) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        event.stopPropagation();
+        selectNode(d.id);
+      }
+    })
+    .on("focus", (event, d) => showTip(event, d))
+    .on("blur", hideTip)
+    .on("mouseenter", (event, d) => showTip(event, d))
+    .on("mouseleave", hideTip);
+
+  nodeSel.append("circle")
+    .attr("r", d => d.r)
+    .attr("fill", d => d.id === MISSION_ID ? "var(--mission)" : d.is_code ? "var(--code)" : "var(--concept)");
+
+  nodeSel.append("text")
+    .attr("dy", d => d.r + 11)
+    .attr("text-anchor", "middle")
+    .text(d => shortLabel(d.id));
+
+  function shortLabel(id) {
+    if (id === MISSION_ID) return "emc2p_mission";
+    const parts = id.split(".");
+    const base = parts.length > 1 ? parts.slice(-1)[0] : id;
+    // Concept ids are long, un-dotted snake_case sentences -- truncate for
+    // the canvas label; the full id is always in the tooltip and panel.
+    return base.length > 26 ? base.slice(0, 24) + "…" : base;
+  }
+
+  let selectedId = null;
+
+  // ---------- zoom / pan ----------
+  const zoom = d3.zoom()
+    .scaleExtent([0.2, 3])
+    .on("zoom", (event) => {
+      g.attr("transform", event.transform);
+      updateLabelVisibility(event.transform.k);
+    })
+    .on("start", () => svg.classed("grabbing", true))
+    .on("end", () => svg.classed("grabbing", false));
+
+  svg.call(zoom);
+  svg.on("click", () => selectNode(null));
+
+  // At a full-graph overview, showing all 55 labels at once is noise --
+  // only the mission and the reused hub concepts (bigger radius) label
+  // themselves until the viewer zooms in past LABEL_ZOOM, the same way a
+  // map only names major cities until you zoom into a region.
+  const LABEL_ZOOM = 0.85;
+  let currentK = 1;
+  function updateLabelVisibility(k) {
+    if (k !== undefined) currentK = k;
+    const focusIds = selectedId ? relevantIds(selectedId) : null;
+    nodeLayer.selectAll("text").style("opacity", d => {
+      if (focusIds) return focusIds.has(d.id) ? 1 : 0;
+      return (currentK >= LABEL_ZOOM || d.r >= 9) ? 1 : 0;
+    });
+  }
+  function relevantIds(id) {
+    const { nodesSet } = ancestorsOf(id);
+    const d = nodeById.get(id);
+    d.outEdges.forEach(e => nodesSet.add(e.target));
+    return nodesSet;
+  }
+
+  function fitView() {
+    const { w, h } = currentSize();
+    // Fit to width primarily -- an overview of every row at once is
+    // illegible with 55 nodes; the viewer scrolls/pans down through the
+    // chain the way they'd scroll a tall page, and can zoom in anywhere.
+    const scale = Math.min(1, Math.max(0.35, (w / layoutWidth) * 0.92));
+    const cx = (xExtent[0] + xExtent[1]) / 2;
+    const tx = w / 2 - cx * scale;
+    const ty = 26;
+    svg.call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+    updateLabelVisibility(scale);
+  }
+
+  function resize() {
+    const { w, h } = currentSize();
+    svg.attr("viewBox", `0 0 ${w} ${h}`);
+  }
+  window.addEventListener("resize", () => { resize(); });
+  resize();
+  fitView();
+
+  // ---------- selection & highlighting ----------
+
+  function ancestorsOf(id) {
+    // all nodes/edges reachable by walking inEdges back toward the mission
+    const nodesSet = new Set([id]);
+    const edgeSet = new Set();
+    const stack = [id];
+    while (stack.length) {
+      const cur = stack.pop();
+      for (const e of nodeById.get(cur).inEdges) {
+        edgeSet.add(e);
+        if (!nodesSet.has(e.source)) { nodesSet.add(e.source); stack.push(e.source); }
+      }
+    }
+    return { nodesSet, edgeSet };
+  }
+
+  function selectNode(id) {
+    selectedId = id;
+    if (!id) {
+      nodeSel.attr("class", d => "node" + (d.id === MISSION_ID ? " mission-node" : ""));
+      edgeSel.attr("class", "edge");
+      renderEmptyPanel();
+      closeMobilePanel();
+      updateLabelVisibility();
+      return;
+    }
+    const d = nodeById.get(id);
+    const { nodesSet, edgeSet } = ancestorsOf(id);
+    const childIds = new Set(d.outEdges.map(e => e.target));
+
+    nodeSel.attr("class", n => {
+      let c = "node";
+      if (n.id === MISSION_ID) c += " mission-node";
+      if (n.id === id) c += " selected";
+      else if (nodesSet.has(n.id)) c += " ancestor";
+      else if (childIds.has(n.id)) c += " child";
+      else c += " dim";
+      return c;
+    });
+
+    edgeSel.attr("class", e => {
+      if (edgeSet.has(e)) return "edge lit";
+      if (e.source === id) return "edge child-lit";
+      return "edge dim";
+    });
+
+    renderPanel(d);
+    openMobilePanel();
+    updateLabelVisibility();
+  }
+
+  // ---------- tooltip ----------
+  const tip = d3.select("body").append("div")
+    .style("position", "fixed")
+    .style("pointer-events", "none")
+    .style("z-index", 20)
+    .style("max-width", "260px")
+    .style("padding", "8px 10px")
+    .style("border-radius", "8px")
+    .style("font-size", "12px")
+    .style("line-height", "1.5")
+    .style("background", "var(--surface)")
+    .style("border", "1px solid var(--border-strong)")
+    .style("color", "var(--ink-2)")
+    .style("box-shadow", "0 6px 20px rgba(0,0,0,0.18)")
+    .style("opacity", 0)
+    .style("font-family", "IBM Plex Sans, sans-serif");
+
+  function showTip(event, d) {
+    const label = d.id === MISSION_ID ? "emc2p_mission" : d.id;
+    const kind = d.id === MISSION_ID ? "mission" : d.is_code ? "code object" : "concept";
+    tip.html(`<div style="font-family:'IBM Plex Mono',monospace;color:var(--ink);margin-bottom:3px;">${escapeHtml(label)}</div><div style="opacity:.7;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;">${kind}</div>${escapeHtml(cleanText(d.description).slice(0, 180))}${d.description.length > 180 ? "…" : ""}`)
+      .style("left", (event.clientX + 14) + "px")
+      .style("top", (event.clientY + 10) + "px")
+      .style("opacity", 1);
+  }
+  function hideTip() { tip.style("opacity", 0); }
+
+  // ---------- side panel ----------
+  const panelBody = document.getElementById("panelBody");
+  const panelEl = document.getElementById("panel");
+
+  function openMobilePanel() { panelEl.classList.add("open"); }
+  function closeMobilePanel() { panelEl.classList.remove("open"); }
+  document.getElementById("closePanel").addEventListener("click", () => selectNode(null));
+
+  function renderEmptyPanel() {
+    panelBody.innerHTML = `
+      <div class="empty-state">
+        <h3>55 reasons, one mission</h3>
+        <p>This is emc2p's "why" chain: starting from every real object in
+        <span class="desc-mono">mcp_client_session.py</span>, each node keeps
+        asking "why does this exist" until the answer bottoms out at
+        <span class="desc-mono">emc2p_mission</span> &mdash; the one goal every
+        chain in this graph traces back to.</p>
+        <div class="mini-legend">
+          <div class="item"><span class="dot" style="background:var(--mission);width:12px;height:12px"></span> the mission &mdash; the graph's one root</div>
+          <div class="item"><span class="dot" style="background:var(--concept);width:12px;height:12px"></span> a reusable concept, reasoning between the two</div>
+          <div class="item"><span class="dot" style="background:var(--code);width:12px;height:12px"></span> a real object in the source file</div>
+        </div>
+        <p style="margin-top:14px;">Click any node to trace its chain of reasons up to the mission. Each node's own panel shows the question <em>it</em> raised and who answers it, under &ldquo;why this exists&rdquo; &mdash; and what it in turn explains, under &ldquo;explains.&rdquo;</p>
+      </div>`;
+  }
+
+  function renderPanel(d) {
+    const kind = d.id === MISSION_ID ? "the mission &middot; graph root" : d.is_code ? "real code object" : "concept";
+    const label = d.id === MISSION_ID ? "emc2p_mission" : d.id;
+
+    let html = `<h2>${escapeHtml(label)}</h2><div class="kind-tag"><span class="dot" style="background:${d.id === MISSION_ID ? "var(--mission)" : d.is_code ? "var(--code)" : "var(--concept)"}"></span>${kind}</div>`;
+    html += `<div class="desc">${renderParas(d.description) || "<em>(no description)</em>"}</div>`;
+
+    // The `why` question/note lives with the entity that NEEDED
+    // explaining -- that's d.inEdges (other entities point at d with
+    // their own `why of` component). What d itself explains (d.outEdges,
+    // where d is the one holding the `why of`) gets only a bare list here;
+    // its own question/note shows on the *other* entity's panel instead.
+    if (d.inEdges.length) {
+      html += `<section><h3>${d.inEdges.length === 1 ? "Why this exists" : `${d.inEdges.length} whys this answers`}</h3>`;
+      d.inEdges.forEach(e => {
+        html += `<div class="qa"><div class="q">${mdCodeToHtml(e.question)}</div>
+          <div class="a-target" data-goto="${escapeHtml(e.source)}">&rarr; explained by ${escapeHtml(shortLabel(e.source))}</div>
+          ${e.note ? `<div class="note">${mdCodeToHtml(cleanText(e.note))}</div>` : ""}</div>`;
+      });
+      html += `</section>`;
+    }
+
+    if (d.outEdges.length) {
+      html += `<section><h3>Explains</h3>`;
+      d.outEdges.forEach(e => {
+        html += `<div class="crumb" data-goto="${escapeHtml(e.target)}"><span class="dot" style="width:7px;height:7px;background:${nodeById.get(e.target).id === MISSION_ID ? "var(--mission)" : nodeById.get(e.target).is_code ? "var(--code)" : "var(--concept)"}"></span>${escapeHtml(shortLabel(e.target))}<span class="arrow">&rarr;</span></div>`;
+      });
+      html += `</section>`;
+    }
+
+    if (d.id !== MISSION_ID) {
+      const path = shortestPathToMission(d.id);
+      html += `<section><h3>Shortest path to the mission</h3><div class="breadcrumb">`;
+      path.forEach(id => {
+        const n = nodeById.get(id);
+        html += `<div class="crumb" data-goto="${escapeHtml(id)}"><span class="dot" style="width:7px;height:7px;background:${id === MISSION_ID ? "var(--mission)" : n.is_code ? "var(--code)" : "var(--concept)"}"></span>${escapeHtml(shortLabel(id))}</div>`;
+      });
+      html += `</div></section>`;
+    }
+
+    panelBody.innerHTML = html;
+    panelBody.querySelectorAll("[data-goto]").forEach(el => {
+      el.addEventListener("click", (ev) => { ev.stopPropagation(); selectNode(el.getAttribute("data-goto")); });
+    });
+  }
+
+  function shortestPathToMission(id) {
+    // BFS backward from id to mission using precomputed depth as a guide
+    const path = [id];
+    let cur = id;
+    while (cur !== MISSION_ID) {
+      const inE = nodeById.get(cur).inEdges;
+      if (!inE.length) break;
+      let best = inE[0];
+      for (const e of inE) if (depth.get(e.source) < depth.get(best.source)) best = e;
+      cur = best.source;
+      path.push(cur);
+    }
+    return path;
+  }
+
+  renderEmptyPanel();
+
+  // ---------- search ----------
+  const searchInput = document.getElementById("search");
+  searchInput.addEventListener("input", () => {
+    const q = searchInput.value.trim().toLowerCase();
+    if (!q) {
+      if (!selectedId) { nodeSel.attr("class", d => "node" + (d.id === MISSION_ID ? " mission-node" : "")); updateLabelVisibility(); }
+      return;
+    }
+    selectedId = null;
+    nodeSel.attr("class", d => {
+      let c = "node" + (d.id === MISSION_ID ? " mission-node" : "");
+      return c + (d.id.toLowerCase().includes(q) ? " match" : " dim");
+    });
+    edgeSel.attr("class", "edge dim");
+    nodeLayer.selectAll("text").style("opacity", d => d.id.toLowerCase().includes(q) ? 1 : 0);
+  });
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const q = searchInput.value.trim().toLowerCase();
+      const hit = nodes.find(n => n.id.toLowerCase().includes(q));
+      if (hit) selectNode(hit.id);
+    }
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    searchInput.value = "";
+    selectNode(null);
+    fitView();
+  });
+
+  // ---------- stats ----------
+  document.getElementById("stats").innerHTML =
+    `<span><b>${nodes.length}</b> nodes</span><span><b>${edges.length}</b> edges</span><span><b>${maxDepth}</b> hops max</span>`;
+})();
+</script>
