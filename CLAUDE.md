@@ -84,3 +84,19 @@ iacs (Infrastructure-as-Code Sketch) is an ECS-based system for documenting and 
 - **Component-Centered Format (Registry)**: Internal format with one table per component type.
 - **Audits**: Checks that evaluate solution quality (RequirementCoverageAudit, TraceabilityAudit, TodoAudit).
 - **"solution of" component**: A directed_relation component indicating that an entity solves/fulfills a requirement.
+
+## Generating Reports
+
+- For "give me a report of my requirements/solutions" style requests, use
+  `scripts/generate_requirement_tree_report.py --root <entity> --manifest
+  <dir>` (pass `--fragment` when publishing the output as a Claude
+  Artifact). It renders one full section per requirement with every
+  candidate solution's description/pros/cons/cost, plus a
+  Selected/Unselected solutions index, and reads the plain `pro`/`con`
+  tags (not `consideration`/`consideration_rating`) for a solution's
+  pros and cons.
+- `iacs generate-report` / the `audit.report` dataflow (cost-impact
+  scatter plot + a bare requirement-name tree with no solutions shown at
+  all) is **deprecated** -- don't reach for it by default. It's kept only
+  because other callers may still depend on it, not because it's the
+  right tool for a report request.

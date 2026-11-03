@@ -221,10 +221,16 @@ def refresh(ctx: Context) -> str:
 
 @server.tool()
 def generate_report(ctx: Context, output_path: str = "iacs_report.html") -> str:
-    """Render a self-contained HTML audit report and save it to disk.
+    """DEPRECATED -- do not call this for a "give me a report" request.
 
-    The report includes an aggregated cost-impact scatter plot and a
-    navigable requirements tree, both computed from the current registry.
+    Renders a self-contained HTML report with an aggregated cost-impact
+    scatter plot and a navigable requirements tree -- but the tree shows
+    bare requirement names only, with no candidate solutions at all. For
+    an actual requirement/solution report (one full section per
+    requirement, every candidate solution's pros/cons, a
+    Selected/Unselected index), use
+    scripts/generate_requirement_tree_report.py instead. This tool is kept
+    only for callers that still depend on it.
 
     Args:
         output_path: File path to write the report to (default:

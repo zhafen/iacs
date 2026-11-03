@@ -30,7 +30,7 @@ You are an expert Hamilton DAG architect specializing in designing clean, well-s
      ```python
      from hamilton.function_modifiers import extract_fields
 
-     @extract_fields(['entities', 'requirements', 'solution_of', ...])
+     @extract_fields(['entities', 'requirements', 'solution', ...])
      def component_tables(registry: Registry) -> dict:
          """Extract individual component tables from the registry for use in downstream nodes."""
          ...
@@ -93,7 +93,7 @@ Before delivering your answer, ask yourself:
 **Update your agent memory** as you discover recurring dataflow patterns, common registry attribute usage, frequently used Hamilton decorators in this codebase, and standard component table names. This builds up institutional knowledge across conversations.
 
 Examples of what to record:
-- Common component table names extracted from the registry (e.g., 'entities', 'requirements', 'solution_of').
+- Common component table names extracted from the registry (e.g., 'entities', 'requirements', 'solution').
 - Recurring DAG patterns (e.g., registry → extract_fields → filter → aggregate → report).
 - Standard type names used in iacs dataflows.
 - Any project-specific Hamilton decorator conventions.
