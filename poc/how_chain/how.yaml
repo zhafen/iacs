@@ -1,0 +1,268 @@
+file_info:
+    - description: >
+          The "how chain" experiment, run in the opposite direction from
+          ((why_chain)): instead of starting at one small piece of code and
+          asking why it exists until the chain reaches emc2p's mission,
+          this file starts at the mission itself and keeps asking how it
+          gets done, until the chain reaches every single ``.py`` file in
+          emc2p's own package (vendored alongside this file -- see this
+          directory's README for why a frozen copy, not a live emc2p
+          dependency).
+
+          Each step down is a ((how)) link: the more abstract entity names
+          the more concrete one that is how it gets achieved. A group with
+          several children points at all of them in one list, each with
+          its own question. The leaves of the chain aren't local YAML
+          entities at all -- they're the real Python modules themselves,
+          referenced by their short alias (e.g. ``emc2p.utils``,
+          ``testing.mcp_client_session``), so their own descriptions come
+          straight from their own docstrings, the same mechanism
+          ((why_chain)) used for the method it started from. Eleven of
+          emc2p's 34 files had no module-level docstring in the real repo
+          and so couldn't be referenced this way; this vendored copy adds
+          a minimal one-line docstring to each of those eleven, purely so
+          every file becomes a loadable entity -- nothing else about those
+          files was changed.
+
+          Unlike ((why)), ((how)) doesn't need its value/source swapped
+          around for display: a "how" link already reads naturally
+          top-down, source (the question, closer to the mission) pointing
+          at value (the answer, closer to the files), so the mission ends
+          up as the one entity with no incoming link and every file ends
+          up with no outgoing one.
+    - file_info
+
+how:
+    - description: >
+          A link from an entity to one of the concrete entities that is
+          how it gets achieved -- the mirror image of ((why)): here the
+          source is the more abstract question ("how does this get done?")
+          and the value is the answer, one step more concrete. One entity
+          can have many of these, one per child it explains, and a child
+          can in turn have its own ((how)) links naming its own children.
+    - parent: directed_relation
+    - field:
+          value:
+              description: The entity that is how the source gets achieved.
+              type: entity_ref
+          question:
+              description: >
+                  The exact "how" question this link is answering, from
+                  the source entity's point of view.
+              type: str
+          note:
+              description: >
+                  An optional side note about this link -- a caveat, or a
+                  pointer to where else the same piece is reused. Kept
+                  separate from the entity's own description so that
+                  description can stand on its own.
+              type: str
+              nullable: true
+
+# ---------------------------------------------------------------------------
+# The root. The one and only entity in this file with no incoming "how"
+# link: nothing explains how the mission itself gets done, but the mission
+# explains everything else, directly or by way of the five subsystems below.
+# ---------------------------------------------------------------------------
+
+emc2p_mission:
+    - description: >
+          emc2p's mission is to be a genuinely useful tool for people
+          building systems where an AI model works with data through the
+          Model Context Protocol (MCP) -- what the project itself calls
+          being "a valuable tool for data-driven MCPs" (see
+          docs/manifest/emc2p.yaml: tool_for_data_driven_mcps). Every "how"
+          in this file starts here, and the chain only ends once it's
+          reached a real file in the package that does the work.
+    - how:
+          - value: core_registry
+            question: How does emc2p give a model and the people building a system around it a shared, inspectable picture of that system?
+          - value: manifest_pipeline
+            question: How does scattered YAML and Python source material actually become that shared, validated picture?
+          - value: live_agent_tooling
+            question: How does the project try its ideas against a real model doing real work, rather than just a test that reads right on paper?
+          - value: mcp_server_exposure
+            question: How does any MCP client, not just this project's own code, get to open or drive that picture?
+          - value: supporting_utilities
+            question: How do all of the above avoid re-deriving the same small, low-level facts separately?
+
+# ---------------------------------------------------------------------------
+# Level 1: five subsystems, each one step of "how" below the mission.
+# ---------------------------------------------------------------------------
+
+core_registry:
+    - description: >
+          The part of emc2p that actually holds a manifest's data in
+          memory, as one typed set of component tables a caller can read
+          or update -- the ``Registry``/``Registrar`` classes exported
+          from the package root.
+    - how:
+          - value: emc2p.registrar
+            question: How does a caller open or update a whole manifest at once, rather than editing component tables by hand?
+          - value: emc2p.registry
+            question: How is a manifest's data actually stored and queried, once it's loaded?
+          - value: emc2p.__init__
+            question: How do those two classes become available from a plain `import emc2p`, without a caller needing to know which submodule each one lives in?
+
+manifest_pipeline:
+    - description: >
+          The Hamilton-based pipeline that turns raw YAML and Python source
+          into one validated registry, in four stages: load, validate,
+          derive, validate again.
+    - how:
+          - value: pipeline_assembly
+            question: How do the separate load, derive, and validate stages become one pipeline a caller can run with a single call?
+          - value: etl_stage
+            question: How does a manifest get read in from disk, or written back out, in the first place?
+          - value: derive_stage
+            question: How do the facts a manifest only implies -- a linked path, an inherited field, a hierarchy parent -- get filled in explicitly?
+          - value: validation_stage
+            question: How does the pipeline catch a component whose data doesn't match its own declared schema?
+
+live_agent_tooling:
+    - description: >
+          The part of emc2p that drives a real or simulated agent through
+          an actual tool-calling conversation, so the project's ideas get
+          tried against real model behavior instead of only a test that
+          reads right on paper.
+    - how:
+          - value: tool_calling_core
+            question: How does an agent actually take a turn -- call a tool, get back a result, decide what to do next?
+          - value: test_sessions
+            question: How does that turn-taking loop get reused for a specific kind of test or demo -- headless, against a real MCP server, or a fully live agent?
+          - value: test_support
+            question: How do those sessions check what happened, or show it to a person afterward?
+
+mcp_server_exposure:
+    - description: >
+          emc2p's own MCP server: it exposes registrar operations as tools
+          over stdio, so any MCP client -- not just this project's own
+          code -- can open, inspect, or update a manifest.
+    - how:
+          - value: emc2p.mcp_server
+            question: How does an operation like opening or updating a registry become something an external MCP client can actually call?
+
+supporting_utilities:
+    - description: >
+          Small shared pieces the other subsystems all depend on but that
+          aren't specific to any one of them: configuration, entity-id
+          hashing and resolution, text similarity, and a guard against
+          unsafe writes.
+    - how:
+          - value: emc2p.config
+            question: How do settings several subsystems need, like the docstring Components-section pattern, get defined once instead of copied?
+          - value: emc2p.utils
+            question: How does a user-typed reference -- a short alias, a dotted path, a bare hash -- actually get resolved to one real entity?
+          - value: emc2p.similarity
+            question: How does the project decide two pieces of text are similar enough to flag as a possible duplicate?
+          - value: emc2p.validate_write
+            question: How does the project stop a write from silently corrupting or clobbering data already on disk?
+
+# ---------------------------------------------------------------------------
+# Level 2 under manifest_pipeline.
+# ---------------------------------------------------------------------------
+
+pipeline_assembly:
+    - description: >
+          The glue that chains the etl, derive, and validation subdags
+          into the single pipeline ``manifest_pipeline`` runs end to end,
+          producing one validated registry.
+    - how:
+          - value: emc2p.etl_system
+            question: How does a caller run the whole load-to-validated-registry pipeline with one call, instead of wiring the stages together themselves?
+          - value: dataflows.__init__
+            question: How do the etl, derive, and validation subpackages get treated as one coherent namespace?
+          - value: dataflows.base_etl
+            question: How exactly do the etl, derive, and validation subdags get chained into one Hamilton DAG?
+
+etl_stage:
+    - description: >
+          The stage that reads raw YAML and Python source into component
+          tables, and writes a registry's data back out again.
+    - how:
+          - value: etl.__init__
+            question: How do the four ETL modules get grouped so the rest of the pipeline can import them as one thing?
+          - value: etl.load_yaml
+            question: How does an entity-centered YAML file become component rows a registry can hold?
+          - value: etl.load_python
+            question: How does a docstring on a Python module, class, or function become an entity, the same way a YAML block does?
+          - value: etl.load_manifest
+            question: How do YAML sources, Python sources, and emc2p's own always-loaded builtins get combined into one entity-id table and one set of component tables?
+          - value: etl.export_manifest
+            question: How does a registry's in-memory data get written back out as readable YAML, one file per original source?
+
+derive_stage:
+    - description: >
+          The stage that fills in facts a manifest only implies rather
+          than states outright: resolved entity_ref links, hierarchy
+          -implied parents, and fields inherited down a parent chain.
+    - how:
+          - value: derive.__init__
+            question: How do the four derive modules get grouped under one namespace?
+          - value: derive.resolve_same_as
+            question: How do two entities a manifest marks as describing the same real thing get merged into one?
+          - value: derive.resolve_paths
+            question: How does a written reference like a short alias or dotted path get resolved to the one real entity it names?
+          - value: derive.derive_components
+            question: How do the separate same_as-resolution, path-resolution, and whitespace-stripping steps get chained into the one derive subdag ``manifest_pipeline`` runs?
+          - value: derive.inherit_components
+            question: How does a child entity end up with a field it never stated itself, but that its parent did?
+
+validation_stage:
+    - description: >
+          The stage that checks every component's field values against
+          the schema its own component type declared, so a malformed
+          manifest fails loudly instead of loading silently wrong.
+    - how:
+          - value: validation.__init__
+            question: How does the validation module get grouped as its own stage of the pipeline?
+          - value: validation.validate_components
+            question: How does a component's data actually get checked against its declared type, range, and nullability?
+
+# ---------------------------------------------------------------------------
+# Level 2 under live_agent_tooling.
+# ---------------------------------------------------------------------------
+
+tool_calling_core:
+    - description: >
+          The actual turn-by-turn loop: an agent is given its available
+          tools, calls one, gets back a result, and decides what to do
+          next.
+    - how:
+          - value: agents.__init__
+            question: How does the tool-calling loop become its own importable subpackage?
+          - value: agents.tool_calling_loop
+            question: How does a single conversation turn actually get run -- the model deciding, the tool call happening, the result coming back?
+
+test_sessions:
+    - description: >
+          Reusable session classes that wrap the tool-calling loop for a
+          specific purpose: a headless run with no model at all, a session
+          against a real MCP server over the protocol, or a fully live
+          agent conversation.
+    - how:
+          - value: testing.__init__
+            question: How do these session classes get grouped as the project's own testing subpackage?
+          - value: testing.headless_session
+            question: How does a turn get driven through the loop without a real model or server at all, for a fast and deterministic test?
+          - value: testing.mcp_client_session
+            question: How does a test actually connect to and drive a real MCP server over the real protocol, the way an external client would?
+          - value: testing.agent_session
+            question: How does a real model get wired into the loop so it's actually the one deciding each turn?
+          - value: testing.live_trial
+            question: How does a full live trial actually get run and recorded, start to finish?
+
+test_support:
+    - description: >
+          Shared pieces the test sessions above all depend on: ready-made
+          fixtures, assertions about what a registry ended up holding, and
+          a way to render a conversation trace for a person to read.
+    - how:
+          - value: testing.expected_fixtures
+            question: How does a test get a ready-made manifest or registry to start from, instead of building one by hand each time?
+          - value: testing.registry_checks
+            question: How does a test assert that a registry actually ended up holding the components it expected?
+          - value: testing.render_trace
+            question: How does a recorded conversation trace actually get turned into something a person can read?
+          - value: testing.responder_fixture
+            question: How does a test stand in for a real model's responses, without calling one?

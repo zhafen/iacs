@@ -180,3 +180,34 @@ project_history:
               root cause -- component_type flagged skip_on_export isn't
               also excluded from assert_registries_equal's round-trip
               comparison -- is an emc2p-level gap, out of scope here).
+    how_chain_poc_added_as_reverse_of_why_chain:
+        - description: >
+              poc/how_chain/ runs the same kind of experiment as
+              poc/why_chain/ in the opposite direction: instead of starting
+              at one piece of code and asking "why" until the chain reaches
+              emc2p_mission, it starts at emc2p_mission and asks "how" until
+              the chain reaches every one of the 34 .py files in emc2p's own
+              package. Defined a new `how` component (value/question/note,
+              parent: directed_relation) rather than reusing `why`, because
+              the two read in opposite directions: a `why` link is owned by
+              the more abstract entity but is conceptually "asked" by the
+              more concrete one (why_chain's viewer has to reverse the
+              arrow and swap which panel shows the Q&amp;A to display that
+              correctly), while a `how` link is both owned by and
+              conceptually asked by the more abstract entity -- so its
+              viewer draws edges in the data's own source-to-target
+              direction with no reversal or panel-swap needed. Vendored
+              emc2p's whole package tree (not just one file) to keep every
+              file's two-segment alias (parent directory + filename) stable
+              regardless of where the copy sits, the same reasoning
+              why_chain_poc_moved_from_emc2p above used for one file.
+              Eleven of the 34 files had no module-level docstring in the
+              real repo -- without one, load_python creates no entity for
+              that module at all -- so this vendored copy adds a minimal
+              one-line docstring to each of those eleven, purely so every
+              file becomes a loadable, linkable node; nothing else about
+              those files changed. Verified programmatically before writing
+              any visualization: single root (emc2p_mission, 0 incoming
+              edges), all 46 how.value references resolved, 34 distinct
+              leaves with 0 outgoing edges matching the 34 vendored files
+              1:1, and no cycles.

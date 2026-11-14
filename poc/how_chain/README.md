@@ -1,0 +1,56 @@
+# how_chain (PoC)
+
+A companion experiment to [`../why_chain`](../why_chain), run in the
+opposite direction: instead of starting at one small piece of code and
+asking "why" until the chain reaches emc2p's mission, this one starts at
+the mission and keeps asking "how" until the chain reaches every single
+`.py` file in emc2p's own package.
+
+## What's here
+
+- **`how.yaml`** — defines the `how` component (`value`/`question`/`note`,
+  `parent: directed_relation`, mirroring `why`) and a small tree of hand
+  -written group entities: the mission at the root, five subsystems one
+  level down, a handful of sub-groups under the two largest subsystems,
+  and 46 `how` links total. None of the 34 files themselves are YAML
+  entities — each is referenced by its real Python module, by its short
+  alias (e.g. `emc2p.utils`, `testing.mcp_client_session`), the same
+  mechanism `why_v2.yaml` used for the one method it started from. Each
+  leaf's `description` component comes straight from its own module
+  docstring.
+- **`emc2p/`** — a **vendored, frozen copy** of emc2p's whole package
+  tree (34 files, same internal layout), not a live dependency — see
+  `why_chain`'s README for why a frozen copy. Eleven of those files had
+  no module-level docstring in the real repo and so wouldn't have
+  qualified as loadable entities; this copy adds a minimal one-line
+  docstring to each of those eleven, purely so every file becomes a node
+  in the graph. Nothing else about those files was changed.
+- **`graph/`** — an interactive visualization of `how.yaml`'s graph
+  (`index.html` + the `data.json` it fetches): the mission at the top,
+  arrows pointing straight down from whatever explains to whatever it
+  explains, ending at real files. Unlike `why_chain`'s viewer, no arrow
+  -reversal or panel-swap is needed — a `how` link already reads
+  top-down the way the data is stored (the entity asking "how" owns the
+  link; the entity answering is its `value`). Click a node to trace its
+  lineage back to the mission and see the question(s) it raises and who
+  answers them. Open `graph/index.html` through a local server (it
+  fetches `data.json` relative to itself, e.g. `python3 -m http.server`
+  from this directory) rather than as a bare `file://` page.
+
+## Loading it yourself
+
+```python
+from emc2p.registrar import Registrar
+
+# how.yaml needs the vendored emc2p/ tree loaded alongside it, since every
+# leaf is a real Python module rather than a local YAML entity.
+r = Registrar.from_manifest("poc/how_chain")
+```
+
+## Status
+
+This is a proof of concept, kept off to the side — it isn't exercised by
+iacs's test suite or referenced from its CLI/docs. Regenerate
+`graph/data.json` from a fresh load of `how.yaml` if the manifest or the
+vendored tree changes; it's a static extract, not computed at page-load
+time.
