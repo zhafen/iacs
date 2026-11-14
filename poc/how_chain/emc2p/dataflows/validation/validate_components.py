@@ -1,4 +1,39 @@
-"""Validates component data against each component type's own declared field schema."""
+"""Validates component data against each component type's own declared field schema.
+
+Components
+----------
+- how:
+      - value: validate_components._eval_arithmetic_expr
+        question: "How is `_eval_arithmetic_expr` implemented?"
+      - value: validate_components.components
+        question: "How is `components` implemented?"
+      - value: validate_components.field
+        question: "How is `field` implemented?"
+      - value: validate_components._isnull
+        question: "How is `_isnull` implemented?"
+      - value: validate_components._parse_range
+        question: "How is `_parse_range` implemented?"
+      - value: validate_components._resolve_numeric_string
+        question: "How is `_resolve_numeric_string` implemented?"
+      - value: validate_components._coerce_default
+        question: "How is `_coerce_default` implemented?"
+      - value: validate_components._build_component_schemas
+        question: "How is `_build_component_schemas` implemented?"
+      - value: validate_components._validate_component
+        question: "How is `_validate_component` implemented?"
+      - value: validate_components._union_violations
+        question: "How is `_union_violations` implemented?"
+      - value: validate_components.field_validation_results
+        question: "How is `field_validation_results` implemented?"
+      - value: validate_components._empty_component_schema
+        question: "How is `_empty_component_schema` implemented?"
+      - value: validate_components._declared_component_types
+        question: "How is `_declared_component_types` implemented?"
+      - value: validate_components.validation_results
+        question: "How is `validation_results` implemented?"
+      - value: validate_components.validated_registry
+        question: "How is `validated_registry` implemented?"
+"""
 
 import ast
 import operator
@@ -98,6 +133,7 @@ _INVALID_SCHEMA = ibis.schema({
 
 
 def _isnull(val) -> bool:
+    """Return whether val is a scalar null, treating lists/dicts as never null."""
     if val is None:
         return True
     if isinstance(val, (list, dict)):
@@ -110,6 +146,7 @@ def _isnull(val) -> bool:
 
 
 def _parse_range(val):
+    """Parse a field's declared `range` into a plain list, or None if it isn't one."""
     if isinstance(val, list):
         return val
     if _isnull(val):
@@ -145,6 +182,7 @@ def _resolve_numeric_string(val):
 
 
 def _coerce_default(val, py_type: type):
+    """Best-effort coerce val to py_type, returning it unchanged if that fails."""
     if py_type is bool:
         if isinstance(val, str):
             return val.strip().lower() in ("true", "1", "yes")

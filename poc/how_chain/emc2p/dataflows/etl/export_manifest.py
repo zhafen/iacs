@@ -41,6 +41,36 @@ component dicts from ``{type: {field: value}}`` to ``{type: value}``.
 hierarchical_entity_first_data uses the entity_hierarchy to nest child entities
 under their parents and produces the {filepath: {entity_key: ...}} structure
 written to YAML.
+
+Components
+----------
+- how:
+      - value: export_manifest._exportable_mask
+        question: "How is `_exportable_mask` implemented?"
+      - value: export_manifest.components
+        question: "How is `components` implemented?"
+      - value: export_manifest._derived_comp_types
+        question: "How is `_derived_comp_types` implemented?"
+      - value: export_manifest._skip_on_export_types
+        question: "How is `_skip_on_export_types` implemented?"
+      - value: export_manifest.entity_hierarchy
+        question: "How is `entity_hierarchy` implemented?"
+      - value: export_manifest.non_hierarchy_parents
+        question: "How is `non_hierarchy_parents` implemented?"
+      - value: export_manifest.non_inherited_fields
+        question: "How is `non_inherited_fields` implemented?"
+      - value: export_manifest.components_for_export
+        question: "How is `components_for_export` implemented?"
+      - value: export_manifest.entity_first_data
+        question: "How is `entity_first_data` implemented?"
+      - value: export_manifest.condensed_entity_first_data
+        question: "How is `condensed_entity_first_data` implemented?"
+      - value: export_manifest._get_or_create_node
+        question: "How is `_get_or_create_node` implemented?"
+      - value: export_manifest.hierarchical_entity_first_data
+        question: "How is `hierarchical_entity_first_data` implemented?"
+      - value: export_manifest.exported_manifest_filepaths
+        question: "How is `exported_manifest_filepaths` implemented?"
 """
 
 from pathlib import Path

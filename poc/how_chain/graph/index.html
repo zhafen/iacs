@@ -18,6 +18,7 @@
     --mission-glow: rgba(163,112,30,0.35);
     --concept: #4a3fa3;
     --code: #0f8a5f;
+    --member: #0e7a90;
     --edge: #cdc3ae;
     --edge-dim: #e3ddcc;
     --focus: #a3701e;
@@ -38,6 +39,7 @@
       --mission-glow: rgba(217,154,53,0.35);
       --concept: #7f74d9;
       --code: #22ad82;
+      --member: #3fc3de;
       --edge: #313640;
       --edge-dim: #22262e;
       --focus: #d99a35;
@@ -58,6 +60,7 @@
     --mission-glow: rgba(217,154,53,0.35);
     --concept: #7f74d9;
     --code: #22ad82;
+    --member: #3fc3de;
     --edge: #313640;
     --edge-dim: #22262e;
     --focus: #d99a35;
@@ -358,6 +361,7 @@
       <span class="item"><span class="dot" style="background:var(--mission)"></span>mission</span>
       <span class="item"><span class="dot" style="background:var(--concept)"></span>subsystem</span>
       <span class="item"><span class="dot" style="background:var(--code)"></span>real file</span>
+      <span class="item"><span class="dot" style="background:var(--member)"></span>class / function</span>
     </div>
     <div class="search-wrap">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.6" y2="16.6"/></svg>
@@ -369,7 +373,7 @@
   <div class="main">
     <div class="stage">
       <svg id="graph"></svg>
-      <div class="hint">Drag to pan, scroll/pinch to zoom. Arrows point down from the mission to what it takes to achieve it. Click a node to trace its lineage from the mission; click empty space to clear.</div>
+      <div class="hint">Drag to pan, scroll/pinch to zoom. Arrows point down from the mission through subsystems and files to the classes and functions that carry them out. Click a node to trace its lineage from the mission; click empty space to clear.</div>
     </div>
     <div class="panel" id="panel">
       <button class="close-panel-btn" id="closePanel" aria-label="Close">&times;</button>
@@ -386,8 +390,13 @@
   const raw = await fetch("data.json").then(r => r.json());
 
   // ---------- build graph model ----------
-  // raw.nodes: [{id, description, is_file}]
+  // raw.nodes: [{id, description, kind}]  kind: mission | subsystem | file | member
   // raw.edges: [{source, target, question, note}]  (source is how target gets achieved -- source asks, target answers)
+
+  const KIND_COLOR_VAR = { mission: "--mission", subsystem: "--concept", file: "--code", member: "--member" };
+  const KIND_LABEL = { mission: "the mission", subsystem: "subsystem", file: "real file", member: "class or function" };
+  function colorOf(d) { return `var(${KIND_COLOR_VAR[d.kind]})`; }
+  function kindOf(d) { return KIND_LABEL[d.kind]; }
 
   const nodeById = new Map(raw.nodes.map(n => [n.id, { ...n, outEdges: [], inEdges: [] }]));
   raw.edges.forEach(e => {
@@ -424,7 +433,10 @@
   nodes.forEach(n => {
     n.outDeg = n.outEdges.length;
     n.inDeg = n.inEdges.length;
-    n.r = n.id === MISSION_ID ? 13 : n.is_file ? 5.5 : Math.min(11, 5 + Math.sqrt(n.outDeg) * 2.6);
+    n.r = n.kind === "mission" ? 13
+      : n.kind === "member" ? 3.5
+      : n.kind === "file" ? 5.5
+      : Math.min(11, 5 + Math.sqrt(n.outDeg) * 2.6);
   });
 
   function cleanText(t) {
@@ -539,7 +551,7 @@
     .style("cursor", "pointer")
     .attr("tabindex", 0)
     .attr("role", "button")
-    .attr("aria-label", d => `${d.id === MISSION_ID ? "emc2p_mission" : d.id}, ${d.id === MISSION_ID ? "the mission" : d.is_file ? "real file" : "subsystem"}`)
+    .attr("aria-label", d => `${d.id}, ${kindOf(d)}`)
     .on("click", (event, d) => { event.stopPropagation(); selectNode(d.id); })
     .on("keydown", (event, d) => {
       if (event.key === "Enter" || event.key === " ") {
@@ -555,7 +567,7 @@
 
   nodeSel.append("circle")
     .attr("r", d => d.r)
-    .attr("fill", d => d.id === MISSION_ID ? "var(--mission)" : d.is_file ? "var(--code)" : "var(--concept)");
+    .attr("fill", d => colorOf(d));
 
   nodeSel.append("text")
     .attr("dy", d => d.r + 11)
@@ -696,9 +708,7 @@
     .style("font-family", "IBM Plex Sans, sans-serif");
 
   function showTip(event, d) {
-    const label = d.id === MISSION_ID ? "emc2p_mission" : d.id;
-    const kind = d.id === MISSION_ID ? "mission" : d.is_file ? "real file" : "subsystem";
-    tip.html(`<div style="font-family:'IBM Plex Mono',monospace;color:var(--ink);margin-bottom:3px;">${escapeHtml(label)}</div><div style="opacity:.7;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;">${kind}</div>${escapeHtml(cleanText(d.description).slice(0, 180))}${d.description.length > 180 ? "…" : ""}`)
+    tip.html(`<div style="font-family:'IBM Plex Mono',monospace;color:var(--ink);margin-bottom:3px;">${escapeHtml(d.id)}</div><div style="opacity:.7;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;">${kindOf(d)}</div>${escapeHtml(cleanText(d.description).slice(0, 180))}${d.description.length > 180 ? "…" : ""}`)
       .style("left", (event.clientX + 14) + "px")
       .style("top", (event.clientY + 10) + "px")
       .style("opacity", 1);
@@ -716,26 +726,27 @@
   function renderEmptyPanel() {
     panelBody.innerHTML = `
       <div class="empty-state">
-        <h3>One mission, 34 files</h3>
+        <h3>One mission, every file and function</h3>
         <p>This is emc2p's "how" chain, run the opposite way from
         <span class="desc-mono">why_chain</span>: starting from
         <span class="desc-mono">emc2p_mission</span>, each node asks "how does
         this actually happen", answered by one or more more-concrete nodes,
-        until every answer is a real file in emc2p's own package.</p>
+        down through subsystems and files to the real classes and functions
+        that do the work.</p>
         <div class="mini-legend">
           <div class="item"><span class="dot" style="background:var(--mission);width:12px;height:12px"></span> the mission &mdash; the graph's one root</div>
           <div class="item"><span class="dot" style="background:var(--concept);width:12px;height:12px"></span> a subsystem, grouping files that answer the same "how"</div>
           <div class="item"><span class="dot" style="background:var(--code);width:12px;height:12px"></span> a real file in the package</div>
+          <div class="item"><span class="dot" style="background:var(--member);width:12px;height:12px"></span> a real class or function in that file</div>
         </div>
         <p style="margin-top:14px;">Click any node to trace its lineage back to the mission. Each node's own panel shows the question <em>it</em> raises and who answers it, under &ldquo;how this happens&rdquo; &mdash; and what it's part of, under &ldquo;part of.&rdquo;</p>
       </div>`;
   }
 
   function renderPanel(d) {
-    const kind = d.id === MISSION_ID ? "the mission &middot; graph root" : d.is_file ? "real file" : "subsystem";
-    const label = d.id === MISSION_ID ? "emc2p_mission" : d.id;
+    const kindLabel = d.kind === "mission" ? "the mission &middot; graph root" : kindOf(d);
 
-    let html = `<h2>${escapeHtml(label)}</h2><div class="kind-tag"><span class="dot" style="background:${d.id === MISSION_ID ? "var(--mission)" : d.is_file ? "var(--code)" : "var(--concept)"}"></span>${kind}</div>`;
+    let html = `<h2>${escapeHtml(d.id)}</h2><div class="kind-tag"><span class="dot" style="background:${colorOf(d)}"></span>${kindLabel}</div>`;
     html += `<div class="desc">${renderParas(d.description) || "<em>(no description)</em>"}</div>`;
 
     // The `how` question/note lives with the entity that ASKS it -- that's
@@ -755,7 +766,7 @@
     if (d.inEdges.length) {
       html += `<section><h3>Part of</h3>`;
       d.inEdges.forEach(e => {
-        html += `<div class="crumb" data-goto="${escapeHtml(e.source)}"><span class="dot" style="width:7px;height:7px;background:${nodeById.get(e.source).id === MISSION_ID ? "var(--mission)" : nodeById.get(e.source).is_file ? "var(--code)" : "var(--concept)"}"></span>${escapeHtml(shortLabel(e.source))}<span class="arrow">&rarr;</span></div>`;
+        html += `<div class="crumb" data-goto="${escapeHtml(e.source)}"><span class="dot" style="width:7px;height:7px;background:${colorOf(nodeById.get(e.source))}"></span>${escapeHtml(shortLabel(e.source))}<span class="arrow">&rarr;</span></div>`;
       });
       html += `</section>`;
     }
@@ -765,7 +776,7 @@
       html += `<section><h3>Lineage from the mission</h3><div class="breadcrumb">`;
       path.forEach(id => {
         const n = nodeById.get(id);
-        html += `<div class="crumb" data-goto="${escapeHtml(id)}"><span class="dot" style="width:7px;height:7px;background:${id === MISSION_ID ? "var(--mission)" : n.is_file ? "var(--code)" : "var(--concept)"}"></span>${escapeHtml(shortLabel(id))}</div>`;
+        html += `<div class="crumb" data-goto="${escapeHtml(id)}"><span class="dot" style="width:7px;height:7px;background:${colorOf(n)}"></span>${escapeHtml(shortLabel(id))}</div>`;
       });
       html += `</div></section>`;
     }

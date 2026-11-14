@@ -18,6 +18,22 @@ outside. `server`/the module-level tool functions below are this module's
 own default instance, for standalone use; a caller mounting these tools
 onto its own FastMCP server instead constructs a separate
 `RegistrarSessions` and mounts that instance's own bound methods.
+
+Components
+----------
+- how:
+      - value: mcp_server.RegistrarSessions
+        question: "How is the `RegistrarSessions` class implemented?"
+      - value: mcp_server._validate_write
+        question: "How is `_validate_write` implemented?"
+      - value: mcp_server._component_write_summary
+        question: "How is `_component_write_summary` implemented?"
+      - value: mcp_server._encode_pending_write
+        question: "How is `_encode_pending_write` implemented?"
+      - value: mcp_server._decode_pending_write
+        question: "How is `_decode_pending_write` implemented?"
+      - value: mcp_server.main
+        question: "How is `main` implemented?"
 """
 
 from __future__ import annotations
@@ -74,6 +90,38 @@ class RegistrarSessions:
     database and seeds/tracks an export_dir) -- that caller passes its
     own tool's name here so the error a client actually sees names a tool
     that's really mounted on that server.
+
+    Components
+    ----------
+    - how:
+          - value: RegistrarSessions.__init__
+            question: "How is `__init__` implemented?"
+          - value: RegistrarSessions.get_registrar
+            question: "How is `get_registrar` implemented?"
+          - value: RegistrarSessions.set_registrar
+            question: "How is `set_registrar` implemented?"
+          - value: RegistrarSessions.get_trace_path
+            question: "How is `get_trace_path` implemented?"
+          - value: RegistrarSessions.open
+            question: "How is `open` implemented?"
+          - value: RegistrarSessions.view_registry
+            question: "How is `view_registry` implemented?"
+          - value: RegistrarSessions.view_entity
+            question: "How is `view_entity` implemented?"
+          - value: RegistrarSessions.consolidate_review
+            question: "How is `consolidate_review` implemented?"
+          - value: RegistrarSessions.update_registry
+            question: "How is `update_registry` implemented?"
+          - value: RegistrarSessions.dispatch
+            question: "How is `dispatch` implemented?"
+          - value: RegistrarSessions._merge_and_sync
+            question: "How is `_merge_and_sync` implemented?"
+          - value: RegistrarSessions._export_registry
+            question: "How is `_export_registry` implemented?"
+          - value: RegistrarSessions._preview
+            question: "How is `_preview` implemented?"
+          - value: RegistrarSessions.mount
+            question: "How is `mount` implemented?"
     """
 
     def __init__(
@@ -83,6 +131,7 @@ class RegistrarSessions:
         export_history_dirname: str = "registry_history",
         open_tool_name: str = "open_registry",
     ):
+        """Start with no sessions tracked yet, remembering the export/time-provider settings."""
         self._registrars: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
         self._export_dirs: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
         self._trace_paths: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
@@ -278,6 +327,7 @@ class RegistrarSessions:
     # Internal helpers
 
     def _merge_and_sync(self, session, registrar: Registrar, yaml_string: str) -> None:
+        """Validate and apply a YAML write, then re-export the registry if this session has an export dir."""
         _validate_write(registrar, yaml_string)
         registrar.update(
             yaml_strings={SOURCE_KEY: yaml_string},
@@ -432,6 +482,7 @@ def _encode_pending_write(yaml_string: str) -> str:
 
 
 def _decode_pending_write(confirm_token: str) -> str:
+    """Reverse _encode_pending_write, recovering the original YAML string."""
     return base64.urlsafe_b64decode(confirm_token.encode()).decode()
 
 
@@ -441,6 +492,7 @@ sessions.mount(server)
 
 
 def main() -> None:
+    """Run the MCP server over stdio -- the package's console-script entry point."""
     server.run(transport="stdio")
 
 

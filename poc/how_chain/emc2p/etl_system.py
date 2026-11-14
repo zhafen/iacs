@@ -1,4 +1,15 @@
-"""Generic Hamilton-based dataflow execution, decoupled from Registrar."""
+"""Generic Hamilton-based dataflow execution, decoupled from Registrar.
+
+Components
+----------
+- how:
+      - value: etl_system.register_dataflow_package
+        question: "How is `register_dataflow_package` implemented?"
+      - value: etl_system.resolve_dataflow
+        question: "How is `resolve_dataflow` implemented?"
+      - value: etl_system.ETLSystem
+        question: "How is the `ETLSystem` class implemented?"
+"""
 from __future__ import annotations
 
 import importlib
@@ -55,6 +66,20 @@ class ETLSystem:
     Stateless: dataflows, adapters, and inputs (including any registry) are
     all supplied per call, since a given system rarely reruns the same
     dataflow/adapter combination.
+
+    Components
+    ----------
+    - how:
+          - value: ETLSystem.execute
+            question: "How is `execute` implemented?"
+          - value: ETLSystem.outputs
+            question: "How is `outputs` implemented?"
+          - value: ETLSystem._resolve_all
+            question: "How is `_resolve_all` implemented?"
+          - value: ETLSystem._final_var
+            question: "How is `_final_var` implemented?"
+          - value: ETLSystem._build_driver
+            question: "How is `_build_driver` implemented?"
     """
 
     def execute(
@@ -107,12 +132,14 @@ class ETLSystem:
 
     @staticmethod
     def _resolve_all(dataflows: ModuleType | str | list[ModuleType | str]) -> list[ModuleType]:
+        """Normalize one or more module-or-string dataflow references into a list of modules."""
         if not isinstance(dataflows, list):
             dataflows = [dataflows]
         return [resolve_dataflow(d) for d in dataflows]
 
     @staticmethod
     def _final_var(module: ModuleType) -> str:
+        """Read a dataflow module's declared FINAL_VAR, or raise if it has none."""
         try:
             return module.FINAL_VAR
         except AttributeError as e:
@@ -122,6 +149,7 @@ class ETLSystem:
 
     @staticmethod
     def _build_driver(modules: list[ModuleType], adapters: list | None):
+        """Build a Hamilton Driver over the given modules, with DictResult plus any extra adapters."""
         from hamilton import driver, base
         return driver.Driver(
             {},

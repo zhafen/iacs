@@ -2,6 +2,52 @@
 
 Coordinates load_yaml and load_python subdags, merges their entity-first
 dictionaries, then runs the shared pipeline through to a Registry.
+
+Components
+----------
+- how:
+      - value: load_manifest.register_builtins_dir
+        question: "How is `register_builtins_dir` implemented?"
+      - value: load_manifest.builtins_tags
+        question: "How is `builtins_tags` implemented?"
+      - value: load_manifest._file_id
+        question: "How is `_file_id` implemented?"
+      - value: load_manifest.raw_strings
+        question: "How is `raw_strings` implemented?"
+      - value: load_manifest.yaml_entity_first_data
+        question: "How is `yaml_entity_first_data` implemented?"
+      - value: load_manifest.python_entity_first_data
+        question: "How is `python_entity_first_data` implemented?"
+      - value: load_manifest.raw_entity_first_data
+        question: "How is `raw_entity_first_data` implemented?"
+      - value: load_manifest.raw_csv_data
+        question: "How is `raw_csv_data` implemented?"
+      - value: load_manifest.csv_component_tables
+        question: "How is `csv_component_tables` implemented?"
+      - value: load_manifest.csv_spine
+        question: "How is `csv_spine` implemented?"
+      - value: load_manifest._add_component_pairs
+        question: "How is `_add_component_pairs` implemented?"
+      - value: load_manifest._flatten_to_pathvalue
+        question: "How is `_flatten_to_pathvalue` implemented?"
+      - value: load_manifest._collect_entity_paths
+        question: "How is `_collect_entity_paths` implemented?"
+      - value: load_manifest.yaml_spine
+        question: "How is `yaml_spine` implemented?"
+      - value: load_manifest.pathvalue_pairs
+        question: "How is `pathvalue_pairs` implemented?"
+      - value: load_manifest._with_spine_path
+        question: "How is `_with_spine_path` implemented?"
+      - value: load_manifest.keyvalue_store
+        question: "How is `keyvalue_store` implemented?"
+      - value: load_manifest.entity_id_table
+        question: "How is `entity_id_table` implemented?"
+      - value: load_manifest.component_type_table
+        question: "How is `component_type_table` implemented?"
+      - value: load_manifest.component_tables
+        question: "How is `component_tables` implemented?"
+      - value: load_manifest.registry
+        question: "How is `registry` implemented?"
 """
 
 import re
@@ -143,6 +189,7 @@ def raw_strings(
     config={},
 )
 def yaml_entity_first_data(raw_entity_first_data: dict) -> dict:
+    """Run the load_yaml subdag over the raw YAML strings and surface its entity-first dict."""
     return raw_entity_first_data
 
 
@@ -152,6 +199,7 @@ def yaml_entity_first_data(raw_entity_first_data: dict) -> dict:
     config={},
 )
 def python_entity_first_data(raw_entity_first_data: dict) -> dict:
+    """Run the load_python subdag over the raw Python strings and surface its entity-first dict."""
     return raw_entity_first_data
 
 

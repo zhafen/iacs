@@ -20,6 +20,18 @@ wired to its own functions instead of using the default wiring.
 
 Requires the `agents` extra (`litellm`), not a core emc2p dependency --
 most emc2p-based projects have no need for this module at all.
+
+Components
+----------
+- how:
+      - value: tool_calling_loop.run_tool_calling_loop
+        question: "How is `run_tool_calling_loop` implemented?"
+      - value: tool_calling_loop._assistant_trace_event
+        question: "How is `_assistant_trace_event` implemented?"
+      - value: tool_calling_loop._append_trace_event
+        question: "How is `_append_trace_event` implemented?"
+      - value: tool_calling_loop._log_usage
+        question: "How is `_log_usage` implemented?"
 """
 
 from __future__ import annotations
@@ -269,6 +281,7 @@ def _assistant_trace_event(
 
 
 def _append_trace_event(trace_path: Path, event: dict[str, Any]) -> None:
+    """Append one JSON-encoded event as a line to the trace file."""
     with trace_path.open("a") as f:
         f.write(json.dumps(event) + "\n")
 

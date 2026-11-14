@@ -1,4 +1,23 @@
-"""Derive step: resolve every entity_ref field to the entity_id(s) it names."""
+"""Derive step: resolve every entity_ref field to the entity_id(s) it names.
+
+Components
+----------
+- how:
+      - value: resolve_paths.components
+        question: "How is `components` implemented?"
+      - value: resolve_paths.fields_of_type_entity_ref
+        question: "How is `fields_of_type_entity_ref` implemented?"
+      - value: resolve_paths.implicit_parent_target_types
+        question: "How is `implicit_parent_target_types` implemented?"
+      - value: resolve_paths.components_with_resolved_paths
+        question: "How is `components_with_resolved_paths` implemented?"
+      - value: resolve_paths.parent_from_hierarchy
+        question: "How is `parent_from_hierarchy` implemented?"
+      - value: resolve_paths.updated_parent
+        question: "How is `updated_parent` implemented?"
+      - value: resolve_paths.resolved_registry
+        question: "How is `resolved_registry` implemented?"
+"""
 
 import pandas as pd
 import ibis

@@ -12,6 +12,14 @@ type-check them structurally. create_agent_session is the one place that
 actually picks a driver from a plain string, mirroring _coerce_provider's
 own string -> HeadlessProvider resolution one level down inside
 HeadlessSession itself.
+
+Components
+----------
+- how:
+      - value: agent_session.AgentSession
+        question: "How is the `AgentSession` class implemented?"
+      - value: agent_session.create_agent_session
+        question: "How is `create_agent_session` implemented?"
 """
 
 from __future__ import annotations
@@ -31,15 +39,43 @@ class AgentSession(Protocol):
 
     Structural, not nominal: matching this doesn't require either class
     to inherit from anything new, so both already satisfy it as-is.
+
+    Components
+    ----------
+    - how:
+          - value: AgentSession.__enter__
+            question: "How is `__enter__` implemented?"
+          - value: AgentSession.__exit__
+            question: "How is `__exit__` implemented?"
+          - value: AgentSession.send_turn
+            question: "How is `send_turn` implemented?"
+          - value: AgentSession.usage_summary
+            question: "How is `usage_summary` implemented?"
+          - value: AgentSession.close
+            question: "How is `close` implemented?"
     """
 
     trace_path: Path
 
-    def __enter__(self) -> "AgentSession": ...
-    def __exit__(self, *exc_info: object) -> None: ...
-    def send_turn(self, prompt: str) -> str: ...
-    def usage_summary(self) -> dict: ...
-    def close(self) -> None: ...
+    def __enter__(self) -> "AgentSession":
+        """Enter the session as a context manager, connecting whatever the driver needs."""
+        ...
+
+    def __exit__(self, *exc_info: object) -> None:
+        """Exit the session as a context manager, closing it."""
+        ...
+
+    def send_turn(self, prompt: str) -> str:
+        """Send one turn to the agent and return its reply."""
+        ...
+
+    def usage_summary(self) -> dict:
+        """Return this session's accumulated cost/token usage so far."""
+        ...
+
+    def close(self) -> None:
+        """Shut down the underlying driver and release its resources."""
+        ...
 
 
 def create_agent_session(

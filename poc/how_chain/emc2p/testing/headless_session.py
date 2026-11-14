@@ -9,6 +9,24 @@ registry backend, or domain scenarios. A caller supplies `mcp_config`,
 server(s) need (e.g. a database URL derived from a save/workdir the
 caller picked) -- a downstream project typically wraps this in its own
 subclass or fixture that fixes these to its own defaults.
+
+Components
+----------
+- how:
+      - value: headless_session.HeadlessProvider
+        question: "How is the `HeadlessProvider` class implemented?"
+      - value: headless_session._normalize_usage
+        question: "How is `_normalize_usage` implemented?"
+      - value: headless_session.ClaudeHeadlessProvider
+        question: "How is the `ClaudeHeadlessProvider` class implemented?"
+      - value: headless_session.CopilotHeadlessProvider
+        question: "How is the `CopilotHeadlessProvider` class implemented?"
+      - value: headless_session._extract_message_text
+        question: "How is `_extract_message_text` implemented?"
+      - value: headless_session._coerce_provider
+        question: "How is `_coerce_provider` implemented?"
+      - value: headless_session.HeadlessSession
+        question: "How is the `HeadlessSession` class implemented?"
 """
 
 from __future__ import annotations
@@ -31,23 +49,48 @@ _STRIP_BUILTIN_TOOLS_ARGS = ["--tools", ""]
 
 
 class HeadlessProvider(ABC):
-    """Provider contract for the CLI process `HeadlessSession` drives."""
+    """Provider contract for the CLI process `HeadlessSession` drives.
+
+    Components
+    ----------
+    - how:
+          - value: HeadlessProvider.executable
+            question: "How is `executable` implemented?"
+          - value: HeadlessProvider.supports_strict_tool_isolation
+            question: "How is `supports_strict_tool_isolation` implemented?"
+          - value: HeadlessProvider.skip_message
+            question: "How is `skip_message` implemented?"
+          - value: HeadlessProvider.filter_env
+            question: "How is `filter_env` implemented?"
+          - value: HeadlessProvider.build_command
+            question: "How is `build_command` implemented?"
+          - value: HeadlessProvider.prepare_prompt
+            question: "How is `prepare_prompt` implemented?"
+          - value: HeadlessProvider.encode_user_message
+            question: "How is `encode_user_message` implemented?"
+          - value: HeadlessProvider.decode_result_event
+            question: "How is `decode_result_event` implemented?"
+    """
 
     name = "provider"
 
     @property
     @abstractmethod
     def executable(self) -> str:
+        """Name of the CLI executable this provider drives."""
         pass
 
     @property
     def supports_strict_tool_isolation(self) -> bool:
+        """Whether this provider can enforce an allowed-tools list itself, rather than by prompt instruction."""
         return False
 
     def skip_message(self) -> str:
+        """Message to skip a test with when this provider's CLI isn't on PATH."""
         return f"{self.executable} CLI not on PATH"
 
     def filter_env(self, env: dict[str, str]) -> dict[str, str]:
+        """Adjust the subprocess environment before launch; unchanged by default."""
         return env
 
     @abstractmethod
@@ -60,6 +103,7 @@ class HeadlessProvider(ABC):
         strict_tool_isolation: bool,
         options: dict[str, Any],
     ) -> list[str]:
+        """Build this provider's CLI command line for one headless turn."""
         pass
 
     def prepare_prompt(
@@ -69,6 +113,7 @@ class HeadlessProvider(ABC):
         allowed_tools: list[str],
         strict_tool_isolation: bool,
     ) -> str:
+        """Prefix the prompt with an allowed-tools instruction when this provider can't enforce isolation itself."""
         if strict_tool_isolation and not self.supports_strict_tool_isolation:
             allowed = ", ".join(allowed_tools) if allowed_tools else "(none)"
             return (
@@ -79,6 +124,7 @@ class HeadlessProvider(ABC):
         return prompt
 
     def encode_user_message(self, prompt: str) -> str:
+        """Encode a prompt as the provider's own stream-JSON user-message line."""
         message = {"type": "user", "message": {"role": "user", "content": prompt}}
         return json.dumps(message)
 
@@ -104,6 +150,7 @@ class HeadlessProvider(ABC):
 
 
 def _normalize_usage(usage: dict[str, Any] | None) -> dict[str, int]:
+    """Coerce a possibly-missing/partial usage dict into one with every expected int field."""
     usage = usage or {}
     return {
         "input_tokens": int(usage.get("input_tokens", 0) or 0),
@@ -114,14 +161,33 @@ def _normalize_usage(usage: dict[str, Any] | None) -> dict[str, int]:
 
 
 class ClaudeHeadlessProvider(HeadlessProvider):
+    """Drives the `claude -p` CLI in headless, stream-JSON mode.
+
+    Components
+    ----------
+    - how:
+          - value: ClaudeHeadlessProvider.executable
+            question: "How is `executable` implemented?"
+          - value: ClaudeHeadlessProvider.supports_strict_tool_isolation
+            question: "How is `supports_strict_tool_isolation` implemented?"
+          - value: ClaudeHeadlessProvider.filter_env
+            question: "How is `filter_env` implemented?"
+          - value: ClaudeHeadlessProvider.build_command
+            question: "How is `build_command` implemented?"
+          - value: ClaudeHeadlessProvider.decode_result_event
+            question: "How is `decode_result_event` implemented?"
+    """
+
     name = "claude"
 
     @property
     def executable(self) -> str:
+        """The `claude` CLI binary name."""
         return "claude"
 
     @property
     def supports_strict_tool_isolation(self) -> bool:
+        """Claude can strip its own built-in tools via a CLI flag."""
         return True
 
     def filter_env(self, env: dict[str, str]) -> dict[str, str]:
@@ -150,6 +216,7 @@ class ClaudeHeadlessProvider(HeadlessProvider):
         strict_tool_isolation: bool,
         options: dict[str, Any],
     ) -> list[str]:
+        """Build the `claude -p` command line for one headless, stream-JSON turn."""
         command = [
             self.executable,
             "-p",
@@ -170,6 +237,7 @@ class ClaudeHeadlessProvider(HeadlessProvider):
         return command
 
     def decode_result_event(self, line: str) -> dict[str, Any] | None:
+        """Parse one line of Claude's stream-JSON output into a normalized result/error event."""
         try:
             event = json.loads(line)
         except json.JSONDecodeError:
@@ -188,13 +256,32 @@ class ClaudeHeadlessProvider(HeadlessProvider):
 
 
 class CopilotHeadlessProvider(HeadlessProvider):
+    """Drives a GitHub Copilot CLI agent in headless mode, with configurable command/flags.
+
+    Components
+    ----------
+    - how:
+          - value: CopilotHeadlessProvider.__init__
+            question: "How is `__init__` implemented?"
+          - value: CopilotHeadlessProvider.executable
+            question: "How is `executable` implemented?"
+          - value: CopilotHeadlessProvider.filter_env
+            question: "How is `filter_env` implemented?"
+          - value: CopilotHeadlessProvider.build_command
+            question: "How is `build_command` implemented?"
+          - value: CopilotHeadlessProvider.decode_result_event
+            question: "How is `decode_result_event` implemented?"
+    """
+
     name = "copilot"
 
     def __init__(self, *, options: dict[str, Any] | None = None):
+        """Store the caller's command/flag overrides, merged with build_command's defaults."""
         self.options = options or {}
 
     @property
     def executable(self) -> str:
+        """The configured executable name, defaulting to `copilot`."""
         return str(self.options.get("executable", "copilot"))
 
     def filter_env(self, env: dict[str, str]) -> dict[str, str]:
@@ -212,6 +299,7 @@ class CopilotHeadlessProvider(HeadlessProvider):
         strict_tool_isolation: bool,
         options: dict[str, Any],
     ) -> list[str]:
+        """Build the Copilot CLI command line from configured defaults merged with per-call overrides."""
         merged = {**self.options, **options}
         command = list(merged.get("base_command", [self.executable, "agent", "run"]))
         mcp_flag = merged.get("mcp_config_flag", "--mcp-config")
@@ -232,6 +320,7 @@ class CopilotHeadlessProvider(HeadlessProvider):
         return command
 
     def decode_result_event(self, line: str) -> dict[str, Any] | None:
+        """Parse one line of Copilot's output into a normalized result/error event, or None if it's not a completion."""
         try:
             event = json.loads(line)
         except json.JSONDecodeError:
@@ -281,6 +370,7 @@ class CopilotHeadlessProvider(HeadlessProvider):
 
 
 def _extract_message_text(message: Any) -> str:
+    """Pull plain text out of a Copilot message, whichever of its shapes (string, dict, content list) it arrives in."""
     if isinstance(message, str):
         return message
     if isinstance(message, dict):
@@ -299,6 +389,7 @@ def _extract_message_text(message: Any) -> str:
 
 
 def _coerce_provider(provider: str | HeadlessProvider, options: dict[str, Any]) -> HeadlessProvider:
+    """Resolve a provider name (or an already-built HeadlessProvider) to a HeadlessProvider instance."""
     if isinstance(provider, HeadlessProvider):
         return provider
     if provider == "claude":
@@ -317,6 +408,26 @@ class HeadlessSession:
     still holding it open, and so the test itself can pace the conversation
     rather than handing the model a single "do everything" prompt with no
     chance to inspect state along the way.
+
+    Components
+    ----------
+    - how:
+          - value: HeadlessSession.__init__
+            question: "How is `__init__` implemented?"
+          - value: HeadlessSession.__enter__
+            question: "How is `__enter__` implemented?"
+          - value: HeadlessSession.send_turn
+            question: "How is `send_turn` implemented?"
+          - value: HeadlessSession._accumulate_usage
+            question: "How is `_accumulate_usage` implemented?"
+          - value: HeadlessSession.usage_summary
+            question: "How is `usage_summary` implemented?"
+          - value: HeadlessSession._fail
+            question: "How is `_fail` implemented?"
+          - value: HeadlessSession.close
+            question: "How is `close` implemented?"
+          - value: HeadlessSession.__exit__
+            question: "How is `__exit__` implemented?"
     """
 
     def __init__(
@@ -401,6 +512,7 @@ class HeadlessSession:
         self.total_duration_api_ms: int = 0
 
     def __enter__(self) -> "HeadlessSession":
+        """Skip if the provider CLI is missing, else spawn it and open the trace file."""
         import shutil
 
         if shutil.which(self.provider.executable) is None:
@@ -482,6 +594,7 @@ class HeadlessSession:
             sel.close()
 
     def _accumulate_usage(self, result_event: dict[str, Any]) -> None:
+        """Add one turn's cost/token/duration numbers onto this session's running totals."""
         self.total_cost_usd += result_event.get("total_cost_usd", 0.0) or 0.0
         usage = result_event.get("usage") or {}
         self.total_input_tokens += usage.get("input_tokens", 0) or 0
@@ -525,6 +638,7 @@ class HeadlessSession:
         pytest.fail(message)
 
     def close(self) -> None:
+        """Flush and close the trace/usage files, then stop the provider subprocess."""
         if self._trace_file is not None:
             self._trace_file.close()
             self._trace_file = None
@@ -543,4 +657,5 @@ class HeadlessSession:
             proc.kill()
 
     def __exit__(self, *exc_info) -> None:
+        """Close the session on context-manager exit."""
         self.close()

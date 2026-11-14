@@ -1,4 +1,11 @@
-"""Base class for emc2p systems."""
+"""Base class for emc2p systems.
+
+Components
+----------
+- how:
+      - value: registrar.Registrar
+        question: "How is the `Registrar` class implemented?"
+"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,6 +21,62 @@ if TYPE_CHECKING:
 class Registrar:
     """User-facing interface to a registry: loads human/agent-authored
     entries into it, and exposes it for viewing, updating, and exporting.
+
+    Components
+    ----------
+    - how:
+          - value: Registrar.from_manifest
+            question: "How is `from_manifest` implemented?"
+          - value: Registrar.load
+            question: "How is `load` implemented?"
+          - value: Registrar.__init__
+            question: "How is `__init__` implemented?"
+          - value: Registrar.update
+            question: "How is `update` implemented?"
+          - value: Registrar._base_etl_module
+            question: "How is `_base_etl_module` implemented?"
+          - value: Registrar.validate_write
+            question: "How is `validate_write` implemented?"
+          - value: Registrar.overwrite
+            question: "How is `overwrite` implemented?"
+          - value: Registrar.load_manifest
+            question: "How is `load_manifest` implemented?"
+          - value: Registrar.save
+            question: "How is `save` implemented?"
+          - value: Registrar.export_manifest
+            question: "How is `export_manifest` implemented?"
+          - value: Registrar.load_dataflow
+            question: "How is `load_dataflow` implemented?"
+          - value: Registrar.registry
+            question: "How is `registry` implemented?"
+          - value: Registrar.view
+            question: "How is `view` implemented?"
+          - value: Registrar.view_current
+            question: "How is `view_current` implemented?"
+          - value: Registrar.safe_view
+            question: "How is `safe_view` implemented?"
+          - value: Registrar.safe_view_current
+            question: "How is `safe_view_current` implemented?"
+          - value: Registrar.view_entities
+            question: "How is `view_entities` implemented?"
+          - value: Registrar.view_entities_current
+            question: "How is `view_entities_current` implemented?"
+          - value: Registrar.safe_view_entities
+            question: "How is `safe_view_entities` implemented?"
+          - value: Registrar.safe_view_entities_current
+            question: "How is `safe_view_entities_current` implemented?"
+          - value: Registrar.summarize_components
+            question: "How is `summarize_components` implemented?"
+          - value: Registrar.get_entity_id
+            question: "How is `get_entity_id` implemented?"
+          - value: Registrar.view_entity
+            question: "How is `view_entity` implemented?"
+          - value: Registrar.get
+            question: "How is `get` implemented?"
+          - value: Registrar.execute
+            question: "How is `execute` implemented?"
+          - value: Registrar.outputs
+            question: "How is `outputs` implemented?"
     """
 
     @classmethod
@@ -47,6 +110,7 @@ class Registrar:
         return cls(Registry.from_database(path))
 
     def __init__(self, registry: Registry | None = None):
+        """Wrap the given Registry, or a fresh empty in-memory one if none is given."""
         if registry is None:
             import ibis
             from emc2p.registry import Registry
@@ -256,54 +320,67 @@ class Registrar:
 
     @property
     def registry(self) -> Registry:
+        """Expose the wrapped Registry directly."""
         return self._registry
 
     @property
     def view(self):
+        """Expose the registry's `view` method for querying a component table."""
         return self._registry.view
 
     @property
     def view_current(self):
+        """Expose the registry's `view_current` method for a time_dimension-collapsed view."""
         return self._registry.view_current
 
     @property
     def safe_view(self):
+        """Expose the registry's `safe_view` method, a `view` that tolerates a missing component type."""
         return self._registry.safe_view
 
     @property
     def safe_view_current(self):
+        """Expose the registry's `safe_view_current` method, a `view_current` that tolerates a missing component type."""
         return self._registry.safe_view_current
 
     @property
     def view_entities(self):
+        """Expose the registry's `view_entities` method for a wide, entity-indexed view."""
         return self._registry.view_entities
 
     @property
     def view_entities_current(self):
+        """Expose the registry's `view_entities_current` method, the time-collapsed form of `view_entities`."""
         return self._registry.view_entities_current
 
     @property
     def safe_view_entities(self):
+        """Expose the registry's `safe_view_entities` method, a `view_entities` that tolerates a missing component type."""
         return self._registry.safe_view_entities
 
     @property
     def safe_view_entities_current(self):
+        """Expose the registry's `safe_view_entities_current` method, the tolerant and time-collapsed form."""
         return self._registry.safe_view_entities_current
 
     @property
     def summarize_components(self):
+        """Expose the registry's `summarize_components` method for a per-type row-count summary."""
         return self._registry.summarize_components
 
     @property
     def get_entity_id(self):
+        """Expose the registry's `get_entity_id` method for resolving a reference to its entity ID."""
         return self._registry.get_entity_id
 
     @property
     def view_entity(self):
+        """Expose the registry's `view_entity` method for one entity's full component data."""
         return self._registry.view_entity
 
     @property
     def get(self):
+        """Expose the registry's `get` method for reading a single field value."""
         return self._registry.get
 
     def execute(self, final_vars: str | list[str], **inputs) -> dict[str, Any]:
@@ -334,4 +411,5 @@ class Registrar:
 
     @property
     def outputs(self) -> list[str]:
+        """List the node names available across this registrar's currently-loaded dataflows."""
         return self._etl.outputs(self._dataflows)

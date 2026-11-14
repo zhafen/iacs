@@ -21,6 +21,14 @@ be dropped in wherever a downstream project's own fixture currently
 constructs a `HeadlessSession`. Requires both the `agents` extra
 (`litellm`) and the `mcp` extra (the `mcp` client SDK) -- `pip install
 emc2p[agents,mcp]`.
+
+Components
+----------
+- how:
+      - value: mcp_client_session._load_server_params
+        question: "How is `_load_server_params` implemented?"
+      - value: mcp_client_session.McpClientSession
+        question: "How is the `McpClientSession` class implemented?"
 """
 
 from __future__ import annotations
@@ -91,6 +99,42 @@ class McpClientSession:
     per request bridges each synchronous public method call back to its
     result, so callers use this class exactly like `HeadlessSession` --
     no `async def test_...` needed.
+
+    Components
+    ----------
+    - how:
+          - value: McpClientSession.__init__
+            question: "How is `__init__` implemented?"
+          - value: McpClientSession.__enter__
+            question: "How is `__enter__` implemented?"
+          - value: McpClientSession._worker
+            question: "How is `_worker` implemented?"
+          - value: McpClientSession._connect
+            question: "How is `_connect` implemented?"
+          - value: McpClientSession._serve
+            question: "How is `_serve` implemented?"
+          - value: McpClientSession._server_is_used
+            question: "How is `_server_is_used` implemented?"
+          - value: McpClientSession._submit
+            question: "How is `_submit` implemented?"
+          - value: McpClientSession.send_turn
+            question: "How is `send_turn` implemented?"
+          - value: McpClientSession._fail_on_timeout
+            question: "How is `_fail_on_timeout` implemented?"
+          - value: McpClientSession._run_turn
+            question: "How is `_run_turn` implemented?"
+          - value: McpClientSession._dispatch
+            question: "How is `_dispatch` implemented?"
+          - value: McpClientSession._trace_and_accumulate
+            question: "How is `_trace_and_accumulate` implemented?"
+          - value: McpClientSession.usage_summary
+            question: "How is `usage_summary` implemented?"
+          - value: McpClientSession._fail
+            question: "How is `_fail` implemented?"
+          - value: McpClientSession.close
+            question: "How is `close` implemented?"
+          - value: McpClientSession.__exit__
+            question: "How is `__exit__` implemented?"
     """
 
     def __init__(

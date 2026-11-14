@@ -211,3 +211,40 @@ project_history:
               edges), all 46 how.value references resolved, 34 distinct
               leaves with 0 outgoing edges matching the 34 vendored files
               1:1, and no cycles.
+    how_chain_extended_to_classes_and_functions:
+        - description: >
+              Extended how_chain_poc_added_as_reverse_of_why_chain two more
+              levels down: each of the 34 files now links, via its own
+              `how`, to its own top-level classes and functions, and each
+              class with methods links to those -- 357 nodes total (was 47),
+              up to 5 hops deep. A Python-sourced entity can only receive
+              extra components by editing the Python source itself (a
+              docstring's numpy-style "Components" section, or an __iacs__
+              dict -- a YAML file's own top-level keys live in a completely
+              separate entity-path namespace and can't "reopen" an
+              existing entity by name), so every file's and class's module
+              /class docstring in the vendored emc2p/ copy gained a
+              Components section with a `how` list pointing at its own
+              children, rather than those links living in how.yaml itself.
+              88 of the 310 new class/function/method targets had no
+              docstring at all in the real repo and so needed one added
+              first, same reasoning as the 11 files in the entry above.
+              Hit one new bug along the way: the docstring-editing script
+              spliced each new Components-section docstring in by replacing
+              the exact (lineno, col_offset)-(end_lineno, end_col_offset)
+              span of the old docstring's AST node with new text that
+              *also* started with its own leading indent -- doubling the
+              indent on the opening `"""` line specifically (continuation
+              lines were fine, since those already carried the right indent
+              embedded in the replacement text). A one-line docstring (AST
+              start/end on the same line) made this obvious once isolated:
+              the class's own first statement ended up indented 8 spaces
+              instead of 4, which Python's tokenizer accepted as a new
+              -but-unexpected indent level, then rejected the next, correctly
+              -indented statement as "unindent does not match any outer
+              indentation level". Fixed by dropping the redundant leading
+              pad from the replacement text, since the original line's own
+              prefix (preserved up to the span's start column) already
+              supplies it. Verified programmatically before touching the
+              visualization: all 356 how.value references resolved, single
+              root, acyclic, 100% reachable from the mission.

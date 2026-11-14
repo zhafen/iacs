@@ -26,6 +26,22 @@ time) and ``pytest_runtest_makereport`` (stashes each phase's
 ``TestReport`` on the item so a fixture can see pass/fail -- exported
 directly since it isn't live-trial-specific) must both be assigned under
 those exact names in a ``conftest.py`` for pytest to discover them as hooks.
+
+Components
+----------
+- how:
+      - value: live_trial.LiveTrial
+        question: "How is the `LiveTrial` class implemented?"
+      - value: live_trial.pytest_runtest_makereport
+        question: "How is `pytest_runtest_makereport` implemented?"
+      - value: live_trial._git_commit
+        question: "How is `_git_commit` implemented?"
+      - value: live_trial._sanitize_filename
+        question: "How is `_sanitize_filename` implemented?"
+      - value: live_trial._append_row
+        question: "How is `_append_row` implemented?"
+      - value: live_trial.make_live_trial_fixture
+        question: "How is `make_live_trial_fixture` implemented?"
 """
 
 from __future__ import annotations
@@ -86,6 +102,7 @@ def _sanitize_filename(name: str) -> str:
 
 
 def _append_row(csv_path: Path, *, commit: str, passed: bool, live_test_id: str, timestamp: str) -> None:
+    """Append one pass/fail record to the trial's CSV log, writing a header first if the file is new."""
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     is_new = not csv_path.exists()
     with csv_path.open("a", newline="") as f:

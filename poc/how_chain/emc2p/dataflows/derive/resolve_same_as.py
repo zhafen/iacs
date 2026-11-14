@@ -3,6 +3,12 @@
 Runs before every other derive step so that inheritance, entity_ref
 resolution, and everything downstream sees ``same_as``-declared entities
 already folded into their target's identity, not a disconnected new one.
+
+Components
+----------
+- how:
+      - value: resolve_same_as.same_as_resolved_registry
+        question: "How is `same_as_resolved_registry` implemented?"
 """
 import ibis
 import pandas as pd

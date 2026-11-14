@@ -1,4 +1,13 @@
-"""Hamilton DAG for parsing entity-first data from EC file text."""
+"""Hamilton DAG for parsing entity-first data from EC file text.
+
+Components
+----------
+- how:
+      - value: load_yaml._find_malformed_entities
+        question: "How is `_find_malformed_entities` implemented?"
+      - value: load_yaml.raw_entity_first_data
+        question: "How is `raw_entity_first_data` implemented?"
+"""
 
 import yaml
 

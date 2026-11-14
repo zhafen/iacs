@@ -19,6 +19,42 @@ not keyed to any one project's token format.
 
 CLI: `uv run python -m emc2p.testing.render_trace trace.jsonl -o report.html`
 Library: `parse_trace()`/`render_html()`.
+
+Components
+----------
+- how:
+      - value: render_trace.ToolCall
+        question: "How is the `ToolCall` class implemented?"
+      - value: render_trace.Turn
+        question: "How is the `Turn` class implemented?"
+      - value: render_trace.parse_trace
+        question: "How is `parse_trace` implemented?"
+      - value: render_trace.iter_tool_calls
+        question: "How is `iter_tool_calls` implemented?"
+      - value: render_trace._is_simple_format_event
+        question: "How is `_is_simple_format_event` implemented?"
+      - value: render_trace._simple_format_turn
+        question: "How is `_simple_format_turn` implemented?"
+      - value: render_trace._normalize_events
+        question: "How is `_normalize_events` implemented?"
+      - value: render_trace._attach_subagent_subtrace
+        question: "How is `_attach_subagent_subtrace` implemented?"
+      - value: render_trace._try_parse_json
+        question: "How is `_try_parse_json` implemented?"
+      - value: render_trace._decode_blobs
+        question: "How is `_decode_blobs` implemented?"
+      - value: render_trace._esc
+        question: "How is `_esc` implemented?"
+      - value: render_trace._render_decoded_value
+        question: "How is `_render_decoded_value` implemented?"
+      - value: render_trace._render_tool_call
+        question: "How is `_render_tool_call` implemented?"
+      - value: render_trace._render_steps
+        question: "How is `_render_steps` implemented?"
+      - value: render_trace.render_html
+        question: "How is `render_html` implemented?"
+      - value: render_trace.main
+        question: "How is `main` implemented?"
 """
 
 from __future__ import annotations
@@ -36,6 +72,8 @@ from typing import Any, Iterator
 
 @dataclasses.dataclass
 class ToolCall:
+    """One tool invocation within a turn, with its decoded arguments and any subagent subtrace it spawned."""
+
     name: str
     arguments: dict[str, Any] | str
     # (label, decoded value) pairs -- any argument value that turned out
@@ -49,6 +87,8 @@ class ToolCall:
 
 @dataclasses.dataclass
 class Turn:
+    """One event in a rendered trace: a user/assistant/tool_result/system/final turn, with its tool calls."""
+
     kind: str  # "user" | "assistant" | "tool_result" | "system" | "final"
     text: str = ""
     tool_calls: list[ToolCall] = dataclasses.field(default_factory=list)
@@ -304,6 +344,7 @@ def _attach_subagent_subtrace(event: dict[str, Any], tool_calls_by_id: dict[str,
 
 
 def _try_parse_json(value: Any) -> Any:
+    """Parse value as JSON, returning None if it isn't a string or doesn't parse."""
     if not isinstance(value, str):
         return None
     try:
@@ -345,6 +386,7 @@ _STEP_LABELS = {
 
 
 def _esc(text: Any) -> str:
+    """HTML-escape text for safe inclusion in the rendered trace page."""
     return html.escape(str(text), quote=False)
 
 
@@ -357,6 +399,7 @@ def _render_decoded_value(value: Any) -> str:
 
 
 def _render_tool_call(tc: ToolCall) -> str:
+    """Render one tool call's name, arguments, decoded payloads, and any subagent subtrace as HTML."""
     args_text = tc.arguments if isinstance(tc.arguments, str) else json.dumps(tc.arguments, indent=2)
     parts = [
         '<div class="tool-call">',
@@ -418,6 +461,7 @@ def _render_steps(turns: list[Turn]) -> str:
 
 
 def render_html(turns: list[Turn], *, title: str, source_label: str, driver: str | None = None) -> str:
+    """Render a full list of turns into one self-contained HTML trace page."""
     n_errors = sum(1 for t in turns if t.kind == "tool_result" and t.is_error)
     n_tool_calls = sum(len(t.tool_calls) for t in turns)
 
@@ -511,6 +555,7 @@ details.blob[open] > summary::before { content: "▾ "; }
 
 
 def main(argv: list[str] | None = None) -> None:
+    """CLI entry point: parse a trace file and write (or print) its rendered HTML report."""
     parser = argparse.ArgumentParser(description="Render a live-test session trace to an HTML report.")
     parser.add_argument("trace_path", type=Path, help="Path to the .jsonl trace file.")
     parser.add_argument("--output", "-o", type=Path, default=None, help="Write HTML here instead of stdout.")

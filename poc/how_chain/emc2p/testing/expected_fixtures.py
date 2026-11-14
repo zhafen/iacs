@@ -23,6 +23,36 @@ in -- a project may drive an in-process Hamilton dataflow, a live MCP
 session's turns, or any other transformation mechanism, since this
 framework only depends on the ``examples_dir``/``expected_dir`` layout
 above.
+
+Components
+----------
+- how:
+      - value: expected_fixtures.example_dirs
+        question: "How is `example_dirs` implemented?"
+      - value: expected_fixtures.load_expected_module
+        question: "How is `load_expected_module` implemented?"
+      - value: expected_fixtures._to_pandas
+        question: "How is `_to_pandas` implemented?"
+      - value: expected_fixtures.assert_df_rows_subset
+        question: "How is `assert_df_rows_subset` implemented?"
+      - value: expected_fixtures._manifest_item_matches
+        question: "How is `_manifest_item_matches` implemented?"
+      - value: expected_fixtures._manifest_values_match
+        question: "How is `_manifest_values_match` implemented?"
+      - value: expected_fixtures.assert_manifest_subset
+        question: "How is `assert_manifest_subset` implemented?"
+      - value: expected_fixtures.assert_subset
+        question: "How is `assert_subset` implemented?"
+      - value: expected_fixtures.assert_not_subset
+        question: "How is `assert_not_subset` implemented?"
+      - value: expected_fixtures._normalize_df
+        question: "How is `_normalize_df` implemented?"
+      - value: expected_fixtures.assert_components_equal
+        question: "How is `assert_components_equal` implemented?"
+      - value: expected_fixtures.assert_registries_equal
+        question: "How is `assert_registries_equal` implemented?"
+      - value: expected_fixtures.ExpectedValueChecker
+        question: "How is the `ExpectedValueChecker` class implemented?"
 """
 
 from __future__ import annotations
@@ -122,6 +152,7 @@ def _manifest_item_matches(expected, actual) -> bool:
 
 
 def _manifest_values_match(expected, actual) -> bool:
+    """Recursively compare two manifest values, treating equal-valued int/float as a match."""
     if isinstance(expected, dict) and isinstance(actual, dict):
         common = [k for k in expected if k in actual]
         return all(_manifest_values_match(expected[k], actual[k]) for k in common)
@@ -278,6 +309,16 @@ class ExpectedValueChecker(NodeExecutionHook):
     show up under -- the part after whichever prefix matches is used to
     find the per-dataflow expected fixture (see this module's own
     docstring for the layout).
+
+    Components
+    ----------
+    - how:
+          - value: ExpectedValueChecker.__init__
+            question: "How is `__init__` implemented?"
+          - value: ExpectedValueChecker.run_before_node_execution
+            question: "How is `run_before_node_execution` implemented?"
+          - value: ExpectedValueChecker.run_after_node_execution
+            question: "How is `run_after_node_execution` implemented?"
     """
 
     def __init__(
@@ -286,17 +327,20 @@ class ExpectedValueChecker(NodeExecutionHook):
         expected_dir: Path,
         dataflow_module_prefixes: tuple[str, ...],
     ):
+        """Remember where examples and their expected-value fixtures live, and the prefixes to match dataflow modules against."""
         self.example_dir = example_dir
         self.expected_dir = expected_dir
         self.dataflow_module_prefixes = dataflow_module_prefixes
         self._expected_modules: dict[Path, ModuleType] = {}
 
     def run_before_node_execution(self, **kwargs):
+        """No-op -- this hook only checks results after a node runs."""
         pass
 
     def run_after_node_execution(
         self, *, node_name: str, node_tags: dict, result, **kwargs
     ):
+        """Compare a just-executed node's result against its hand-written expected/incorrect fixture, if one exists."""
         source_module = node_tags.get("module")
         # Input variables don't have source modules
         if source_module is None:

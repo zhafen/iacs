@@ -7,6 +7,18 @@ project. The third check this module's callers also rely on --
 `_find_malformed_entities`, the bare-mapping check -- already lives
 natively in `emc2p.dataflows.etl.load_yaml` and runs automatically
 inside `Registrar.update()`'s own ETL, so it isn't duplicated here.
+
+Components
+----------
+- how:
+      - value: validate_write.referenced_component_types
+        question: "How is `referenced_component_types` implemented?"
+      - value: validate_write.component_types_defined_inline
+        question: "How is `component_types_defined_inline` implemented?"
+      - value: validate_write.find_component_named_as_nested_entity
+        question: "How is `find_component_named_as_nested_entity` implemented?"
+      - value: validate_write.find_unknown_component_types
+        question: "How is `find_unknown_component_types` implemented?"
 """
 
 import difflib

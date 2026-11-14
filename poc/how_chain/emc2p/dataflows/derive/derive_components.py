@@ -1,4 +1,19 @@
-"""Assembles the derive stage: resolve same_as links, then entity_ref paths, then strip whitespace from description fields."""
+"""Assembles the derive stage: resolve same_as links, then entity_ref paths, then strip whitespace from description fields.
+
+Components
+----------
+- how:
+      - value: derive_components.same_as_resolved_registry
+        question: "How is `same_as_resolved_registry` implemented?"
+      - value: derive_components.resolved_registry
+        question: "How is `resolved_registry` implemented?"
+      - value: derive_components.stripped_registry
+        question: "How is `stripped_registry` implemented?"
+      - value: derive_components.field_derived_registry
+        question: "How is `field_derived_registry` implemented?"
+      - value: derive_components.time_filled_registry
+        question: "How is `time_filled_registry` implemented?"
+"""
 
 from typing import Any
 
@@ -11,11 +26,13 @@ from . import inherit_components, resolve_paths, resolve_same_as
 
 
 def same_as_resolved_registry(registry: Registry, existing_registry: Registry = None) -> Registry:
+    """Merge same_as-linked entities, delegating to resolve_same_as's own implementation."""
     return resolve_same_as.same_as_resolved_registry(registry, existing_registry)
 
 
 @subdag(resolve_paths, inputs={"registry": source("same_as_resolved_registry")}, config={})
 def resolved_registry(resolved_registry: Registry) -> Registry:
+    """Run the resolve_paths subdag and surface its entity_ref-resolved registry."""
     return resolved_registry
 
 
@@ -65,6 +82,7 @@ def stripped_registry(resolved_registry: Registry) -> Registry:
 
 @subdag(inherit_components, inputs={"registry": source("stripped_registry")}, config={})
 def field_derived_registry(derived_registry: Registry) -> Registry:
+    """Run the inherit_components subdag and surface the inheritance-resolved registry."""
     return derived_registry
 
 

@@ -1,4 +1,15 @@
-"""ECS Registry for storing and accessing component data."""
+"""ECS Registry for storing and accessing component data.
+
+Components
+----------
+- how:
+      - value: registry._format_field_value
+        question: "How is `_format_field_value` implemented?"
+      - value: registry.GetterResult
+        question: "How is the `GetterResult` class implemented?"
+      - value: registry.Registry
+        question: "How is the `Registry` class implemented?"
+"""
 from __future__ import annotations
 
 import warnings
@@ -41,9 +52,24 @@ class GetterResult:
     projections -- not the other four output_format leaf categories from
     docs/manifest/getter_api_combinations.md. Future work, not silently
     dropped.
+
+    Components
+    ----------
+    - how:
+          - value: GetterResult.__init__
+            question: "How is `__init__` implemented?"
+          - value: GetterResult.to_table
+            question: "How is `to_table` implemented?"
+          - value: GetterResult.to_pandas
+            question: "How is `to_pandas` implemented?"
+          - value: GetterResult.to_dict
+            question: "How is `to_dict` implemented?"
+          - value: GetterResult.to_scalar
+            question: "How is `to_scalar` implemented?"
     """
 
     def __init__(self, table: ibis.Table):
+        """Wrap the lazy ibis Table this result projects its scalar/row/column views from."""
         self._table = table
 
     def to_table(self) -> ibis.Table:
@@ -89,6 +115,80 @@ class Registry:
     """A registry that stores ECS component data as ibis tables.
 
     Each component type has its own table backed by a DuckDB connection.
+
+    Components
+    ----------
+    - how:
+          - value: Registry.__init__
+            question: "How is `__init__` implemented?"
+          - value: Registry.update
+            question: "How is `update` implemented?"
+          - value: Registry._resolve_null_typed_columns
+            question: "How is `_resolve_null_typed_columns` implemented?"
+          - value: Registry.declare_schema
+            question: "How is `declare_schema` implemented?"
+          - value: Registry.merge
+            question: "How is `merge` implemented?"
+          - value: Registry._seq_column
+            question: "How is `_seq_column` implemented?"
+          - value: Registry._with_initial_sequence
+            question: "How is `_with_initial_sequence` implemented?"
+          - value: Registry._merge_with_sequence
+            question: "How is `_merge_with_sequence` implemented?"
+          - value: Registry.to_database
+            question: "How is `to_database` implemented?"
+          - value: Registry.from_database
+            question: "How is `from_database` implemented?"
+          - value: Registry.from_component_rows
+            question: "How is `from_component_rows` implemented?"
+          - value: Registry.close
+            question: "How is `close` implemented?"
+          - value: Registry.__enter__
+            question: "How is `__enter__` implemented?"
+          - value: Registry.__exit__
+            question: "How is `__exit__` implemented?"
+          - value: Registry.__del__
+            question: "How is `__del__` implemented?"
+          - value: Registry.component_types
+            question: "How is `component_types` implemented?"
+          - value: Registry.known_component_types
+            question: "How is `known_component_types` implemented?"
+          - value: Registry.get
+            question: "How is `get` implemented?"
+          - value: Registry.view
+            question: "How is `view` implemented?"
+          - value: Registry.view_current
+            question: "How is `view_current` implemented?"
+          - value: Registry.safe_view
+            question: "How is `safe_view` implemented?"
+          - value: Registry.safe_view_current
+            question: "How is `safe_view_current` implemented?"
+          - value: Registry.view_entities
+            question: "How is `view_entities` implemented?"
+          - value: Registry.view_entities_current
+            question: "How is `view_entities_current` implemented?"
+          - value: Registry.safe_view_entities
+            question: "How is `safe_view_entities` implemented?"
+          - value: Registry.safe_view_entities_current
+            question: "How is `safe_view_entities_current` implemented?"
+          - value: Registry._resolve_aliases
+            question: "How is `_resolve_aliases` implemented?"
+          - value: Registry._known
+            question: "How is `_known` implemented?"
+          - value: Registry._table_or_declared
+            question: "How is `_table_or_declared` implemented?"
+          - value: Registry._view
+            question: "How is `_view` implemented?"
+          - value: Registry._current_table
+            question: "How is `_current_table` implemented?"
+          - value: Registry._time_dimension_field
+            question: "How is `_time_dimension_field` implemented?"
+          - value: Registry.summarize_components
+            question: "How is `summarize_components` implemented?"
+          - value: Registry.get_entity_id
+            question: "How is `get_entity_id` implemented?"
+          - value: Registry.view_entity
+            question: "How is `view_entity` implemented?"
     """
 
     def __init__(self, conn: ibis.BaseBackend, components: dict):
@@ -396,12 +496,15 @@ class Registry:
         self._con.disconnect()
 
     def __enter__(self):
+        """Support `with Registry(...) as r:`, returning self."""
         return self
 
     def __exit__(self, *_):
+        """Close the connection on context-manager exit."""
         self.close()
 
     def __del__(self):
+        """Best-effort close the connection on garbage collection."""
         try:
             self.close()
         except Exception:  # pylint: disable=broad-except
@@ -633,6 +736,7 @@ class Registry:
         aliases: str | list[str] | None = None,
         how: str = "inner",
     ) -> ibis.Table:
+        """Shared implementation behind view/view_current/safe_view and their variants: join the named component type(s)/field(s) together into one table."""
         if isinstance(component_type, str):
             component_type = [component_type]
 
