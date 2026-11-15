@@ -1,19 +1,4 @@
-"""Small generic helpers shared across emc2p: entity-id hashing, entity_ref resolution, format_guide filtering.
-
-Components
-----------
-- how:
-      - value: utils.non_format_guide_ids
-        question: "How is `non_format_guide_ids` implemented?"
-      - value: utils.dhash
-        question: "How is `dhash` implemented?"
-      - value: utils.get_id
-        question: "How is `get_id` implemented?"
-      - value: utils.flagged_component_type_names
-        question: "How is `flagged_component_type_names` implemented?"
-      - value: utils.candidate_entity_ids
-        question: "How is `candidate_entity_ids` implemented?"
-"""
+"""Small generic helpers shared across emc2p: entity-id hashing, entity_ref resolution, format_guide filtering."""
 
 import hashlib
 

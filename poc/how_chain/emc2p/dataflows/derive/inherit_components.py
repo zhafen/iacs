@@ -1,15 +1,4 @@
-"""Derive step: resolve each entity's fields by inheriting down its parent chain.
-
-Components
-----------
-- how:
-      - value: inherit_components.components
-        question: "How is `components` implemented?"
-      - value: inherit_components.derived_field
-        question: "How is `derived_field` implemented?"
-      - value: inherit_components.derived_registry
-        question: "How is `derived_registry` implemented?"
-"""
+"""Derive step: resolve each entity's fields by inheriting down its parent chain."""
 
 import pandas as pd
 import ibis

@@ -33,28 +33,6 @@ ANN library: candidate counts here are architecture-manifest-sized (an
 emc2p/iacs/story-simulator project's own entities, not a general text
 corpus), so an in-memory brute-force comparison is the right-sized tool
 -- an ANN index earns its cost at a scale this module never sees.
-
-Components
-----------
-- how:
-      - value: similarity.cosine_similarity
-        question: "How is `cosine_similarity` implemented?"
-      - value: similarity._pairwise_cosine_similarity
-        question: "How is `_pairwise_cosine_similarity` implemented?"
-      - value: similarity.rank_by_similarity
-        question: "How is `rank_by_similarity` implemented?"
-      - value: similarity._entity_texts
-        question: "How is `_entity_texts` implemented?"
-      - value: similarity.find_similar_entities
-        question: "How is `find_similar_entities` implemented?"
-      - value: similarity.pairwise_similarities
-        question: "How is `pairwise_similarities` implemented?"
-      - value: similarity.find_duplicate_groups
-        question: "How is `find_duplicate_groups` implemented?"
-      - value: similarity.find_duplicate_entities
-        question: "How is `find_duplicate_entities` implemented?"
-      - value: similarity.embed_with_litellm
-        question: "How is `embed_with_litellm` implemented?"
 """
 
 from __future__ import annotations

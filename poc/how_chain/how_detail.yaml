@@ -1,0 +1,971 @@
+file_info:
+- description: 'The 310 how-chain edges one and two levels below the file level: file -> its
+    own classes/functions, and class -> its own methods. Moved here from being embedded in
+    the vendored emc2p/ tree''s own docstrings, once it became clear that data belongs in
+    the manifest as real YAML, not hidden in source code where it doesn''t show up as part
+    of the project the way how.yaml''s own 46 top-level edges do. See how_link''s own description
+    for why a new component type was needed rather than reusing ((how)).'
+- file_info
+how_link:
+- description: 'A how-chain edge declared on its own, naming both ends explicitly (`source`
+    and `value`), rather than living on either one as an owned component. ((how)) can''t be
+    used for a link between two real Python objects -- a file and one of its own classes or
+    functions, or a class and one of its own methods -- because *both* ends are already-existing
+    code entities, and a YAML file can only add a new component to an entity it declares itself,
+    never to one sourced from a .py file (see docs/manifest/history.yaml: how_chain_detail_moved_to_yaml).
+    `how` still works fine for how.yaml''s own hand-written entities, where the asking side
+    is always a YAML concept that can safely own the link.'
+- parent: directed_relation
+- field:
+    source:
+      description: The entity that asks how it is achieved.
+      type: entity_ref
+    value:
+      description: The entity that is how the source gets achieved.
+      type: entity_ref
+    question:
+      description: The exact "how" question this link is answering, from the source entity's
+        point of view.
+      type: str
+    note:
+      description: An optional side note about this link.
+      type: str
+      nullable: true
+how_chain_detail:
+- description: 'Every how_link edge between two real Python objects: a file and its own top-level
+    classes/functions, or a class and its own methods -- the two levels below each file in
+    how.yaml''s tree. Declared as one flat list on this single entity, since neither endpoint
+    of any of these edges can own a new component itself (see how_link''s own description).
+    Regenerate this file from a fresh load of the vendored emc2p/ tree if that tree''s structure
+    changes; it''s generated, not hand-written.'
+- how_link:
+  - value: AgentSession.__enter__
+    source: agent_session.AgentSession
+    question: How is `__enter__` implemented?
+  - value: AgentSession.__exit__
+    source: agent_session.AgentSession
+    question: How is `__exit__` implemented?
+  - value: AgentSession.close
+    source: agent_session.AgentSession
+    question: How is `close` implemented?
+  - value: AgentSession.send_turn
+    source: agent_session.AgentSession
+    question: How is `send_turn` implemented?
+  - value: AgentSession.usage_summary
+    source: agent_session.AgentSession
+    question: How is `usage_summary` implemented?
+  - value: tool_calling_loop._append_trace_event
+    source: agents.tool_calling_loop
+    question: How is `_append_trace_event` implemented?
+  - value: tool_calling_loop._assistant_trace_event
+    source: agents.tool_calling_loop
+    question: How is `_assistant_trace_event` implemented?
+  - value: tool_calling_loop._log_usage
+    source: agents.tool_calling_loop
+    question: How is `_log_usage` implemented?
+  - value: tool_calling_loop.run_tool_calling_loop
+    source: agents.tool_calling_loop
+    question: How is `run_tool_calling_loop` implemented?
+  - value: base_etl.derived_registry
+    source: dataflows.base_etl
+    question: How is `derived_registry` implemented?
+  - value: base_etl.initial_validated_registry
+    source: dataflows.base_etl
+    question: How is `initial_validated_registry` implemented?
+  - value: base_etl.loaded_registry
+    source: dataflows.base_etl
+    question: How is `loaded_registry` implemented?
+  - value: base_etl.validated_registry
+    source: dataflows.base_etl
+    question: How is `validated_registry` implemented?
+  - value: derive_components.field_derived_registry
+    source: derive.derive_components
+    question: How is `field_derived_registry` implemented?
+  - value: derive_components.resolved_registry
+    source: derive.derive_components
+    question: How is `resolved_registry` implemented?
+  - value: derive_components.same_as_resolved_registry
+    source: derive.derive_components
+    question: How is `same_as_resolved_registry` implemented?
+  - value: derive_components.stripped_registry
+    source: derive.derive_components
+    question: How is `stripped_registry` implemented?
+  - value: derive_components.time_filled_registry
+    source: derive.derive_components
+    question: How is `time_filled_registry` implemented?
+  - value: inherit_components.components
+    source: derive.inherit_components
+    question: How is `components` implemented?
+  - value: inherit_components.derived_field
+    source: derive.inherit_components
+    question: How is `derived_field` implemented?
+  - value: inherit_components.derived_registry
+    source: derive.inherit_components
+    question: How is `derived_registry` implemented?
+  - value: resolve_paths.components
+    source: derive.resolve_paths
+    question: How is `components` implemented?
+  - value: resolve_paths.components_with_resolved_paths
+    source: derive.resolve_paths
+    question: How is `components_with_resolved_paths` implemented?
+  - value: resolve_paths.fields_of_type_entity_ref
+    source: derive.resolve_paths
+    question: How is `fields_of_type_entity_ref` implemented?
+  - value: resolve_paths.implicit_parent_target_types
+    source: derive.resolve_paths
+    question: How is `implicit_parent_target_types` implemented?
+  - value: resolve_paths.parent_from_hierarchy
+    source: derive.resolve_paths
+    question: How is `parent_from_hierarchy` implemented?
+  - value: resolve_paths.resolved_registry
+    source: derive.resolve_paths
+    question: How is `resolved_registry` implemented?
+  - value: resolve_paths.updated_parent
+    source: derive.resolve_paths
+    question: How is `updated_parent` implemented?
+  - value: resolve_same_as.same_as_resolved_registry
+    source: derive.resolve_same_as
+    question: How is `same_as_resolved_registry` implemented?
+  - value: etl_system.ETLSystem
+    source: emc2p.etl_system
+    question: How is the `ETLSystem` class implemented?
+  - value: etl_system.register_dataflow_package
+    source: emc2p.etl_system
+    question: How is `register_dataflow_package` implemented?
+  - value: etl_system.resolve_dataflow
+    source: emc2p.etl_system
+    question: How is `resolve_dataflow` implemented?
+  - value: mcp_server.RegistrarSessions
+    source: emc2p.mcp_server
+    question: How is the `RegistrarSessions` class implemented?
+  - value: mcp_server._component_write_summary
+    source: emc2p.mcp_server
+    question: How is `_component_write_summary` implemented?
+  - value: mcp_server._decode_pending_write
+    source: emc2p.mcp_server
+    question: How is `_decode_pending_write` implemented?
+  - value: mcp_server._encode_pending_write
+    source: emc2p.mcp_server
+    question: How is `_encode_pending_write` implemented?
+  - value: mcp_server._validate_write
+    source: emc2p.mcp_server
+    question: How is `_validate_write` implemented?
+  - value: mcp_server.main
+    source: emc2p.mcp_server
+    question: How is `main` implemented?
+  - value: registrar.Registrar
+    source: emc2p.registrar
+    question: How is the `Registrar` class implemented?
+  - value: registry.GetterResult
+    source: emc2p.registry
+    question: How is the `GetterResult` class implemented?
+  - value: registry.Registry
+    source: emc2p.registry
+    question: How is the `Registry` class implemented?
+  - value: registry._format_field_value
+    source: emc2p.registry
+    question: How is `_format_field_value` implemented?
+  - value: similarity._entity_texts
+    source: emc2p.similarity
+    question: How is `_entity_texts` implemented?
+  - value: similarity._pairwise_cosine_similarity
+    source: emc2p.similarity
+    question: How is `_pairwise_cosine_similarity` implemented?
+  - value: similarity.cosine_similarity
+    source: emc2p.similarity
+    question: How is `cosine_similarity` implemented?
+  - value: similarity.embed_with_litellm
+    source: emc2p.similarity
+    question: How is `embed_with_litellm` implemented?
+  - value: similarity.find_duplicate_entities
+    source: emc2p.similarity
+    question: How is `find_duplicate_entities` implemented?
+  - value: similarity.find_duplicate_groups
+    source: emc2p.similarity
+    question: How is `find_duplicate_groups` implemented?
+  - value: similarity.find_similar_entities
+    source: emc2p.similarity
+    question: How is `find_similar_entities` implemented?
+  - value: similarity.pairwise_similarities
+    source: emc2p.similarity
+    question: How is `pairwise_similarities` implemented?
+  - value: similarity.rank_by_similarity
+    source: emc2p.similarity
+    question: How is `rank_by_similarity` implemented?
+  - value: utils.candidate_entity_ids
+    source: emc2p.utils
+    question: How is `candidate_entity_ids` implemented?
+  - value: utils.dhash
+    source: emc2p.utils
+    question: How is `dhash` implemented?
+  - value: utils.flagged_component_type_names
+    source: emc2p.utils
+    question: How is `flagged_component_type_names` implemented?
+  - value: utils.get_id
+    source: emc2p.utils
+    question: How is `get_id` implemented?
+  - value: utils.non_format_guide_ids
+    source: emc2p.utils
+    question: How is `non_format_guide_ids` implemented?
+  - value: validate_write.component_types_defined_inline
+    source: emc2p.validate_write
+    question: How is `component_types_defined_inline` implemented?
+  - value: validate_write.find_component_named_as_nested_entity
+    source: emc2p.validate_write
+    question: How is `find_component_named_as_nested_entity` implemented?
+  - value: validate_write.find_unknown_component_types
+    source: emc2p.validate_write
+    question: How is `find_unknown_component_types` implemented?
+  - value: validate_write.referenced_component_types
+    source: emc2p.validate_write
+    question: How is `referenced_component_types` implemented?
+  - value: export_manifest._derived_comp_types
+    source: etl.export_manifest
+    question: How is `_derived_comp_types` implemented?
+  - value: export_manifest._exportable_mask
+    source: etl.export_manifest
+    question: How is `_exportable_mask` implemented?
+  - value: export_manifest._get_or_create_node
+    source: etl.export_manifest
+    question: How is `_get_or_create_node` implemented?
+  - value: export_manifest._skip_on_export_types
+    source: etl.export_manifest
+    question: How is `_skip_on_export_types` implemented?
+  - value: export_manifest.components
+    source: etl.export_manifest
+    question: How is `components` implemented?
+  - value: export_manifest.components_for_export
+    source: etl.export_manifest
+    question: How is `components_for_export` implemented?
+  - value: export_manifest.condensed_entity_first_data
+    source: etl.export_manifest
+    question: How is `condensed_entity_first_data` implemented?
+  - value: export_manifest.entity_first_data
+    source: etl.export_manifest
+    question: How is `entity_first_data` implemented?
+  - value: export_manifest.entity_hierarchy
+    source: etl.export_manifest
+    question: How is `entity_hierarchy` implemented?
+  - value: export_manifest.exported_manifest_filepaths
+    source: etl.export_manifest
+    question: How is `exported_manifest_filepaths` implemented?
+  - value: export_manifest.hierarchical_entity_first_data
+    source: etl.export_manifest
+    question: How is `hierarchical_entity_first_data` implemented?
+  - value: export_manifest.non_hierarchy_parents
+    source: etl.export_manifest
+    question: How is `non_hierarchy_parents` implemented?
+  - value: export_manifest.non_inherited_fields
+    source: etl.export_manifest
+    question: How is `non_inherited_fields` implemented?
+  - value: load_manifest._add_component_pairs
+    source: etl.load_manifest
+    question: How is `_add_component_pairs` implemented?
+  - value: load_manifest._collect_entity_paths
+    source: etl.load_manifest
+    question: How is `_collect_entity_paths` implemented?
+  - value: load_manifest._file_id
+    source: etl.load_manifest
+    question: How is `_file_id` implemented?
+  - value: load_manifest._flatten_to_pathvalue
+    source: etl.load_manifest
+    question: How is `_flatten_to_pathvalue` implemented?
+  - value: load_manifest._with_spine_path
+    source: etl.load_manifest
+    question: How is `_with_spine_path` implemented?
+  - value: load_manifest.builtins_tags
+    source: etl.load_manifest
+    question: How is `builtins_tags` implemented?
+  - value: load_manifest.component_tables
+    source: etl.load_manifest
+    question: How is `component_tables` implemented?
+  - value: load_manifest.component_type_table
+    source: etl.load_manifest
+    question: How is `component_type_table` implemented?
+  - value: load_manifest.csv_component_tables
+    source: etl.load_manifest
+    question: How is `csv_component_tables` implemented?
+  - value: load_manifest.csv_spine
+    source: etl.load_manifest
+    question: How is `csv_spine` implemented?
+  - value: load_manifest.entity_id_table
+    source: etl.load_manifest
+    question: How is `entity_id_table` implemented?
+  - value: load_manifest.keyvalue_store
+    source: etl.load_manifest
+    question: How is `keyvalue_store` implemented?
+  - value: load_manifest.pathvalue_pairs
+    source: etl.load_manifest
+    question: How is `pathvalue_pairs` implemented?
+  - value: load_manifest.python_entity_first_data
+    source: etl.load_manifest
+    question: How is `python_entity_first_data` implemented?
+  - value: load_manifest.raw_csv_data
+    source: etl.load_manifest
+    question: How is `raw_csv_data` implemented?
+  - value: load_manifest.raw_entity_first_data
+    source: etl.load_manifest
+    question: How is `raw_entity_first_data` implemented?
+  - value: load_manifest.raw_strings
+    source: etl.load_manifest
+    question: How is `raw_strings` implemented?
+  - value: load_manifest.register_builtins_dir
+    source: etl.load_manifest
+    question: How is `register_builtins_dir` implemented?
+  - value: load_manifest.registry
+    source: etl.load_manifest
+    question: How is `registry` implemented?
+  - value: load_manifest.yaml_entity_first_data
+    source: etl.load_manifest
+    question: How is `yaml_entity_first_data` implemented?
+  - value: load_manifest.yaml_spine
+    source: etl.load_manifest
+    question: How is `yaml_spine` implemented?
+  - value: load_python._BodyCollector
+    source: etl.load_python
+    question: How is the `_BodyCollector` class implemented?
+  - value: load_python._call_target
+    source: etl.load_python
+    question: How is `_call_target` implemented?
+  - value: load_python._collect_body
+    source: etl.load_python
+    question: How is `_collect_body` implemented?
+  - value: load_python._extract_entities
+    source: etl.load_python
+    question: How is `_extract_entities` implemented?
+  - value: load_python._find_iacs_meta
+    source: etl.load_python
+    question: How is `_find_iacs_meta` implemented?
+  - value: load_python._is_constructor_call
+    source: etl.load_python
+    question: How is `_is_constructor_call` implemented?
+  - value: load_python._make_components
+    source: etl.load_python
+    question: How is `_make_components` implemented?
+  - value: load_python._parse_components_yaml
+    source: etl.load_python
+    question: How is `_parse_components_yaml` implemented?
+  - value: load_python._split_docstring_components
+    source: etl.load_python
+    question: How is `_split_docstring_components` implemented?
+  - value: load_python.module_names
+    source: etl.load_python
+    question: How is `module_names` implemented?
+  - value: load_python.parsed_asts
+    source: etl.load_python
+    question: How is `parsed_asts` implemented?
+  - value: load_python.raw_entity_first_data
+    source: etl.load_python
+    question: How is `raw_entity_first_data` implemented?
+  - value: load_yaml._find_malformed_entities
+    source: etl.load_yaml
+    question: How is `_find_malformed_entities` implemented?
+  - value: load_yaml.raw_entity_first_data
+    source: etl.load_yaml
+    question: How is `raw_entity_first_data` implemented?
+  - value: ETLSystem._build_driver
+    source: etl_system.ETLSystem
+    question: How is `_build_driver` implemented?
+  - value: ETLSystem._final_var
+    source: etl_system.ETLSystem
+    question: How is `_final_var` implemented?
+  - value: ETLSystem._resolve_all
+    source: etl_system.ETLSystem
+    question: How is `_resolve_all` implemented?
+  - value: ETLSystem.execute
+    source: etl_system.ETLSystem
+    question: How is `execute` implemented?
+  - value: ETLSystem.outputs
+    source: etl_system.ETLSystem
+    question: How is `outputs` implemented?
+  - value: ExpectedValueChecker.__init__
+    source: expected_fixtures.ExpectedValueChecker
+    question: How is `__init__` implemented?
+  - value: ExpectedValueChecker.run_after_node_execution
+    source: expected_fixtures.ExpectedValueChecker
+    question: How is `run_after_node_execution` implemented?
+  - value: ExpectedValueChecker.run_before_node_execution
+    source: expected_fixtures.ExpectedValueChecker
+    question: How is `run_before_node_execution` implemented?
+  - value: ClaudeHeadlessProvider.build_command
+    source: headless_session.ClaudeHeadlessProvider
+    question: How is `build_command` implemented?
+  - value: ClaudeHeadlessProvider.decode_result_event
+    source: headless_session.ClaudeHeadlessProvider
+    question: How is `decode_result_event` implemented?
+  - value: ClaudeHeadlessProvider.executable
+    source: headless_session.ClaudeHeadlessProvider
+    question: How is `executable` implemented?
+  - value: ClaudeHeadlessProvider.filter_env
+    source: headless_session.ClaudeHeadlessProvider
+    question: How is `filter_env` implemented?
+  - value: ClaudeHeadlessProvider.supports_strict_tool_isolation
+    source: headless_session.ClaudeHeadlessProvider
+    question: How is `supports_strict_tool_isolation` implemented?
+  - value: CopilotHeadlessProvider.__init__
+    source: headless_session.CopilotHeadlessProvider
+    question: How is `__init__` implemented?
+  - value: CopilotHeadlessProvider.build_command
+    source: headless_session.CopilotHeadlessProvider
+    question: How is `build_command` implemented?
+  - value: CopilotHeadlessProvider.decode_result_event
+    source: headless_session.CopilotHeadlessProvider
+    question: How is `decode_result_event` implemented?
+  - value: CopilotHeadlessProvider.executable
+    source: headless_session.CopilotHeadlessProvider
+    question: How is `executable` implemented?
+  - value: CopilotHeadlessProvider.filter_env
+    source: headless_session.CopilotHeadlessProvider
+    question: How is `filter_env` implemented?
+  - value: HeadlessProvider.build_command
+    source: headless_session.HeadlessProvider
+    question: How is `build_command` implemented?
+  - value: HeadlessProvider.decode_result_event
+    source: headless_session.HeadlessProvider
+    question: How is `decode_result_event` implemented?
+  - value: HeadlessProvider.encode_user_message
+    source: headless_session.HeadlessProvider
+    question: How is `encode_user_message` implemented?
+  - value: HeadlessProvider.executable
+    source: headless_session.HeadlessProvider
+    question: How is `executable` implemented?
+  - value: HeadlessProvider.filter_env
+    source: headless_session.HeadlessProvider
+    question: How is `filter_env` implemented?
+  - value: HeadlessProvider.prepare_prompt
+    source: headless_session.HeadlessProvider
+    question: How is `prepare_prompt` implemented?
+  - value: HeadlessProvider.skip_message
+    source: headless_session.HeadlessProvider
+    question: How is `skip_message` implemented?
+  - value: HeadlessProvider.supports_strict_tool_isolation
+    source: headless_session.HeadlessProvider
+    question: How is `supports_strict_tool_isolation` implemented?
+  - value: HeadlessSession.__enter__
+    source: headless_session.HeadlessSession
+    question: How is `__enter__` implemented?
+  - value: HeadlessSession.__exit__
+    source: headless_session.HeadlessSession
+    question: How is `__exit__` implemented?
+  - value: HeadlessSession.__init__
+    source: headless_session.HeadlessSession
+    question: How is `__init__` implemented?
+  - value: HeadlessSession._accumulate_usage
+    source: headless_session.HeadlessSession
+    question: How is `_accumulate_usage` implemented?
+  - value: HeadlessSession._fail
+    source: headless_session.HeadlessSession
+    question: How is `_fail` implemented?
+  - value: HeadlessSession.close
+    source: headless_session.HeadlessSession
+    question: How is `close` implemented?
+  - value: HeadlessSession.send_turn
+    source: headless_session.HeadlessSession
+    question: How is `send_turn` implemented?
+  - value: HeadlessSession.usage_summary
+    source: headless_session.HeadlessSession
+    question: How is `usage_summary` implemented?
+  - value: _BodyCollector.__init__
+    source: load_python._BodyCollector
+    question: How is `__init__` implemented?
+  - value: _BodyCollector.visit_AsyncFunctionDef
+    source: load_python._BodyCollector
+    question: How is `visit_AsyncFunctionDef` implemented?
+  - value: _BodyCollector.visit_Call
+    source: load_python._BodyCollector
+    question: How is `visit_Call` implemented?
+  - value: _BodyCollector.visit_ClassDef
+    source: load_python._BodyCollector
+    question: How is `visit_ClassDef` implemented?
+  - value: _BodyCollector.visit_FunctionDef
+    source: load_python._BodyCollector
+    question: How is `visit_FunctionDef` implemented?
+  - value: _BodyCollector.visit_Import
+    source: load_python._BodyCollector
+    question: How is `visit_Import` implemented?
+  - value: _BodyCollector.visit_ImportFrom
+    source: load_python._BodyCollector
+    question: How is `visit_ImportFrom` implemented?
+  - value: McpClientSession.__enter__
+    source: mcp_client_session.McpClientSession
+    question: How is `__enter__` implemented?
+  - value: McpClientSession.__exit__
+    source: mcp_client_session.McpClientSession
+    question: How is `__exit__` implemented?
+  - value: McpClientSession.__init__
+    source: mcp_client_session.McpClientSession
+    question: How is `__init__` implemented?
+  - value: McpClientSession._connect
+    source: mcp_client_session.McpClientSession
+    question: How is `_connect` implemented?
+  - value: McpClientSession._dispatch
+    source: mcp_client_session.McpClientSession
+    question: How is `_dispatch` implemented?
+  - value: McpClientSession._fail
+    source: mcp_client_session.McpClientSession
+    question: How is `_fail` implemented?
+  - value: McpClientSession._fail_on_timeout
+    source: mcp_client_session.McpClientSession
+    question: How is `_fail_on_timeout` implemented?
+  - value: McpClientSession._run_turn
+    source: mcp_client_session.McpClientSession
+    question: How is `_run_turn` implemented?
+  - value: McpClientSession._serve
+    source: mcp_client_session.McpClientSession
+    question: How is `_serve` implemented?
+  - value: McpClientSession._server_is_used
+    source: mcp_client_session.McpClientSession
+    question: How is `_server_is_used` implemented?
+  - value: McpClientSession._submit
+    source: mcp_client_session.McpClientSession
+    question: How is `_submit` implemented?
+  - value: McpClientSession._trace_and_accumulate
+    source: mcp_client_session.McpClientSession
+    question: How is `_trace_and_accumulate` implemented?
+  - value: McpClientSession._worker
+    source: mcp_client_session.McpClientSession
+    question: How is `_worker` implemented?
+  - value: McpClientSession.close
+    source: mcp_client_session.McpClientSession
+    question: How is `close` implemented?
+  - value: McpClientSession.send_turn
+    source: mcp_client_session.McpClientSession
+    question: How is `send_turn` implemented?
+  - value: McpClientSession.usage_summary
+    source: mcp_client_session.McpClientSession
+    question: How is `usage_summary` implemented?
+  - value: RegistrarSessions.__init__
+    source: mcp_server.RegistrarSessions
+    question: How is `__init__` implemented?
+  - value: RegistrarSessions._export_registry
+    source: mcp_server.RegistrarSessions
+    question: How is `_export_registry` implemented?
+  - value: RegistrarSessions._merge_and_sync
+    source: mcp_server.RegistrarSessions
+    question: How is `_merge_and_sync` implemented?
+  - value: RegistrarSessions._preview
+    source: mcp_server.RegistrarSessions
+    question: How is `_preview` implemented?
+  - value: RegistrarSessions.consolidate_review
+    source: mcp_server.RegistrarSessions
+    question: How is `consolidate_review` implemented?
+  - value: RegistrarSessions.dispatch
+    source: mcp_server.RegistrarSessions
+    question: How is `dispatch` implemented?
+  - value: RegistrarSessions.get_registrar
+    source: mcp_server.RegistrarSessions
+    question: How is `get_registrar` implemented?
+  - value: RegistrarSessions.get_trace_path
+    source: mcp_server.RegistrarSessions
+    question: How is `get_trace_path` implemented?
+  - value: RegistrarSessions.mount
+    source: mcp_server.RegistrarSessions
+    question: How is `mount` implemented?
+  - value: RegistrarSessions.open
+    source: mcp_server.RegistrarSessions
+    question: How is `open` implemented?
+  - value: RegistrarSessions.set_registrar
+    source: mcp_server.RegistrarSessions
+    question: How is `set_registrar` implemented?
+  - value: RegistrarSessions.update_registry
+    source: mcp_server.RegistrarSessions
+    question: How is `update_registry` implemented?
+  - value: RegistrarSessions.view_entity
+    source: mcp_server.RegistrarSessions
+    question: How is `view_entity` implemented?
+  - value: RegistrarSessions.view_registry
+    source: mcp_server.RegistrarSessions
+    question: How is `view_registry` implemented?
+  - value: Registrar.__init__
+    source: registrar.Registrar
+    question: How is `__init__` implemented?
+  - value: Registrar._base_etl_module
+    source: registrar.Registrar
+    question: How is `_base_etl_module` implemented?
+  - value: Registrar.execute
+    source: registrar.Registrar
+    question: How is `execute` implemented?
+  - value: Registrar.export_manifest
+    source: registrar.Registrar
+    question: How is `export_manifest` implemented?
+  - value: Registrar.from_manifest
+    source: registrar.Registrar
+    question: How is `from_manifest` implemented?
+  - value: Registrar.get
+    source: registrar.Registrar
+    question: How is `get` implemented?
+  - value: Registrar.get_entity_id
+    source: registrar.Registrar
+    question: How is `get_entity_id` implemented?
+  - value: Registrar.load
+    source: registrar.Registrar
+    question: How is `load` implemented?
+  - value: Registrar.load_dataflow
+    source: registrar.Registrar
+    question: How is `load_dataflow` implemented?
+  - value: Registrar.load_manifest
+    source: registrar.Registrar
+    question: How is `load_manifest` implemented?
+  - value: Registrar.outputs
+    source: registrar.Registrar
+    question: How is `outputs` implemented?
+  - value: Registrar.overwrite
+    source: registrar.Registrar
+    question: How is `overwrite` implemented?
+  - value: Registrar.registry
+    source: registrar.Registrar
+    question: How is `registry` implemented?
+  - value: Registrar.safe_view
+    source: registrar.Registrar
+    question: How is `safe_view` implemented?
+  - value: Registrar.safe_view_current
+    source: registrar.Registrar
+    question: How is `safe_view_current` implemented?
+  - value: Registrar.safe_view_entities
+    source: registrar.Registrar
+    question: How is `safe_view_entities` implemented?
+  - value: Registrar.safe_view_entities_current
+    source: registrar.Registrar
+    question: How is `safe_view_entities_current` implemented?
+  - value: Registrar.save
+    source: registrar.Registrar
+    question: How is `save` implemented?
+  - value: Registrar.summarize_components
+    source: registrar.Registrar
+    question: How is `summarize_components` implemented?
+  - value: Registrar.update
+    source: registrar.Registrar
+    question: How is `update` implemented?
+  - value: Registrar.validate_write
+    source: registrar.Registrar
+    question: How is `validate_write` implemented?
+  - value: Registrar.view
+    source: registrar.Registrar
+    question: How is `view` implemented?
+  - value: Registrar.view_current
+    source: registrar.Registrar
+    question: How is `view_current` implemented?
+  - value: Registrar.view_entities
+    source: registrar.Registrar
+    question: How is `view_entities` implemented?
+  - value: Registrar.view_entities_current
+    source: registrar.Registrar
+    question: How is `view_entities_current` implemented?
+  - value: Registrar.view_entity
+    source: registrar.Registrar
+    question: How is `view_entity` implemented?
+  - value: GetterResult.__init__
+    source: registry.GetterResult
+    question: How is `__init__` implemented?
+  - value: GetterResult.to_dict
+    source: registry.GetterResult
+    question: How is `to_dict` implemented?
+  - value: GetterResult.to_pandas
+    source: registry.GetterResult
+    question: How is `to_pandas` implemented?
+  - value: GetterResult.to_scalar
+    source: registry.GetterResult
+    question: How is `to_scalar` implemented?
+  - value: GetterResult.to_table
+    source: registry.GetterResult
+    question: How is `to_table` implemented?
+  - value: Registry.__del__
+    source: registry.Registry
+    question: How is `__del__` implemented?
+  - value: Registry.__enter__
+    source: registry.Registry
+    question: How is `__enter__` implemented?
+  - value: Registry.__exit__
+    source: registry.Registry
+    question: How is `__exit__` implemented?
+  - value: Registry.__init__
+    source: registry.Registry
+    question: How is `__init__` implemented?
+  - value: Registry._current_table
+    source: registry.Registry
+    question: How is `_current_table` implemented?
+  - value: Registry._known
+    source: registry.Registry
+    question: How is `_known` implemented?
+  - value: Registry._merge_with_sequence
+    source: registry.Registry
+    question: How is `_merge_with_sequence` implemented?
+  - value: Registry._resolve_aliases
+    source: registry.Registry
+    question: How is `_resolve_aliases` implemented?
+  - value: Registry._resolve_null_typed_columns
+    source: registry.Registry
+    question: How is `_resolve_null_typed_columns` implemented?
+  - value: Registry._seq_column
+    source: registry.Registry
+    question: How is `_seq_column` implemented?
+  - value: Registry._table_or_declared
+    source: registry.Registry
+    question: How is `_table_or_declared` implemented?
+  - value: Registry._time_dimension_field
+    source: registry.Registry
+    question: How is `_time_dimension_field` implemented?
+  - value: Registry._view
+    source: registry.Registry
+    question: How is `_view` implemented?
+  - value: Registry._with_initial_sequence
+    source: registry.Registry
+    question: How is `_with_initial_sequence` implemented?
+  - value: Registry.close
+    source: registry.Registry
+    question: How is `close` implemented?
+  - value: Registry.component_types
+    source: registry.Registry
+    question: How is `component_types` implemented?
+  - value: Registry.declare_schema
+    source: registry.Registry
+    question: How is `declare_schema` implemented?
+  - value: Registry.from_component_rows
+    source: registry.Registry
+    question: How is `from_component_rows` implemented?
+  - value: Registry.from_database
+    source: registry.Registry
+    question: How is `from_database` implemented?
+  - value: Registry.get
+    source: registry.Registry
+    question: How is `get` implemented?
+  - value: Registry.get_entity_id
+    source: registry.Registry
+    question: How is `get_entity_id` implemented?
+  - value: Registry.known_component_types
+    source: registry.Registry
+    question: How is `known_component_types` implemented?
+  - value: Registry.merge
+    source: registry.Registry
+    question: How is `merge` implemented?
+  - value: Registry.safe_view
+    source: registry.Registry
+    question: How is `safe_view` implemented?
+  - value: Registry.safe_view_current
+    source: registry.Registry
+    question: How is `safe_view_current` implemented?
+  - value: Registry.safe_view_entities
+    source: registry.Registry
+    question: How is `safe_view_entities` implemented?
+  - value: Registry.safe_view_entities_current
+    source: registry.Registry
+    question: How is `safe_view_entities_current` implemented?
+  - value: Registry.summarize_components
+    source: registry.Registry
+    question: How is `summarize_components` implemented?
+  - value: Registry.to_database
+    source: registry.Registry
+    question: How is `to_database` implemented?
+  - value: Registry.update
+    source: registry.Registry
+    question: How is `update` implemented?
+  - value: Registry.view
+    source: registry.Registry
+    question: How is `view` implemented?
+  - value: Registry.view_current
+    source: registry.Registry
+    question: How is `view_current` implemented?
+  - value: Registry.view_entities
+    source: registry.Registry
+    question: How is `view_entities` implemented?
+  - value: Registry.view_entities_current
+    source: registry.Registry
+    question: How is `view_entities_current` implemented?
+  - value: Registry.view_entity
+    source: registry.Registry
+    question: How is `view_entity` implemented?
+  - value: agent_session.AgentSession
+    source: testing.agent_session
+    question: How is the `AgentSession` class implemented?
+  - value: agent_session.create_agent_session
+    source: testing.agent_session
+    question: How is `create_agent_session` implemented?
+  - value: expected_fixtures.ExpectedValueChecker
+    source: testing.expected_fixtures
+    question: How is the `ExpectedValueChecker` class implemented?
+  - value: expected_fixtures._manifest_item_matches
+    source: testing.expected_fixtures
+    question: How is `_manifest_item_matches` implemented?
+  - value: expected_fixtures._manifest_values_match
+    source: testing.expected_fixtures
+    question: How is `_manifest_values_match` implemented?
+  - value: expected_fixtures._normalize_df
+    source: testing.expected_fixtures
+    question: How is `_normalize_df` implemented?
+  - value: expected_fixtures._to_pandas
+    source: testing.expected_fixtures
+    question: How is `_to_pandas` implemented?
+  - value: expected_fixtures.assert_components_equal
+    source: testing.expected_fixtures
+    question: How is `assert_components_equal` implemented?
+  - value: expected_fixtures.assert_df_rows_subset
+    source: testing.expected_fixtures
+    question: How is `assert_df_rows_subset` implemented?
+  - value: expected_fixtures.assert_manifest_subset
+    source: testing.expected_fixtures
+    question: How is `assert_manifest_subset` implemented?
+  - value: expected_fixtures.assert_not_subset
+    source: testing.expected_fixtures
+    question: How is `assert_not_subset` implemented?
+  - value: expected_fixtures.assert_registries_equal
+    source: testing.expected_fixtures
+    question: How is `assert_registries_equal` implemented?
+  - value: expected_fixtures.assert_subset
+    source: testing.expected_fixtures
+    question: How is `assert_subset` implemented?
+  - value: expected_fixtures.example_dirs
+    source: testing.expected_fixtures
+    question: How is `example_dirs` implemented?
+  - value: expected_fixtures.load_expected_module
+    source: testing.expected_fixtures
+    question: How is `load_expected_module` implemented?
+  - value: headless_session.ClaudeHeadlessProvider
+    source: testing.headless_session
+    question: How is the `ClaudeHeadlessProvider` class implemented?
+  - value: headless_session.CopilotHeadlessProvider
+    source: testing.headless_session
+    question: How is the `CopilotHeadlessProvider` class implemented?
+  - value: headless_session.HeadlessProvider
+    source: testing.headless_session
+    question: How is the `HeadlessProvider` class implemented?
+  - value: headless_session.HeadlessSession
+    source: testing.headless_session
+    question: How is the `HeadlessSession` class implemented?
+  - value: headless_session._coerce_provider
+    source: testing.headless_session
+    question: How is `_coerce_provider` implemented?
+  - value: headless_session._extract_message_text
+    source: testing.headless_session
+    question: How is `_extract_message_text` implemented?
+  - value: headless_session._normalize_usage
+    source: testing.headless_session
+    question: How is `_normalize_usage` implemented?
+  - value: live_trial.LiveTrial
+    source: testing.live_trial
+    question: How is the `LiveTrial` class implemented?
+  - value: live_trial._append_row
+    source: testing.live_trial
+    question: How is `_append_row` implemented?
+  - value: live_trial._git_commit
+    source: testing.live_trial
+    question: How is `_git_commit` implemented?
+  - value: live_trial._sanitize_filename
+    source: testing.live_trial
+    question: How is `_sanitize_filename` implemented?
+  - value: live_trial.make_live_trial_fixture
+    source: testing.live_trial
+    question: How is `make_live_trial_fixture` implemented?
+  - value: live_trial.pytest_runtest_makereport
+    source: testing.live_trial
+    question: How is `pytest_runtest_makereport` implemented?
+  - value: mcp_client_session.McpClientSession
+    source: testing.mcp_client_session
+    question: How is the `McpClientSession` class implemented?
+  - value: mcp_client_session._load_server_params
+    source: testing.mcp_client_session
+    question: How is `_load_server_params` implemented?
+  - value: registry_checks.schema_exists
+    source: testing.registry_checks
+    question: How is `schema_exists` implemented?
+  - value: registry_checks.unexpected_components
+    source: testing.registry_checks
+    question: How is `unexpected_components` implemented?
+  - value: registry_checks.write_time
+    source: testing.registry_checks
+    question: How is `write_time` implemented?
+  - value: render_trace.ToolCall
+    source: testing.render_trace
+    question: How is the `ToolCall` class implemented?
+  - value: render_trace.Turn
+    source: testing.render_trace
+    question: How is the `Turn` class implemented?
+  - value: render_trace._attach_subagent_subtrace
+    source: testing.render_trace
+    question: How is `_attach_subagent_subtrace` implemented?
+  - value: render_trace._decode_blobs
+    source: testing.render_trace
+    question: How is `_decode_blobs` implemented?
+  - value: render_trace._esc
+    source: testing.render_trace
+    question: How is `_esc` implemented?
+  - value: render_trace._is_simple_format_event
+    source: testing.render_trace
+    question: How is `_is_simple_format_event` implemented?
+  - value: render_trace._normalize_events
+    source: testing.render_trace
+    question: How is `_normalize_events` implemented?
+  - value: render_trace._render_decoded_value
+    source: testing.render_trace
+    question: How is `_render_decoded_value` implemented?
+  - value: render_trace._render_steps
+    source: testing.render_trace
+    question: How is `_render_steps` implemented?
+  - value: render_trace._render_tool_call
+    source: testing.render_trace
+    question: How is `_render_tool_call` implemented?
+  - value: render_trace._simple_format_turn
+    source: testing.render_trace
+    question: How is `_simple_format_turn` implemented?
+  - value: render_trace._try_parse_json
+    source: testing.render_trace
+    question: How is `_try_parse_json` implemented?
+  - value: render_trace.iter_tool_calls
+    source: testing.render_trace
+    question: How is `iter_tool_calls` implemented?
+  - value: render_trace.main
+    source: testing.render_trace
+    question: How is `main` implemented?
+  - value: render_trace.parse_trace
+    source: testing.render_trace
+    question: How is `parse_trace` implemented?
+  - value: render_trace.render_html
+    source: testing.render_trace
+    question: How is `render_html` implemented?
+  - value: responder_fixture.make_responder_fixture
+    source: testing.responder_fixture
+    question: How is `make_responder_fixture` implemented?
+  - value: validate_components._build_component_schemas
+    source: validation.validate_components
+    question: How is `_build_component_schemas` implemented?
+  - value: validate_components._coerce_default
+    source: validation.validate_components
+    question: How is `_coerce_default` implemented?
+  - value: validate_components._declared_component_types
+    source: validation.validate_components
+    question: How is `_declared_component_types` implemented?
+  - value: validate_components._empty_component_schema
+    source: validation.validate_components
+    question: How is `_empty_component_schema` implemented?
+  - value: validate_components._eval_arithmetic_expr
+    source: validation.validate_components
+    question: How is `_eval_arithmetic_expr` implemented?
+  - value: validate_components._isnull
+    source: validation.validate_components
+    question: How is `_isnull` implemented?
+  - value: validate_components._parse_range
+    source: validation.validate_components
+    question: How is `_parse_range` implemented?
+  - value: validate_components._resolve_numeric_string
+    source: validation.validate_components
+    question: How is `_resolve_numeric_string` implemented?
+  - value: validate_components._union_violations
+    source: validation.validate_components
+    question: How is `_union_violations` implemented?
+  - value: validate_components._validate_component
+    source: validation.validate_components
+    question: How is `_validate_component` implemented?
+  - value: validate_components.components
+    source: validation.validate_components
+    question: How is `components` implemented?
+  - value: validate_components.field
+    source: validation.validate_components
+    question: How is `field` implemented?
+  - value: validate_components.field_validation_results
+    source: validation.validate_components
+    question: How is `field_validation_results` implemented?
+  - value: validate_components.validated_registry
+    source: validation.validate_components
+    question: How is `validated_registry` implemented?
+  - value: validate_components.validation_results
+    source: validation.validate_components
+    question: How is `validation_results` implemented?

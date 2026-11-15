@@ -1,19 +1,4 @@
-"""Assembles the derive stage: resolve same_as links, then entity_ref paths, then strip whitespace from description fields.
-
-Components
-----------
-- how:
-      - value: derive_components.same_as_resolved_registry
-        question: "How is `same_as_resolved_registry` implemented?"
-      - value: derive_components.resolved_registry
-        question: "How is `resolved_registry` implemented?"
-      - value: derive_components.stripped_registry
-        question: "How is `stripped_registry` implemented?"
-      - value: derive_components.field_derived_registry
-        question: "How is `field_derived_registry` implemented?"
-      - value: derive_components.time_filled_registry
-        question: "How is `time_filled_registry` implemented?"
-"""
+"""Assembles the derive stage: resolve same_as links, then entity_ref paths, then strip whitespace from description fields."""
 
 from typing import Any
 

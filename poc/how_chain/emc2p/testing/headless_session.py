@@ -9,24 +9,6 @@ registry backend, or domain scenarios. A caller supplies `mcp_config`,
 server(s) need (e.g. a database URL derived from a save/workdir the
 caller picked) -- a downstream project typically wraps this in its own
 subclass or fixture that fixes these to its own defaults.
-
-Components
-----------
-- how:
-      - value: headless_session.HeadlessProvider
-        question: "How is the `HeadlessProvider` class implemented?"
-      - value: headless_session._normalize_usage
-        question: "How is `_normalize_usage` implemented?"
-      - value: headless_session.ClaudeHeadlessProvider
-        question: "How is the `ClaudeHeadlessProvider` class implemented?"
-      - value: headless_session.CopilotHeadlessProvider
-        question: "How is the `CopilotHeadlessProvider` class implemented?"
-      - value: headless_session._extract_message_text
-        question: "How is `_extract_message_text` implemented?"
-      - value: headless_session._coerce_provider
-        question: "How is `_coerce_provider` implemented?"
-      - value: headless_session.HeadlessSession
-        question: "How is the `HeadlessSession` class implemented?"
 """
 
 from __future__ import annotations
@@ -49,28 +31,7 @@ _STRIP_BUILTIN_TOOLS_ARGS = ["--tools", ""]
 
 
 class HeadlessProvider(ABC):
-    """Provider contract for the CLI process `HeadlessSession` drives.
-
-    Components
-    ----------
-    - how:
-          - value: HeadlessProvider.executable
-            question: "How is `executable` implemented?"
-          - value: HeadlessProvider.supports_strict_tool_isolation
-            question: "How is `supports_strict_tool_isolation` implemented?"
-          - value: HeadlessProvider.skip_message
-            question: "How is `skip_message` implemented?"
-          - value: HeadlessProvider.filter_env
-            question: "How is `filter_env` implemented?"
-          - value: HeadlessProvider.build_command
-            question: "How is `build_command` implemented?"
-          - value: HeadlessProvider.prepare_prompt
-            question: "How is `prepare_prompt` implemented?"
-          - value: HeadlessProvider.encode_user_message
-            question: "How is `encode_user_message` implemented?"
-          - value: HeadlessProvider.decode_result_event
-            question: "How is `decode_result_event` implemented?"
-    """
+    """Provider contract for the CLI process `HeadlessSession` drives."""
 
     name = "provider"
 
@@ -161,22 +122,7 @@ def _normalize_usage(usage: dict[str, Any] | None) -> dict[str, int]:
 
 
 class ClaudeHeadlessProvider(HeadlessProvider):
-    """Drives the `claude -p` CLI in headless, stream-JSON mode.
-
-    Components
-    ----------
-    - how:
-          - value: ClaudeHeadlessProvider.executable
-            question: "How is `executable` implemented?"
-          - value: ClaudeHeadlessProvider.supports_strict_tool_isolation
-            question: "How is `supports_strict_tool_isolation` implemented?"
-          - value: ClaudeHeadlessProvider.filter_env
-            question: "How is `filter_env` implemented?"
-          - value: ClaudeHeadlessProvider.build_command
-            question: "How is `build_command` implemented?"
-          - value: ClaudeHeadlessProvider.decode_result_event
-            question: "How is `decode_result_event` implemented?"
-    """
+    """Drives the `claude -p` CLI in headless, stream-JSON mode."""
 
     name = "claude"
 
@@ -256,22 +202,7 @@ class ClaudeHeadlessProvider(HeadlessProvider):
 
 
 class CopilotHeadlessProvider(HeadlessProvider):
-    """Drives a GitHub Copilot CLI agent in headless mode, with configurable command/flags.
-
-    Components
-    ----------
-    - how:
-          - value: CopilotHeadlessProvider.__init__
-            question: "How is `__init__` implemented?"
-          - value: CopilotHeadlessProvider.executable
-            question: "How is `executable` implemented?"
-          - value: CopilotHeadlessProvider.filter_env
-            question: "How is `filter_env` implemented?"
-          - value: CopilotHeadlessProvider.build_command
-            question: "How is `build_command` implemented?"
-          - value: CopilotHeadlessProvider.decode_result_event
-            question: "How is `decode_result_event` implemented?"
-    """
+    """Drives a GitHub Copilot CLI agent in headless mode, with configurable command/flags."""
 
     name = "copilot"
 
@@ -408,26 +339,6 @@ class HeadlessSession:
     still holding it open, and so the test itself can pace the conversation
     rather than handing the model a single "do everything" prompt with no
     chance to inspect state along the way.
-
-    Components
-    ----------
-    - how:
-          - value: HeadlessSession.__init__
-            question: "How is `__init__` implemented?"
-          - value: HeadlessSession.__enter__
-            question: "How is `__enter__` implemented?"
-          - value: HeadlessSession.send_turn
-            question: "How is `send_turn` implemented?"
-          - value: HeadlessSession._accumulate_usage
-            question: "How is `_accumulate_usage` implemented?"
-          - value: HeadlessSession.usage_summary
-            question: "How is `usage_summary` implemented?"
-          - value: HeadlessSession._fail
-            question: "How is `_fail` implemented?"
-          - value: HeadlessSession.close
-            question: "How is `close` implemented?"
-          - value: HeadlessSession.__exit__
-            question: "How is `__exit__` implemented?"
     """
 
     def __init__(

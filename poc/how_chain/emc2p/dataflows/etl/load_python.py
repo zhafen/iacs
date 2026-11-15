@@ -1,33 +1,4 @@
-"""Hamilton DAG for loading entity-first data from Python source files.
-
-Components
-----------
-- how:
-      - value: load_python._split_docstring_components
-        question: "How is `_split_docstring_components` implemented?"
-      - value: load_python._parse_components_yaml
-        question: "How is `_parse_components_yaml` implemented?"
-      - value: load_python._find_iacs_meta
-        question: "How is `_find_iacs_meta` implemented?"
-      - value: load_python._call_target
-        question: "How is `_call_target` implemented?"
-      - value: load_python._is_constructor_call
-        question: "How is `_is_constructor_call` implemented?"
-      - value: load_python._BodyCollector
-        question: "How is the `_BodyCollector` class implemented?"
-      - value: load_python._collect_body
-        question: "How is `_collect_body` implemented?"
-      - value: load_python._make_components
-        question: "How is `_make_components` implemented?"
-      - value: load_python._extract_entities
-        question: "How is `_extract_entities` implemented?"
-      - value: load_python.parsed_asts
-        question: "How is `parsed_asts` implemented?"
-      - value: load_python.module_names
-        question: "How is `module_names` implemented?"
-      - value: load_python.raw_entity_first_data
-        question: "How is `raw_entity_first_data` implemented?"
-"""
+"""Hamilton DAG for loading entity-first data from Python source files."""
 
 import ast
 import re
@@ -150,24 +121,6 @@ class _BodyCollector(ast.NodeVisitor):
     their own entity (if they qualify) and their own extraction via the
     outer ``_walk`` recursion, so their calls/imports must not double up
     onto an ancestor's.
-
-    Components
-    ----------
-    - how:
-          - value: _BodyCollector.__init__
-            question: "How is `__init__` implemented?"
-          - value: _BodyCollector.visit_Call
-            question: "How is `visit_Call` implemented?"
-          - value: _BodyCollector.visit_Import
-            question: "How is `visit_Import` implemented?"
-          - value: _BodyCollector.visit_ImportFrom
-            question: "How is `visit_ImportFrom` implemented?"
-          - value: _BodyCollector.visit_FunctionDef
-            question: "How is `visit_FunctionDef` implemented?"
-          - value: _BodyCollector.visit_AsyncFunctionDef
-            question: "How is `visit_AsyncFunctionDef` implemented?"
-          - value: _BodyCollector.visit_ClassDef
-            question: "How is `visit_ClassDef` implemented?"
     """
 
     def __init__(self):

@@ -19,42 +19,6 @@ not keyed to any one project's token format.
 
 CLI: `uv run python -m emc2p.testing.render_trace trace.jsonl -o report.html`
 Library: `parse_trace()`/`render_html()`.
-
-Components
-----------
-- how:
-      - value: render_trace.ToolCall
-        question: "How is the `ToolCall` class implemented?"
-      - value: render_trace.Turn
-        question: "How is the `Turn` class implemented?"
-      - value: render_trace.parse_trace
-        question: "How is `parse_trace` implemented?"
-      - value: render_trace.iter_tool_calls
-        question: "How is `iter_tool_calls` implemented?"
-      - value: render_trace._is_simple_format_event
-        question: "How is `_is_simple_format_event` implemented?"
-      - value: render_trace._simple_format_turn
-        question: "How is `_simple_format_turn` implemented?"
-      - value: render_trace._normalize_events
-        question: "How is `_normalize_events` implemented?"
-      - value: render_trace._attach_subagent_subtrace
-        question: "How is `_attach_subagent_subtrace` implemented?"
-      - value: render_trace._try_parse_json
-        question: "How is `_try_parse_json` implemented?"
-      - value: render_trace._decode_blobs
-        question: "How is `_decode_blobs` implemented?"
-      - value: render_trace._esc
-        question: "How is `_esc` implemented?"
-      - value: render_trace._render_decoded_value
-        question: "How is `_render_decoded_value` implemented?"
-      - value: render_trace._render_tool_call
-        question: "How is `_render_tool_call` implemented?"
-      - value: render_trace._render_steps
-        question: "How is `_render_steps` implemented?"
-      - value: render_trace.render_html
-        question: "How is `render_html` implemented?"
-      - value: render_trace.main
-        question: "How is `main` implemented?"
 """
 
 from __future__ import annotations

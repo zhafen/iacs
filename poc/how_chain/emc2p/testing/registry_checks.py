@@ -3,16 +3,6 @@ an emc2p registry, alongside `headless_session.HeadlessSession`.
 
 Nothing here knows about any downstream project's own component schema --
 a caller names the component types/fields it cares about itself.
-
-Components
-----------
-- how:
-      - value: registry_checks.schema_exists
-        question: "How is `schema_exists` implemented?"
-      - value: registry_checks.unexpected_components
-        question: "How is `unexpected_components` implemented?"
-      - value: registry_checks.write_time
-        question: "How is `write_time` implemented?"
 """
 
 from __future__ import annotations

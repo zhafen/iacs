@@ -23,36 +23,6 @@ in -- a project may drive an in-process Hamilton dataflow, a live MCP
 session's turns, or any other transformation mechanism, since this
 framework only depends on the ``examples_dir``/``expected_dir`` layout
 above.
-
-Components
-----------
-- how:
-      - value: expected_fixtures.example_dirs
-        question: "How is `example_dirs` implemented?"
-      - value: expected_fixtures.load_expected_module
-        question: "How is `load_expected_module` implemented?"
-      - value: expected_fixtures._to_pandas
-        question: "How is `_to_pandas` implemented?"
-      - value: expected_fixtures.assert_df_rows_subset
-        question: "How is `assert_df_rows_subset` implemented?"
-      - value: expected_fixtures._manifest_item_matches
-        question: "How is `_manifest_item_matches` implemented?"
-      - value: expected_fixtures._manifest_values_match
-        question: "How is `_manifest_values_match` implemented?"
-      - value: expected_fixtures.assert_manifest_subset
-        question: "How is `assert_manifest_subset` implemented?"
-      - value: expected_fixtures.assert_subset
-        question: "How is `assert_subset` implemented?"
-      - value: expected_fixtures.assert_not_subset
-        question: "How is `assert_not_subset` implemented?"
-      - value: expected_fixtures._normalize_df
-        question: "How is `_normalize_df` implemented?"
-      - value: expected_fixtures.assert_components_equal
-        question: "How is `assert_components_equal` implemented?"
-      - value: expected_fixtures.assert_registries_equal
-        question: "How is `assert_registries_equal` implemented?"
-      - value: expected_fixtures.ExpectedValueChecker
-        question: "How is the `ExpectedValueChecker` class implemented?"
 """
 
 from __future__ import annotations
@@ -309,16 +279,6 @@ class ExpectedValueChecker(NodeExecutionHook):
     show up under -- the part after whichever prefix matches is used to
     find the per-dataflow expected fixture (see this module's own
     docstring for the layout).
-
-    Components
-    ----------
-    - how:
-          - value: ExpectedValueChecker.__init__
-            question: "How is `__init__` implemented?"
-          - value: ExpectedValueChecker.run_before_node_execution
-            question: "How is `run_before_node_execution` implemented?"
-          - value: ExpectedValueChecker.run_after_node_execution
-            question: "How is `run_after_node_execution` implemented?"
     """
 
     def __init__(

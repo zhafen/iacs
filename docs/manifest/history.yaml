@@ -313,3 +313,89 @@ project_history:
               Harmless inside the real Artifact viewer (its own publish
               skeleton always sets a charset), but worth fixing at the
               source rather than relying on that.
+    how_chain_detail_moved_to_yaml:
+        - description: >
+              The 310 how-chain edges one and two levels below the file
+              level (file -> its own classes/functions, class -> its own
+              methods) originally lived embedded inside the vendored
+              emc2p/ tree's own docstrings, via a numpy-style "Components"
+              section -- the only mechanism emc2p offers for attaching a
+              new component to an entity that already exists because a
+              Python file declared it, since a YAML file's own top-level
+              keys live in a separate entity-path namespace and can't
+              reopen an existing entity by name (see
+              how_chain_poc_added_as_reverse_of_why_chain above). That
+              choice was reasonable mechanically, but wrong in a more
+              basic way: it meant 310 of the project's 356 how-chain
+              edges weren't actually part of the manifest as data anyone
+              could see without opening sources and knowing to look --
+              confirmed directly by running registrar.export_manifest()
+              against the loaded registry, which wrote back out only
+              how.yaml's own 46 edges. That's not a bug; it's
+              export_manifest's own documented, deliberate behavior
+              (``_exportable_mask`` in emc2p/dataflows/etl/
+              export_manifest.py excludes any entity sourced from a .py
+              file, since "Python-derived components ... live in source
+              code, not a standalone YAML file, so they have nowhere to
+              round-trip to"). But for how-chain specifically, that
+              reasoning doesn't actually apply: a `how` edge isn't a fact
+              about the Python object the way its `description` is: it's
+              relational design-rationale metadata layered on top, no
+              different in kind from why_chain's `why`/`why of`, which has
+              always lived entirely in YAML even though it references
+              Python entities by alias.
+
+              why_chain's `why of` never ran into this because the
+              YAML-declared concept entities are always the ones that own
+              the component; the Python entity is only ever a `value`
+              target, never an owner. how.yaml's own top level has the
+              same property (the asking side is always one of its 13
+              hand-written group entities). Only the two levels below the
+              file level break this: there, *both* ends of every edge are
+              real Python objects (a file and its own class, or a class
+              and its own method), so there's no YAML-declared entity
+              available to safely own the link on either side.
+
+              Fixed by introducing a second component type, `how_link`
+              (poc/how_chain/how_detail.yaml), with the same value/
+              question/note fields as `how` plus an explicit `source`
+              entity_ref field, instead of relying on ownership to supply
+              the asking side. All 310 edges now live as one flat list on
+              a single plain entity, `how_chain_detail`, that doesn't
+              correspond to any real code -- it exists purely to hold the
+              list, the same role a schema entity or similar bookkeeping
+              entity already plays elsewhere in emc2p's own builtins.
+              Removed the "Components" sections from the 18 vendored
+              files that had them, keeping only the module/class-level
+              one-line docstrings added earlier (needed regardless, so
+              every file/class/function/method is still a loadable
+              entity). Verified end to end: `registrar.export_manifest()`
+              on the combined load now writes both how.yaml and
+              how_detail.yaml; reloading those two exported files plus
+              the vendored emc2p/ tree reproduces all 356 edges, all
+              resolved; the graph's own invariants (357 nodes, single
+              root, acyclic, 100% reachable) are unchanged; and
+              graph/data.json regenerated from the new source is
+              identical to the old one (same nodes, same edges, same
+              question/note text) except for row order -- confirming this
+              was purely a storage-location fix, not a content change.
+
+              One new bug surfaced while stripping the docstrings back
+              out: the first attempt searched for the literal string
+              "\nComponents\n" to find where to cut, which matches a
+              module-level section (at zero indent) but not a class-level
+              one, since that one is indented to the class's own level
+              (e.g. "    Components\n"). It silently left every
+              class-owned Components section in place -- 142 of the 356
+              how rows remained python-owned after the "fix", all on
+              exactly the files with how-linked classes (Registry,
+              Registrar, HeadlessSession's three provider classes,
+              McpClientSession, ETLSystem, AgentSession,
+              ExpectedValueChecker, _BodyCollector). Fixed by matching
+              emc2p's own header pattern instead of hand-rolling one
+              -- ``emc2p.config.DOCSTRING_COMPONENTS_PATTERN`` /
+              load_python.py's ``_COMPONENTS_HEADER_RE``
+              (``^[ \t]*Components[ \t]*\n[ \t]*-{3,}[ \t]*$``,
+              MULTILINE), which already accounts for the indent
+              correctly since it's the same pattern emc2p's own parser
+              uses to find the section in the first place.

@@ -1,11 +1,4 @@
-"""Base class for emc2p systems.
-
-Components
-----------
-- how:
-      - value: registrar.Registrar
-        question: "How is the `Registrar` class implemented?"
-"""
+"""Base class for emc2p systems."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -21,62 +14,6 @@ if TYPE_CHECKING:
 class Registrar:
     """User-facing interface to a registry: loads human/agent-authored
     entries into it, and exposes it for viewing, updating, and exporting.
-
-    Components
-    ----------
-    - how:
-          - value: Registrar.from_manifest
-            question: "How is `from_manifest` implemented?"
-          - value: Registrar.load
-            question: "How is `load` implemented?"
-          - value: Registrar.__init__
-            question: "How is `__init__` implemented?"
-          - value: Registrar.update
-            question: "How is `update` implemented?"
-          - value: Registrar._base_etl_module
-            question: "How is `_base_etl_module` implemented?"
-          - value: Registrar.validate_write
-            question: "How is `validate_write` implemented?"
-          - value: Registrar.overwrite
-            question: "How is `overwrite` implemented?"
-          - value: Registrar.load_manifest
-            question: "How is `load_manifest` implemented?"
-          - value: Registrar.save
-            question: "How is `save` implemented?"
-          - value: Registrar.export_manifest
-            question: "How is `export_manifest` implemented?"
-          - value: Registrar.load_dataflow
-            question: "How is `load_dataflow` implemented?"
-          - value: Registrar.registry
-            question: "How is `registry` implemented?"
-          - value: Registrar.view
-            question: "How is `view` implemented?"
-          - value: Registrar.view_current
-            question: "How is `view_current` implemented?"
-          - value: Registrar.safe_view
-            question: "How is `safe_view` implemented?"
-          - value: Registrar.safe_view_current
-            question: "How is `safe_view_current` implemented?"
-          - value: Registrar.view_entities
-            question: "How is `view_entities` implemented?"
-          - value: Registrar.view_entities_current
-            question: "How is `view_entities_current` implemented?"
-          - value: Registrar.safe_view_entities
-            question: "How is `safe_view_entities` implemented?"
-          - value: Registrar.safe_view_entities_current
-            question: "How is `safe_view_entities_current` implemented?"
-          - value: Registrar.summarize_components
-            question: "How is `summarize_components` implemented?"
-          - value: Registrar.get_entity_id
-            question: "How is `get_entity_id` implemented?"
-          - value: Registrar.view_entity
-            question: "How is `view_entity` implemented?"
-          - value: Registrar.get
-            question: "How is `get` implemented?"
-          - value: Registrar.execute
-            question: "How is `execute` implemented?"
-          - value: Registrar.outputs
-            question: "How is `outputs` implemented?"
     """
 
     @classmethod

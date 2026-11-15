@@ -1,15 +1,4 @@
-"""Generic Hamilton-based dataflow execution, decoupled from Registrar.
-
-Components
-----------
-- how:
-      - value: etl_system.register_dataflow_package
-        question: "How is `register_dataflow_package` implemented?"
-      - value: etl_system.resolve_dataflow
-        question: "How is `resolve_dataflow` implemented?"
-      - value: etl_system.ETLSystem
-        question: "How is the `ETLSystem` class implemented?"
-"""
+"""Generic Hamilton-based dataflow execution, decoupled from Registrar."""
 from __future__ import annotations
 
 import importlib
@@ -66,20 +55,6 @@ class ETLSystem:
     Stateless: dataflows, adapters, and inputs (including any registry) are
     all supplied per call, since a given system rarely reruns the same
     dataflow/adapter combination.
-
-    Components
-    ----------
-    - how:
-          - value: ETLSystem.execute
-            question: "How is `execute` implemented?"
-          - value: ETLSystem.outputs
-            question: "How is `outputs` implemented?"
-          - value: ETLSystem._resolve_all
-            question: "How is `_resolve_all` implemented?"
-          - value: ETLSystem._final_var
-            question: "How is `_final_var` implemented?"
-          - value: ETLSystem._build_driver
-            question: "How is `_build_driver` implemented?"
     """
 
     def execute(

@@ -12,14 +12,6 @@ type-check them structurally. create_agent_session is the one place that
 actually picks a driver from a plain string, mirroring _coerce_provider's
 own string -> HeadlessProvider resolution one level down inside
 HeadlessSession itself.
-
-Components
-----------
-- how:
-      - value: agent_session.AgentSession
-        question: "How is the `AgentSession` class implemented?"
-      - value: agent_session.create_agent_session
-        question: "How is `create_agent_session` implemented?"
 """
 
 from __future__ import annotations
@@ -39,20 +31,6 @@ class AgentSession(Protocol):
 
     Structural, not nominal: matching this doesn't require either class
     to inherit from anything new, so both already satisfy it as-is.
-
-    Components
-    ----------
-    - how:
-          - value: AgentSession.__enter__
-            question: "How is `__enter__` implemented?"
-          - value: AgentSession.__exit__
-            question: "How is `__exit__` implemented?"
-          - value: AgentSession.send_turn
-            question: "How is `send_turn` implemented?"
-          - value: AgentSession.usage_summary
-            question: "How is `usage_summary` implemented?"
-          - value: AgentSession.close
-            question: "How is `close` implemented?"
     """
 
     trace_path: Path

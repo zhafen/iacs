@@ -10,12 +10,6 @@ project's own domain (story-simulator's "host"/"subagent"/"keyed_subagent"
 is just one such vocabulary). Only the env var name and default are
 project-specific, so those are the factory's own parameters, not baked in
 here.
-
-Components
-----------
-- how:
-      - value: responder_fixture.make_responder_fixture
-        question: "How is `make_responder_fixture` implemented?"
 """
 
 from __future__ import annotations

@@ -1,17 +1,4 @@
-"""Chains the etl, derive, and validation subdags into the one pipeline that produces a validated_registry.
-
-Components
-----------
-- how:
-      - value: base_etl.loaded_registry
-        question: "How is `loaded_registry` implemented?"
-      - value: base_etl.initial_validated_registry
-        question: "How is `initial_validated_registry` implemented?"
-      - value: base_etl.derived_registry
-        question: "How is `derived_registry` implemented?"
-      - value: base_etl.validated_registry
-        question: "How is `validated_registry` implemented?"
-"""
+"""Chains the etl, derive, and validation subdags into the one pipeline that produces a validated_registry."""
 
 from hamilton.function_modifiers import subdag, source
 
