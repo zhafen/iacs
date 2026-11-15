@@ -130,3 +130,272 @@ project_history:
               to ~90s with the full suite still passing unchanged --
               documented in README.md, mirroring emc2p's own `live` marker
               convention.
+    why_chain_poc_moved_from_emc2p:
+        - description: >
+              poc/why_chain/ (a "why chain" experiment -- entity-first
+              manifests recording open-ended design rationale, converging
+              on one shared goal rather than pairing requirements with
+              solutions) started as a series of iterations directly in the
+              emc2p repo. Moved here once it became clear the experiment
+              itself is an iacs use case (documenting/designing something)
+              rather than emc2p's own concern (the generic ECS engine);
+              emc2p's own PR for it was closed unmerged. Brought its own
+              vendored, frozen copy of mcp_client_session.py rather than
+              depending on emc2p picking up the closed PR's changes --
+              iacs's own emc2p pin predates the docstrings that experiment
+              added to 11 of that file's 19 objects, without which those
+              objects wouldn't be loadable entities at all. Also hit the
+              same kind of entity_ref ambiguity noted in
+              pure_connection_architecture_added_as_a_third_modeling_style
+              above: one Python-object reference used a bare two-segment
+              alias
+              (module leaf name + parent directory name) that changed when
+              the file moved directories; fixed by updating it to the new
+              alias rather than by making the reference itself more
+              precise, since a module-level entity's alias is inherently
+              tied to its parent directory's name (unlike a
+              class.method-shaped alias, which isn't).
+    why_chain_poc_placed_outside_examples_dir:
+        - description: >
+              Landed first at examples/why_chain/, which broke CI:
+              tests/test_human_validated.py::test_end_to_end parametrizes
+              over every subdirectory of examples/ unconditionally (see
+              example_dirs in emc2p.testing.expected_fixtures -- no opt-out
+              mechanism) and asserts a full load/export/reload round trip
+              produces identical components. mcp_client_session.py's
+              load_python-derived `calls` components (call-graph metadata
+              emc2p's load_python attaches to every function/method
+              automatically) don't survive that round trip --
+              export_manifest doesn't re-serialize them, so the reloaded
+              registry has zero where the original had 80, and the
+              comparison fails. Every prior examples/ entry is plain
+              hand-authored YAML with no embedded Python source, so nothing
+              had hit this before. Moved the whole thing to poc/why_chain/
+              instead of trying to make it satisfy a round-trip contract
+              it was never meant to: examples/ is for hand-authored
+              fixtures this repo's own ETL pipeline is tested against, not
+              a Python-source-linked demo of load_python. poc/ isn't swept
+              by example_dirs(), so this needed no change to shared test
+              code or to emc2p's own export/comparison logic (the real
+              root cause -- component_type flagged skip_on_export isn't
+              also excluded from assert_registries_equal's round-trip
+              comparison -- is an emc2p-level gap, out of scope here).
+    how_chain_poc_added_as_reverse_of_why_chain:
+        - description: >
+              poc/how_chain/ runs the same kind of experiment as
+              poc/why_chain/ in the opposite direction: instead of starting
+              at one piece of code and asking "why" until the chain reaches
+              emc2p_mission, it starts at emc2p_mission and asks "how" until
+              the chain reaches every one of the 34 .py files in emc2p's own
+              package. Defined a new `how` component (value/question/note,
+              parent: directed_relation) rather than reusing `why`, because
+              the two read in opposite directions: a `why` link is owned by
+              the more abstract entity but is conceptually "asked" by the
+              more concrete one (why_chain's viewer has to reverse the
+              arrow and swap which panel shows the Q&amp;A to display that
+              correctly), while a `how` link is both owned by and
+              conceptually asked by the more abstract entity -- so its
+              viewer draws edges in the data's own source-to-target
+              direction with no reversal or panel-swap needed. Vendored
+              emc2p's whole package tree (not just one file) to keep every
+              file's two-segment alias (parent directory + filename) stable
+              regardless of where the copy sits, the same reasoning
+              why_chain_poc_moved_from_emc2p above used for one file.
+              Eleven of the 34 files had no module-level docstring in the
+              real repo -- without one, load_python creates no entity for
+              that module at all -- so this vendored copy adds a minimal
+              one-line docstring to each of those eleven, purely so every
+              file becomes a loadable, linkable node; nothing else about
+              those files changed. Verified programmatically before writing
+              any visualization: single root (emc2p_mission, 0 incoming
+              edges), all 46 how.value references resolved, 34 distinct
+              leaves with 0 outgoing edges matching the 34 vendored files
+              1:1, and no cycles.
+    how_chain_extended_to_classes_and_functions:
+        - description: >
+              Extended how_chain_poc_added_as_reverse_of_why_chain two more
+              levels down: each of the 34 files now links, via its own
+              `how`, to its own top-level classes and functions, and each
+              class with methods links to those -- 357 nodes total (was 47),
+              up to 5 hops deep. A Python-sourced entity can only receive
+              extra components by editing the Python source itself (a
+              docstring's numpy-style "Components" section, or an __iacs__
+              dict -- a YAML file's own top-level keys live in a completely
+              separate entity-path namespace and can't "reopen" an
+              existing entity by name), so every file's and class's module
+              /class docstring in the vendored emc2p/ copy gained a
+              Components section with a `how` list pointing at its own
+              children, rather than those links living in how.yaml itself.
+              88 of the 310 new class/function/method targets had no
+              docstring at all in the real repo and so needed one added
+              first, same reasoning as the 11 files in the entry above.
+              Hit one new bug along the way: the docstring-editing script
+              spliced each new Components-section docstring in by replacing
+              the exact (lineno, col_offset)-(end_lineno, end_col_offset)
+              span of the old docstring's AST node with new text that
+              *also* started with its own leading indent -- doubling the
+              indent on the opening `"""` line specifically (continuation
+              lines were fine, since those already carried the right indent
+              embedded in the replacement text). A one-line docstring (AST
+              start/end on the same line) made this obvious once isolated:
+              the class's own first statement ended up indented 8 spaces
+              instead of 4, which Python's tokenizer accepted as a new
+              -but-unexpected indent level, then rejected the next, correctly
+              -indented statement as "unindent does not match any outer
+              indentation level". Fixed by dropping the redundant leading
+              pad from the replacement text, since the original line's own
+              prefix (preserved up to the span's start column) already
+              supplies it. Verified programmatically before touching the
+              visualization: all 356 how.value references resolved, single
+              root, acyclic, 100% reachable from the mission.
+    how_chain_viz_made_collapsible:
+        - description: >
+              357 nodes rendered all at once (the force-layout approach
+              both viz's used up to this point) turned out to be
+              unreadable once how_chain grew past the file level down to
+              classes and functions. Rebuilt graph/index.html's rendering
+              around d3.hierarchy/d3.tree instead of a force simulation --
+              a natural fit since how.yaml's graph is a strict tree (node
+              count is always exactly edge count + 1: every non-mission
+              node has exactly one parent, unlike why_chain's graph, which
+              deliberately reuses hub concepts as multiple nodes' answers).
+              The viewer now starts with only the mission node shown and
+              expands one level at a time on click, collapsing back on a
+              second click; search and the panel's own links auto-expand
+              whatever collapsed ancestors stand between the current view
+              and their target. Two bugs surfaced while building this,
+              both worth remembering:
+
+              First, the initial "collapse everything" pass walked the
+              hierarchy via `root.each()` and nulled each node's own
+              `.children` from inside the visit callback -- but
+              `d3.hierarchy`'s `.each()` reads a node's `.children` to find
+              what to visit next only *after* calling the callback for
+              that node, so nulling it there made traversal stop
+              descending right there. The practical effect: only the
+              mission's own direct children ever actually got collapsed;
+              everything two or more levels down kept its original,
+              never-touched `.children` array intact, so expanding the
+              mission once immediately revealed the entire rest of the
+              357-node tree instead of just one level. Fixed by capturing
+              every node into a flat `Map` once, up front, before any
+              collapsing happens, and having the "collapse everything"
+              pass walk that static list instead of the live `.children`
+              chain -- a plain array iteration has no such
+              self-interference.
+
+              Second, the node tooltip's hover/focus handlers were still
+              passing the raw datum bound to each SVG element straight to
+              `showTip()`, unchanged from the old force-layout version --
+              but that datum is now a `d3.hierarchy` node (`{data: {id,
+              children}, parent, depth, ...}`), not the flat, data.json
+              -shaped node (`{id, description, kind}`) `showTip()` expects.
+              Every hover threw "Cannot read properties of undefined
+              (reading 'replace')" trying to clean a `description` field
+              that was never there. Fixed by resolving `nodeById.get(d.data.id)`
+              before calling `showTip()`, the same pattern every other
+              panel/highlight function already used to bridge from a
+              hierarchy node back to its real data.
+
+              A third, smaller issue: the collapse/expand "+"/"−" glyph
+              used a literal Unicode minus sign (U+2212) in a
+              `.text()` call, which rendered as mojibake under this
+              sandbox's local test server (no explicit charset meta, so
+              the browser guessed wrong) -- unlike every other Unicode
+              character already in the page, which only ever appears as
+              an HTML entity (`&rarr;`, `&mdash;`, ...) inside
+              `innerHTML`, immune to this since named entities decode
+              correctly regardless of the page's assumed encoding. Fixed
+              by writing `"−"`/`"…"` (a JS escape sequence,
+              pure ASCII in the source) instead of the raw character, in
+              both this new glyph and the pre-existing `shortLabel`
+              ellipsis truncation that had the same latent exposure.
+              Harmless inside the real Artifact viewer (its own publish
+              skeleton always sets a charset), but worth fixing at the
+              source rather than relying on that.
+    how_chain_detail_moved_to_yaml:
+        - description: >
+              The 310 how-chain edges one and two levels below the file
+              level (file -> its own classes/functions, class -> its own
+              methods) originally lived embedded inside the vendored
+              emc2p/ tree's own docstrings, via a numpy-style "Components"
+              section -- the only mechanism emc2p offers for attaching a
+              new component to an entity that already exists because a
+              Python file declared it, since a YAML file's own top-level
+              keys live in a separate entity-path namespace and can't
+              reopen an existing entity by name (see
+              how_chain_poc_added_as_reverse_of_why_chain above). That
+              choice was reasonable mechanically, but wrong in a more
+              basic way: it meant 310 of the project's 356 how-chain
+              edges weren't actually part of the manifest as data anyone
+              could see without opening sources and knowing to look --
+              confirmed directly by running registrar.export_manifest()
+              against the loaded registry, which wrote back out only
+              how.yaml's own 46 edges. That's not a bug; it's
+              export_manifest's own documented, deliberate behavior
+              (``_exportable_mask`` in emc2p/dataflows/etl/
+              export_manifest.py excludes any entity sourced from a .py
+              file, since "Python-derived components ... live in source
+              code, not a standalone YAML file, so they have nowhere to
+              round-trip to"). But for how-chain specifically, that
+              reasoning doesn't actually apply: a `how` edge isn't a fact
+              about the Python object the way its `description` is: it's
+              relational design-rationale metadata layered on top, no
+              different in kind from why_chain's `why`/`why of`, which has
+              always lived entirely in YAML even though it references
+              Python entities by alias.
+
+              why_chain's `why of` never ran into this because the
+              YAML-declared concept entities are always the ones that own
+              the component; the Python entity is only ever a `value`
+              target, never an owner. how.yaml's own top level has the
+              same property (the asking side is always one of its 13
+              hand-written group entities). Only the two levels below the
+              file level break this: there, *both* ends of every edge are
+              real Python objects (a file and its own class, or a class
+              and its own method), so there's no YAML-declared entity
+              available to safely own the link on either side.
+
+              Fixed by introducing a second component type, `how_link`
+              (poc/how_chain/how_detail.yaml), with the same value/
+              question/note fields as `how` plus an explicit `source`
+              entity_ref field, instead of relying on ownership to supply
+              the asking side. All 310 edges now live as one flat list on
+              a single plain entity, `how_chain_detail`, that doesn't
+              correspond to any real code -- it exists purely to hold the
+              list, the same role a schema entity or similar bookkeeping
+              entity already plays elsewhere in emc2p's own builtins.
+              Removed the "Components" sections from the 18 vendored
+              files that had them, keeping only the module/class-level
+              one-line docstrings added earlier (needed regardless, so
+              every file/class/function/method is still a loadable
+              entity). Verified end to end: `registrar.export_manifest()`
+              on the combined load now writes both how.yaml and
+              how_detail.yaml; reloading those two exported files plus
+              the vendored emc2p/ tree reproduces all 356 edges, all
+              resolved; the graph's own invariants (357 nodes, single
+              root, acyclic, 100% reachable) are unchanged; and
+              graph/data.json regenerated from the new source is
+              identical to the old one (same nodes, same edges, same
+              question/note text) except for row order -- confirming this
+              was purely a storage-location fix, not a content change.
+
+              One new bug surfaced while stripping the docstrings back
+              out: the first attempt searched for the literal string
+              "\nComponents\n" to find where to cut, which matches a
+              module-level section (at zero indent) but not a class-level
+              one, since that one is indented to the class's own level
+              (e.g. "    Components\n"). It silently left every
+              class-owned Components section in place -- 142 of the 356
+              how rows remained python-owned after the "fix", all on
+              exactly the files with how-linked classes (Registry,
+              Registrar, HeadlessSession's three provider classes,
+              McpClientSession, ETLSystem, AgentSession,
+              ExpectedValueChecker, _BodyCollector). Fixed by matching
+              emc2p's own header pattern instead of hand-rolling one
+              -- ``emc2p.config.DOCSTRING_COMPONENTS_PATTERN`` /
+              load_python.py's ``_COMPONENTS_HEADER_RE``
+              (``^[ \t]*Components[ \t]*\n[ \t]*-{3,}[ \t]*$``,
+              MULTILINE), which already accounts for the indent
+              correctly since it's the same pattern emc2p's own parser
+              uses to find the section in the first place.
