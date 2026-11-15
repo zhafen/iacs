@@ -40,11 +40,17 @@ in each of those files.
   `why_chain`'s viewer, no arrow-reversal or panel-swap is needed — a
   `how` link already reads top-down the way the data is stored (the
   entity asking "how" owns the link; the entity answering is its
-  `value`). Click a node to trace its lineage back to the mission and see
-  the question(s) it raises and who answers them. Open `graph/index.html`
-  through a local server (it fetches `data.json` relative to itself, e.g.
-  `python3 -m http.server` from this directory) rather than as a bare
-  `file://` page.
+  `value`). It's a proper collapsible tree (`d3.hierarchy`/`d3.tree`,
+  the graph really is a strict tree: 357 nodes, 356 edges) rather than a
+  force layout — 357 nodes all at once is unreadable, so it starts with
+  only the mission shown, and clicking a node marked `+` reveals its own
+  children one level at a time (click again, now marked `−`, to collapse
+  it back). Searching or clicking a panel link (the question it answers,
+  what it's part of, its lineage) auto-expands whatever collapsed
+  ancestors stand between the current view and that node. Open
+  `graph/index.html` through a local server (it fetches `data.json`
+  relative to itself, e.g. `python3 -m http.server` from this directory)
+  rather than as a bare `file://` page.
 
 ## Loading it yourself
 

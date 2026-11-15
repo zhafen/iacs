@@ -200,18 +200,27 @@
   .edge.dim { opacity: .12; }
   .edge.lit { stroke: var(--focus); stroke-width: 1.6; opacity: .95; }
   .edge.child-lit { stroke: var(--code); stroke-width: 1.6; opacity: .95; }
-  .node circle { stroke: var(--bg); stroke-width: 1.5; transition: opacity .25s, stroke-width .15s; cursor: pointer; }
+  .node circle { stroke: var(--bg); stroke-width: 1.5; transition: opacity .25s, stroke-width .15s, r .32s; cursor: pointer; }
   .node.dim circle { opacity: .18; }
   .node.dim text { opacity: .12; }
   .node text {
-    font-family: "IBM Plex Mono", monospace;
-    font-size: 9.5px;
-    fill: var(--ink-2);
     pointer-events: none;
     transition: opacity .25s, fill .2s;
   }
+  .node text.label {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 9.5px;
+    fill: var(--ink-2);
+  }
+  .node text.toggle {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10px;
+    font-weight: 700;
+    fill: var(--bg);
+    text-anchor: middle;
+  }
   .node.selected circle { stroke: var(--focus); stroke-width: 3px; }
-  .node.selected text { fill: var(--ink); font-weight: 500; }
+  .node.selected text.label { fill: var(--ink); font-weight: 500; }
   .node.ancestor circle { stroke: var(--focus); stroke-width: 2px; }
   .node.child circle { stroke: var(--code); stroke-width: 2px; }
   .node.match circle { stroke: var(--focus); stroke-width: 2.5px; }
@@ -362,6 +371,7 @@
       <span class="item"><span class="dot" style="background:var(--concept)"></span>subsystem</span>
       <span class="item"><span class="dot" style="background:var(--code)"></span>real file</span>
       <span class="item"><span class="dot" style="background:var(--member)"></span>class / function</span>
+      <span class="item">+ expand &middot; &minus; collapse</span>
     </div>
     <div class="search-wrap">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.6" y2="16.6"/></svg>
@@ -373,7 +383,7 @@
   <div class="main">
     <div class="stage">
       <svg id="graph"></svg>
-      <div class="hint">Drag to pan, scroll/pinch to zoom. Arrows point down from the mission through subsystems and files to the classes and functions that carry them out. Click a node to trace its lineage from the mission; click empty space to clear.</div>
+      <div class="hint">Everything starts collapsed. Click a node marked <strong>+</strong> to reveal what's beneath it, click it again (now marked <strong>&minus;</strong>) to collapse it back. Drag to pan, scroll/pinch to zoom.</div>
     </div>
     <div class="panel" id="panel">
       <button class="close-panel-btn" id="closePanel" aria-label="Close">&times;</button>
@@ -392,6 +402,9 @@
   // ---------- build graph model ----------
   // raw.nodes: [{id, description, kind}]  kind: mission | subsystem | file | member
   // raw.edges: [{source, target, question, note}]  (source is how target gets achieved -- source asks, target answers)
+  // The graph is a strict tree (nodes.length === edges.length + 1), which is
+  // what makes a collapsible d3.hierarchy/d3.tree layout a clean fit: every
+  // non-mission node has exactly one parent.
 
   const KIND_COLOR_VAR = { mission: "--mission", subsystem: "--concept", file: "--code", member: "--member" };
   const KIND_LABEL = { mission: "the mission", subsystem: "subsystem", file: "real file", member: "class or function" };
@@ -405,8 +418,7 @@
   });
 
   const MISSION_ID = "emc2p_mission";
-  const nodes = Array.from(nodeById.values());
-  const edges = raw.edges;
+  const TOTAL_NODE_COUNT = raw.nodes.length;
 
   // depth = shortest number of hops from the mission, following "how" edges forward
   const depth = new Map();
@@ -427,17 +439,9 @@
       frontier = next;
     }
   }
-  nodes.forEach(n => { n.depth = depth.get(n.id) ?? 0; });
-  const maxDepth = Math.max(...nodes.map(n => n.depth));
+  const TOTAL_MAX_DEPTH = Math.max(...depth.values());
 
-  nodes.forEach(n => {
-    n.outDeg = n.outEdges.length;
-    n.inDeg = n.inEdges.length;
-    n.r = n.kind === "mission" ? 13
-      : n.kind === "member" ? 3.5
-      : n.kind === "file" ? 5.5
-      : Math.min(11, 5 + Math.sqrt(n.outDeg) * 2.6);
-  });
+  function edgeKey(s, t) { return `${s}\u0000${t}`; }
 
   function cleanText(t) {
     if (!t) return "";
@@ -456,9 +460,57 @@
     return cleanText(text).split(/\n\n/).map(p => `<p>${mdCodeToHtml(p)}</p>`).join("");
   }
 
-  // ---------- layout: fixed row by depth, barycenter ordering + force for x ----------
-  const rowH = 132;
-  const colW = 148;
+  function shortLabel(id) {
+    if (id === MISSION_ID) return "emc2p_mission";
+    const parts = id.split(".");
+    const base = parts.length > 1 ? parts.slice(-1)[0] : id;
+    return base.length > 26 ? base.slice(0, 24) + "\u2026" : base;
+  }
+
+  // ---------- build the collapsible hierarchy ----------
+  // The flat nodeById/outEdges graph above stays the single source of truth
+  // for every node's data (description, kind, question/note on each edge);
+  // this hierarchy is a parallel structure that exists only to drive the
+  // tree layout and which nodes are currently visible.
+  function buildTreeNode(id) {
+    return { id, children: nodeById.get(id).outEdges.map(e => buildTreeNode(e.target)) };
+  }
+  const root = d3.hierarchy(buildTreeNode(MISSION_ID));
+
+  // A permanent lookup from id to its hierarchy node, independent of
+  // collapse state (collapsing only clears `.children`, never `.parent`),
+  // so search and "go to" links can find and reveal any node on demand.
+  const hierNodeById = new Map();
+  root.each(d => hierNodeById.set(d.data.id, d));
+
+  // Start with everything collapsed -- even the mission's own children --
+  // since the full 357-node graph is unreadable shown all at once.
+  //
+  // Iterates hierNodeById's full, pre-captured node list rather than
+  // walking root via `.each()`: that traversal reads a node's `.children`
+  // only *after* invoking the visit callback, so nulling `.children`
+  // inside the callback (as collapsing requires) makes it stop descending
+  // right there -- every node beyond the first level would be silently
+  // skipped and left un-collapsed, which is exactly backwards from the
+  // intent. A flat array walk has no such self-interference.
+  function collapseAll() {
+    hierNodeById.forEach(d => {
+      if (d.children) { d._children = d.children; d.children = null; }
+    });
+  }
+  collapseAll();
+
+  function radiusOf(d) {
+    const kind = nodeById.get(d.data.id).kind;
+    if (kind === "mission") return 13;
+    const kids = d.children || d._children;
+    if (!kids) return kind === "member" ? 3.5 : 4.5;
+    return Math.min(11, 5 + Math.sqrt(kids.length) * 2.2);
+  }
+
+  // ---------- svg scaffolding ----------
+  const colW = 110, rowH = 120;
+  const treeLayout = d3.tree().nodeSize([colW, rowH]);
   const svg = d3.select("#graph");
   const stage = document.querySelector(".stage");
 
@@ -466,72 +518,11 @@
     return { w: stage.clientWidth, h: stage.clientHeight };
   }
 
-  // Row-by-row ordering: each row's nodes are ordered by the x of their
-  // "primary" parent (the already-positioned in-edge source with the
-  // smallest depth) so a chain stays visually near its siblings instead of
-  // scattering across the row -- a cheap Sugiyama-style barycenter pass.
-  const rows = [];
-  for (let d = 0; d <= maxDepth; d++) rows.push(nodes.filter(n => n.depth === d));
-
-  nodes.forEach(n => { n.y = n.depth * rowH + 70; n.fy = n.y; });
-
-  rows.forEach((row, d) => {
-    if (d === 0) {
-      row.forEach(n => { n.x0 = 0; });
-      return;
-    }
-    row.forEach(n => {
-      let primary = null;
-      for (const e of n.inEdges) {
-        const src = nodeById.get(e.source);
-        if (src.depth < n.depth && (!primary || src.depth < primary.depth)) primary = src;
-      }
-      n.x0 = primary ? primary.x0 : 0;
-    });
-    // stable sort by primary-parent position, tie-break alphabetically
-    row.sort((a, b) => a.x0 - b.x0 || a.id.localeCompare(b.id));
-    row.forEach((n, i) => { n.x0 = (i - (row.length - 1) / 2) * colW; });
-  });
-
-  nodes.forEach(n => { n.x = n.x0 + (Math.random() - 0.5) * 8; });
-
-  const sim = d3.forceSimulation(nodes)
-    .force("charge", d3.forceManyBody().strength(-70))
-    .force("collide", d3.forceCollide(d => d.r + 20).strength(0.9))
-    .force("x", d3.forceX(d => d.x0).strength(0.25))
-    .force("link", d3.forceLink(edges.map(e => ({ source: e.source, target: e.target })))
-      .id(d => d.id).strength(0.05).distance(colW))
-    .force("y", null)
-    .stop();
-
-  for (let i = 0; i < 200; i++) sim.tick();
-
-  // normalize x extent
-  const xExtent = d3.extent(nodes, d => d.x);
-  const layoutWidth = (xExtent[1] - xExtent[0]) + 220;
-  const layoutHeight = maxDepth * rowH + 160;
-
   const g = svg.append("g").attr("class", "viewport");
   const edgeLayer = g.append("g").attr("class", "edges");
   const nodeLayer = g.append("g").attr("class", "nodes-layer");
 
   const linkPath = d3.linkVertical().x(d => d.x).y(d => d.y);
-
-  // Each `how` component lives on the entity that asks (the registry
-  // owner, the data model's e.source) and names, as its value, the entity
-  // that is the answer (e.target) -- the mission asks "how", a subsystem
-  // answers, and so on down to a real file. That's already the direction
-  // a viewer wants to read top-down, so unlike ((why_chain)), the arrow is
-  // drawn straight from source to target, no reversal needed.
-  const edgeSel = edgeLayer.selectAll("path.edge")
-    .data(edges)
-    .join("path")
-    .attr("class", "edge")
-    .attr("d", e => linkPath({
-      source: nodeById.get(e.source),
-      target: nodeById.get(e.target),
-    }))
-    .attr("marker-end", "url(#arrow)");
 
   svg.append("defs").append("marker")
     .attr("id", "arrow")
@@ -543,45 +534,137 @@
     .attr("d", "M0,0 L10,5 L0,10 z")
     .attr("fill", "var(--edge)");
 
-  const nodeSel = nodeLayer.selectAll("g.node")
-    .data(nodes)
-    .join("g")
-    .attr("class", d => "node" + (d.id === MISSION_ID ? " mission-node" : ""))
-    .attr("transform", d => `translate(${d.x},${d.y})`)
-    .style("cursor", "pointer")
-    .attr("tabindex", 0)
-    .attr("role", "button")
-    .attr("aria-label", d => `${d.id}, ${kindOf(d)}`)
-    .on("click", (event, d) => { event.stopPropagation(); selectNode(d.id); })
-    .on("keydown", (event, d) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        event.stopPropagation();
-        selectNode(d.id);
-      }
-    })
-    .on("focus", (event, d) => showTip(event, d))
-    .on("blur", hideTip)
-    .on("mouseenter", (event, d) => showTip(event, d))
-    .on("mouseleave", hideTip);
+  let selectedId = null;
 
-  nodeSel.append("circle")
-    .attr("r", d => d.r)
-    .attr("fill", d => colorOf(d));
-
-  nodeSel.append("text")
-    .attr("dy", d => d.r + 11)
-    .attr("text-anchor", "middle")
-    .text(d => shortLabel(d.id));
-
-  function shortLabel(id) {
-    if (id === MISSION_ID) return "emc2p_mission";
-    const parts = id.split(".");
-    const base = parts.length > 1 ? parts.slice(-1)[0] : id;
-    return base.length > 26 ? base.slice(0, 24) + "…" : base;
+  function nodeClass(d) {
+    return "node" + (d.data.id === MISSION_ID ? " mission-node" : "");
+  }
+  function ariaLabelOf(d) {
+    const n = nodeById.get(d.data.id);
+    const state = d.children ? ", expanded" : d._children ? ", collapsed, click to reveal what it explains" : "";
+    return `${d.data.id}, ${kindOf(n)}${state}`;
   }
 
-  let selectedId = null;
+  // Each `how` component lives on the entity that asks (the registry
+  // owner, the data model's e.source) and names, as its value, the entity
+  // that is the answer (e.target) -- the mission asks "how", a subsystem
+  // answers, and so on down to a real file. That's already the direction
+  // a viewer wants to read top-down, so unlike ((why_chain)), the arrow is
+  // drawn straight from source to target, no reversal needed.
+
+  // ---------- render: d3's classic collapsible-tree enter/update/exit ----------
+  function update(source) {
+    treeLayout(root);
+    const nodes = root.descendants();
+    const links = root.links();
+
+    const node = nodeLayer.selectAll("g.node").data(nodes, d => d.data.id);
+
+    const nodeEnter = node.enter().append("g")
+      .attr("class", nodeClass)
+      .attr("transform", () => `translate(${source.x0 ?? source.x},${source.y0 ?? source.y})`)
+      .style("cursor", "pointer")
+      .attr("tabindex", 0)
+      .attr("role", "button")
+      .attr("aria-label", ariaLabelOf)
+      .on("click", (event, d) => { event.stopPropagation(); activate(d); })
+      .on("keydown", (event, d) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          event.stopPropagation();
+          activate(d);
+        }
+      })
+      .on("focus", (event, d) => showTip(event, nodeById.get(d.data.id)))
+      .on("blur", hideTip)
+      .on("mouseenter", (event, d) => showTip(event, nodeById.get(d.data.id)))
+      .on("mouseleave", hideTip);
+
+    nodeEnter.append("circle").attr("r", 1e-6);
+    nodeEnter.append("text").attr("class", "toggle").attr("dy", "0.32em");
+    nodeEnter.append("text").attr("class", "label").attr("text-anchor", "middle");
+
+    const nodeUpdate = nodeEnter.merge(node);
+    nodeUpdate
+      .attr("class", nodeClass)
+      .attr("aria-label", ariaLabelOf);
+    nodeUpdate.select("circle")
+      .attr("fill", d => colorOf(nodeById.get(d.data.id)));
+    nodeUpdate.select("text.toggle")
+      .text(d => (d._children ? "+" : d.children ? "\u2212" : ""));
+    nodeUpdate.select("text.label")
+      .attr("dy", d => radiusOf(d) + 11)
+      .text(d => shortLabel(d.data.id));
+
+    nodeUpdate.transition().duration(320)
+      .attr("transform", d => `translate(${d.x},${d.y})`);
+    nodeUpdate.select("circle").transition().duration(320)
+      .attr("r", radiusOf);
+
+    const nodeExit = node.exit();
+    nodeExit.transition().duration(320)
+      .attr("transform", () => `translate(${source.x},${source.y})`)
+      .remove();
+    nodeExit.select("circle").transition().duration(320).attr("r", 1e-6);
+
+    const link = edgeLayer.selectAll("path.edge").data(links, d => d.target.data.id);
+
+    const linkEnter = link.enter().insert("path", "g")
+      .attr("class", "edge")
+      .attr("marker-end", "url(#arrow)")
+      .attr("d", () => {
+        const o = { x: source.x0 ?? source.x, y: source.y0 ?? source.y };
+        return linkPath({ source: o, target: o });
+      });
+
+    linkEnter.merge(link).transition().duration(320)
+      .attr("d", d => linkPath({ source: d.source, target: d.target }));
+
+    link.exit().transition().duration(320)
+      .attr("d", () => {
+        const o = { x: source.x, y: source.y };
+        return linkPath({ source: o, target: o });
+      })
+      .remove();
+
+    nodes.forEach(d => { d.x0 = d.x; d.y0 = d.y; });
+
+    applyHighlight();
+    updateLabelVisibility();
+    document.getElementById("stats").innerHTML =
+      `<span><b>${nodes.length}</b> / ${TOTAL_NODE_COUNT} nodes shown</span><span><b>${links.length}</b> edges shown</span><span><b>${TOTAL_MAX_DEPTH}</b> hops max</span>`;
+    fitView(nodes);
+  }
+
+  function toggle(d) {
+    if (d.children) { d._children = d.children; d.children = null; }
+    else { d.children = d._children; d._children = null; }
+    update(d);
+  }
+
+  function expandAncestors(hd) {
+    let p = hd.parent;
+    while (p) {
+      if (p._children) { p.children = p._children; p._children = null; }
+      p = p.parent;
+    }
+  }
+
+  function activate(d) {
+    if (d.children || d._children) toggle(d);
+    selectNode(d.data.id);
+  }
+
+  // Reveal `id` by expanding every collapsed ancestor on its path from the
+  // mission, then select it -- used by search and by the panel's own
+  // "answered by" / "part of" / lineage links, any of which can point at a
+  // node that isn't currently shown.
+  function goto(id) {
+    const hd = hierNodeById.get(id);
+    expandAncestors(hd);
+    update(hd);
+    selectNode(id);
+  }
 
   // ---------- zoom / pan ----------
   const zoom = d3.zoom()
@@ -596,18 +679,17 @@
   svg.call(zoom);
   svg.on("click", () => selectNode(null));
 
-  // At a full-graph overview, showing all 47 labels at once is noise --
-  // only the mission and the bigger subsystem nodes label themselves until
-  // the viewer zooms in past LABEL_ZOOM, the same way a map only names
-  // major cities until you zoom into a region.
-  const LABEL_ZOOM = 0.85;
+  // With collapse/expand keeping the visible set small, every visible
+  // label can usually stay on -- but a selection still narrows to what's
+  // relevant, the same way it always has.
+  const LABEL_ZOOM = 0.6;
   let currentK = 1;
   function updateLabelVisibility(k) {
     if (k !== undefined) currentK = k;
     const focusIds = selectedId ? relevantIds(selectedId) : null;
-    nodeLayer.selectAll("text").style("opacity", d => {
-      if (focusIds) return focusIds.has(d.id) ? 1 : 0;
-      return (currentK >= LABEL_ZOOM || d.r >= 9) ? 1 : 0;
+    nodeLayer.selectAll("text.label").style("opacity", d => {
+      if (focusIds) return focusIds.has(d.data.id) ? 1 : 0;
+      return (currentK >= LABEL_ZOOM || radiusOf(d) >= 9) ? 1 : 0;
     });
   }
   function relevantIds(id) {
@@ -617,17 +699,19 @@
     return nodesSet;
   }
 
-  function fitView() {
+  function fitView(nodes) {
     const { w, h } = currentSize();
-    // Fit to width primarily -- an overview of every row at once is
-    // illegible with 47 nodes; the viewer scrolls/pans down through the
-    // chain the way they'd scroll a tall page, and can zoom in anywhere.
-    const scale = Math.min(1, Math.max(0.35, (w / layoutWidth) * 0.92));
+    const xExtent = d3.extent(nodes, d => d.x);
+    const yExtent = d3.extent(nodes, d => d.y);
+    const treeW = (xExtent[1] - xExtent[0]) || 1;
+    const treeH = (yExtent[1] - yExtent[0]) || 1;
+    const scale = nodes.length <= 1
+      ? 1.1
+      : Math.min(1.3, Math.max(0.35, Math.min((w - 60) / treeW, (h - 140) / (treeH + 120))));
     const cx = (xExtent[0] + xExtent[1]) / 2;
     const tx = w / 2 - cx * scale;
-    const ty = 26;
-    svg.call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
-    updateLabelVisibility(scale);
+    const ty = 60 - yExtent[0] * scale;
+    svg.transition().duration(320).call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
   }
 
   function resize() {
@@ -636,55 +720,67 @@
   }
   window.addEventListener("resize", () => { resize(); });
   resize();
-  fitView();
 
   // ---------- selection & highlighting ----------
 
   function ancestorsOf(id) {
     // all nodes/edges reachable by walking inEdges back toward the mission
     const nodesSet = new Set([id]);
-    const edgeSet = new Set();
+    const edgeKeySet = new Set();
     const stack = [id];
     while (stack.length) {
       const cur = stack.pop();
       for (const e of nodeById.get(cur).inEdges) {
-        edgeSet.add(e);
+        edgeKeySet.add(edgeKey(e.source, e.target));
         if (!nodesSet.has(e.source)) { nodesSet.add(e.source); stack.push(e.source); }
       }
     }
-    return { nodesSet, edgeSet };
+    return { nodesSet, edgeKeySet };
+  }
+
+  // Re-applies the current selection's highlight classes to whatever nodes
+  // and edges are presently in the DOM -- called after every render, since
+  // expand/collapse constantly adds and removes elements.
+  function applyHighlight() {
+    const nodeSel = nodeLayer.selectAll("g.node");
+    const edgeSel = edgeLayer.selectAll("path.edge");
+    if (!selectedId) {
+      nodeSel.attr("class", nodeClass);
+      edgeSel.attr("class", "edge");
+      return;
+    }
+    const d = nodeById.get(selectedId);
+    const { nodesSet, edgeKeySet } = ancestorsOf(selectedId);
+    const childIds = new Set(d.outEdges.map(e => e.target));
+
+    nodeSel.attr("class", n => {
+      let c = nodeClass(n);
+      if (n.data.id === selectedId) c += " selected";
+      else if (nodesSet.has(n.data.id)) c += " ancestor";
+      else if (childIds.has(n.data.id)) c += " child";
+      else c += " dim";
+      return c;
+    });
+
+    edgeSel.attr("class", e => {
+      const key = edgeKey(e.source.data.id, e.target.data.id);
+      if (edgeKeySet.has(key)) return "edge lit";
+      if (e.source.data.id === selectedId) return "edge child-lit";
+      return "edge dim";
+    });
   }
 
   function selectNode(id) {
     selectedId = id;
     if (!id) {
-      nodeSel.attr("class", d => "node" + (d.id === MISSION_ID ? " mission-node" : ""));
-      edgeSel.attr("class", "edge");
+      applyHighlight();
       renderEmptyPanel();
       closeMobilePanel();
       updateLabelVisibility();
       return;
     }
     const d = nodeById.get(id);
-    const { nodesSet, edgeSet } = ancestorsOf(id);
-    const childIds = new Set(d.outEdges.map(e => e.target));
-
-    nodeSel.attr("class", n => {
-      let c = "node";
-      if (n.id === MISSION_ID) c += " mission-node";
-      if (n.id === id) c += " selected";
-      else if (nodesSet.has(n.id)) c += " ancestor";
-      else if (childIds.has(n.id)) c += " child";
-      else c += " dim";
-      return c;
-    });
-
-    edgeSel.attr("class", e => {
-      if (edgeSet.has(e)) return "edge lit";
-      if (e.source === id) return "edge child-lit";
-      return "edge dim";
-    });
-
+    applyHighlight();
     renderPanel(d);
     openMobilePanel();
     updateLabelVisibility();
@@ -708,7 +804,7 @@
     .style("font-family", "IBM Plex Sans, sans-serif");
 
   function showTip(event, d) {
-    tip.html(`<div style="font-family:'IBM Plex Mono',monospace;color:var(--ink);margin-bottom:3px;">${escapeHtml(d.id)}</div><div style="opacity:.7;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;">${kindOf(d)}</div>${escapeHtml(cleanText(d.description).slice(0, 180))}${d.description.length > 180 ? "…" : ""}`)
+    tip.html(`<div style="font-family:'IBM Plex Mono',monospace;color:var(--ink);margin-bottom:3px;">${escapeHtml(d.id)}</div><div style="opacity:.7;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px;">${kindOf(d)}</div>${escapeHtml(cleanText(d.description).slice(0, 180))}${d.description.length > 180 ? "\u2026" : ""}`)
       .style("left", (event.clientX + 14) + "px")
       .style("top", (event.clientY + 10) + "px")
       .style("opacity", 1);
@@ -739,7 +835,7 @@
           <div class="item"><span class="dot" style="background:var(--code);width:12px;height:12px"></span> a real file in the package</div>
           <div class="item"><span class="dot" style="background:var(--member);width:12px;height:12px"></span> a real class or function in that file</div>
         </div>
-        <p style="margin-top:14px;">Click any node to trace its lineage back to the mission. Each node's own panel shows the question <em>it</em> raises and who answers it, under &ldquo;how this happens&rdquo; &mdash; and what it's part of, under &ldquo;part of.&rdquo;</p>
+        <p style="margin-top:14px;">Everything starts collapsed, showing just the mission. Click a node marked <strong>+</strong> to reveal what it explains; click it again to collapse it back. Each node's own panel shows the question <em>it</em> raises and who answers it, under &ldquo;how this happens&rdquo; &mdash; and what it's part of, under &ldquo;part of.&rdquo;</p>
       </div>`;
   }
 
@@ -783,7 +879,7 @@
 
     panelBody.innerHTML = html;
     panelBody.querySelectorAll("[data-goto]").forEach(el => {
-      el.addEventListener("click", (ev) => { ev.stopPropagation(); selectNode(el.getAttribute("data-goto")); });
+      el.addEventListener("click", (ev) => { ev.stopPropagation(); goto(el.getAttribute("data-goto")); });
     });
   }
 
@@ -805,37 +901,28 @@
   renderEmptyPanel();
 
   // ---------- search ----------
+  // Search can match any of the 357 nodes, not just the handful currently
+  // expanded into view -- jumping to a match expands its whole ancestor
+  // chain via goto(), the same path the panel's own links use.
+  const allIds = Array.from(nodeById.keys());
   const searchInput = document.getElementById("search");
-  searchInput.addEventListener("input", () => {
-    const q = searchInput.value.trim().toLowerCase();
-    if (!q) {
-      if (!selectedId) { nodeSel.attr("class", d => "node" + (d.id === MISSION_ID ? " mission-node" : "")); updateLabelVisibility(); }
-      return;
-    }
-    selectedId = null;
-    nodeSel.attr("class", d => {
-      let c = "node" + (d.id === MISSION_ID ? " mission-node" : "");
-      return c + (d.id.toLowerCase().includes(q) ? " match" : " dim");
-    });
-    edgeSel.attr("class", "edge dim");
-    nodeLayer.selectAll("text").style("opacity", d => d.id.toLowerCase().includes(q) ? 1 : 0);
-  });
   searchInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       const q = searchInput.value.trim().toLowerCase();
-      const hit = nodes.find(n => n.id.toLowerCase().includes(q));
-      if (hit) selectNode(hit.id);
+      if (!q) return;
+      const hit = allIds.find(id => id.toLowerCase().includes(q));
+      if (hit) goto(hit);
     }
   });
 
   document.getElementById("resetBtn").addEventListener("click", () => {
     searchInput.value = "";
     selectNode(null);
-    fitView();
+    collapseAll();
+    update(root);
   });
 
-  // ---------- stats ----------
-  document.getElementById("stats").innerHTML =
-    `<span><b>${nodes.length}</b> nodes</span><span><b>${edges.length}</b> edges</span><span><b>${maxDepth}</b> hops max</span>`;
+  // ---------- first render ----------
+  update(root);
 })();
 </script>

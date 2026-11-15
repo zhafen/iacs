@@ -248,3 +248,68 @@ project_history:
               supplies it. Verified programmatically before touching the
               visualization: all 356 how.value references resolved, single
               root, acyclic, 100% reachable from the mission.
+    how_chain_viz_made_collapsible:
+        - description: >
+              357 nodes rendered all at once (the force-layout approach
+              both viz's used up to this point) turned out to be
+              unreadable once how_chain grew past the file level down to
+              classes and functions. Rebuilt graph/index.html's rendering
+              around d3.hierarchy/d3.tree instead of a force simulation --
+              a natural fit since how.yaml's graph is a strict tree (node
+              count is always exactly edge count + 1: every non-mission
+              node has exactly one parent, unlike why_chain's graph, which
+              deliberately reuses hub concepts as multiple nodes' answers).
+              The viewer now starts with only the mission node shown and
+              expands one level at a time on click, collapsing back on a
+              second click; search and the panel's own links auto-expand
+              whatever collapsed ancestors stand between the current view
+              and their target. Two bugs surfaced while building this,
+              both worth remembering:
+
+              First, the initial "collapse everything" pass walked the
+              hierarchy via `root.each()` and nulled each node's own
+              `.children` from inside the visit callback -- but
+              `d3.hierarchy`'s `.each()` reads a node's `.children` to find
+              what to visit next only *after* calling the callback for
+              that node, so nulling it there made traversal stop
+              descending right there. The practical effect: only the
+              mission's own direct children ever actually got collapsed;
+              everything two or more levels down kept its original,
+              never-touched `.children` array intact, so expanding the
+              mission once immediately revealed the entire rest of the
+              357-node tree instead of just one level. Fixed by capturing
+              every node into a flat `Map` once, up front, before any
+              collapsing happens, and having the "collapse everything"
+              pass walk that static list instead of the live `.children`
+              chain -- a plain array iteration has no such
+              self-interference.
+
+              Second, the node tooltip's hover/focus handlers were still
+              passing the raw datum bound to each SVG element straight to
+              `showTip()`, unchanged from the old force-layout version --
+              but that datum is now a `d3.hierarchy` node (`{data: {id,
+              children}, parent, depth, ...}`), not the flat, data.json
+              -shaped node (`{id, description, kind}`) `showTip()` expects.
+              Every hover threw "Cannot read properties of undefined
+              (reading 'replace')" trying to clean a `description` field
+              that was never there. Fixed by resolving `nodeById.get(d.data.id)`
+              before calling `showTip()`, the same pattern every other
+              panel/highlight function already used to bridge from a
+              hierarchy node back to its real data.
+
+              A third, smaller issue: the collapse/expand "+"/"−" glyph
+              used a literal Unicode minus sign (U+2212) in a
+              `.text()` call, which rendered as mojibake under this
+              sandbox's local test server (no explicit charset meta, so
+              the browser guessed wrong) -- unlike every other Unicode
+              character already in the page, which only ever appears as
+              an HTML entity (`&rarr;`, `&mdash;`, ...) inside
+              `innerHTML`, immune to this since named entities decode
+              correctly regardless of the page's assumed encoding. Fixed
+              by writing `"−"`/`"…"` (a JS escape sequence,
+              pure ASCII in the source) instead of the raw character, in
+              both this new glyph and the pre-existing `shortLabel`
+              ellipsis truncation that had the same latent exposure.
+              Harmless inside the real Artifact viewer (its own publish
+              skeleton always sets a charset), but worth fixing at the
+              source rather than relying on that.
